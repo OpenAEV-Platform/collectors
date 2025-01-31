@@ -33,7 +33,7 @@ class CrowdstrikeApiHandler:
                 self.helper.collector_logger.warning(
                     "No alerts found."
                 )
-                return
+                return []
             alerts_response = self.alerts.get_alerts_v2(
                 composite_ids=response["body"]["resources"]
             )
