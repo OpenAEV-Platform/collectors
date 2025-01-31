@@ -29,6 +29,11 @@ class CrowdstrikeApiHandler:
         response = self.alerts.query_alerts_v2(parameters=parameters)
 
         if response["status_code"] == 200:
+            if not response["body"]["resources"]:
+                self.helper.collector_logger.warning(
+                    "No alerts found."
+                )
+                return
             alerts_response = self.alerts.get_alerts_v2(
                 composite_ids=response["body"]["resources"]
             )
