@@ -330,6 +330,7 @@ class OpenAEVMicrosoftDefender(CollectorDaemon):
             "Found " + str(len(alerts.results)) + " alerts with signatures"
         )
         # For each expectation, try to find the proper alert to assign a detection or prevention result
+        traces_to_create: list[dict[str, str]] = []
         for expectation in expectations:
             # Check expired expectation
             expectation_date = parse(
@@ -403,8 +404,8 @@ class OpenAEVMicrosoftDefender(CollectorDaemon):
                         + ")"
                     )
                     for evidence in evidences:
-                        self.api.inject_expectation_trace.create(
-                            data={
+                        traces_to_create.append(
+                            {
                                 "inject_expectation_trace_expectation": expectation[
                                     "inject_expectation_id"
                                 ],
@@ -422,6 +423,10 @@ class OpenAEVMicrosoftDefender(CollectorDaemon):
                                 ),
                             }
                         )
+
+        self.api.inject_expectation_trace.bulk_create(
+            payload={"expectation_traces": traces_to_create}
+        )
 
     def _process_message(self) -> None:
         # Auth
