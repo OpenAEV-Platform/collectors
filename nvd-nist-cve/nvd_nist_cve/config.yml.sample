@@ -4,7 +4,7 @@ openbas:
 
 collector:
   id: 'ChangeMe' # Required
-  name: 'Cve by NVD NIST'
+  name: 'CVE by NVD NIST'
   period: 7200
   log_level: 'info'
 
