@@ -100,10 +100,12 @@ class SplunkESClientAPI:
         try:
             session = requests.Session()
             session.auth = (self.username, self.password)
-            session.headers.update({
-                "Content-Type": "application/x-www-form-urlencoded",
-                "Accept": "application/json",
-            })
+            session.headers.update(
+                {
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    "Accept": "application/json",
+                }
+            )
             session.timeout = REQUEST_TIMEOUT_SECONDS
             session.verify = False
             return session

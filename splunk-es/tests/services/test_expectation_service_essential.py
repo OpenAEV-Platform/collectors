@@ -149,7 +149,9 @@ class TestSplunkESExpectationServiceEssential:
 
         assert isinstance(result, ExpectationResult)  # noqa: S101
         assert result.is_valid is False  # noqa: S101
-        assert "only supports DetectionExpectations" in result.error_message  # noqa: S101
+        assert (  # noqa: S101
+            "only supports DetectionExpectations" in result.error_message
+        )
 
     def test_match_success(self):
         """Test successful matching for detection expectation.

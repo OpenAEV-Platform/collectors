@@ -53,7 +53,9 @@ class TestConverterEssential:
         assert "target_ipv4_address" in result[0]  # noqa: S101
         assert result[0]["source_ipv4_address"]["type"] == "simple"  # noqa: S101
         assert result[0]["target_ipv4_address"]["type"] == "simple"  # noqa: S101
-        assert result[0]["source_ipv4_address"]["data"] == ["192.168.1.100"]  # noqa: S101
+        assert result[0]["source_ipv4_address"]["data"] == [  # noqa: S101
+            "192.168.1.100"
+        ]
         assert result[0]["target_ipv4_address"]["data"] == ["10.0.0.50"]  # noqa: S101
 
     def test_convert_alert_with_only_source_ip(self):
@@ -72,7 +74,9 @@ class TestConverterEssential:
         assert len(result) == 1  # noqa: S101
         assert "source_ipv4_address" in result[0]  # noqa: S101
         assert "target_ipv4_address" not in result[0]  # noqa: S101
-        assert result[0]["source_ipv4_address"]["data"] == ["192.168.1.100"]  # noqa: S101
+        assert result[0]["source_ipv4_address"]["data"] == [  # noqa: S101
+            "192.168.1.100"
+        ]
 
     def test_convert_alert_with_only_target_ip(self):
         """Test converting alert with only target IP address.

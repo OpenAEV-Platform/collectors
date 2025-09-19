@@ -28,7 +28,7 @@ class Converter:
 
     def convert_data_to_oaev_data(
         self,
-        data: (SplunkESAlert | list[SplunkESAlert] | None),
+        data: SplunkESAlert | list[SplunkESAlert] | None,
     ) -> list[dict[str, Any]]:
         """Convert Splunk ES data to OAEV format.
 

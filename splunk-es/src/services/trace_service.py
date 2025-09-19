@@ -9,17 +9,18 @@ from datetime import datetime
 from typing import Any
 from urllib.parse import quote
 
-from ..collector.models import ExpectationResult, ExpectationTrace
-from ..models.configs.config_loader import ConfigLoader
-from .exception import (
-    SplunkESDataConversionError,
-    SplunkESValidationError,
-)
 from pyobas.apis.inject_expectation.model import (  # type: ignore[import-untyped]
     DetectionExpectation,
     PreventionExpectation,
 )
+
+from ..collector.models import ExpectationResult, ExpectationTrace
+from ..models.configs.config_loader import ConfigLoader
 from .client_api import SplunkESClientAPI
+from .exception import (
+    SplunkESDataConversionError,
+    SplunkESValidationError,
+)
 
 LOG_PREFIX = "[SplunkESTraceService]"
 
