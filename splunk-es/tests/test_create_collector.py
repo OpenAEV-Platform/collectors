@@ -27,6 +27,10 @@ def collector_config() -> dict[str, str]:  # type: ignore
         "OPENBAS_TOKEN": "fake-obas-token",
         "COLLECTOR_ID": "fake-collector-id",
         "COLLECTOR_NAME": "Splunk ES",
+        "SPLUNKES_BASE_URL": "https://fake-splunk.net:8089/",
+        "SPLUNKES_USERNAME": "fake-user",
+        "SPLUNKES_PASSWORD": "fake-password",
+        "SPLUNKES_ALERTS_INDEX": "_notable",
         "COLLECTOR_ICON_FILEPATH": "src/img/splunk-logo.png",
         "COLLECTOR_LOG_LEVEL": "debug",
     }
@@ -71,10 +75,18 @@ def test_collector_config_missing_required_values() -> None:
         "OPENBAS_TOKEN": "fake-obas-token",
         "COLLECTOR_ID": "fake-collector-id",
         "COLLECTOR_NAME": "Splunk ES",
+        "SPLUNKES_BASE_URL": "https://fake-splunk.net:8089/",
+        # Missing SPLUNKES_USERNAME - this should cause validation error
+        "SPLUNKES_PASSWORD": "fake-password",
+        "SPLUNKES_ALERTS_INDEX": "_notable",
         "COLLECTOR_ICON_FILEPATH": "src/img/splunk-logo.png",
         "COLLECTOR_LOG_LEVEL": "debug",
     }
     mock_env = _given_setup_config(data)
+
+    # Remove username env var if it was set by factory
+    if "SPLUNKES_USERNAME" in os_environ:
+        del os_environ["SPLUNKES_USERNAME"]
 
     # Then the collector config should raise a custom ConfigurationException
     with pytest.raises((CollectorConfigError, ValueError)):
@@ -98,10 +110,18 @@ def test_collector_config_missing_password() -> None:
         "OPENBAS_TOKEN": "fake-obas-token",
         "COLLECTOR_ID": "fake-collector-id",
         "COLLECTOR_NAME": "Splunk ES",
+        "SPLUNKES_BASE_URL": "https://fake-splunk.net:8089/",
+        "SPLUNKES_USERNAME": "fake-user",
+        # Missing SPLUNKES_PASSWORD - this should cause validation error
+        "SPLUNKES_ALERTS_INDEX": "_notable",
         "COLLECTOR_ICON_FILEPATH": "src/img/splunk-logo.png",
         "COLLECTOR_LOG_LEVEL": "debug",
     }
     mock_env = _given_setup_config(data)
+
+    # Remove password env var if it was set by factory
+    if "SPLUNKES_PASSWORD" in os_environ:
+        del os_environ["SPLUNKES_PASSWORD"]
 
     # Then the collector config should raise a custom ConfigurationException
     with pytest.raises((CollectorConfigError, ValueError)):
@@ -175,6 +195,18 @@ def _then_collector_created_successfully(capfd, mock_env, collector, data) -> No
     assert daemon_config.get("collector_id") == data.get("COLLECTOR_ID")  # noqa: S101
     assert daemon_config.get("collector_name") == data.get(  # noqa: S101
         "COLLECTOR_NAME"
+    )
+    assert daemon_config.get("splunk_es_base_url") == data.get(  # noqa: S101
+        "SPLUNKES_BASE_URL"
+    )
+    assert daemon_config.get("splunk_es_username") == data.get(  # noqa: S101
+        "SPLUNKES_USERNAME"
+    )
+    assert daemon_config.get("splunk_es_password") == data.get(  # noqa: S101
+        "SPLUNKES_PASSWORD"
+    )
+    assert daemon_config.get("splunk_es_alerts_index") == data.get(  # noqa: S101
+        "SPLUNKES_ALERTS_INDEX"
     )
     assert daemon_config.get("collector_log_level") == data.get(  # noqa: S101
         "COLLECTOR_LOG_LEVEL"

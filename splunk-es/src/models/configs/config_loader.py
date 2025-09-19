@@ -15,6 +15,7 @@ from src.models.configs import (
     ConfigBaseSettings,
     _ConfigLoaderCollector,
     _ConfigLoaderOAEV,
+    _ConfigLoaderSplunkES,
 )
 
 
@@ -52,6 +53,10 @@ class ConfigLoader(ConfigBaseSettings):
     collector: ConfigLoaderCollector = Field(
         default_factory=ConfigLoaderCollector,  # type: ignore[unused-ignore]
         description="Collector configurations.",
+    )
+    splunk_es: _ConfigLoaderSplunkES = Field(
+        default_factory=_ConfigLoaderSplunkES,
+        description="SplunkES configurations.",
     )
 
     @classmethod
@@ -132,4 +137,12 @@ class ConfigLoader(ConfigBaseSettings):
             "collector_period": int(self.collector.period.total_seconds()),  # type: ignore[union-attr]
             "collector_icon_filepath": self.collector.icon_filepath,
             "collector_type": "openaev_splunk",
+            # SplunkES configuration (flattened)
+            "splunk_es_base_url": str(self.splunk_es.base_url),
+            "splunk_es_username": self.splunk_es.username,
+            "splunk_es_password": self.splunk_es.password.get_secret_value(),
+            "splunk_es_alerts_index": self.splunk_es.alerts_index,
+            "splunk_es_time_window": self.splunk_es.time_window,
+            "splunk_es_max_retry": self.splunk_es.max_retry,
+            "splunk_es_offset": self.splunk_es.offset,
         }
