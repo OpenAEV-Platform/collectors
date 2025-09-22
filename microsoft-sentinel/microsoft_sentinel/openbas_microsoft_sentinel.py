@@ -5,7 +5,7 @@ import requests
 from dateutil.parser import parse
 from dateutil.relativedelta import relativedelta
 from microsoft_sentinel.api_handler import SentinelApiHandler
-from pyobas.helpers import (
+from pyoaev.helpers import (
     OpenBASCollectorHelper,
     OpenBASConfigHelper,
     OpenBASDetectionHelper,

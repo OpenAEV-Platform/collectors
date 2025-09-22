@@ -13,9 +13,9 @@ from test.fixtures.defaults import DEFAULT_SIGNATURE_TYPES, get_default_api_hand
 from unittest.mock import patch
 
 from pydantic import ValidationError
-from pyobas.exceptions import OpenBASError
-from pyobas.signatures.signature_type import SignatureType
-from pyobas.signatures.types import MatchTypes, SignatureTypes
+from pyoaev.exceptions import OpenBASError
+from pyoaev.signatures.signature_type import SignatureType
+from pyoaev.signatures.types import MatchTypes, SignatureTypes
 
 from crowdstrike.query_strategy.alert import Alert, Item
 

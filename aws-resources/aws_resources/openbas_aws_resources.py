@@ -1,6 +1,6 @@
 import boto3
 from botocore.exceptions import ClientError, NoCredentialsError
-from pyobas.helpers import OpenBASCollectorHelper, OpenBASConfigHelper
+from pyoaev.helpers import OpenBASCollectorHelper, OpenBASConfigHelper
 
 
 class OpenBASAWSResources:

@@ -17,8 +17,8 @@ openbas-microsoft-sentinel-collector = { path = "./microsoft-sentinel" }
 openbas-mitre-attack-collector = { path = "./mitre-attack" }
 openbas-nvd-nist-cve-collector = { path = "./nvd-nist-cve" }
 openbas-tanium-threat-response-collector = { path = "./tanium-threat-response" }
-# install pyobas explicitly to force getting the dep from the local path in dev mode
-pyobas = [
+# install pyoaev explicitly to force getting the dep from the local path in dev mode
+pyoaev = [
     { markers = "extra != 'dev'", version = "1.18.20", source = "pypi"  },
     { markers = "extra == 'dev'", path = "../client-python", develop = true },
 ]

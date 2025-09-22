@@ -9,7 +9,7 @@ packages = [{include = "nvd_nist_cve"}]
 
 [tool.poetry.dependencies]
 python = "^3.11"
-pyobas = [
+pyoaev = [
     { markers = "extra == 'prod' and extra != 'dev'", version = "1.18.10", source = "pypi"  },
     { markers = "extra == 'dev' and extra != 'prod'", path = "../../client-python", develop = true },
 ]

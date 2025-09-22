@@ -11,7 +11,7 @@ from msgraph import GraphServiceClient
 from msgraph.generated.security.microsoft_graph_security_run_hunting_query.run_hunting_query_post_request_body import (
     RunHuntingQueryPostRequestBody,
 )
-from pyobas.helpers import (
+from pyoaev.helpers import (
     OpenBASCollectorHelper,
     OpenBASConfigHelper,
     OpenBASDetectionHelper,

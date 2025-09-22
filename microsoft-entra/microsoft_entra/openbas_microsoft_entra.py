@@ -3,7 +3,7 @@ import asyncio
 import requests
 from azure.identity.aio import ClientSecretCredential
 from msgraph import GraphServiceClient
-from pyobas.helpers import OpenBASCollectorHelper, OpenBASConfigHelper
+from pyoaev.helpers import OpenBASCollectorHelper, OpenBASConfigHelper
 
 
 class OpenBASMicrosoftEntra:

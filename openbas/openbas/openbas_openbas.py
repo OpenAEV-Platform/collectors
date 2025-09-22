@@ -3,7 +3,7 @@ import mimetypes
 import zipfile
 
 import requests
-from pyobas.helpers import OpenBASCollectorHelper, OpenBASConfigHelper
+from pyoaev.helpers import OpenBASCollectorHelper, OpenBASConfigHelper
 
 
 class OpenBASOpenBAS:

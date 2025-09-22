@@ -4,7 +4,7 @@ from typing import Generator, Optional
 
 from nvd_nist_cve.nvd_nist_cve_api_handler import NvdNistCveApiHandler
 from nvd_nist_cve.nvd_nist_cve_configuration import NvdNistCveConfiguration
-from pyobas.daemons import CollectorDaemon
+from pyoaev.daemons import CollectorDaemon
 
 
 @dataclass

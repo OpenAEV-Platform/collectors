@@ -47,7 +47,7 @@ jobs:
       - setup_remote_docker
       - run: # this is only to satisfy poetry; not used
           working_directory: ~/
-          name: Clone pyobas
+          name: Clone pyoaev
           command: git clone -b main https://github.com/OpenBAS-Platform/client-python
       - run:
           working_directory: ~/openbas/crowdstrike
@@ -60,7 +60,7 @@ jobs:
             poetry install --extras prod
       - run:
           working_directory: ~/openbas/crowdstrike
-          name: Overwrite pyobas with correct version from CI
+          name: Overwrite pyoaev with correct version from CI
           command: |
             if [ "${CIRCLE_BRANCH}" = "release/current" ]; then
               poetry run pip install --force-reinstall git+https://github.com/OpenBAS-Platform/client-python.git@release/current
@@ -86,7 +86,7 @@ jobs:
             mkdir -p ~/openbas/images
       - run:
           working_directory: ~/openbas
-          name: Replace pyobas requirement of stable version with latest release branch code
+          name: Replace pyoaev requirement of stable version with latest release branch code
           # We safely expand the CIRCLE_BRANCH variable because the CircleCI filters already enforce a strict release/x.x.x pattern using regex
           command: |
             if [ "${CIRCLE_BRANCH}" = "main" ]; then
@@ -97,7 +97,7 @@ jobs:
           name: Build Docker image openbas/collector-mitre-attack
           command: |
             if [ "${CIRCLE_BRANCH}" = "release/current" ]; then
-              docker build --progress=plain -t openbas/collector-mitre-attack:${CIRCLE_SHA1} --build-arg PYOBAS_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
+              docker build --progress=plain -t openbas/collector-mitre-attack:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
             else 
               docker build --progress=plain -t openbas/collector-mitre-attack:${CIRCLE_SHA1} .
             fi
@@ -107,7 +107,7 @@ jobs:
           name: Build Docker image openbas/nvd-nist-cve
           command: |
             if [ "${CIRCLE_BRANCH}" = "release/current" ]; then
-              docker build --progress=plain -t openbas/collector-nvd-nist-cve:${CIRCLE_SHA1} --build-arg PYOBAS_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
+              docker build --progress=plain -t openbas/collector-nvd-nist-cve:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
             else 
               docker build --progress=plain -t openbas/collector-nvd-nist-cve:${CIRCLE_SHA1} .
             fi
@@ -117,7 +117,7 @@ jobs:
           name: Build Docker image openbas/collector-microsoft-entra
           command: |
             if [ "${CIRCLE_BRANCH}" = "release/current" ]; then
-              docker build --progress=plain -t openbas/collector-microsoft-entra:${CIRCLE_SHA1} --build-arg PYOBAS_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
+              docker build --progress=plain -t openbas/collector-microsoft-entra:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
             else 
               docker build --progress=plain -t openbas/collector-microsoft-entra:${CIRCLE_SHA1} .
             fi
@@ -127,7 +127,7 @@ jobs:
           name: Build Docker image openbas/collector-tanium-threat-response
           command: |
             if [ "${CIRCLE_BRANCH}" = "release/current" ]; then
-              docker build --progress=plain -t openbas/collector-tanium-threat-response:${CIRCLE_SHA1} --build-arg PYOBAS_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
+              docker build --progress=plain -t openbas/collector-tanium-threat-response:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
             else 
               docker build --progress=plain -t openbas/collector-tanium-threat-response:${CIRCLE_SHA1} .
             fi
@@ -137,7 +137,7 @@ jobs:
           name: Build Docker image openbas/collector-microsoft-defender
           command: |
             if [ "${CIRCLE_BRANCH}" = "release/current" ]; then
-              docker build --progress=plain -t openbas/collector-microsoft-defender:${CIRCLE_SHA1} --build-arg PYOBAS_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
+              docker build --progress=plain -t openbas/collector-microsoft-defender:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
             else 
               docker build --progress=plain -t openbas/collector-microsoft-defender:${CIRCLE_SHA1} .
             fi
@@ -147,7 +147,7 @@ jobs:
           name: Build Docker image openbas/collector-microsoft-sentinel
           command: |
             if [ "${CIRCLE_BRANCH}" = "release/current" ]; then
-              docker build --progress=plain -t openbas/collector-microsoft-sentinel:${CIRCLE_SHA1} --build-arg PYOBAS_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
+              docker build --progress=plain -t openbas/collector-microsoft-sentinel:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
             else 
               docker build --progress=plain -t openbas/collector-microsoft-sentinel:${CIRCLE_SHA1} .
             fi
@@ -157,7 +157,7 @@ jobs:
           name: Build Docker image openbas/collector-atomic-red-team
           command: |
             if [ "${CIRCLE_BRANCH}" = "release/current" ]; then
-              docker build --progress=plain -t openbas/collector-atomic-red-team:${CIRCLE_SHA1} --build-arg PYOBAS_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
+              docker build --progress=plain -t openbas/collector-atomic-red-team:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
             else 
               docker build --progress=plain -t openbas/collector-atomic-red-team:${CIRCLE_SHA1} .
             fi
@@ -167,7 +167,7 @@ jobs:
           name: Build Docker image openbas/collector-crowdstrike
           command: |
             if [ "${CIRCLE_BRANCH}" = "release/current" ]; then
-              docker build --progress=plain -t openbas/collector-crowdstrike:${CIRCLE_SHA1} --build-arg PYOBAS_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
+              docker build --progress=plain -t openbas/collector-crowdstrike:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
             else 
               docker build --progress=plain -t openbas/collector-crowdstrike:${CIRCLE_SHA1} .
             fi
@@ -177,7 +177,7 @@ jobs:
           name: Build Docker image openbas/collector-openbas
           command: |
             if [ "${CIRCLE_BRANCH}" = "release/current" ]; then
-              docker build --progress=plain -t openbas/collector-openbas:${CIRCLE_SHA1} --build-arg PYOBAS_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
+              docker build --progress=plain -t openbas/collector-openbas:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
             else 
               docker build --progress=plain -t openbas/collector-openbas:${CIRCLE_SHA1} .
             fi
@@ -187,7 +187,7 @@ jobs:
           name: Build Docker image openbas/collector-microsoft-azure
           command: |
             if [ "${CIRCLE_BRANCH}" = "release/current" ]; then
-              docker build --progress=plain -t openbas/collector-microsoft-azure:${CIRCLE_SHA1} --build-arg PYOBAS_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
+              docker build --progress=plain -t openbas/collector-microsoft-azure:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
             else 
               docker build --progress=plain -t openbas/collector-microsoft-azure:${CIRCLE_SHA1} .
             fi
@@ -197,7 +197,7 @@ jobs:
           name: Build Docker image openbas/collector-microsoft-intune
           command: |
             if [ "${CIRCLE_BRANCH}" = "release/current" ]; then
-              docker build --progress=plain -t openbas/collector-microsoft-intune:${CIRCLE_SHA1} --build-arg PYOBAS_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
+              docker build --progress=plain -t openbas/collector-microsoft-intune:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
             else 
               docker build --progress=plain -t openbas/collector-microsoft-intune:${CIRCLE_SHA1} .
             fi
@@ -207,7 +207,7 @@ jobs:
           name: Build Docker image openbas/collector-aws-resources
           command: |
             if [ "${CIRCLE_BRANCH}" = "release/current" ]; then
-              docker build --progress=plain -t openbas/collector-aws-resources:${CIRCLE_SHA1} --build-arg PYOBAS_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
+              docker build --progress=plain -t openbas/collector-aws-resources:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
             else 
               docker build --progress=plain -t openbas/collector-aws-resources:${CIRCLE_SHA1} .
             fi
@@ -217,7 +217,7 @@ jobs:
           name: Build Docker image openbas/collector-google-workspace
           command: |
             if [ "${CIRCLE_BRANCH}" = "release/current" ]; then
-              docker build --progress=plain -t openbas/collector-google-workspace:${CIRCLE_SHA1} --build-arg PYOBAS_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
+              docker build --progress=plain -t openbas/collector-google-workspace:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
             else 
               docker build --progress=plain -t openbas/collector-google-workspace:${CIRCLE_SHA1} .
             fi

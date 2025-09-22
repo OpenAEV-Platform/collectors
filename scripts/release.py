@@ -63,13 +63,13 @@ os.system(
     + "/g' @"
 )
 
-# pyobas= = x.x.x -> pyproject.toml
+# pyoaev= = x.x.x -> pyproject.toml
 os.system(
-    "grep -rli 'pyobas = \""
+    "grep -rli 'pyoaev = \""
     + previous_version
-    + "\"' **/pyproject.toml | xargs -i@ sed -i 's/pyobas = \""
+    + "\"' **/pyproject.toml | xargs -i@ sed -i 's/pyoaev = \""
     + previous_version.replace(".", "\\.")
-    + '"/pyobas = "'
+    + '"/pyoaev = "'
     + new_version.replace(".", "\\.")
     + "\"/g' @"
 )

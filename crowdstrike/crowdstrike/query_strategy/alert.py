@@ -1,8 +1,8 @@
 from datetime import datetime
 
 from pydantic import BaseModel, ValidationError
-from pyobas.exceptions import OpenBASError
-from pyobas.signatures.types import SignatureTypes
+from pyoaev.exceptions import OpenBASError
+from pyoaev.signatures.types import SignatureTypes
 
 from crowdstrike.pattern_disposition import is_prevented
 from crowdstrike.query_strategy.base import Base

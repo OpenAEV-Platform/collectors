@@ -27,7 +27,7 @@ to each collector's individual README for instructions.
 
 In this repository, you need to have `python >= 3.11` and `poetry >= 2.1`. Install the development environment with:
 > [!IMPORTANT]
-> This repository uses "mutually exclusive extra markers" to manage the source of the pyobas dependency. Make sure to
+> This repository uses "mutually exclusive extra markers" to manage the source of the pyoaev dependency. Make sure to
 > follow the steps to set up poetry correctly to handle this case:
 > https://python-poetry.org/docs/dependency-specification/#exclusive-extras
 
@@ -50,9 +50,9 @@ Assuming a new collector by the name of `new_collector`, create a skeleton direc
 poetry new new_collector
 ```
 
-#### `pyobas` dependency
-We wish to retain the possibility to develop simultaneously on `pyobas` and collectors. We rely on PEP 508 environment
-markers to alternatively install a local path `pyobas` dependency or a released version from PyPI; specifically the `extra`
+#### `pyoaev` dependency
+We wish to retain the possibility to develop simultaneously on `pyoaev` and collectors. We rely on PEP 508 environment
+markers to alternatively install a local path `pyoaev` dependency or a released version from PyPI; specifically the `extra`
 marker.
 
 Navigate to the new directory and edit `pyproject.toml`.
@@ -61,11 +61,11 @@ vim new_collector/pyproject.toml
 ```
 (or open the file in your favourite editor).
 
-Here's the expression for the pyobas dependency, including the `extra` definition:
+Here's the expression for the pyoaev dependency, including the `extra` definition:
 ```toml
 [tool.poetry.dependencies]
-pyobas = [
-    { markers = "extra == 'prod' and extra != 'dev'", version = "<latest pyobas release on PyPI>", source = "pypi"  },
+pyoaev = [
+    { markers = "extra == 'prod' and extra != 'dev'", version = "<latest pyoaev release on PyPI>", source = "pypi"  },
     { markers = "extra == 'dev' and extra != 'prod'", path = "../../client-python", develop = true },
 ]
 
@@ -74,9 +74,9 @@ prod = []
 dev = []
 ```
 
-### Simultaneous development on pyobas and a collector
-The collectors repository is set to assume that in the event of a simultaneous development work on both `pyobas`
-and collectors, the `pyobas` repository is cloned in a directory at the same level as the collectors root directory,
+### Simultaneous development on pyoaev and a collector
+The collectors repository is set to assume that in the event of a simultaneous development work on both `pyoaev`
+and collectors, the `pyoaev` repository is cloned in a directory at the same level as the collectors root directory,
 and is named strictly `client-python`.
 
 Here's an example layout:
@@ -84,7 +84,7 @@ Here's an example layout:
 .
 ├── client-python       <= mandatory dir name
 │   ├── docs
-│   ├── pyobas
+│   ├── pyoaev
 │   ├── scripts
 │   └── test
 └── collectors          <= this repo root dir

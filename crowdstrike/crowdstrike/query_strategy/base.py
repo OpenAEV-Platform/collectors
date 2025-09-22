@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 
-from pyobas.exceptions import OpenBASError
-from pyobas.signatures.signature_type import SignatureType
-from pyobas.signatures.types import SignatureTypes
+from pyoaev.exceptions import OpenBASError
+from pyoaev.signatures.signature_type import SignatureType
+from pyoaev.signatures.types import SignatureTypes
 
 
 class Base(ABC):

@@ -43,7 +43,7 @@ poetry install --extras prod
 ```
 
 **Development**
-(Note: you should also clone the [pyobas](https://github.com/OpenBAS-Platform/client-python) repository [according to these instructions](../README.md#simultaneous-development-on-pyobas-and-a-collector)):
+(Note: you should also clone the [pyoaev](https://github.com/OpenBAS-Platform/client-python) repository [according to these instructions](../README.md#simultaneous-development-on-pyoaev-and-a-collector)):
 
 ```bash
 # development environment

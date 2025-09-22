@@ -3,7 +3,7 @@ import re
 
 import requests
 import yaml
-from pyobas.helpers import OpenBASCollectorHelper, OpenBASConfigHelper
+from pyoaev.helpers import OpenBASCollectorHelper, OpenBASConfigHelper
 
 ATOMIC_RED_TEAM_INDEX = "https://raw.githubusercontent.com/redcanaryco/atomic-red-team/master/atomics/Indexes/index.yaml"
 

@@ -65,8 +65,8 @@ Install the environment:
 poetry install --extras prod
 ```
 
-**Development** (note that you should also clone the [pyobas](OpenBAS-Platform/client-python) repository [according to
-these instructions](../README.md#simultaneous-development-on-pyobas-and-a-collector))
+**Development** (note that you should also clone the [pyoaev](OpenBAS-Platform/client-python) repository [according to
+these instructions](../README.md#simultaneous-development-on-pyoaev-and-a-collector))
 ```shell
 # development environment
 poetry install --extras dev

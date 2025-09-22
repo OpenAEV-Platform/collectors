@@ -2,13 +2,13 @@ from datetime import datetime, timedelta
 
 import pytz
 from dateutil.parser import parse
-from pyobas.helpers import (
+from pyoaev.helpers import (
     OpenBASCollectorHelper,
     OpenBASConfigHelper,
     OpenBASDetectionHelper,
 )
-from pyobas.signatures.signature_type import SignatureType
-from pyobas.signatures.types import MatchTypes, SignatureTypes
+from pyoaev.signatures.signature_type import SignatureType
+from pyoaev.signatures.types import MatchTypes, SignatureTypes
 
 from crowdstrike.crowdstrike_api_handler import CrowdstrikeApiHandler
 from crowdstrike.query_strategy.alert import Alert, Item

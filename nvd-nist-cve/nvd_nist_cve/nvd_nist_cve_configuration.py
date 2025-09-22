@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-from pyobas.configuration import Configuration
+from pyoaev.configuration import Configuration
 
 
 class NvdNistCveConfiguration(Configuration):

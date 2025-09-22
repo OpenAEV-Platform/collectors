@@ -1,12 +1,12 @@
 from unittest.mock import patch
 
-from pyobas.helpers import (
+from pyoaev.helpers import (
     OpenBASCollectorHelper,
     OpenBASConfigHelper,
     OpenBASDetectionHelper,
 )
-from pyobas.signatures.signature_type import SignatureType
-from pyobas.signatures.types import MatchTypes, SignatureTypes
+from pyoaev.signatures.signature_type import SignatureType
+from pyoaev.signatures.types import MatchTypes, SignatureTypes
 
 from crowdstrike.crowdstrike_api_handler import CrowdstrikeApiHandler
 from crowdstrike.openbas_crowdstrike import OpenBASCrowdStrike
@@ -47,9 +47,9 @@ def get_default_openbas_config_helper(
     return OpenBASConfigHelper(variables=config, base_path="fake_path")
 
 
-@patch("pyobas.apis.document.DocumentManager.upsert")
-@patch("pyobas.apis.security_platform.SecurityPlatformManager.upsert")
-@patch("pyobas.mixins.CreateMixin.create")
+@patch("pyoaev.apis.document.DocumentManager.upsert")
+@patch("pyoaev.apis.security_platform.SecurityPlatformManager.upsert")
+@patch("pyoaev.mixins.CreateMixin.create")
 @patch("builtins.open")
 def get_default_openbas_collector_helper(
     mock_open,
