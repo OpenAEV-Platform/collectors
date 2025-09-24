@@ -28,7 +28,7 @@ class NvdNistCveCollector(CollectorDaemon):
             super().__init__(
                 configuration=self.cve_config,
                 callback=self._process_data,
-                collector_type='openbas_nvd_nist_cve',
+                collector_type="openbas_nvd_nist_cve",
             )
             self.cve_client = None
             self.logger.info("Nvd Nist CVE Collector initialized successfully")
