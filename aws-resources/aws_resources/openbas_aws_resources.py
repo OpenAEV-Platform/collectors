@@ -24,11 +24,6 @@ class OpenBASAWSResources:
                     "file_path": ["collector", "name"],
                     "default": "Amazon Web Services",
                 },
-                "collector_type": {
-                    "env": "COLLECTOR_TYPE",
-                    "file_path": ["collector", "type"],
-                    "default": "openbas_aws_resources",
-                },
                 "collector_log_level": {
                     "env": "COLLECTOR_LOG_LEVEL",
                     "file_path": ["collector", "log_level"],
@@ -63,7 +58,9 @@ class OpenBASAWSResources:
             },
         )
         self.helper = OpenBASCollectorHelper(
-            config=self.config, icon="aws_resources/img/icon-aws-resources.png"
+            config=self.config,
+            icon="aws_resources/img/icon-aws-resources.png",
+            collector_type="openbas_aws_resources",
         )
 
         # AWS settings

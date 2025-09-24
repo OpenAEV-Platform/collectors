@@ -34,11 +34,6 @@ class OpenBASMicrosoftSentinel:
                     "file_path": ["collector", "name"],
                     "default": "Microsoft Sentinel",
                 },
-                "collector_type": {
-                    "env": "COLLECTOR_TYPE",
-                    "file_path": ["collector", "type"],
-                    "default": "openbas_microsoft_sentinel",
-                },
                 "collector_log_level": {
                     "env": "COLLECTOR_LOG_LEVEL",
                     "file_path": ["collector", "log_level"],
@@ -89,6 +84,7 @@ class OpenBASMicrosoftSentinel:
         self.helper = OpenBASCollectorHelper(
             config=self.config,
             icon="microsoft_sentinel/img/icon-microsoft-sentinel.png",
+            collector_type="openbas_microsoft_sentinel",
             security_platform_type="SIEM",
         )
 
