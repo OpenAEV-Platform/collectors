@@ -63,9 +63,9 @@ jobs:
           name: Overwrite pyobas with correct version from CI
           command: |
             if [ "${CIRCLE_BRANCH}" = "release/current" ]; then
-              poetry run pip install git+https://github.com/OpenBAS-Platform/client-python.git@release/current
+              poetry run pip install --force-reinstall git+https://github.com/OpenBAS-Platform/client-python.git@release/current
             else
-              poetry run pip install git+https://github.com/OpenBAS-Platform/client-python.git@main
+              poetry run pip install --force-reinstall git+https://github.com/OpenBAS-Platform/client-python.git@main
             fi
       - run:
           working_directory: ~/openbas/crowdstrike
