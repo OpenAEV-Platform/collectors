@@ -28,11 +28,6 @@ class OpenBASOpenBAS:
                     "file_path": ["collector", "name"],
                     "default": "OpenBAS Datasets",
                 },
-                "collector_type": {
-                    "env": "COLLECTOR_TYPE",
-                    "file_path": ["collector", "type"],
-                    "default": "openbas_openbas",
-                },
                 "collector_log_level": {
                     "env": "COLLECTOR_LOG_LEVEL",
                     "file_path": ["collector", "log_level"],
@@ -58,7 +53,9 @@ class OpenBASOpenBAS:
             },
         )
         self.helper = OpenBASCollectorHelper(
-            self.config, "openbas/img/icon-openbas.png"
+            config=self.config,
+            icon="openbas/img/icon-openbas.png",
+            collector_type="openbas_openbas",
         )
 
     def _create_or_get_tag(self, tag_name, tag_color="#6b7280"):

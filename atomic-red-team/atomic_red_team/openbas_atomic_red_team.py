@@ -221,11 +221,6 @@ class OpenBASAtomicRedTeam:
                     "file_path": ["collector", "name"],
                     "default": "Atomic Red Team",
                 },
-                "collector_type": {
-                    "env": "COLLECTOR_TYPE",
-                    "file_path": ["collector", "type"],
-                    "default": "openbas_atomic_red_team",
-                },
                 "collector_log_level": {
                     "env": "COLLECTOR_LOG_LEVEL",
                     "file_path": ["collector", "log_level"],
@@ -240,7 +235,9 @@ class OpenBASAtomicRedTeam:
             },
         )
         self.helper = OpenBASCollectorHelper(
-            self.config, "atomic_red_team/img/icon-atomic-red-team.png"
+            config=self.config,
+            icon="atomic_red_team/img/icon-atomic-red-team.png",
+            collector_type="openbas_atomic_red_team",
         )
 
     def _create_or_get_tag(self, tag_name, tag_color="#6b7280"):

@@ -24,11 +24,6 @@ class OpenBASMicrosoftAzure:
                     "file_path": ["collector", "name"],
                     "default": "Microsoft Azure",
                 },
-                "collector_type": {
-                    "env": "COLLECTOR_TYPE",
-                    "file_path": ["collector", "type"],
-                    "default": "openbas_microsoft_azure",
-                },
                 "collector_log_level": {
                     "env": "COLLECTOR_LOG_LEVEL",
                     "file_path": ["collector", "log_level"],
@@ -63,7 +58,9 @@ class OpenBASMicrosoftAzure:
             },
         )
         self.helper = OpenBASCollectorHelper(
-            config=self.config, icon="microsoft_azure/img/icon-microsoft-azure.png"
+            config=self.config,
+            icon="microsoft_azure/img/icon-microsoft-azure.png",
+            collector_type="openbas_microsoft_azure",
         )
 
         # Azure settings

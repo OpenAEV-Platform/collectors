@@ -7,6 +7,5 @@ services:
       - COLLECTOR_ID=${COLLECTOR_ID}
       - COLLECTOR_NAME=${COLLECTOR_NAME:-"MITRE ATT&CK"}
       - COLLECTOR_LOG_LEVEL=${COLLECTOR_LOG_LEVEL:-warn}
-      - COLLECTOR_TYPE=${COLLECTOR_TYPE:-openbas_mitre_attack}
       - COLLECTOR_PERIOD=${COLLECTOR_PERIOD:-604800}
     restart: unless-stopped

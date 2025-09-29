@@ -40,11 +40,6 @@ class OpenBASTaniumThreatResponse:
                     "file_path": ["collector", "name"],
                     "default": "Tanium Threat Response ",
                 },
-                "collector_type": {
-                    "env": "COLLECTOR_TYPE",
-                    "file_path": ["collector", "type"],
-                    "default": "openbas_tanium_threat_response",
-                },
                 "collector_log_level": {
                     "env": "COLLECTOR_LOG_LEVEL",
                     "file_path": ["collector", "log_level"],
@@ -77,6 +72,7 @@ class OpenBASTaniumThreatResponse:
         self.helper = OpenBASCollectorHelper(
             config=self.config,
             icon="tanium_threat_response/img/icon-tanium.png",
+            collector_type="openbas_tanium_threat_response",
             security_platform_type="EDR",
         )
 

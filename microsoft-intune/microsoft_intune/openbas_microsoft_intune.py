@@ -24,11 +24,6 @@ class OpenBASMicrosoftIntune:
                     "file_path": ["collector", "name"],
                     "default": "Microsoft Intune",
                 },
-                "collector_type": {
-                    "env": "COLLECTOR_TYPE",
-                    "file_path": ["collector", "type"],
-                    "default": "openbas_microsoft_intune",
-                },
                 "collector_log_level": {
                     "env": "COLLECTOR_LOG_LEVEL",
                     "file_path": ["collector", "log_level"],
@@ -65,7 +60,9 @@ class OpenBASMicrosoftIntune:
             },
         )
         self.helper = OpenBASCollectorHelper(
-            config=self.config, icon="microsoft_intune/img/icon-microsoft-intune.png"
+            config=self.config,
+            icon="microsoft_intune/img/icon-microsoft-intune.png",
+            collector_type="openbas_microsoft_intune",
         )
 
         # Intune settings
