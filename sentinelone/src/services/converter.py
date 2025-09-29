@@ -63,48 +63,68 @@ class Converter:
             self.logger.debug(
                 f"{LOG_PREFIX} Converting {len(data)} SentinelOne data items to OAEV format"
             )
+
+            dv_events: list[DeepVisibilityEvent] = []
+            threats: list[SentinelOneThreat] = []
+
+            for item in data:
+                if self._is_dv_data(item):
+                    if isinstance(item, DeepVisibilityEvent):
+                        dv_events.append(item)
+                elif self._is_threat_data(item):
+                    if isinstance(item, SentinelOneThreat):
+                        threats.append(item)
+
+            self.logger.debug(
+                f"{LOG_PREFIX} Found {len(dv_events)} DV events and {len(threats)} threats"
+            )
+
             oaev_datas = []
             dv_count = 0
             threat_count = 0
             unknown_count = 0
 
-            for i, item in enumerate(data, 1):
-                self.logger.debug(f"{LOG_PREFIX} Processing data item {i}/{len(data)}")
-
+            for i, dv_event in enumerate(dv_events, 1):
+                self.logger.debug(
+                    f"{LOG_PREFIX} Processing DV event {i}/{len(dv_events)}"
+                )
                 try:
-                    if self._is_dv_data(item):
-                        oaev_data = self._dv_data(item)
+                    oaev_data = self._dv_data(dv_event)
+                    if oaev_data:
+                        oaev_datas.append(oaev_data)
                         dv_count += 1
                         self.logger.debug(
                             f"{LOG_PREFIX} Converted Deep Visibility data item {i}"
                         )
-                    elif self._is_threat_data(item):
-                        oaev_data = self._threat_data(item)
+                except Exception as e:
+                    raise SentinelOneDataConversionError(
+                        f"Failed to convert DV item {i}: {e}"
+                    ) from e
+
+            for i, threat in enumerate(threats, 1):
+                self.logger.debug(f"{LOG_PREFIX} Processing threat {i}/{len(threats)}")
+                try:
+                    related_dv_events = self._find_related_dv_events(threat, dv_events)
+                    oaev_data = self._threat_data_with_context(
+                        threat, related_dv_events
+                    )
+                    if oaev_data:
+                        oaev_datas.append(oaev_data)
                         threat_count += 1
                         self.logger.debug(
                             f"{LOG_PREFIX} Converted threat data item {i}"
                         )
-                    else:
-                        unknown_count += 1
-                        self.logger.warning(
-                            f"{LOG_PREFIX} Unknown data type for item {i}: {type(item)}"
-                        )
-                        continue
-
-                    if oaev_data:
-                        oaev_datas.append(oaev_data)
-                        self.logger.debug(
-                            f"{LOG_PREFIX} Successfully converted item {i} to OAEV format"
-                        )
-                    else:
-                        self.logger.debug(
-                            f"{LOG_PREFIX} Item {i} conversion resulted in empty OAEV data"
-                        )
-
                 except Exception as e:
                     raise SentinelOneDataConversionError(
-                        f"Failed to convert data item {i}: {e}"
+                        f"Failed to convert threat item {i}: {e}"
                     ) from e
+
+            for i, item in enumerate(data, 1):
+                if not self._is_dv_data(item) and not self._is_threat_data(item):
+                    unknown_count += 1
+                    self.logger.warning(
+                        f"{LOG_PREFIX} Unknown data type for item {i}: {type(item)}"
+                    )
 
             self.logger.info(
                 f"{LOG_PREFIX} SentinelOne to OAEV conversion: processed {len(data)} items -> {len(oaev_datas)} results"
@@ -250,6 +270,13 @@ class Converter:
                     "Threat data missing threat_id - cannot create proper OAEV data"
                 )
 
+            is_mitigated = threatdata.is_mitigated()
+            oaev_data["is_mitigated"] = {
+                "type": "simple",
+                "data": [str(is_mitigated)],
+            }
+            self.logger.debug(f"{LOG_PREFIX} Threat mitigation status: {is_mitigated}")
+
             if hasattr(threatdata, "_raw") and threatdata._raw:
                 self.logger.debug(
                     f"{LOG_PREFIX} Threat data includes raw API response data"
@@ -265,4 +292,87 @@ class Converter:
         except Exception as e:
             raise SentinelOneDataConversionError(
                 f"Error converting threat data to OAEV: {e}"
+            ) from e
+
+    def _find_related_dv_events(
+        self, threat: SentinelOneThreat, dv_events: list[DeepVisibilityEvent]
+    ) -> list[DeepVisibilityEvent]:
+        """Find DV events related to a threat by matching content hash.
+
+        Args:
+            threat: Threat to find related DV events for.
+            dv_events: List of available DV events.
+
+        Returns:
+            List of related DV events.
+
+        """
+        if not threat.content_hash:
+            return []
+
+        related_events = []
+        for dv_event in dv_events:
+            if dv_event.tgt_file_sha1 and dv_event.tgt_file_sha1 == threat.content_hash:
+                related_events.append(dv_event)
+        return related_events
+
+    def _threat_data_with_context(
+        self,
+        threatdata: SentinelOneThreat,
+        related_dv_events: list[DeepVisibilityEvent],
+    ) -> dict[str, Any]:
+        """Convert Threat data to OAEV format with DV context.
+
+        Args:
+            threatdata: Threat data.
+            related_dv_events: Related DV events that provide signature context.
+
+        Returns:
+            OAEV formatted data dictionary with both threat and signature fields.
+
+        Raises:
+            SentinelOneValidationError: If input type is invalid or threat_id is missing.
+            SentinelOneDataConversionError: If conversion fails.
+
+        """
+        try:
+            if not isinstance(threatdata, SentinelOneThreat):
+                raise SentinelOneValidationError(
+                    f"Invalid input type for threat conversion: {type(threatdata)}"
+                )
+
+            oaev_data = self._threat_data(threatdata)
+
+            for dv_event in related_dv_events:
+                if (
+                    dv_event.src_proc_parent_name
+                    and dv_event.src_proc_parent_name.startswith(OBAS_IMPLANT_PREFIX)
+                ):
+                    oaev_data["parent_process_name"] = {
+                        "type": "simple",
+                        "data": [dv_event.src_proc_parent_name],
+                    }
+                    break
+                elif dv_event.src_proc_name and dv_event.src_proc_name.startswith(
+                    OBAS_IMPLANT_PREFIX
+                ):
+                    oaev_data["parent_process_name"] = {
+                        "type": "simple",
+                        "data": [dv_event.src_proc_name],
+                    }
+                    self.logger.debug(
+                        f"{LOG_PREFIX} Enhanced threat {threatdata.threat_id} with process name as parent: {dv_event.src_proc_name}"
+                    )
+                    break
+
+            self.logger.debug(
+                f"{LOG_PREFIX} Enhanced threat data to OAEV with {len(oaev_data)} fields"
+            )
+            return oaev_data
+
+        except SentinelOneValidationError:
+            raise
+        except Exception as e:
+            raise SentinelOneDataConversionError(
+                f"Error converting threat data with context to OAEV: {e}"
             ) from e

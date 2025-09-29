@@ -214,7 +214,11 @@ class FetcherThreat:
         """
         try:
             endpoint = f"{self.client_api.base_url}/web/api/v2.1/threats"
-            params = {"contentHash__contains": file_hash}
+            params = {
+                "contentHash__contains": file_hash,
+                "sortOrder": "desc",
+                "limit": 1,
+            }
 
             self.logger.debug(f"{LOG_PREFIX} Making GET request to: {endpoint}")
             self.logger.debug(f"{LOG_PREFIX} Query parameters: {params}")
@@ -239,9 +243,8 @@ class FetcherThreat:
                             threat_id = threat_data["threatInfo"]["threatId"]
 
                         if threat_id:
-                            threat = SentinelOneThreat(
-                                threat_id=threat_id, _raw=threat_data
-                            )
+                            threat = SentinelOneThreat(threat_id=threat_id)
+                            threat._raw = threat_data
                             threats.append(threat)
                             self.logger.debug(
                                 f"{LOG_PREFIX} Created SentinelOneThreat {i + 1} with ID: {threat_id}"

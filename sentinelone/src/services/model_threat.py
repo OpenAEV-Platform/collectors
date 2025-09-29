@@ -14,6 +14,43 @@ class SentinelOneThreat(BaseModel):
     threat_id: str = Field(..., description="Unique identifier for the threat")
     _raw: Optional[dict[str, Any]] = PrivateAttr(default=None)
 
+    def is_mitigated(self) -> bool:
+        """Check if the threat has been successfully mitigated.
+
+        Returns:
+            True if at least one mitigation status has status="success".
+
+        """
+        if not self._raw:
+            return False
+
+        mitigation_status = self._raw.get("mitigationStatus", [])
+        if not isinstance(mitigation_status, list):
+            return False
+
+        return any(
+            status.get("status") == "success"
+            for status in mitigation_status
+            if isinstance(status, dict)
+        )
+
+    @property
+    def content_hash(self) -> Optional[str]:
+        """Get the content hash from the raw threat data.
+
+        Returns:
+            Content hash if available, None otherwise.
+
+        """
+        if not self._raw:
+            return None
+
+        threat_info = self._raw.get("threatInfo", {})
+        if isinstance(threat_info, dict):
+            return threat_info.get("sha1")
+
+        return None
+
 
 class SentinelOneThreatsResponse(BaseModel):
     """Response from threats endpoint."""
@@ -46,7 +83,8 @@ class SentinelOneThreatsResponse(BaseModel):
                 threat_id = raw_threat["threatInfo"]["threatId"]
 
             if threat_id:
-                threat = SentinelOneThreat(threat_id=threat_id, _raw=raw_threat)
+                threat = SentinelOneThreat(threat_id=threat_id)
+                threat._raw = raw_threat
                 threats.append(threat)
 
         return cls(data=threats)

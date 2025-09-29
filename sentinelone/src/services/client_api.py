@@ -158,9 +158,9 @@ class SentinelOneClientAPI:
 
             sentinelone_data = dv_events
 
-            if dv_events and expectation_type == "prevention":
+            if dv_events:
                 self.logger.debug(
-                    f"{LOG_PREFIX} Fetching related threats for prevention expectation..."
+                    f"{LOG_PREFIX} Fetching related threats for {expectation_type} expectation..."
                 )
                 threats = self.threat_fetcher.fetch_with_retry(
                     dv_events, self.max_retry, int(self.offset)
@@ -169,16 +169,10 @@ class SentinelOneClientAPI:
                     f"{LOG_PREFIX} Fetched {len(threats)} threats from SentinelOne"
                 )
                 sentinelone_data = dv_events + threats  # type: ignore[operator]
-
             else:
-                if not dv_events:
-                    self.logger.warning(
-                        f"{LOG_PREFIX} No Deep Visibility events found, skipping threat fetching"
-                    )
-                else:
-                    self.logger.debug(
-                        f"{LOG_PREFIX} Expectation type '{expectation_type}' does not require threat data"
-                    )
+                self.logger.warning(
+                    f"{LOG_PREFIX} No Deep Visibility events found, skipping threat fetching"
+                )
 
             self.logger.info(
                 f"{LOG_PREFIX} Total SentinelOne data items returned: {len(sentinelone_data)}"

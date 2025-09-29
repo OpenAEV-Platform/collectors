@@ -199,10 +199,12 @@ class FetcherDeepVisibility:
 
                 return InitQueryResponse(json_data)
             else:
-                raise SentinelOneAPIError()
+                raise SentinelOneAPIError(
+                    f"Unexpected status code: {response.status_code}"
+                )
 
-        except (SentinelOneValidationError, SentinelOneAPIError):
-            raise
+        except (SentinelOneValidationError, SentinelOneAPIError) as e:
+            raise SentinelOneQueryError(f"DV query initialization failed: {e}") from e
         except (ConnectionError, Timeout) as e:
             raise SentinelOneNetworkError(
                 f"Network error making DV init query: {e}"

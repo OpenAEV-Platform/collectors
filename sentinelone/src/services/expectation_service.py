@@ -40,8 +40,10 @@ class SentinelOneExpectationService:
 
     This class contains all the business logic specific to SentinelOne:
     - Which signature types to support
-    - How to fetch data from SentinelOne
-    - How to validate expectations against data
+    - How to fetch unified DV + Threat data from SentinelOne
+    - How to validate expectations against threat data (new specification)
+    - Detection: Success if threat_id exists after deep search
+    - Prevention: Success if threat_id exists AND is_mitigated=true
     - How to handle batching and optimization
     """
 
@@ -411,10 +413,15 @@ class SentinelOneExpectationService:
         detection_helper: OpenBASDetectionHelper,
         expectation_type: str,
     ) -> dict[str, Any]:
-        """Match OAEV data against expectation signatures.
+        """Match OAEV data against expectation signatures using unified DV+Threat analysis.
+
+        New specification logic:
+        - Both detection and prevention use the same DV + Threat data
+        - Detection: Success if threat_id exists (threat was detected)
+        - Prevention: Success if threat_id exists AND is_mitigated=true
 
         Args:
-            oaev_data: List of OAEV formatted data.
+            oaev_data: List of OAEV formatted data (contains both DV and Threat data).
             matching_signatures: Signatures to match against.
             detection_helper: OpenBAS detection helper.
             expectation_type: Type of expectation ('detection' or 'prevention').
@@ -463,41 +470,84 @@ class SentinelOneExpectationService:
                                 f"{LOG_PREFIX} Match found for data item {i + 1}!"
                             )
 
-                            if expectation_type == "prevention":
-                                has_threat_id = any(
-                                    "threat_id" in item for item in oaev_data
+                            has_threat_id = "threat_id" in data_item
+                            if not has_threat_id:
+                                self.logger.debug(
+                                    f"{LOG_PREFIX} Match found but no threat_id present in data item {i + 1}, continuing search"
                                 )
-                                if not has_threat_id:
+                                continue
+
+                            self.logger.debug(
+                                f"{LOG_PREFIX} Threat found for {expectation_type} expectation"
+                            )
+
+                            if expectation_type == "detection":
+                                self.logger.info(
+                                    f"{LOG_PREFIX} Detection expectation satisfied - threat detected"
+                                )
+                                result = {
+                                    "is_valid": True,
+                                    "matching_data": [data_item],
+                                    "total_data_found": len(oaev_data),
+                                }
+                                return result
+
+                            elif expectation_type == "prevention":
+                                is_mitigated = False
+                                self.logger.debug(
+                                    f"{LOG_PREFIX} Checking mitigation status for prevention expectation"
+                                )
+
+                                if "is_mitigated" in data_item:
+                                    mitigation_data = data_item["is_mitigated"]
                                     self.logger.debug(
-                                        f"{LOG_PREFIX} Prevention match found but no threat_id present in any data item, continuing search"
+                                        f"{LOG_PREFIX} Found is_mitigated field: {mitigation_data}"
                                     )
-                                    continue
+
+                                    if (
+                                        isinstance(mitigation_data, dict)
+                                        and "data" in mitigation_data
+                                    ):
+                                        mitigation_values = mitigation_data["data"]
+                                        self.logger.debug(
+                                            f"{LOG_PREFIX} Mitigation data values: {mitigation_values}"
+                                        )
+
+                                        if (
+                                            isinstance(mitigation_values, list)
+                                            and mitigation_values
+                                        ):
+                                            raw_value = mitigation_values[0]
+                                            is_mitigated = (
+                                                str(raw_value).lower() == "true"
+                                            )
+                                            self.logger.debug(
+                                                f"{LOG_PREFIX} Parsed mitigation status: {is_mitigated} (from value: {raw_value})"
+                                            )
                                 else:
                                     self.logger.debug(
-                                        f"{LOG_PREFIX} Prevention match confirmed with threat_id present"
+                                        f"{LOG_PREFIX} No is_mitigated field found in data item"
                                     )
-                                    threat_entries = [
-                                        item
-                                        for item in oaev_data
-                                        if "threat_id" in item
-                                    ]
-                                    oaev_data = threat_entries
-                                    data_item = threat_entries[0]
 
-                            self.logger.info(
-                                f"{LOG_PREFIX} Successful match found for {expectation_type} expectation"
-                            )
-                            self.logger.debug(
-                                f"{LOG_PREFIX} Matching data: {data_item}"
-                            )
+                                if is_mitigated:
+                                    self.logger.info(
+                                        f"{LOG_PREFIX} Prevention expectation satisfied - threat detected and mitigated"
+                                    )
+                                    result = {
+                                        "is_valid": True,
+                                        "matching_data": [data_item],
+                                        "total_data_found": len(oaev_data),
+                                    }
+                                    return result
+                                else:
+                                    self.logger.info(
+                                        f"{LOG_PREFIX} Prevention expectation NOT satisfied - threat found but not mitigated (is_mitigated: {is_mitigated})"
+                                    )
+                                    self.logger.debug(
+                                        f"{LOG_PREFIX} Continuing search for other matching items..."
+                                    )
+                                    continue
 
-                            result = {
-                                "is_valid": True,
-                                "matching_data": [data_item],
-                                "total_data_found": len(oaev_data),
-                            }
-
-                            return result
                         else:
                             self.logger.debug(
                                 f"{LOG_PREFIX} No match for data item {i + 1}"
@@ -587,7 +637,9 @@ class SentinelOneExpectationService:
             expectation_id=expectation_id,
             is_valid=False,
             expectation=expectation,
+            matched_alerts=None,
             error_message=error_message,
+            processing_time=None,
         )
 
     def _convert_dict_to_result(
@@ -611,6 +663,7 @@ class SentinelOneExpectationService:
             expectation=expectation,
             matched_alerts=result_dict.get("matching_data"),
             error_message=result_dict.get("error"),
+            processing_time=None,
         )
 
     def get_service_info(self) -> dict[str, Any]:
@@ -625,7 +678,8 @@ class SentinelOneExpectationService:
             "supported_signatures": [sig.value for sig in self.SUPPORTED_SIGNATURES],
             "supports_detection": True,
             "supports_prevention": True,
-            "description": f"SentinelOne EDR expectation validation service ({len(self.SUPPORTED_SIGNATURES)} signature types)",
+            "description": f"SentinelOne EDR expectation validation service - Unified DV+Threat analysis ({len(self.SUPPORTED_SIGNATURES)} signature types)",
+            "specification": "Detection=threat_exists, Prevention=threat_mitigated",
         }
         self.logger.debug(f"{LOG_PREFIX} Service info: {info}")
         return info

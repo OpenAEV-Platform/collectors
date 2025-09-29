@@ -3,7 +3,7 @@
 import os
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List
+from typing import Any
 from unittest.mock import Mock
 
 from polyfactory import Use
@@ -237,7 +237,7 @@ class TestDataFactory:
     @staticmethod
     def create_expectation_signatures(
         signature_type: str = "parent_process_name", signature_value: str = None
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Create expectation signatures.
 
         Args:
@@ -254,7 +254,7 @@ class TestDataFactory:
         return [{"type": signature_type, "value": signature_value}]
 
     @staticmethod
-    def create_oaev_detection_data() -> List[Dict[str, Any]]:
+    def create_oaev_detection_data() -> list[dict[str, Any]]:
         """Create OAEV detection data.
 
         Returns:
@@ -266,12 +266,16 @@ class TestDataFactory:
                 "parent_process_name": {
                     "type": "simple",
                     "data": [f"obas-implant-test-{uuid.uuid4().hex[:8]}"],
-                }
+                },
+                "threat_id": {
+                    "type": "simple",
+                    "data": [f"threat-{uuid.uuid4().hex[:8]}"],
+                },
             }
         ]
 
     @staticmethod
-    def create_oaev_prevention_data() -> List[Dict[str, Any]]:
+    def create_oaev_prevention_data() -> list[dict[str, Any]]:
         """Create OAEV prevention data.
 
         Returns:
@@ -292,7 +296,7 @@ class TestDataFactory:
         ]
 
     @staticmethod
-    def create_mixed_sentinelone_data() -> List[Any]:
+    def create_mixed_sentinelone_data() -> list[Any]:
         """Create mixed SentinelOne data (DV events + threats).
 
         Returns:
@@ -318,7 +322,7 @@ def create_test_config(**overrides) -> ConfigLoader:
     return ConfigLoaderFactory.build(**overrides)
 
 
-def create_test_dv_events(count: int = 1) -> List[DeepVisibilityEvent]:
+def create_test_dv_events(count: int = 1) -> list[DeepVisibilityEvent]:
     """Create test Deep Visibility events with obas-implant patterns.
 
     Args:
@@ -343,7 +347,7 @@ def create_test_dv_events(count: int = 1) -> List[DeepVisibilityEvent]:
     return events
 
 
-def create_test_threats(count: int = 1) -> List[SentinelOneThreat]:
+def create_test_threats(count: int = 1) -> list[SentinelOneThreat]:
     """Create test SentinelOne threats.
 
     Args:

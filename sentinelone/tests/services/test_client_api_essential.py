@@ -61,24 +61,24 @@ class TestSentinelOneClientAPIEssential:
     def test_fetch_signatures_detection_success(self):
         """Test successful signature fetching for detection expectation.
 
-        Verifies that detection expectations only fetch Deep Visibility events
-        without attempting to fetch threat data.
+        Verifies that detection expectations fetch both Deep Visibility events
+        and related threat data for unified analysis.
         """
         config = create_test_config()
         client = SentinelOneClientAPI(config=config)
 
         mock_dv_events = create_test_dv_events(count=2)
+        mock_threats = create_test_threats(count=1)
         client.dv_fetcher.fetch_with_retry = Mock(return_value=mock_dv_events)
-        client.threat_fetcher.fetch_with_retry = Mock(return_value=[])
+        client.threat_fetcher.fetch_with_retry = Mock(return_value=mock_threats)
 
         search_signatures = TestDataFactory.create_expectation_signatures()
 
         result = client.fetch_signatures(search_signatures, "detection")
 
-        assert result == mock_dv_events  # noqa: S101
-        assert len(result) == 2  # noqa: S101
+        assert len(result) == 3  # 2 DV events + 1 threat  # noqa: S101
         client.dv_fetcher.fetch_with_retry.assert_called_once()  # noqa: S101
-        client.threat_fetcher.fetch_with_retry.assert_not_called()  # noqa: S101
+        client.threat_fetcher.fetch_with_retry.assert_called_once()  # noqa: S101
 
     def test_fetch_signatures_prevention_success(self):
         """Test successful signature fetching for prevention expectation.
