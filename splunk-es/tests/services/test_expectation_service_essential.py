@@ -4,6 +4,7 @@ from unittest.mock import Mock
 
 import pytest
 from pyobas.signatures.types import SignatureTypes
+
 from src.collector.models import ExpectationResult
 from src.services.exception import (
     SplunkESExpectationError,

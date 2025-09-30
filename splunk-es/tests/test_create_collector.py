@@ -4,6 +4,7 @@ from os import environ as os_environ
 from typing import Any
 
 import pytest
+
 from src.collector import Collector
 from src.collector.exception import CollectorConfigError
 from tests.conftest import mock_env_vars

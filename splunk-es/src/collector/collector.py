@@ -4,6 +4,7 @@ import os
 
 from pyobas.daemons import CollectorDaemon  # type: ignore[import-untyped]
 from pyobas.helpers import OpenBASDetectionHelper  # type: ignore[import-untyped]
+
 from src.services.expectation_service import SplunkESExpectationService
 from src.services.trace_service import SplunkESTraceService
 from src.services.utils import SplunkESConfig
@@ -17,6 +18,7 @@ from .expectation_handler import GenericExpectationHandler
 from .expectation_manager import GenericExpectationManager
 
 LOG_PREFIX = "[Collector]"
+COLLECTOR_TYPE = "openbas_splunk_es"
 
 
 class Collector(CollectorDaemon):  # type: ignore[misc]
@@ -39,6 +41,7 @@ class Collector(CollectorDaemon):  # type: ignore[misc]
             super().__init__(
                 configuration=self.config_instance.to_daemon_config(),
                 callback=self._process_callback,
+                collector_type=COLLECTOR_TYPE,
             )
 
             self.logger.info(  # type: ignore[has-type]

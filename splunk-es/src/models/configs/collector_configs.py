@@ -3,11 +3,8 @@
 from datetime import timedelta
 from typing import Annotated, Literal
 
-from pydantic import (
-    Field,
-    HttpUrl,
-    PlainSerializer,
-)
+from pydantic import Field, HttpUrl, PlainSerializer
+
 from src.models.configs import ConfigBaseSettings
 
 LogLevelToLower = Annotated[

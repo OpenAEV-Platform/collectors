@@ -162,8 +162,9 @@ class Converter:
             parent_process_name = self._extract_parent_process_name(alert_data)
             if parent_process_name:
                 oaev_data["parent_process_name"] = {
-                    "type": "simple",
+                    "type": "fuzzy",
                     "data": [parent_process_name],
+                    "score": 95,
                 }
                 self.logger.debug(
                     f"{LOG_PREFIX} Using parent process name: {parent_process_name}"

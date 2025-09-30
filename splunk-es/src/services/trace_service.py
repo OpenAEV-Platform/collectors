@@ -17,10 +17,7 @@ from pyobas.apis.inject_expectation.model import (  # type: ignore[import-untype
 from ..collector.models import ExpectationResult, ExpectationTrace
 from ..models.configs.config_loader import ConfigLoader
 from .client_api import SplunkESClientAPI
-from .exception import (
-    SplunkESDataConversionError,
-    SplunkESValidationError,
-)
+from .exception import SplunkESDataConversionError, SplunkESValidationError
 
 LOG_PREFIX = "[SplunkESTraceService]"
 

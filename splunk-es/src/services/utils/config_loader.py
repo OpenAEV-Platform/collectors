@@ -3,6 +3,7 @@
 import logging
 
 from pydantic import ValidationError
+
 from src.models import ConfigLoader
 
 LOG_PREFIX = "[CollectorConfig]"

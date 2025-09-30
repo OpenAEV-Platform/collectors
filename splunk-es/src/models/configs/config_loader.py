@@ -11,6 +11,8 @@ from pydantic_settings import (
     PydanticBaseSettingsSource,
     YamlConfigSettingsSource,
 )
+from pyobas.configuration import Configuration
+
 from src.models.configs import (
     ConfigBaseSettings,
     _ConfigLoaderCollector,
@@ -114,8 +116,8 @@ class ConfigLoader(ConfigBaseSettings):
                 ),
             )
 
-    def to_daemon_config(self) -> dict[str, str | int | timedelta | None]:
-        """Convert the nested configuration to the flat format expected by BaseDaemon.
+    def to_daemon_config(self) -> Configuration:
+        """Convert the nested configuration to the list of config hints expected by BaseDaemon.
 
         Flattens the nested configuration structure into a dictionary format
         that can be consumed by the collector daemon infrastructure.
@@ -125,24 +127,30 @@ class ConfigLoader(ConfigBaseSettings):
             for daemon initialization.
 
         """
-        return {
-            # OpenBAS configuration (flattened)
-            "openbas_url": str(self.openbas.url),
-            "openbas_token": self.openbas.token,
-            # Collector configuration (flattened)
-            "collector_id": self.collector.id,
-            "collector_name": self.collector.name,
-            "collector_platform": self.collector.platform,
-            "collector_log_level": self.collector.log_level,
-            "collector_period": int(self.collector.period.total_seconds()),  # type: ignore[union-attr]
-            "collector_icon_filepath": self.collector.icon_filepath,
-            "collector_type": "openaev_splunk",
-            # SplunkES configuration (flattened)
-            "splunk_es_base_url": str(self.splunk_es.base_url),
-            "splunk_es_username": self.splunk_es.username,
-            "splunk_es_password": self.splunk_es.password.get_secret_value(),
-            "splunk_es_alerts_index": self.splunk_es.alerts_index,
-            "splunk_es_time_window": self.splunk_es.time_window,
-            "splunk_es_max_retry": self.splunk_es.max_retry,
-            "splunk_es_offset": self.splunk_es.offset,
-        }
+        return Configuration(
+            config_hints={
+                # OpenBAS configuration (flattened)
+                "openbas_url": {"data": str(self.openbas.url)},
+                "openbas_token": {"data": self.openbas.token},
+                # Collector configuration (flattened)
+                "collector_id": {"data": self.collector.id},
+                "collector_name": {"data": self.collector.name},
+                "collector_platform": {"data": self.collector.platform},
+                "collector_log_level": {"data": self.collector.log_level},
+                "collector_period": {
+                    "data": int(self.collector.period.total_seconds()),  # type: ignore[union-attr]
+                    "is_number": True,
+                },
+                "collector_icon_filepath": {"data": self.collector.icon_filepath},
+                # SplunkES configuration (flattened)
+                "splunk_es_base_url": {"data": str(self.splunk_es.base_url)},
+                "splunk_es_username": {"data": self.splunk_es.username},
+                "splunk_es_password": {
+                    "data": self.splunk_es.password.get_secret_value()
+                },
+                "splunk_es_alerts_index": {"data": self.splunk_es.alerts_index},
+                "splunk_es_time_window": {"data": self.splunk_es.time_window},
+                "splunk_es_max_retry": {"data": self.splunk_es.max_retry},
+                "splunk_es_offset": {"data": self.splunk_es.offset},
+            }
+        )
