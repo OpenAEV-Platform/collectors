@@ -23,7 +23,6 @@ class NvdNistCveConfigurationTest(TestCase):
         assert config.get("openbas_token") == "super-token"
         assert config.get("collector_id") == "collector-42"
         assert config.get("collector_name") == "NVD NIST CVE Collector"  # default
-        assert config.get("collector_type") == "openbas_nvd_nist_cve"  # default
         assert config.get("collector_period") == 7200  # default
         assert (
             config.get("collector_icon_filepath") == "nvd_nist_cve/img/icon-nist.png"

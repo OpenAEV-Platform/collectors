@@ -34,7 +34,6 @@ Below are the parameters you'll need to set for running the collector properly:
 | Collector ID     | collector.id        | `COLLECTOR_ID`              |                         | Yes       | A unique `UUIDv4` identifier for this collector instance.                              |
 | Collector Name   | collector.name      | `COLLECTOR_NAME`            | Atomic Red Team         | No        | Name of the collector.                                                                 |
 | Collector Period | collector.period    | `COLLECTOR_PERIOD`          | 604800                  | No        | The time interval at which your collector will run (int, seconds).                     |
-| Collector Type   | collector.type      | `COLLECTOR_TYPE`            | openbas_atomic_red_team | no        | A unique human readable identifier.                                                    |
 | Log Level        | collector.log_level | `COLLECTOR_LOG_LEVEL`       | warn                    | No        | Determines the verbosity of the logs. Options are `debug`, `info`, `warn`, or `error`. |
 
 ## Deployment

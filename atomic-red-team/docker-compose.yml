@@ -7,6 +7,5 @@ services:
       - COLLECTOR_ID=${COLLECTOR_ID}
       - COLLECTOR_NAME=${COLLECTOR_NAME:-"Atomic Red Team"}
       - COLLECTOR_PERIOD=${COLLECTOR_PERIOD:-604800}
-      - COLLECTOR_TYPE=${COLLECTOR_TYPE:-openbas_atomic_red_team}
       - COLLECTOR_LOG_LEVEL=${COLLECTOR_LOG_LEVEL:-warn}
     restart: unless-stopped

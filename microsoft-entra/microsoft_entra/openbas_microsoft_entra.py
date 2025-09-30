@@ -28,11 +28,6 @@ class OpenBASMicrosoftEntra:
                     "file_path": ["collector", "name"],
                     "default": "Microsoft Entra",
                 },
-                "collector_type": {
-                    "env": "COLLECTOR_TYPE",
-                    "file_path": ["collector", "type"],
-                    "default": "openbas_microsoft_entra",
-                },
                 "collector_log_level": {
                     "env": "COLLECTOR_LOG_LEVEL",
                     "file_path": ["collector", "log_level"],
@@ -63,7 +58,9 @@ class OpenBASMicrosoftEntra:
             },
         )
         self.helper = OpenBASCollectorHelper(
-            config=self.config, icon="microsoft_entra/img/icon-microsoft-entra.png"
+            config=self.config,
+            icon="microsoft_entra/img/icon-microsoft-entra.png",
+            collector_type="openbas_microsoft_entra",
         )
 
         # External

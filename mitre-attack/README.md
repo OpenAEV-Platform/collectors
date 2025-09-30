@@ -35,7 +35,6 @@ Below are the parameters you'll need to set for running the collector properly:
 | Collector Name   | collector.name       | `COLLECTOR_NAME`            | MITRE ATT&CK         | No        | Name of the collector.                                                                 |
 | Collector Period | collector.period     | `COLLECTOR_PERIOD`          | 604800               | No        | The time interval at which your collector will run (int, seconds).                     |
 | Log Level        | collector.log_level  | `COLLECTOR_LOG_LEVEL`       | warn                 | no        | Determines the verbosity of the logs. Options are `debug`, `info`, `warn`, or `error`. |
-| Type             | collector.type       | `COLLECTOR_TYPE`            | openbas_mitre_attack | No        | Type of the collector.                                                                 |
 
 ## Deployment
 

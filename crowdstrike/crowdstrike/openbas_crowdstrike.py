@@ -208,11 +208,6 @@ if __name__ == "__main__":
                 "file_path": ["collector", "name"],
                 "default": "CrowdStrike Endpoint Security",
             },
-            "collector_type": {
-                "env": "COLLECTOR_TYPE",
-                "file_path": ["collector", "type"],
-                "default": "openbas_crowdstrike",
-            },
             "collector_period": {
                 "env": "COLLECTOR_PERIOD",
                 "file_path": ["collector", "period"],
@@ -254,6 +249,7 @@ if __name__ == "__main__":
     helper = OpenBASCollectorHelper(
         config=config,
         icon="crowdstrike/img/icon-crowdstrike.png",
+        collector_type="openbas_crowdstrike",
         security_platform_type=config.get_conf("collector_platform") or "EDR",
     )
 

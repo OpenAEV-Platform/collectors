@@ -53,11 +53,6 @@ class NvdNistCveConfiguration(Configuration):
                 "file_path": ["collector", "name"],
                 "default": "NVD NIST CVE Collector",
             },
-            "collector_type": {
-                "env": "COLLECTOR_TYPE",
-                "file_path": ["collector", "type"],
-                "default": "openbas_nvd_nist_cve",
-            },
             "collector_period": {
                 "env": "COLLECTOR_PERIOD",
                 "file_path": ["collector", "period"],
