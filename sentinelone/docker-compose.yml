@@ -1,0 +1,11 @@
+version: "3"
+services:
+  collector-sentinelone:
+    image: openbas/collector-sentinelone:rolling
+    environment:
+      - OPENBAS_URL=http://localhost
+      - OPENBAS_TOKEN=ChangeMe
+      - COLLECTOR_ID=ChangeMe
+      - SENTINELONE_BASE_URL=https://change.me
+      - SENTINELONE_API_KEY=ChangeMe
+    restart: always
