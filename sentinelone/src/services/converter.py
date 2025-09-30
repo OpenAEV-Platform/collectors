@@ -349,16 +349,18 @@ class Converter:
                     and dv_event.src_proc_parent_name.startswith(OBAS_IMPLANT_PREFIX)
                 ):
                     oaev_data["parent_process_name"] = {
-                        "type": "simple",
+                        "type": "fuzzy",
                         "data": [dv_event.src_proc_parent_name],
+                        "score": 95,
                     }
                     break
                 elif dv_event.src_proc_name and dv_event.src_proc_name.startswith(
                     OBAS_IMPLANT_PREFIX
                 ):
                     oaev_data["parent_process_name"] = {
-                        "type": "simple",
+                        "type": "fuzzy",
                         "data": [dv_event.src_proc_name],
+                        "score": 95,
                     }
                     self.logger.debug(
                         f"{LOG_PREFIX} Enhanced threat {threatdata.threat_id} with process name as parent: {dv_event.src_proc_name}"

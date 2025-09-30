@@ -11,10 +11,7 @@ from urllib.parse import quote
 
 from ..collector.models import ExpectationResult, ExpectationTrace
 from ..models.configs.config_loader import ConfigLoader
-from .exception import (
-    SentinelOneDataConversionError,
-    SentinelOneValidationError,
-)
+from .exception import SentinelOneDataConversionError, SentinelOneValidationError
 
 LOG_PREFIX = "[SentinelOneTraceService]"
 

@@ -39,6 +39,7 @@ class Collector(CollectorDaemon):  # type: ignore[misc]
             super().__init__(
                 configuration=self.config_instance.to_daemon_config(),
                 callback=self._process_callback,
+                collector_type="openbas_sentinelone",
             )
 
             self.logger.info(  # type: ignore[has-type]

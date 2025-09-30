@@ -3,11 +3,7 @@
 from datetime import timedelta
 from typing import Annotated, Literal
 
-from pydantic import (
-    Field,
-    HttpUrl,
-    PlainSerializer,
-)
+from pydantic import Field, HttpUrl, PlainSerializer
 from src.models.configs import ConfigBaseSettings
 
 LogLevelToLower = Annotated[
@@ -47,11 +43,6 @@ class _ConfigLoaderCollector(ConfigBaseSettings):
     id: str
     name: str
 
-    type: str | None = Field(
-        alias="COLLECTOR_TYPE",
-        default="openaev_sentinelone",
-        description="Description of the collector type.",
-    )
     platform: str | None = Field(
         alias="COLLECTOR_PLATFORM",
         default="EDR",

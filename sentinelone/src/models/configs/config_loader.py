@@ -1,6 +1,5 @@
 """Base class for global config models."""
 
-from datetime import timedelta
 from pathlib import Path
 
 from pydantic import Field
@@ -11,6 +10,7 @@ from pydantic_settings import (
     PydanticBaseSettingsSource,
     YamlConfigSettingsSource,
 )
+from pyobas.configuration import Configuration
 from src.models.configs import (
     ConfigBaseSettings,
     _ConfigLoaderCollector,
@@ -114,7 +114,7 @@ class ConfigLoader(ConfigBaseSettings):
                 ),
             )
 
-    def to_daemon_config(self) -> dict[str, str | int | timedelta | None]:
+    def to_daemon_config(self) -> Configuration:
         """Convert the nested configuration to the flat format expected by BaseDaemon.
 
         Flattens the nested configuration structure into a dictionary format
@@ -125,22 +125,23 @@ class ConfigLoader(ConfigBaseSettings):
             for daemon initialization.
 
         """
-        return {
-            # OpenBAS configuration (flattened)
-            "openbas_url": str(self.openbas.url),
-            "openbas_token": self.openbas.token,
-            # Collector configuration (flattened)
-            "collector_id": self.collector.id,
-            "collector_name": self.collector.name,
-            "collector_type": self.collector.type,
-            "collector_platform": self.collector.platform,
-            "collector_log_level": self.collector.log_level,
-            "collector_period": int(self.collector.period.total_seconds()),  # type: ignore[union-attr]
-            "collector_icon_filepath": self.collector.icon_filepath,
-            # SentinelOne configuration (flattened)
-            "sentinelone_base_url": str(self.sentinelone.base_url),
-            "sentinelone_api_key": self.sentinelone.api_key.get_secret_value(),
-            "sentinelone_default_time_window": self.sentinelone.time_window,
-            "sentinelone_offset": self.sentinelone.offset,
-            "sentinelone_max_retry": self.sentinelone.max_retry,
-        }
+        return Configuration(
+            config_hints={
+                # OpenBAS configuration (flattened)
+                "openbas_url": str(self.openbas.url),
+                "openbas_token": self.openbas.token,
+                # Collector configuration (flattened)
+                "collector_id": self.collector.id,
+                "collector_name": self.collector.name,
+                "collector_platform": self.collector.platform,
+                "collector_log_level": self.collector.log_level,
+                "collector_period": int(self.collector.period.total_seconds()),  # type: ignore[union-attr]
+                "collector_icon_filepath": self.collector.icon_filepath,
+                # SentinelOne configuration (flattened)
+                "sentinelone_base_url": str(self.sentinelone.base_url),
+                "sentinelone_api_key": self.sentinelone.api_key.get_secret_value(),
+                "sentinelone_default_time_window": self.sentinelone.time_window,
+                "sentinelone_offset": self.sentinelone.offset,
+                "sentinelone_max_retry": self.sentinelone.max_retry,
+            }
+        )

@@ -2,10 +2,7 @@
 
 from datetime import timedelta
 
-from pydantic import (
-    Field,
-    SecretStr,
-)
+from pydantic import Field, SecretStr
 from src.models.configs import ConfigBaseSettings
 
 
