@@ -4,7 +4,6 @@ import os
 
 from pyobas.daemons import CollectorDaemon  # type: ignore[import-untyped]
 from pyobas.helpers import OpenBASDetectionHelper  # type: ignore[import-untyped]
-
 from src.services.expectation_service import SplunkESExpectationService
 from src.services.trace_service import SplunkESTraceService
 from src.services.utils import SplunkESConfig

@@ -1,6 +1,5 @@
 """Base class for global config models."""
 
-from datetime import timedelta
 from pathlib import Path
 
 from pydantic import Field
@@ -12,7 +11,6 @@ from pydantic_settings import (
     YamlConfigSettingsSource,
 )
 from pyobas.configuration import Configuration
-
 from src.models.configs import (
     ConfigBaseSettings,
     _ConfigLoaderCollector,

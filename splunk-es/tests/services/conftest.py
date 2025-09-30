@@ -3,7 +3,6 @@
 from unittest.mock import Mock, patch
 
 import pytest
-
 from tests.services.fixtures.factories import (
     ConfigLoaderFactory,
     ExpectationResultFactory,

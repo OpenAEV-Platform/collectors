@@ -4,7 +4,6 @@ from datetime import timedelta
 from typing import Optional
 
 from pydantic import Field, SecretStr
-
 from src.models.configs import ConfigBaseSettings
 
 
