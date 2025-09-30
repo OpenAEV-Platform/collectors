@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "openbas-crowdstrike-collector"
-version = "1.18.18"
+version = "1.18.20"
 description = "Collector for Crowdstrike Falcon"
 authors = ["Filigran <contact@filigran.io>"]
 license = "Apache-2.0"
@@ -12,11 +12,11 @@ packages = [
 [tool.poetry.dependencies]
 python = "^3.11"
 pyobas = [
-    { markers = "extra == 'prod' and extra != 'dev'", version = "1.18.18", source = "pypi"  },
+    { markers = "extra == 'prod' and extra != 'dev'", version = "1.18.20", source = "pypi"  },
     { markers = "extra == 'dev' and extra != 'prod'", path = "../../client-python", develop = true },
 ]
-crowdstrike-falconpy = "1.5.2"
-pydantic = "2.11.3"
+crowdstrike-falconpy = "1.5.4"
+pydantic = "2.11.7"
 
 [tool.poetry.extras]
 prod = []

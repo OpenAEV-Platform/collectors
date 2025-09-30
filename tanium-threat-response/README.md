@@ -41,7 +41,6 @@ Below are the parameters you'll need to set for running the collector properly:
 | Collector Name   | collector.name        | `COLLECTOR_NAME`            | Tanium Threat Response         | No        | Name of the collector.                                                                         |
 | Collector Period | collector.period      | `COLLECTOR_PERIOD`          | 60                             | No        | The time interval at which your collector will run (int, seconds).                             |
 | Log Level        | collector.log_level   | `COLLECTOR_LOG_LEVEL`       | warn                           | No        | Determines the verbosity of the logs. Options are `debug`, `info`, `warn`, or `error`.         |
-| Type             | collector.type        | `COLLECTOR_TYPE`            | openbas_tanium_threat_response | No        | Type of the collector                                                                          |
 | Platform         | collector.platform    | `COLLECTOR_PLATFORM`        | EDR                            | No        | Type of security platform this collector works for. One of: `EDR, XDR, SIEM, SOAR, NDR, ISPM`  |
 
 ### Collector extra parameters environment variables

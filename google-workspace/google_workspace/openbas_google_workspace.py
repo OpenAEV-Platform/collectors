@@ -29,11 +29,6 @@ class OpenBASGoogleWorkspace:
                     "file_path": ["collector", "name"],
                     "default": "Google Workspace",
                 },
-                "collector_type": {
-                    "env": "COLLECTOR_TYPE",
-                    "file_path": ["collector", "type"],
-                    "default": "openbas_google_workspace",
-                },
                 "collector_log_level": {
                     "env": "COLLECTOR_LOG_LEVEL",
                     "file_path": ["collector", "log_level"],
@@ -74,7 +69,9 @@ class OpenBASGoogleWorkspace:
             },
         )
         self.helper = OpenBASCollectorHelper(
-            config=self.config, icon="google_workspace/img/icon-google-workspace.png"
+            config=self.config,
+            icon="google_workspace/img/icon-google-workspace.png",
+            collector_type="openbas_google_workspace",
         )
 
         # Configuration

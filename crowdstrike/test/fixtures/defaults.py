@@ -18,7 +18,6 @@ DEFAULT_COLLECTOR_CONFIG = {
     # Config information
     "collector_id": {"data": "collector_uuid_identifier"},
     "collector_name": {"data": "CrowdStrike Endpoint Security"},
-    "collector_type": {"data": "openbas_crowdstream"},
     "collector_period": {"data": 60},
     "collector_log_level": {"data": "info"},
     "collector_platform": {"data": "windows"},
@@ -65,6 +64,7 @@ def get_default_openbas_collector_helper(
     return OpenBASCollectorHelper(
         config=config,
         icon="some.png",
+        collector_type="openbas_crowdstrike",
         security_platform_type=config.get_conf("collector_platform"),
         connect_run_and_terminate=True,
     )

@@ -28,11 +28,6 @@ class OpenBASMitre:
                     "file_path": ["collector", "name"],
                     "default": "MITRE ATT&CK",
                 },
-                "collector_type": {
-                    "env": "COLLECTOR_TYPE",
-                    "file_path": ["collector", "type"],
-                    "default": "openbas_mitre_attack",
-                },
                 "collector_log_level": {
                     "env": "COLLECTOR_LOG_LEVEL",
                     "file_path": ["collector", "log_level"],
@@ -47,7 +42,9 @@ class OpenBASMitre:
             },
         )
         self.helper = OpenBASCollectorHelper(
-            config=self.config, icon="mitre_attack/img/icon-mitre-attack.png"
+            config=self.config,
+            icon="mitre_attack/img/icon-mitre-attack.png",
+            collector_type="openbas_mitre_attack",
         )
 
     def _kill_chain_phases(self, tactics):

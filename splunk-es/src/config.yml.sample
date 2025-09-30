@@ -1,0 +1,16 @@
+openbas:
+  url: "http://change.me"
+  token: "ChangeMe"
+
+collector:
+  id: "ChangeMe"
+  name: "Splunk ES"
+  period: 60
+  log_level: "info"
+
+splunk_es:
+  base_url: "https://splunk.company.com:8089"
+  username: "ChangeMe"
+  password: "ChangeMe"
+  alerts_index: "main"
+  max_retry: 3
