@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "openbas-google-workspace-collector"
+name = "openaev-google-workspace-collector"
 version = "1.18.20"
 description = "A Collector for Google Workspace user and group management"
 authors = ["Filigran <contact@filigran.io>"]

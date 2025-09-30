@@ -1,22 +1,22 @@
 import requests
-from pyoaev.helpers import OpenBASCollectorHelper, OpenBASConfigHelper
+from pyoaev.helpers import OpenAEVCollectorHelper, OpenAEVConfigHelper
 
 ENTERPRISE_ATTACK_URI = (
     "https://github.com/mitre/cti/raw/master/enterprise-attack/enterprise-attack.json"
 )
 
 
-class OpenBASMitre:
+class OpenAEVMitre:
     def __init__(self):
         self.session = requests.Session()
-        self.config = OpenBASConfigHelper(
+        self.config = OpenAEVConfigHelper(
             __file__,
             {
                 # API information
-                "openbas_url": {"env": "OPENBAS_URL", "file_path": ["openbas", "url"]},
-                "openbas_token": {
-                    "env": "OPENBAS_TOKEN",
-                    "file_path": ["openbas", "token"],
+                "openaev_url": {"env": "OPENAEV_URL", "file_path": ["openaev", "url"]},
+                "openaev_token": {
+                    "env": "OPENAEV_TOKEN",
+                    "file_path": ["openaev", "token"],
                 },
                 # Config information
                 "collector_id": {
@@ -41,10 +41,10 @@ class OpenBASMitre:
                 },
             },
         )
-        self.helper = OpenBASCollectorHelper(
+        self.helper = OpenAEVCollectorHelper(
             config=self.config,
             icon="mitre_attack/img/icon-mitre-attack.png",
-            collector_type="openbas_mitre_attack",
+            collector_type="openaev_mitre_attack",
         )
 
     def _kill_chain_phases(self, tactics):
@@ -160,5 +160,5 @@ class OpenBASMitre:
 
 
 if __name__ == "__main__":
-    openBASMitre = OpenBASMitre()
-    openBASMitre.start()
+    openAEVMitre = OpenAEVMitre()
+    openAEVMitre.start()

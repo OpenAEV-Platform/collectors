@@ -1,11 +1,11 @@
-# OpenBAS Microsoft Sentinel Collector
+# OpenAEV Microsoft Sentinel Collector
 
 Table of Contents
 
-- [OpenBAS Microsoft Sentinel Collector](#openbas-microsoft-sentinel-collector)
+- [OpenAEV Microsoft Sentinel Collector](#openaev-microsoft-sentinel-collector)
     - [Prerequisites](#prerequisites)
     - [Configuration variables](#configuration-variables)
-        - [OpenBAS environment variables](#openbas-environment-variables)
+        - [OpenAEV environment variables](#openaev-environment-variables)
         - [Base collector environment variables](#base-collector-environment-variables)
         - [Collector extra parameters environment variables](#collector-extra-parameters-environment-variables)
     - [Deployment](#deployment)
@@ -27,14 +27,14 @@ Indeed, this relies on Defender matchings to validate Sentinel alerts.
 There are a number of configuration options, which are set either in `docker-compose.yml` (for Docker) or
 in `config.yml` (for manual deployment).
 
-### OpenBAS environment variables
+### OpenAEV environment variables
 
-Below are the parameters you'll need to set for OpenBAS:
+Below are the parameters you'll need to set for OpenAEV:
 
 | Parameter     | config.yml    | Docker environment variable | Mandatory | Description                                          |
 |---------------|---------------|-----------------------------|-----------|------------------------------------------------------|
-| OpenBAS URL   | openbas.url   | `OPENBAS_URL`               | Yes       | The URL of the OpenBAS platform.                     |
-| OpenBAS Token | openbas.token | `OPENBAS_TOKEN`             | Yes       | The default admin token set in the OpenBAS platform. |
+| OpenAEV URL   | openaev.url   | `OPENAEV_URL`               | Yes       | The URL of the OpenAEV platform.                     |
+| OpenAEV Token | openaev.token | `OPENAEV_TOKEN`             | Yes       | The default admin token set in the OpenAEV platform. |
 
 ### Base collector environment variables
 
@@ -98,7 +98,7 @@ Install the environment:
 poetry install --extras prod
 ```
 
-**Development** (note that you should also clone the [pyoaev](OpenBAS-Platform/client-python) repository [according to
+**Development** (note that you should also clone the [pyoaev](OpenAEV-Platform/client-python) repository [according to
 these instructions](../README.md#simultaneous-development-on-pyoaev-and-a-collector))
 ```shell
 # development environment
@@ -108,7 +108,7 @@ poetry install --extras dev
 Then, start the collector:
 
 ```shell
-poetry run python -m microsoft_sentinel.openbas_microsoft_sentinel
+poetry run python -m microsoft_sentinel.openaev_microsoft_sentinel
 ```
 
 ## Behavior

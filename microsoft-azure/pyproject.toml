@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "openbas-microsoft-azure-collector"
+name = "openaev-microsoft-azure-collector"
 version = "1.18.20"
 description = "A Collector for Microsoft Azure Virtual Machines"
 authors = ["Filigran <contact@filigran.io>"]

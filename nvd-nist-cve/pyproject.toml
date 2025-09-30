@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "openbas-nvd-nist-cve-collector"
+name = "openaev-nvd-nist-cve-collector"
 version = "1.18.10"
 description = "Collector for retrieve CVE from NVD by Nist"
 authors = ["Filigran <contact@filigran.io>"]

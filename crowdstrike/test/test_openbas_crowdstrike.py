@@ -6,7 +6,7 @@ from unittest.mock import patch
 from crowdstrike.query_strategy.alert import Item
 
 
-class TestOpenBASCrowdstrike(unittest.TestCase):
+class TestOpenAEVCrowdstrike(unittest.TestCase):
     @patch("pyoaev.apis.InjectExpectationManager.update")
     def test_when_alert_matches_update_prevention_expectation(
         self, mock_expectation_update

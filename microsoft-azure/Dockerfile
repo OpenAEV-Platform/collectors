@@ -18,4 +18,4 @@ RUN cd ${installdir}/dist && pip3 install --no-cache-dir "$(ls *.whl)[prod]"
 # necessary for icon location
 WORKDIR ${installdir}
 
-CMD ["python3", "-m", "microsoft_azure.openbas_microsoft_azure"]
+CMD ["python3", "-m", "microsoft_azure.openaev_microsoft_azure"]

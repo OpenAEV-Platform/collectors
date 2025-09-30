@@ -1,22 +1,22 @@
-# OpenBAS Datasets Collector
+# OpenAEV Datasets Collector
 
-This collector allows to import the OpenBAS payloads repository in order to pre-populate your OpenBAS instance with out-of-the-box payloads.
+This collector allows to import the OpenAEV payloads repository in order to pre-populate your OpenAEV instance with out-of-the-box payloads.
 
 ## Configuration
 
 There are a number of configuration options, which are set either in `docker-compose.yml` (for Docker) or
 in `config.yml` (for manual deployment).
 
-### OpenBAS environment variables
+### OpenAEV environment variables
 
-Below are the parameters you'll need to set for OpenBAS:
+Below are the parameters you'll need to set for OpenAEV:
 
 | Parameter                  | config.yml                 | Docker environment variable  | Default                                                                        | Mandatory | Description                                          |
 |----------------------------|----------------------------|------------------------------|--------------------------------------------------------------------------------|-----------|------------------------------------------------------|
-| OpenBAS URL                | openbas.url                | `OPENBAS_URL`                |                                                                                | Yes       | The URL of the OpenBAS platform.                     |
-| OpenBAS Token              | openbas.token              | `OPENBAS_TOKEN`              |                                                                                | Yes       | The default admin token set in the OpenBAS platform. |
-| OpenBAS URL Prefix         | openbas.url_prefix         | `OPENBAS_URL_PREFIX`         | `https://raw.githubusercontent.com/OpenBAS-Platform/payloads/refs/heads/main/` | No        | URL prefix to look for the content                   |
-| OpenBAS Import Only Native | openbas.import_only_native | `OPENBAS_IMPORT_ONLY_NATIVE` | false                                                                          | No        | Only import native datasets                          |
+| OpenAEV URL                | openaev.url                | `OPENAEV_URL`                |                                                                                | Yes       | The URL of the OpenAEV platform.                     |
+| OpenAEV Token              | openaev.token              | `OPENAEV_TOKEN`              |                                                                                | Yes       | The default admin token set in the OpenAEV platform. |
+| OpenAEV URL Prefix         | openaev.url_prefix         | `OPENAEV_URL_PREFIX`         | `https://raw.githubusercontent.com/OpenAEV-Platform/payloads/refs/heads/main/` | No        | URL prefix to look for the content                   |
+| OpenAEV Import Only Native | openaev.import_only_native | `OPENAEV_IMPORT_ONLY_NATIVE` | false                                                                          | No        | Only import native datasets                          |
 
 ### Base collector environment variables
 
@@ -25,7 +25,7 @@ Below are the parameters you'll need to set for running the collector properly:
 | Parameter        | config.yml           | Docker environment variable | Default          | Mandatory | Description                                                                            |
 |------------------|----------------------|-----------------------------|------------------|-----------|----------------------------------------------------------------------------------------|
 | Collector ID     | collector.id         | `COLLECTOR_ID`              |                  | Yes       | A unique `UUIDv4` identifier for this collector instance.                              |
-| Collector Name   | collector.name       | `COLLECTOR_NAME`            | OpenBAS Datasets | No        | Name of the collector.                                                                 |
+| Collector Name   | collector.name       | `COLLECTOR_NAME`            | OpenAEV Datasets | No        | Name of the collector.                                                                 |
 | Collector Period | collector.period     | `COLLECTOR_PERIOD`          | 604800           | No        | The time interval at which your collector will run (int, seconds).                     |
 | Log Level        | collector.log_level  | `COLLECTOR_LOG_LEVEL`       | warn             | no        | Determines the verbosity of the logs. Options are `debug`, `info`, `warn`, or `error`. |
 
@@ -65,7 +65,7 @@ Install the environment:
 poetry install --extras prod
 ```
 
-**Development** (note that you should also clone the [pyoaev](OpenBAS-Platform/client-python) repository [according to
+**Development** (note that you should also clone the [pyoaev](OpenAEV-Platform/client-python) repository [according to
 these instructions](../README.md#simultaneous-development-on-pyoaev-and-a-collector))
 ```shell
 # development environment
@@ -75,9 +75,9 @@ poetry install --extras dev
 Then, start the collector:
 
 ```shell
-poetry run python -m openbas.openbas_openbas
+poetry run python -m openaev.openaev_openaev
 ```
 
 ## Behavior
 
-The collector retrieves payloads from the Filigran OpenBAS payload repository. 
+The collector retrieves payloads from the Filigran OpenAEV payload repository. 

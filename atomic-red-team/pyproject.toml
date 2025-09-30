@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "openbas-atomic-red-team-collector"
+name = "openaev-atomic-red-team-collector"
 version = "1.18.20"
 description = "A Collector for fetching Atomic Red Team payloads; https://www.atomicredteam.io/"
 authors = ["Filigran <contact@filigran.io>"]

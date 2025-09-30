@@ -7,9 +7,9 @@ import requests
 from dateutil.parser import parse
 from dateutil.relativedelta import relativedelta
 from pyoaev.helpers import (
-    OpenBASCollectorHelper,
-    OpenBASConfigHelper,
-    OpenBASDetectionHelper,
+    OpenAEVCollectorHelper,
+    OpenAEVConfigHelper,
+    OpenAEVDetectionHelper,
 )
 from tanium_threat_response.api_handler import TaniumApiHandler
 
@@ -18,17 +18,17 @@ def _is_unix_absolute_path(path):
     return path.startswith("/")
 
 
-class OpenBASTaniumThreatResponse:
+class OpenAEVTaniumThreatResponse:
     def __init__(self):
         self.session = requests.Session()
-        self.config = OpenBASConfigHelper(
+        self.config = OpenAEVConfigHelper(
             __file__,
             {
                 # API information
-                "openbas_url": {"env": "OPENBAS_URL", "file_path": ["openbas", "url"]},
-                "openbas_token": {
-                    "env": "OPENBAS_TOKEN",
-                    "file_path": ["openbas", "token"],
+                "openaev_url": {"env": "OPENAEV_URL", "file_path": ["openaev", "url"]},
+                "openaev_token": {
+                    "env": "OPENAEV_TOKEN",
+                    "file_path": ["openaev", "token"],
                 },
                 # Config information
                 "collector_id": {
@@ -69,10 +69,10 @@ class OpenBASTaniumThreatResponse:
                 },
             },
         )
-        self.helper = OpenBASCollectorHelper(
+        self.helper = OpenAEVCollectorHelper(
             config=self.config,
             icon="tanium_threat_response/img/icon-tanium.png",
-            collector_type="openbas_tanium_threat_response",
+            collector_type="openaev_tanium_threat_response",
             security_platform_type="EDR",
         )
 
@@ -94,7 +94,7 @@ class OpenBASTaniumThreatResponse:
             "ipv4_address",
             "ipv6_address",
         ]
-        self.openbas_detection_helper = OpenBASDetectionHelper(
+        self.openaev_detection_helper = OpenAEVDetectionHelper(
             self.helper.collector_logger, self.relevant_signatures_types
         )
 
@@ -243,7 +243,7 @@ class OpenBASTaniumThreatResponse:
                     "type": "simple",
                     "data": str(alert),
                 }
-        match_result = self.openbas_detection_helper.match_alert_elements(
+        match_result = self.openaev_detection_helper.match_alert_elements(
             signatures=expectation["inject_expectation_signatures"],
             alert_data=alert_data,
         )
@@ -346,7 +346,7 @@ class OpenBASTaniumThreatResponse:
                             )
                             expectations_not_filled.remove(expectation)
 
-                        # Send alert to openbas for current matched expectation. Duplicate alerts are handled by openbas itself
+                        # Send alert to openaev for current matched expectation. Duplicate alerts are handled by openaev itself
                         self.helper.collector_logger.info(
                             "Expectation matched, adding trace for expectation "
                             + expectation["inject_expectation_inject"]
@@ -381,5 +381,5 @@ class OpenBASTaniumThreatResponse:
 
 
 if __name__ == "__main__":
-    openBASTaniumThreatResponse = OpenBASTaniumThreatResponse()
-    openBASTaniumThreatResponse.start()
+    openAEVTaniumThreatResponse = OpenAEVTaniumThreatResponse()
+    openAEVTaniumThreatResponse.start()

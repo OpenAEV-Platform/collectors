@@ -13,7 +13,7 @@ from test.fixtures.defaults import DEFAULT_SIGNATURE_TYPES, get_default_api_hand
 from unittest.mock import patch
 
 from pydantic import ValidationError
-from pyoaev.exceptions import OpenBASError
+from pyoaev.exceptions import OpenAEVError
 from pyoaev.signatures.signature_type import SignatureType
 from pyoaev.signatures.types import MatchTypes, SignatureTypes
 
@@ -155,7 +155,7 @@ class TestAlert(unittest.TestCase):
             }
         )
 
-        with self.assertRaises(OpenBASError):
+        with self.assertRaises(OpenAEVError):
             TestAlert.STRATEGY.extract_signature_data(
                 # purposefully pass an arbitrary string instead of SignatureTypes enum item
                 item,

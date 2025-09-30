@@ -1,10 +1,10 @@
 version: '3'
 services:
   collector-microsoft-azure:
-    image: openbas/collector-microsoft-azure:latest
+    image: openaev/collector-microsoft-azure:latest
     environment:
-      - OPENBAS_URL=${OPENBAS_URL}
-      - OPENBAS_TOKEN=${OPENBAS_TOKEN}
+      - OPENAEV_URL=${OPENAEV_URL}
+      - OPENAEV_TOKEN=${OPENAEV_TOKEN}
       - COLLECTOR_ID=${COLLECTOR_ID}
       - COLLECTOR_NAME=${COLLECTOR_NAME}
       - COLLECTOR_PERIOD=${COLLECTOR_PERIOD}

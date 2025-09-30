@@ -34,14 +34,14 @@ class NvdNistCveConfiguration(Configuration):
             Dictionary of configuration hints
         """
         return {
-            # OpenBAS configuration
-            "openbas_url": {
-                "env": "OPENBAS_URL",
-                "file_path": ["openbas", "url"],
+            # OpenAEV configuration
+            "openaev_url": {
+                "env": "OPENAEV_URL",
+                "file_path": ["openaev", "url"],
             },
-            "openbas_token": {
-                "env": "OPENBAS_TOKEN",
-                "file_path": ["openbas", "token"],
+            "openaev_token": {
+                "env": "OPENAEV_TOKEN",
+                "file_path": ["openaev", "token"],
             },
             # Collector configuration
             "collector_id": {

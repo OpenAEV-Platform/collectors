@@ -3,20 +3,20 @@ import mimetypes
 import zipfile
 
 import requests
-from pyoaev.helpers import OpenBASCollectorHelper, OpenBASConfigHelper
+from pyoaev.helpers import OpenAEVCollectorHelper, OpenAEVConfigHelper
 
 
-class OpenBASOpenBAS:
+class OpenAEVOpenAEV:
     def __init__(self):
         self.session = requests.Session()
-        self.config = OpenBASConfigHelper(
+        self.config = OpenAEVConfigHelper(
             __file__,
             {
                 # API information
-                "openbas_url": {"env": "OPENBAS_URL", "file_path": ["openbas", "url"]},
-                "openbas_token": {
-                    "env": "OPENBAS_TOKEN",
-                    "file_path": ["openbas", "token"],
+                "openaev_url": {"env": "OPENAEV_URL", "file_path": ["openaev", "url"]},
+                "openaev_token": {
+                    "env": "OPENAEV_TOKEN",
+                    "file_path": ["openaev", "token"],
                 },
                 # Config information
                 "collector_id": {
@@ -26,7 +26,7 @@ class OpenBASOpenBAS:
                 "collector_name": {
                     "env": "COLLECTOR_NAME",
                     "file_path": ["collector", "name"],
-                    "default": "OpenBAS Datasets",
+                    "default": "OpenAEV Datasets",
                 },
                 "collector_log_level": {
                     "env": "COLLECTOR_LOG_LEVEL",
@@ -39,23 +39,23 @@ class OpenBASOpenBAS:
                     "is_number": True,
                     "default": 86400,
                 },
-                # OpenBAS Datasets
-                "openbas_generated_url_prefix": {
-                    "env": "OPENBAS_URL_PREFIX",
-                    "file_path": ["openbas", "url_prefix"],
-                    "default": "https://raw.githubusercontent.com/OpenBAS-Platform/payloads/refs/heads/main/",
+                # OpenAEV Datasets
+                "openaev_generated_url_prefix": {
+                    "env": "OPENAEV_URL_PREFIX",
+                    "file_path": ["openaev", "url_prefix"],
+                    "default": "https://raw.githubusercontent.com/OpenAEV-Platform/payloads/refs/heads/main/",
                 },
-                "openbas_import_only_native": {
-                    "env": "OPENBAS_IMPORT_ONLY_NATIVE",
-                    "file_path": ["openbas", "import_only_native"],
+                "openaev_import_only_native": {
+                    "env": "OPENAEV_IMPORT_ONLY_NATIVE",
+                    "file_path": ["openaev", "import_only_native"],
                     "default": "false",
                 },
             },
         )
-        self.helper = OpenBASCollectorHelper(
+        self.helper = OpenAEVCollectorHelper(
             config=self.config,
-            icon="openbas/img/icon-openbas.png",
-            collector_type="openbas_openbas",
+            icon="openaev/img/icon-openaev.png",
+            collector_type="openaev_openaev",
         )
 
     def _create_or_get_tag(self, tag_name, tag_color="#6b7280"):
@@ -71,22 +71,22 @@ class OpenBASOpenBAS:
             return None
 
     def _process_message(self) -> None:
-        openbas_import_only_native = self.config.get_conf(
-            "openbas_import_only_native",
+        openaev_import_only_native = self.config.get_conf(
+            "openaev_import_only_native",
             default=True,
         )
-        openbas_url_prefix = self.config.get_conf(
-            "openbas_url_prefix",
-            default="https://raw.githubusercontent.com/OpenBAS-Platform/payloads/refs/heads/main/",
+        openaev_url_prefix = self.config.get_conf(
+            "openaev_url_prefix",
+            default="https://raw.githubusercontent.com/OpenAEV-Platform/payloads/refs/heads/main/",
         )
-        response = self.session.get(url=openbas_url_prefix + "manifest.json")
+        response = self.session.get(url=openaev_url_prefix + "manifest.json")
         payloads = response.json()
         payload_external_ids = []
 
         for payload in payloads:
 
             # Only native, continue
-            if openbas_import_only_native and (
+            if openaev_import_only_native and (
                 "native_collection" not in payload or not payload["native_collection"]
             ):
                 continue
@@ -119,7 +119,7 @@ class OpenBASOpenBAS:
                         new_tags.append(tags_mapping[tag_id])
                 document["document_tags"] = new_tags
 
-                zip_url = openbas_url_prefix + document["document_path"]
+                zip_url = openaev_url_prefix + document["document_path"]
                 zip_response = self.session.get(zip_url)
                 zip_response.raise_for_status()
                 with io.BytesIO(zip_response.content) as zip_buffer:
@@ -152,7 +152,7 @@ class OpenBASOpenBAS:
                     new_tags.append(tags_mapping[tag_id])
 
             # Add collector source tag
-            source_tag_name = "source:openbas-datasets"
+            source_tag_name = "source:openaev-datasets"
             source_tag_id = self._create_or_get_tag(source_tag_name, "#ef4444")  # Red
             if source_tag_id:
                 new_tags.append(source_tag_id)
@@ -202,5 +202,5 @@ class OpenBASOpenBAS:
 
 
 if __name__ == "__main__":
-    openBASAtomicRedTeam = OpenBASOpenBAS()
-    openBASAtomicRedTeam.start()
+    openAEVAtomicRedTeam = OpenAEVOpenAEV()
+    openAEVAtomicRedTeam.start()

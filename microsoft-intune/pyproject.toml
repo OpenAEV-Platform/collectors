@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "openbas-microsoft-intune-collector"
+name = "openaev-microsoft-intune-collector"
 version = "1.18.20"
 description = "A Collector for Microsoft Intune managed devices"
 authors = ["Filigran <contact@filigran.io>"]

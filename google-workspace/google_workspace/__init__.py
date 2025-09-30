@@ -1,1 +1,1 @@
-# Google Workspace Collector for OpenBAS"
+# Google Workspace Collector for OpenAEV"

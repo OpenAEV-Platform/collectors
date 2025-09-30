@@ -18,4 +18,4 @@ RUN cd ${installdir}/dist && pip3 install --no-cache-dir "$(ls *.whl)[prod]"
 # necessary for icon location
 WORKDIR ${installdir}
 
-CMD ["python3", "-m", "google_workspace.openbas_google_workspace"]
+CMD ["python3", "-m", "google_workspace.openaev_google_workspace"]

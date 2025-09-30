@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "openbas-aws-resources-collector"
+name = "openaev-aws-resources-collector"
 version = "1.18.20"
 description = "A Collector for AWS Resources (EC2 Instances)"
 authors = ["Filigran <contact@filigran.io>"]

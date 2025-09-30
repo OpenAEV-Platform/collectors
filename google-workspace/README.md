@@ -1,10 +1,10 @@
-# OpenBAS Google Workspace Collector
+# OpenAEV Google Workspace Collector
 
 Table of Contents
 
-- [OpenBAS Google Workspace Collector](#openbas-google-workspace-collector)
+- [OpenAEV Google Workspace Collector](#openaev-google-workspace-collector)
     - [Configuration variables](#configuration-variables)
-        - [OpenBAS environment variables](#openbas-environment-variables)
+        - [OpenAEV environment variables](#openaev-environment-variables)
         - [Base collector environment variables](#base-collector-environment-variables)
         - [Collector extra parameters environment variables](#collector-extra-parameters-environment-variables)
     - [Google Workspace Setup](#google-workspace-setup)
@@ -23,14 +23,14 @@ Table of Contents
 There are a number of configuration options, which are set either in `docker-compose.yml` (for Docker) or
 in `config.yml` (for manual deployment).
 
-### OpenBAS environment variables
+### OpenAEV environment variables
 
-Below are the parameters you'll need to set for OpenBAS:
+Below are the parameters you'll need to set for OpenAEV:
 
 | Parameter     | config.yml | Docker environment variable | Mandatory | Description                                          |
 |---------------|------------|-----------------------------|-----------|------------------------------------------------------|
-| OpenBAS URL   | url        | `OPENBAS_URL`               | Yes       | The URL of the OpenBAS platform.                     |
-| OpenBAS Token | token      | `OPENBAS_TOKEN`             | Yes       | The default admin token set in the OpenBAS platform. |
+| OpenAEV URL   | url        | `OPENAEV_URL`               | Yes       | The URL of the OpenAEV platform.                     |
+| OpenAEV Token | token      | `OPENAEV_TOKEN`             | Yes       | The default admin token set in the OpenAEV platform. |
 
 ### Base collector environment variables
 
@@ -74,7 +74,7 @@ Below are the parameters you'll need to set for the collector:
 4. Create a Service Account:
    - Navigate to "IAM & Admin" > "Service Accounts"
    - Click "Create Service Account"
-   - Give it a name (e.g., "openbas-collector")
+   - Give it a name (e.g., "openaev-collector")
    - Click "Create and Continue"
    - Skip the optional steps and click "Done"
 5. Create a key for the Service Account:
@@ -152,7 +152,7 @@ Install the environment:
 poetry install --extras prod
 ```
 
-**Development** (note that you should also clone the [pyoaev](OpenBAS-Platform/client-python) repository [according to
+**Development** (note that you should also clone the [pyoaev](OpenAEV-Platform/client-python) repository [according to
 these instructions](../README.md#simultaneous-development-on-pyoaev-and-a-collector))
 ```shell
 # development environment
@@ -162,25 +162,25 @@ poetry install --extras dev
 Then, start the collector:
 
 ```shell
-poetry run python -m google_workspace.openbas_google_workspace
+poetry run python -m google_workspace.openaev_google_workspace
 ```
 
 ## Behavior
 
-This collector retrieves your users and groups from your Google Workspace instance and imports them into your OpenBAS
+This collector retrieves your users and groups from your Google Workspace instance and imports them into your OpenAEV
 instance. The collector supports two synchronization modes:
 
 ### Default Mode (Groups and Members)
 When `sync_all_users` is set to `false` (default), the collector will:
 1. Fetch all groups from Google Workspace
-2. Create corresponding teams in OpenBAS
+2. Create corresponding teams in OpenAEV
 3. For each group, fetch its members
-4. Create users (players) in OpenBAS and associate them with their teams
+4. Create users (players) in OpenAEV and associate them with their teams
 
 ### All Users Mode
 When `sync_all_users` is set to `true`, the collector will:
 1. Fetch all users from Google Workspace
-2. Create users (players) in OpenBAS without team associations
+2. Create users (players) in OpenAEV without team associations
 3. This mode is useful when you want to import all users regardless of group membership
 
 ## Synchronization Modes
@@ -201,4 +201,4 @@ The collector adds various tags to users for better organization and filtering:
 - `role:admin` - Users with admin privileges
 - `role:delegated-admin` - Users with delegated admin privileges
 
-These tags help in filtering and organizing users within OpenBAS for different exercise scenarios.
+These tags help in filtering and organizing users within OpenAEV for different exercise scenarios.

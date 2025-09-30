@@ -1,8 +1,8 @@
-# OpenBAS Microsoft Azure Collector
+# OpenAEV Microsoft Azure Collector
 
 ## Description
 
-This collector enables OpenBAS to import Virtual Machines from Microsoft Azure subscriptions as endpoints.
+This collector enables OpenAEV to import Virtual Machines from Microsoft Azure subscriptions as endpoints.
 
 ## Features
 
@@ -25,7 +25,7 @@ This collector enables OpenBAS to import Virtual Machines from Microsoft Azure s
 1. **Create an Azure AD Application:**
    - Go to Azure Portal → Azure Active Directory → App registrations
    - Click "New registration"
-   - Name your application (e.g., "OpenBAS Collector")
+   - Name your application (e.g., "OpenAEV Collector")
    - Select supported account types (single tenant recommended)
    - Click "Register"
 
@@ -49,14 +49,14 @@ This collector enables OpenBAS to import Virtual Machines from Microsoft Azure s
    - Subscription ID: Subscriptions → Your subscription → Overview → Subscription ID
    - Resource Groups: Names of resource groups to monitor (optional)
 
-### OpenBAS Configuration
+### OpenAEV Configuration
 
 Create or update `config.yml`:
 
 ```yaml
-openbas:
-  url: 'http://your-openbas-url:3001'
-  token: 'your-openbas-token'
+openaev:
+  url: 'http://your-openaev-url:3001'
+  token: 'your-openaev-token'
 
 collector:
   id: 'unique-collector-id'
@@ -76,7 +76,7 @@ collector:
 
 1. Build the Docker image:
 ```bash
-docker build -t openbas-microsoft-azure-collector .
+docker build -t openaev-microsoft-azure-collector .
 ```
 
 2. Run with docker-compose:
@@ -96,15 +96,15 @@ poetry install
 
 3. Run the collector:
 ```bash
-poetry run python microsoft_azure/openbas_microsoft_azure.py
+poetry run python microsoft_azure/openaev_microsoft_azure.py
 ```
 
 ## Environment Variables
 
 All configuration can be provided via environment variables:
 
-- `OPENBAS_URL`: OpenBAS platform URL
-- `OPENBAS_TOKEN`: OpenBAS API token
+- `OPENAEV_URL`: OpenAEV platform URL
+- `OPENAEV_TOKEN`: OpenAEV API token
 - `COLLECTOR_ID`: Unique collector identifier
 - `COLLECTOR_NAME`: Display name for the collector
 - `COLLECTOR_PERIOD`: Collection interval in seconds
@@ -159,4 +159,4 @@ If unable to connect to Azure:
 
 ## Support
 
-For issues or questions, please open an issue in the OpenBAS GitHub repository.
+For issues or questions, please open an issue in the OpenAEV GitHub repository.

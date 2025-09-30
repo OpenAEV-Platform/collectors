@@ -3,11 +3,11 @@ import re
 
 import requests
 import yaml
-from pyoaev.helpers import OpenBASCollectorHelper, OpenBASConfigHelper
+from pyoaev.helpers import OpenAEVCollectorHelper, OpenAEVConfigHelper
 
 ATOMIC_RED_TEAM_INDEX = "https://raw.githubusercontent.com/redcanaryco/atomic-red-team/master/atomics/Indexes/index.yaml"
 
-# Ignore payloads copied and verified to OpenBAS Payloads Repository
+# Ignore payloads copied and verified to OpenAEV Payloads Repository
 IGNORED_PAYLOADS = [
     "aa6cb8c4-b582-4f8e-b677-37733914abda",
     "cab413d8-9e4a-4b8d-9b84-c985bd73a442",
@@ -199,17 +199,17 @@ def _format_generic_command(string_to_analyse, arguments):
     )
 
 
-class OpenBASAtomicRedTeam:
+class OpenAEVAtomicRedTeam:
     def __init__(self):
         self.session = requests.Session()
-        self.config = OpenBASConfigHelper(
+        self.config = OpenAEVConfigHelper(
             __file__,
             {
                 # API information
-                "openbas_url": {"env": "OPENBAS_URL", "file_path": ["openbas", "url"]},
-                "openbas_token": {
-                    "env": "OPENBAS_TOKEN",
-                    "file_path": ["openbas", "token"],
+                "openaev_url": {"env": "OPENAEV_URL", "file_path": ["openaev", "url"]},
+                "openaev_token": {
+                    "env": "OPENAEV_TOKEN",
+                    "file_path": ["openaev", "token"],
                 },
                 # Config information
                 "collector_id": {
@@ -234,10 +234,10 @@ class OpenBASAtomicRedTeam:
                 },
             },
         )
-        self.helper = OpenBASCollectorHelper(
+        self.helper = OpenAEVCollectorHelper(
             config=self.config,
             icon="atomic_red_team/img/icon-atomic-red-team.png",
-            collector_type="openbas_atomic_red_team",
+            collector_type="openaev_atomic_red_team",
         )
 
     def _create_or_get_tag(self, tag_name, tag_color="#6b7280"):
@@ -436,5 +436,5 @@ class OpenBASAtomicRedTeam:
 
 
 if __name__ == "__main__":
-    openBASAtomicRedTeam = OpenBASAtomicRedTeam()
-    openBASAtomicRedTeam.start()
+    openAEVAtomicRedTeam = OpenAEVAtomicRedTeam()
+    openAEVAtomicRedTeam.start()

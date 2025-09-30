@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from pydantic import BaseModel, ValidationError
-from pyoaev.exceptions import OpenBASError
+from pyoaev.exceptions import OpenAEVError
 from pyoaev.signatures.types import SignatureTypes
 
 from crowdstrike.pattern_disposition import is_prevented
@@ -64,7 +64,7 @@ class Alert(Base):
         if signature_type_str == SignatureTypes.SIG_TYPE_PARENT_PROCESS_NAME:
             return data_item.get_process_image_names()
         else:
-            raise OpenBASError(
+            raise OpenAEVError(
                 f"Unsupported signature type: {signature_type_str} by strategy {self.get_strategy_name()}"
             )
 

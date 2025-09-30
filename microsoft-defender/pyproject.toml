@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "openbas-microsoft-defender-collector"
+name = "openaev-microsoft-defender-collector"
 version = "1.18.20"
 description = "A Collector for the Microsoft Defender security software"
 authors = ["Filigran <contact@filigran.io>"]

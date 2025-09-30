@@ -18,4 +18,4 @@ RUN cd ${installdir}/dist && pip3 install --no-cache-dir "$(ls *.whl)[prod]"
 # necessary for icon location
 WORKDIR ${installdir}
 
-CMD ["python3", "-m", "aws_resources.openbas_aws_resources"]
+CMD ["python3", "-m", "aws_resources.openaev_aws_resources"]

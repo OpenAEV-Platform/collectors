@@ -24,10 +24,10 @@ RUN if [[ ${PYOAEV_GIT_BRANCH_OVERRIDE} ]] ; then \
         apk add --no-cache git && \
         pip install pip3-autoremove && \
         pip-autoremove pyoaev -y && \
-        pip install git+https://github.com/OpenBAS-Platform/client-python@${PYOAEV_GIT_BRANCH_OVERRIDE} ; \
+        pip install git+https://github.com/OpenAEV-Platform/client-python@${PYOAEV_GIT_BRANCH_OVERRIDE} ; \
     fi
 
 # necessary for icon location
 WORKDIR ${installdir}
 
-CMD ["python3", "-m", "openbas.openbas_openbas"]
+CMD ["python3", "-m", "openaev.openaev_openaev"]

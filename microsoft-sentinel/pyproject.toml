@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "openbas-microsoft-sentinel-collector"
+name = "openaev-microsoft-sentinel-collector"
 version = "1.18.20"
 description = "A Collector for Microsoft Sentinel SIEM solution"
 authors = ["Filigran <contact@filigran.io>"]

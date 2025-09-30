@@ -3,20 +3,20 @@ import asyncio
 import requests
 from azure.identity.aio import ClientSecretCredential
 from msgraph import GraphServiceClient
-from pyoaev.helpers import OpenBASCollectorHelper, OpenBASConfigHelper
+from pyoaev.helpers import OpenAEVCollectorHelper, OpenAEVConfigHelper
 
 
-class OpenBASMicrosoftEntra:
+class OpenAEVMicrosoftEntra:
     def __init__(self):
         self.session = requests.Session()
-        self.config = OpenBASConfigHelper(
+        self.config = OpenAEVConfigHelper(
             __file__,
             {
                 # API information
-                "openbas_url": {"env": "OPENBAS_URL", "file_path": ["openbas", "url"]},
-                "openbas_token": {
-                    "env": "OPENBAS_TOKEN",
-                    "file_path": ["openbas", "token"],
+                "openaev_url": {"env": "OPENAEV_URL", "file_path": ["openaev", "url"]},
+                "openaev_token": {
+                    "env": "OPENAEV_TOKEN",
+                    "file_path": ["openaev", "token"],
                 },
                 # Config information
                 "collector_id": {
@@ -57,10 +57,10 @@ class OpenBASMicrosoftEntra:
                 },
             },
         )
-        self.helper = OpenBASCollectorHelper(
+        self.helper = OpenAEVCollectorHelper(
             config=self.config,
             icon="microsoft_entra/img/icon-microsoft-entra.png",
-            collector_type="openbas_microsoft_entra",
+            collector_type="openaev_microsoft_entra",
         )
 
         # External
@@ -78,7 +78,7 @@ class OpenBASMicrosoftEntra:
             )
             return None
 
-    async def create_users(self, graph_client, group_id, openbas_team):
+    async def create_users(self, graph_client, group_id, openaev_team):
         # Define tag colors
         tag_colors = {
             "source": "#ef4444",  # Red
@@ -154,7 +154,7 @@ class OpenBASMicrosoftEntra:
                         "user_email": member.mail,
                         "user_firstname": member.given_name,
                         "user_lastname": member.surname,
-                        "user_teams": [openbas_team["team_id"]],
+                        "user_teams": [openaev_team["team_id"]],
                     }
 
                     # Add tags if we have any
@@ -236,7 +236,7 @@ class OpenBASMicrosoftEntra:
                             "user_email": member.mail,
                             "user_firstname": member.given_name,
                             "user_lastname": member.surname,
-                            "user_teams": [openbas_team["team_id"]],
+                            "user_teams": [openaev_team["team_id"]],
                         }
 
                         # Add tags if we have any
@@ -250,17 +250,17 @@ class OpenBASMicrosoftEntra:
         if groups:
             for i in range(len(groups.value)):
                 team = {"team_name": groups.value[i].display_name}
-                openbas_team = self.helper.api.team.upsert(team)
-                await self.create_users(graph_client, groups.value[i].id, openbas_team)
+                openaev_team = self.helper.api.team.upsert(team)
+                await self.create_users(graph_client, groups.value[i].id, openaev_team)
         # iterate over result batches > 100 rows
         while groups is not None and groups.odata_next_link is not None:
             groups = await graph_client.groups.with_url(groups.odata_next_link)
             if groups:
                 for i in range(len(groups.value)):
                     team = {"team_name": groups.value[i].display_name}
-                    openbas_team = self.helper.api.team.upsert(team)
+                    openaev_team = self.helper.api.team.upsert(team)
                     await self.create_users(
-                        graph_client, groups.value[i].id, openbas_team
+                        graph_client, groups.value[i].id, openaev_team
                     )
 
     def _process_message(self) -> None:
@@ -284,5 +284,5 @@ class OpenBASMicrosoftEntra:
 
 
 if __name__ == "__main__":
-    openBASMicrosoftEntra = OpenBASMicrosoftEntra()
-    openBASMicrosoftEntra.start()
+    openAEVMicrosoftEntra = OpenAEVMicrosoftEntra()
+    openAEVMicrosoftEntra.start()

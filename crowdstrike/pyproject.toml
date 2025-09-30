@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "openbas-crowdstrike-collector"
+name = "openaev-crowdstrike-collector"
 version = "1.18.20"
 description = "Collector for Crowdstrike Falcon"
 authors = ["Filigran <contact@filigran.io>"]

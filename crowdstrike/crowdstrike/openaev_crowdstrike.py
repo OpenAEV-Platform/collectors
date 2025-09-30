@@ -3,9 +3,9 @@ from datetime import datetime, timedelta
 import pytz
 from dateutil.parser import parse
 from pyoaev.helpers import (
-    OpenBASCollectorHelper,
-    OpenBASConfigHelper,
-    OpenBASDetectionHelper,
+    OpenAEVCollectorHelper,
+    OpenAEVConfigHelper,
+    OpenAEVDetectionHelper,
 )
 from pyoaev.signatures.signature_type import SignatureType
 from pyoaev.signatures.types import MatchTypes, SignatureTypes
@@ -15,13 +15,13 @@ from crowdstrike.query_strategy.alert import Alert, Item
 from crowdstrike.query_strategy.base import Base
 
 
-class OpenBASCrowdStrike:
+class OpenAEVCrowdStrike:
     def __init__(
         self,
         strategy: Base,
-        config: OpenBASConfigHelper,
-        helper: OpenBASCollectorHelper,
-        detection_helper: OpenBASDetectionHelper,
+        config: OpenAEVConfigHelper,
+        helper: OpenAEVCollectorHelper,
+        detection_helper: OpenAEVDetectionHelper,
         signature_types,
     ):
         self.strategy = strategy
@@ -83,11 +83,11 @@ class OpenBASCrowdStrike:
         self, alerts: list[Item], expectations
     ) -> list[dict[str, str]]:
         """
-        Match OpenBAS expectations with CS alerts.
+        Match OpenAEV expectations with CS alerts.
 
         Args:
             alerts: The list of alerts received from CS.
-            expectations: The list of OpenBAS expectation to match to CS alerts.
+            expectations: The list of OpenAEV expectation to match to CS alerts.
 
         Returns:
             * A list of expectation traces that need to be created following all the matches, if any alerts matched any
@@ -139,7 +139,7 @@ class OpenBASCrowdStrike:
                         },
                     )
 
-                    # Save alert to openbas for current matched expectation. Duplicate alerts are handled by openbas itself
+                    # Save alert to openaev for current matched expectation. Duplicate alerts are handled by openaev itself
                     self.helper.collector_logger.info(
                         "Expectation matched, adding trace for expectation "
                         + expectation["inject_expectation_id"]
@@ -189,14 +189,14 @@ class OpenBASCrowdStrike:
 
 
 if __name__ == "__main__":
-    config = OpenBASConfigHelper(
+    config = OpenAEVConfigHelper(
         __file__,
         {
             # API information
-            "openbas_url": {"env": "OPENBAS_URL", "file_path": ["openbas", "url"]},
-            "openbas_token": {
-                "env": "OPENBAS_TOKEN",
-                "file_path": ["openbas", "token"],
+            "openaev_url": {"env": "OPENAEV_URL", "file_path": ["openaev", "url"]},
+            "openaev_token": {
+                "env": "OPENAEV_TOKEN",
+                "file_path": ["openaev", "token"],
             },
             # Config information
             "collector_id": {
@@ -246,10 +246,10 @@ if __name__ == "__main__":
         },
     )
 
-    helper = OpenBASCollectorHelper(
+    helper = OpenAEVCollectorHelper(
         config=config,
         icon="crowdstrike/img/icon-crowdstrike.png",
-        collector_type="openbas_crowdstrike",
+        collector_type="openaev_crowdstrike",
         security_platform_type=config.get_conf("collector_platform") or "EDR",
     )
 
@@ -261,7 +261,7 @@ if __name__ == "__main__":
         ),
     ]
 
-    detection_helper = OpenBASDetectionHelper(
+    detection_helper = OpenAEVDetectionHelper(
         helper.collector_logger,
         [signature_type.label.value for signature_type in signature_types],
     )
@@ -273,7 +273,7 @@ if __name__ == "__main__":
         base_url=config.get_conf("crowdstrike_api_base_url"),
     )
     strategy = Alert(api_handler=api_handler)
-    collector = OpenBASCrowdStrike(
+    collector = OpenAEVCrowdStrike(
         strategy=strategy,
         config=config,
         helper=helper,

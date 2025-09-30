@@ -6,23 +6,23 @@ from dateutil.parser import parse
 from dateutil.relativedelta import relativedelta
 from microsoft_sentinel.api_handler import SentinelApiHandler
 from pyoaev.helpers import (
-    OpenBASCollectorHelper,
-    OpenBASConfigHelper,
-    OpenBASDetectionHelper,
+    OpenAEVCollectorHelper,
+    OpenAEVConfigHelper,
+    OpenAEVDetectionHelper,
 )
 
 
-class OpenBASMicrosoftSentinel:
+class OpenAEVMicrosoftSentinel:
     def __init__(self):
         self.session = requests.Session()
-        self.config = OpenBASConfigHelper(
+        self.config = OpenAEVConfigHelper(
             __file__,
             {
                 # API information
-                "openbas_url": {"env": "OPENBAS_URL", "file_path": ["openbas", "url"]},
-                "openbas_token": {
-                    "env": "OPENBAS_TOKEN",
-                    "file_path": ["openbas", "token"],
+                "openaev_url": {"env": "OPENAEV_URL", "file_path": ["openaev", "url"]},
+                "openaev_token": {
+                    "env": "OPENAEV_TOKEN",
+                    "file_path": ["openaev", "token"],
                 },
                 # Config information
                 "collector_id": {
@@ -81,10 +81,10 @@ class OpenBASMicrosoftSentinel:
             },
         )
 
-        self.helper = OpenBASCollectorHelper(
+        self.helper = OpenAEVCollectorHelper(
             config=self.config,
             icon="microsoft_sentinel/img/icon-microsoft-sentinel.png",
-            collector_type="openbas_microsoft_sentinel",
+            collector_type="openaev_microsoft_sentinel",
             security_platform_type="SIEM",
         )
 
@@ -102,7 +102,7 @@ class OpenBASMicrosoftSentinel:
         self.relevant_signatures_types = [
             "parent_process_name",
         ]
-        self.openbas_detection_helper = OpenBASDetectionHelper(
+        self.openaev_detection_helper = OpenAEVDetectionHelper(
             self.helper.collector_logger, self.relevant_signatures_types
         )
 
@@ -305,7 +305,7 @@ class OpenBASMicrosoftSentinel:
                                 },
                             )
 
-                        # Send alert to openbas for current matched expectation. Duplicate alerts are handled by openbas itself
+                        # Send alert to openaev for current matched expectation. Duplicate alerts are handled by openaev itself
                         self.helper.collector_logger.info(
                             "Expectation matched, adding trace for expectation "
                             + expectation["inject_expectation_inject"]
@@ -349,7 +349,7 @@ class OpenBASMicrosoftSentinel:
 
 
 if __name__ == "__main__":
-    openBASMicrosoftSentinel = OpenBASMicrosoftSentinel()
-    openBASMicrosoftSentinel.start()
+    openAEVMicrosoftSentinel = OpenAEVMicrosoftSentinel()
+    openAEVMicrosoftSentinel.start()
 
 # Avoir un bandeau pour limiter la casse: quand on a Sentinel qui tourne sans Defender -> ça ne marche pas

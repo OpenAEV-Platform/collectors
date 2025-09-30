@@ -1,12 +1,12 @@
 [tool.poetry]
-name = "openbas-openbas-collector"
+name = "openaev-openaev-collector"
 version = "1.18.20"
-description = "A Collector for fetching OpenBAS payloads"
+description = "A Collector for fetching OpenAEV payloads"
 authors = ["Filigran <contact@filigran.io>"]
 license = "Apache-2.0"
 readme = "README.md"
 packages = [
-    { include = "openbas" }
+    { include = "openaev" }
 ]
 
 [tool.poetry.dependencies]

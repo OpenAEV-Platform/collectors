@@ -1,4 +1,4 @@
-# OpenBAS NVD NIST CVE collector
+# OpenAEV NVD NIST CVE collector
 
 The NVD NIST CVE collector is a standalone Python process that collects data from the NVD (National Vulnerability Database).
 
@@ -14,7 +14,7 @@ This collector **will import all CVE with CVSS V3.1 base score**.
 
 ## Requirements
 
-- OpenBAS Platform version 1.19 or higher  
+- OpenAEV Platform version 1.19 or higher  
 - (Optional but recommended) An **API Key for accessing NVD** – this increases your request rate limit.
 
 👉 You can request a free API key here: [https://nvd.nist.gov/developers/request-an-api-key](https://nvd.nist.gov/developers/request-an-api-key)
@@ -29,7 +29,7 @@ This collector **will import all CVE with CVSS V3.1 base score**.
 Get a local copy:
 
 ```bash
-git clone https://github.com/OpenBAS-Platform/collectors
+git clone https://github.com/OpenAEV-Platform/collectors
 cd ./collectors/nvd_nist_cve
 ````
 
@@ -43,7 +43,7 @@ poetry install --extras prod
 ```
 
 **Development**
-(Note: you should also clone the [pyoaev](https://github.com/OpenBAS-Platform/client-python) repository [according to these instructions](../README.md#simultaneous-development-on-pyoaev-and-a-collector)):
+(Note: you should also clone the [pyoaev](https://github.com/OpenAEV-Platform/client-python) repository [according to these instructions](../README.md#simultaneous-development-on-pyoaev-and-a-collector)):
 
 ```bash
 # development environment
@@ -53,17 +53,17 @@ poetry install --extras dev
 ## Usage
 
 ```bash
-poetry run python -m nvd_nist_cve.openbas_nvd_nist_cve
+poetry run python -m nvd_nist_cve.openaev_nvd_nist_cve
 ```
 
 ## Configuration
 
-Below are the parameters you'll need to set for OpenBAS:
+Below are the parameters you'll need to set for OpenAEV:
 
 | Config Parameter       | `config.yml`                | Docker Env Var              | Default                                   | Description                                                                                                            |
 |------------------------|-----------------------------|-----------------------------|-------------------------------------------|------------------------------------------------------------------------------------------------------------------------|
-| OpenBAS URL            | `openbas.url`               | `OPENBAS_URL`               | *required*                                | URL to the OpenBAS instance                                                                                            |
-| OpenBAS token          | `openbas.token`             | `OPENBAS_TOKEN`             | *required*                                | Authentication token to connect to OpenBAS                                                                             |
+| OpenAEV URL            | `openaev.url`               | `OPENAEV_URL`               | *required*                                | URL to the OpenAEV instance                                                                                            |
+| OpenAEV token          | `openaev.token`             | `OPENAEV_TOKEN`             | *required*                                | Authentication token to connect to OpenAEV                                                                             |
 | Collector ID           | `collector.id`              | `COLLECTOR_ID`              | *required*                                | Unique UUIDv4 identifier for this collector instance                                                                   |
 | Collector name         | `collector.name`            | `COLLECTOR_NAME`            | `CVE by NVD NIST`                         | Name of the collector                                                                                                  |
 | Run interval           | `collector.period`          | `COLLECTOR_PERIOD`          | `7200` (seconds)                          | Time interval at which the collector will run                                                                          |
@@ -121,5 +121,5 @@ poetry install --extras dev
 Then, start the collector:
 
 ```bash
-poetry run python -m nvd_nist_cve.openbas_nvd_nist_cve
+poetry run python -m nvd_nist_cve.openaev_nvd_nist_cve
 ```

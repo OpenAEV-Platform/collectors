@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "openbas-mitre-attack-collector"
+name = "openaev-mitre-attack-collector"
 version = "1.18.20"
 description = "A Collector for fetching MITRE ATT&CK taxonomies; https://attack.mitre.org/"
 authors = ["Filigran <contact@filigran.io>"]
