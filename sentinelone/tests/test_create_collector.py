@@ -23,8 +23,8 @@ def collector_config() -> dict[str, str]:  # type: ignore
 
     """
     return {
-        "OPENBAS_URL": "http://fake-url/",
-        "OPENBAS_TOKEN": "fake-obas-token",
+        "OPENAEV_URL": "http://fake-url/",
+        "OPENAEV_TOKEN": "fake-oaev-token",
         "COLLECTOR_ID": "fake-collector-id",
         "COLLECTOR_NAME": "SentinelOne",
         "SENTINELONE_BASE_URL": "https://fake-sentinelone.net/",
@@ -69,8 +69,8 @@ def test_collector_config_missing_required_values() -> None:
     """
     # Given configuration with missing required SentinelOne API key
     data = {
-        "OPENBAS_URL": "http://fake-url",
-        "OPENBAS_TOKEN": "fake-obas-token",
+        "OPENAEV_URL": "http://fake-url",
+        "OPENAEV_TOKEN": "fake-oaev-token",
         "COLLECTOR_ID": "fake-collector-id",
         "COLLECTOR_NAME": "SentinelOne",
         "SENTINELONE_BASE_URL": "https://fake-sentinelone.net/",
@@ -151,8 +151,8 @@ def _then_collector_created_successfully(capfd, mock_env, collector, data) -> No
     daemon_config = collector.config_instance.to_daemon_config()
 
     # Verify key configuration values
-    assert daemon_config.get("openbas_url") == data.get("OPENBAS_URL")  # noqa: S101
-    assert daemon_config.get("openbas_token") == data.get("OPENBAS_TOKEN")  # noqa: S101
+    assert daemon_config.get("openaev_url") == data.get("OPENAEV_URL")  # noqa: S101
+    assert daemon_config.get("openaev_token") == data.get("OPENAEV_TOKEN")  # noqa: S101
     assert daemon_config.get("collector_id") == data.get("COLLECTOR_ID")  # noqa: S101
     assert daemon_config.get("collector_name") == data.get(  # noqa: S101
         "COLLECTOR_NAME"

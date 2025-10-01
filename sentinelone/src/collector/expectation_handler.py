@@ -3,12 +3,12 @@
 import logging
 from typing import Any
 
-from pyobas.apis.inject_expectation.model import (  # type: ignore[import-untyped]
+from pyoaev.apis.inject_expectation.model import (  # type: ignore[import-untyped]
     DetectionExpectation,
     PreventionExpectation,
 )
-from pyobas.helpers import OpenBASDetectionHelper  # type: ignore[import-untyped]
-from pyobas.signatures.types import SignatureTypes  # type: ignore[import-untyped]
+from pyoaev.helpers import OpenAEVDetectionHelper  # type: ignore[import-untyped]
+from pyoaev.signatures.types import SignatureTypes  # type: ignore[import-untyped]
 
 from .exception import ExpectationHandlerError
 from .expectation_service_provider import ExpectationServiceProvider
@@ -80,13 +80,13 @@ class GenericExpectationHandler:
     def handle_expectation(
         self,
         expectation: Any,
-        detection_helper: OpenBASDetectionHelper,
+        detection_helper: OpenAEVDetectionHelper,
     ) -> ExpectationResult:
         """Handle an expectation by delegating to the service provider.
 
         Args:
             expectation: The expectation to process.
-            detection_helper: OpenBAS detection helper instance.
+            detection_helper: OpenAEV detection helper instance.
 
         Returns:
             ExpectationResult containing processing results.
@@ -138,7 +138,7 @@ class GenericExpectationHandler:
     def handle_batch_expectations(
         self,
         expectations: list[Any],
-        detection_helper: OpenBASDetectionHelper,
+        detection_helper: OpenAEVDetectionHelper,
     ) -> list[ExpectationResult]:
         """Handle a batch of expectations by delegating to the service provider.
 
@@ -147,7 +147,7 @@ class GenericExpectationHandler:
 
         Args:
             expectations: List of expectations to process.
-            detection_helper: OpenBAS detection helper instance.
+            detection_helper: OpenAEV detection helper instance.
 
         Returns:
             List of ExpectationResult objects.

@@ -27,28 +27,28 @@ def mock_env_vars(os_environ: "_Environ[str]", wanted_env: dict[str, str]) -> An
 
 
 @fixture(autouse=True)
-def mock_openbas_client() -> Any:
-    """Fixture to mock OpenBAS calls and clean up after.
+def mock_openaev_client() -> Any:
+    """Fixture to mock OpenAEV calls and clean up after.
 
-    Auto-applies to all tests to prevent actual OpenBAS API calls.
-    Mocks urllib3, pyobas client, and collector daemon setup.
+    Auto-applies to all tests to prevent actual OpenAEV API calls.
+    Mocks urllib3, pyoaev client, and collector daemon setup.
 
     Yields:
-        Tuple of mock objects (urllib, pyobas, daemon_setup).
+        Tuple of mock objects (urllib, pyoaev, daemon_setup).
 
     """
     mock_urllib = patch("urllib3.connectionpool.HTTPConnectionPool.urlopen")
-    mock_pyobas = patch("pyobas.client.OpenBAS.http_request")
-    mock_daemon_setup = patch("pyobas.daemons.collector_daemon.CollectorDaemon._setup")
+    mock_pyoaev = patch("pyoaev.client.OpenAEV.http_request")
+    mock_daemon_setup = patch("pyoaev.daemons.collector_daemon.CollectorDaemon._setup")
 
     mock_urllib.start()
-    mock_pyobas.start()
+    mock_pyoaev.start()
     mock_daemon_setup.start()
 
-    yield mock_urllib, mock_pyobas, mock_daemon_setup
+    yield mock_urllib, mock_pyoaev, mock_daemon_setup
 
     mock_urllib.stop()
-    mock_pyobas.stop()
+    mock_pyoaev.stop()
     mock_daemon_setup.stop()
 
 

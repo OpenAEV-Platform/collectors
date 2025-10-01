@@ -305,31 +305,31 @@ jobs:
             docker tag openaev/collector-google-workspace:${CIRCLE_SHA1} openbas/collector-google-workspace:${IMAGETAG}
             
             echo "$DOCKERHUB_PASS" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
-            docker push openaev/collector-mitre-attack:${IMAGETAG}
+#            docker push openaev/collector-mitre-attack:${IMAGETAG}
             docker push openbas/collector-mitre-attack:${IMAGETAG}
-            docker push openaev/collector-nvd-nist-cve:${IMAGETAG}
+#            docker push openaev/collector-nvd-nist-cve:${IMAGETAG}
             docker push openbas/collector-nvd-nist-cve:${IMAGETAG}
-            docker push openaev/collector-microsoft-entra:${IMAGETAG}
+#            docker push openaev/collector-microsoft-entra:${IMAGETAG}
             docker push openbas/collector-microsoft-entra:${IMAGETAG}
-            docker push openaev/collector-tanium-threat-response:${IMAGETAG}
+#            docker push openaev/collector-tanium-threat-response:${IMAGETAG}
             docker push openbas/collector-tanium-threat-response:${IMAGETAG}
-            docker push openaev/collector-microsoft-defender:${IMAGETAG}
+#            docker push openaev/collector-microsoft-defender:${IMAGETAG}
             docker push openbas/collector-microsoft-defender:${IMAGETAG}
-            docker push openaev/collector-microsoft-sentinel:${IMAGETAG}
+#            docker push openaev/collector-microsoft-sentinel:${IMAGETAG}
             docker push openbas/collector-microsoft-sentinel:${IMAGETAG}
-            docker push openaev/collector-atomic-red-team:${IMAGETAG}
+#            docker push openaev/collector-atomic-red-team:${IMAGETAG}
             docker push openbas/collector-atomic-red-team:${IMAGETAG}
-            docker push openaev/collector-crowdstrike:${IMAGETAG}
+#            docker push openaev/collector-crowdstrike:${IMAGETAG}
             docker push openbas/collector-crowdstrike:${IMAGETAG}
-            docker push openaev/collector-openaev:${IMAGETAG}
+#            docker push openaev/collector-openaev:${IMAGETAG}
             docker push openbas/collector-openbas:${IMAGETAG}
-            docker push openaev/collector-microsoft-azure:${IMAGETAG}
+#            docker push openaev/collector-microsoft-azure:${IMAGETAG}
             docker push openbas/collector-microsoft-azure:${IMAGETAG}
-            docker push openaev/collector-microsoft-intune:${IMAGETAG}
+#            docker push openaev/collector-microsoft-intune:${IMAGETAG}
             docker push openbas/collector-microsoft-intune:${IMAGETAG}
-            docker push openaev/collector-aws-resources:${IMAGETAG}
+#            docker push openaev/collector-aws-resources:${IMAGETAG}
             docker push openbas/collector-aws-resources:${IMAGETAG}
-            docker push openaev/collector-google-workspace:${IMAGETAG}
+#            docker push openaev/collector-google-workspace:${IMAGETAG}
             docker push openbas/collector-google-workspace:${IMAGETAG}
 
             if [ "${IS_LATEST}" == "true" ]

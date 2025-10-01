@@ -3,7 +3,7 @@
 from enum import Enum
 from typing import Any, Callable
 
-from pyobas.signatures.types import SignatureTypes  # type: ignore[import-untyped]
+from pyoaev.signatures.types import SignatureTypes  # type: ignore[import-untyped]
 
 from .models import ExpectationResult
 

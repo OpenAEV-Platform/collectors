@@ -2,8 +2,8 @@
 
 import os
 
-from pyobas.daemons import CollectorDaemon  # type: ignore[import-untyped]
-from pyobas.helpers import OpenBASDetectionHelper  # type: ignore[import-untyped]
+from pyoaev.daemons import CollectorDaemon  # type: ignore[import-untyped]
+from pyoaev.helpers import OpenAEVDetectionHelper  # type: ignore[import-untyped]
 from src.services.expectation_service import SentinelOneExpectationService
 from src.services.trace_service import SentinelOneTraceService
 from src.services.utils import SentinelOneConfig
@@ -39,7 +39,7 @@ class Collector(CollectorDaemon):  # type: ignore[misc]
             super().__init__(
                 configuration=self.config_instance.to_daemon_config(),
                 callback=self._process_callback,
-                collector_type="openbas_sentinelone",
+                collector_type="openaev_sentinelone",
             )
 
             self.logger.info(  # type: ignore[has-type]
@@ -60,7 +60,7 @@ class Collector(CollectorDaemon):  # type: ignore[misc]
         """Set up the collector.
 
         Initializes SentinelOne services, expectation handler, expectation manager,
-        and OpenBAS detection helper. Sets up the collector for processing expectations.
+        and OpenAEV detection helper. Sets up the collector for processing expectations.
 
         Raises:
             CollectorSetupError: If collector setup fails.
@@ -91,7 +91,7 @@ class Collector(CollectorDaemon):  # type: ignore[misc]
             )
 
             supported_signatures = self.sentinelone_service.get_supported_signatures()
-            self.oaev_detection_helper = OpenBASDetectionHelper(
+            self.oaev_detection_helper = OpenAEVDetectionHelper(
                 logger=self.logger,
                 relevant_signatures_types=supported_signatures,
             )

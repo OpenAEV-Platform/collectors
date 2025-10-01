@@ -131,14 +131,14 @@ class FetcherDeepVisibility:
             )
 
         try:
-            obas_implant_id = search_criteria.parent_process_name
+            oaev_implant_id = search_criteria.parent_process_name
             start_date = search_criteria.start_date
             to_date = search_criteria.to_date or utc_now_iso()
 
             self.logger.debug(
-                f"{LOG_PREFIX} Initializing DV query for process '{obas_implant_id}' from {start_date} to {to_date}"
+                f"{LOG_PREFIX} Initializing DV query for process '{oaev_implant_id}' from {start_date} to {to_date}"
             )
-            return self._make_real_init_query(obas_implant_id, start_date, to_date)
+            return self._make_real_init_query(oaev_implant_id, start_date, to_date)
 
         except (SentinelOneValidationError, SentinelOneQueryError):
             raise
@@ -146,12 +146,12 @@ class FetcherDeepVisibility:
             raise SentinelOneQueryError(f"Error initializing DV query: {e}") from e
 
     def _make_real_init_query(
-        self, obas_implant_id: str, start_date: str, to_date: str
+        self, oaev_implant_id: str, start_date: str, to_date: str
     ) -> Any:
         """Make real API call to initialize Deep Visibility query.
 
         Args:
-            obas_implant_id: Process identifier for the query.
+            oaev_implant_id: Process identifier for the query.
             start_date: Start date for the query in ISO format.
             to_date: End date for the query in ISO format.
 
@@ -165,13 +165,13 @@ class FetcherDeepVisibility:
             SentinelOneQueryError: If query initialization fails.
 
         """
-        if not all([obas_implant_id, start_date, to_date]):
+        if not all([oaev_implant_id, start_date, to_date]):
             raise SentinelOneValidationError("All query parameters are required")
 
         try:
             endpoint = f"{self.client_api.base_url}/web/api/v2.1/dv/init-query"
 
-            query = f'(srcProcParentName contains "{obas_implant_id}" OR srcProcName contains "{obas_implant_id}") AND eventType="Pre Execution Detection"'
+            query = f'(srcProcParentName contains "{oaev_implant_id}" OR srcProcName contains "{oaev_implant_id}") AND eventType="Pre Execution Detection"'
             body = {
                 "query": query,
                 "fromDate": start_date,

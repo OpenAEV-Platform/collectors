@@ -9,7 +9,7 @@ class ExpectationTrace(BaseModel):
     """Pydantic model for expectation trace data.
 
     This model represents the structure of trace data that gets sent to the
-    OpenBAS API for expectation tracking and validation.
+    OpenAEV API for expectation tracking and validation.
     """
 
     inject_expectation_trace_expectation: str = Field(

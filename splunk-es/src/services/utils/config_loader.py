@@ -58,7 +58,7 @@ class SplunkESConfig:
             self.logger.debug(
                 f"{LOG_PREFIX} Log level: {load_settings.collector.log_level}"
             )
-            self.logger.debug(f"{LOG_PREFIX} OpenBAS URL: {load_settings.openbas.url}")
+            self.logger.debug(f"{LOG_PREFIX} OpenAEV URL: {load_settings.openaev.url}")
             self.logger.debug(
                 f"{LOG_PREFIX} Splunk Enterprise Security base URL: {load_settings.splunk_es.base_url}"
             )

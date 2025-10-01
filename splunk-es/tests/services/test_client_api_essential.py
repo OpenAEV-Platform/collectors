@@ -232,7 +232,7 @@ class TestSplunkESClientAPIEssential:
             {"type": "target_ipv6_address", "value": "2001:db8::1"},
             {
                 "type": "parent_process_name",
-                "value": "obas-implant-test-uuid-agent-test-uuid",
+                "value": "oaev-implant-test-uuid-agent-test-uuid",
             },
             {"type": "start_date", "value": "2024-01-01T00:00:00Z"},
             {"type": "end_date", "value": "2024-01-01T23:59:59Z"},
@@ -243,7 +243,7 @@ class TestSplunkESClientAPIEssential:
         assert criteria.source_ips == ["192.168.1.100"]  # noqa: S101
         assert criteria.target_ips == ["2001:db8::1"]  # noqa: S101
         assert criteria.parent_process_names == [  # noqa: S101
-            "obas-implant-test-uuid-agent-test-uuid"
+            "oaev-implant-test-uuid-agent-test-uuid"
         ]
         assert criteria.start_date == "2024-01-01T00:00:00Z"  # noqa: S101
         assert criteria.end_date == "2024-01-01T23:59:59Z"  # noqa: S101
@@ -278,7 +278,7 @@ class TestSplunkESClientAPIEssential:
         search_criteria = SplunkESSearchCriteria(
             source_ips=["192.168.1.100"],
             parent_process_names=[
-                "obas-implant-12345678-1234-1234-1234-123456789abc-agent-87654321-4321-4321-4321-cba987654321"
+                "oaev-implant-12345678-1234-1234-1234-123456789abc-agent-87654321-4321-4321-4321-cba987654321"
             ],
         )
 
@@ -355,7 +355,7 @@ class TestSplunkESClientAPIEssential:
             {"type": "source_ipv4_address", "value": "192.168.1.100"},
             {
                 "type": "parent_process_name",
-                "value": "obas-implant-12345678-1234-1234-1234-123456789abc-agent-87654321-4321-4321-4321-cba987654321",
+                "value": "oaev-implant-12345678-1234-1234-1234-123456789abc-agent-87654321-4321-4321-4321-cba987654321",
             },
         ]
 
@@ -379,7 +379,7 @@ class TestSplunkESClientAPIEssential:
         config = create_test_config()
         client = SplunkESClientAPI(config=config)
 
-        parent_process_name = "obas-implant-12345678-1234-1234-1234-123456789abc-agent-87654321-4321-4321-4321-cba987654321"
+        parent_process_name = "oaev-implant-12345678-1234-1234-1234-123456789abc-agent-87654321-4321-4321-4321-cba987654321"
 
         # Test UUID extraction
         uuids = client.parent_process_parser.extract_uuids_from_parent_process_name(
@@ -418,7 +418,7 @@ class TestSplunkESClientAPIEssential:
             source_ips=["192.168.1.100", "10.0.0.1"],
             target_ips=["172.16.0.1"],
             parent_process_names=[
-                "obas-implant-12345678-1234-1234-1234-123456789abc-agent-87654321-4321-4321-4321-cba987654321"
+                "oaev-implant-12345678-1234-1234-1234-123456789abc-agent-87654321-4321-4321-4321-cba987654321"
             ],
         )
 

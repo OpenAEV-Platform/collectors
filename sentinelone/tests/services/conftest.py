@@ -42,7 +42,7 @@ def mock_detection_helper():
     """Provide a mock detection helper that matches by default.
 
     Returns:
-        Mock OpenBAS detection helper that returns True for matches.
+        Mock OpenAEV detection helper that returns True for matches.
 
     """
     return MockObjectsFactory.create_mock_detection_helper(match_result=True)
@@ -53,7 +53,7 @@ def mock_detection_helper_no_match():
     """Provide a mock detection helper that doesn't match.
 
     Returns:
-        Mock OpenBAS detection helper that returns False for matches.
+        Mock OpenAEV detection helper that returns False for matches.
 
     """
     return MockObjectsFactory.create_mock_detection_helper(match_result=False)

@@ -2,12 +2,12 @@
 
 from typing import Any, Protocol
 
-from pyobas.apis.inject_expectation.model import (  # type: ignore[import-untyped]
+from pyoaev.apis.inject_expectation.model import (  # type: ignore[import-untyped]
     DetectionExpectation,
     PreventionExpectation,
 )
-from pyobas.helpers import OpenBASDetectionHelper  # type: ignore[import-untyped]
-from pyobas.signatures.types import SignatureTypes  # type: ignore[import-untyped]
+from pyoaev.helpers import OpenAEVDetectionHelper  # type: ignore[import-untyped]
+from pyoaev.signatures.types import SignatureTypes  # type: ignore[import-untyped]
 
 from .models import ExpectationResult
 
@@ -27,13 +27,13 @@ class ExpectationServiceProvider(Protocol):
     def handle_detection_expectation(
         self,
         expectation: DetectionExpectation,
-        detection_helper: OpenBASDetectionHelper,
+        detection_helper: OpenAEVDetectionHelper,
     ) -> ExpectationResult:
         """Handle a detection expectation.
 
         Args:
             expectation: The detection expectation to process.
-            detection_helper: OpenBAS detection helper instance.
+            detection_helper: OpenAEV detection helper instance.
 
         Returns:
             ExpectationResult containing the processing outcome.
@@ -44,13 +44,13 @@ class ExpectationServiceProvider(Protocol):
     def handle_prevention_expectation(
         self,
         expectation: PreventionExpectation,
-        detection_helper: OpenBASDetectionHelper,
+        detection_helper: OpenAEVDetectionHelper,
     ) -> ExpectationResult:
         """Handle a prevention expectation.
 
         Args:
             expectation: The prevention expectation to process.
-            detection_helper: OpenBAS detection helper instance.
+            detection_helper: OpenAEV detection helper instance.
 
         Returns:
             ExpectationResult containing the processing outcome.
@@ -59,13 +59,13 @@ class ExpectationServiceProvider(Protocol):
         ...
 
     def handle_batch_expectations(
-        self, expectations: list[Any], detection_helper: OpenBASDetectionHelper
+        self, expectations: list[Any], detection_helper: OpenAEVDetectionHelper
     ) -> list[ExpectationResult]:
         """Handle a batch of expectations efficiently.
 
         Args:
             expectations: List of expectations to process in batch.
-            detection_helper: OpenBAS detection helper instance.
+            detection_helper: OpenAEV detection helper instance.
 
         Returns:
             List of ExpectationResult objects for each processed expectation.

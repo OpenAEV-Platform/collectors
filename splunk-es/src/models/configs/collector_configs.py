@@ -18,17 +18,17 @@ TimedeltaInSeconds = Annotated[
 
 
 class _ConfigLoaderOAEV(ConfigBaseSettings):
-    """OpenBAS/OpenAEV platform configuration settings.
+    """OpenAEV/OpenAEV platform configuration settings.
 
-    Contains URL and authentication token for connecting to the OpenBAS platform.
+    Contains URL and authentication token for connecting to the OpenAEV platform.
     """
 
     url: HttpUrlToString = Field(
-        alias="OPENBAS_URL",
+        alias="OPENAEV_URL",
         description="The OpenAEV platform URL.",
     )
     token: str = Field(
-        alias="OPENBAS_TOKEN",
+        alias="OPENAEV_TOKEN",
         description="The token for the OpenAEV platform.",
     )
 

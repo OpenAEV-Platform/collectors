@@ -3,7 +3,7 @@
 from unittest.mock import Mock
 
 import pytest
-from pyobas.signatures.types import SignatureTypes
+from pyoaev.signatures.types import SignatureTypes
 from src.collector.models import ExpectationResult
 from src.services.exception import (
     SplunkESExpectationError,
@@ -137,7 +137,7 @@ class TestSplunkESExpectationServiceEssential:
         # Mock the isinstance check to return False for DetectionExpectation
         # and True for PreventionExpectation
         # We'll simulate this by calling the method that checks expectation type
-        from pyobas.apis.inject_expectation.model import PreventionExpectation
+        from pyoaev.apis.inject_expectation.model import PreventionExpectation
 
         # Create a mock that will fail the detection check
         prevention_mock = Mock(spec=PreventionExpectation)

@@ -1,12 +1,12 @@
-# OpenBAS Splunk Enterprise Security Collector
+# OpenAEV Splunk Enterprise Security Collector
 
-A Splunk Enterprise Security (ES) integration for OpenBAS that validates security expectations by querying Splunk ES for detection alerts and matching them against expected outcomes.
+A Splunk Enterprise Security (ES) integration for OpenAEV that validates security expectations by querying Splunk ES for detection alerts and matching them against expected outcomes.
 
 **Note**: Requires access to a Splunk Enterprise Security instance.
 
 ## Overview
 
-This collector validates OpenBAS expectations by querying your Splunk ES environment for matching security alerts via the Splunk REST API. When OpenBAS runs security exercises, this collector automatically checks if the expected security threats were actually detected in your SIEM, providing visibility into your detection capabilities.
+This collector validates OpenAEV expectations by querying your Splunk ES environment for matching security alerts via the Splunk REST API. When OpenAEV runs security exercises, this collector automatically checks if the expected security threats were actually detected in your SIEM, providing visibility into your detection capabilities.
 
 The collector uses Splunk's notable events and security alerts to validate detection expectations, with support for IP-based matching and parent process tracking through URL path analysis.
 
@@ -21,7 +21,7 @@ The collector uses Splunk's notable events and security alerts to validate detec
 
 ## Requirements
 
-- OpenBAS Platform
+- OpenAEV Platform
 - Splunk Enterprise Security instance.
 - Python 3.11+ (for manual deployment)
 - Splunk user account with appropriate search permissions
@@ -38,14 +38,14 @@ The collector supports multiple configuration sources in order of precedence:
 2. YAML configuration file (`src/config.yml`)
 3. Default values
 
-### OpenBAS environment variables
+### OpenAEV environment variables
 
-Below are the parameters you'll need to set for OpenBAS:
+Below are the parameters you'll need to set for OpenAEV:
 
 | Parameter     | config.yml    | Docker environment variable | Mandatory | Description                                          |
 |---------------|---------------|-----------------------------|-----------|------------------------------------------------------|
-| OpenBAS URL   | openbas.url   | `OPENBAS_URL`               | Yes       | The URL of the OpenBAS platform.                    |
-| OpenBAS Token | openbas.token | `OPENBAS_TOKEN`             | Yes       | The default admin token set in the OpenBAS platform.|
+| OpenAEV URL   | openaev.url   | `OPENAEV_URL`               | Yes       | The URL of the OpenAEV platform.                    |
+| OpenAEV Token | openaev.token | `OPENAEV_TOKEN`             | Yes       | The default admin token set in the OpenAEV platform.|
 
 ### Base collector environment variables
 
@@ -77,9 +77,9 @@ Below are the parameters you'll need to set for the collector:
 
 #### YAML Configuration (`src/config.yml`)
 ```yaml
-openbas:
-  url: "https://your-openbas-instance.com"
-  token: "your-openbas-token"
+openaev:
+  url: "https://your-openaev-instance.com"
+  token: "your-openaev-token"
 
 collector:
   id: "splunk-es--your-unique-uuid"
@@ -98,8 +98,8 @@ splunk_es:
 
 #### Environment Variables
 ```bash
-export OPENBAS_URL="https://your-openbas-instance.com"
-export OPENBAS_TOKEN="your-openbas-token"
+export OPENAEV_URL="https://your-openaev-instance.com"
+export OPENAEV_TOKEN="your-openaev-token"
 export COLLECTOR_ID="splunk-es--your-unique-uuid"
 export SPLUNKES_BASE_URL="https://your-splunk-es.company.com:8089"
 export SPLUNKES_USERNAME="splunk-user"
@@ -135,29 +135,29 @@ export SPLUNKES_ALERTS_INDEX="main"
 
 ```bash
 # Build the container
-docker build -t openbas-splunk-es-collector .
+docker build -t openaev-splunk-es-collector .
 
 # Run with environment variables
 docker run -d \
-  -e OPENBAS_URL="https://your-openbas-instance.com" \
-  -e OPENBAS_TOKEN="your-token" \
+  -e OPENAEV_URL="https://your-openaev-instance.com" \
+  -e OPENAEV_TOKEN="your-token" \
   -e COLLECTOR_ID="splunk-es--your-uuid" \
   -e SPLUNKES_BASE_URL="https://your-splunk-es.company.com:8089" \
   -e SPLUNKES_USERNAME="splunk-user" \
   -e SPLUNKES_PASSWORD="your-password" \
-  openbas-splunk-es-collector
+  openaev-splunk-es-collector
 
 # Or run with configuration file mounted
 docker run -d \
   -v /path/to/config.yml:/app/src/config.yml:ro \
-  openbas-splunk-es-collector
+  openaev-splunk-es-collector
 ```
 
 ## Behavior
 
 ### Supported Signature Types
 
-The collector supports the following OpenBAS signature types:
+The collector supports the following OpenAEV signature types:
 
 - **`source_ipv4_address`**: Source IPv4 addresses to search for in Splunk ES alerts
 - **`source_ipv6_address`**: Source IPv6 addresses to search for in Splunk ES alerts
@@ -169,13 +169,13 @@ The collector supports the following OpenBAS signature types:
 
 ### Processing Flow
 
-1. **Expectation Retrieval**: Fetches pending expectations from OpenBAS
+1. **Expectation Retrieval**: Fetches pending expectations from OpenAEV
 2. **Signature Extraction**: Extracts supported signature types from expectations
 3. **SPL Query Generation**: Constructs Search Processing Language queries for Splunk ES
 4. **Alert Search**: Executes searches against Splunk ES notable events index
-5. **Data Conversion**: Converts Splunk ES alerts to OpenBAS-compatible format
+5. **Data Conversion**: Converts Splunk ES alerts to OpenAEV-compatible format
 6. **Expectation Validation**: Matches found data against expectation criteria using DetectionHelper
-7. **Result Reporting**: Updates expectation status in OpenBAS
+7. **Result Reporting**: Updates expectation status in OpenAEV
 8. **Trace Creation**: Creates detailed traces linking back to Splunk ES search results
 
 ### Detection Logic
@@ -324,7 +324,7 @@ The collector uses a modular, service-provider architecture:
 - **Collector Core**: Main daemon handling scheduling and coordination
 - **Expectation Service**: Splunk ES-specific business logic and query generation
 - **Client API**: Splunk ES REST API communication layer with SPL query construction
-- **Converter**: Data transformation between Splunk ES and OpenBAS formats
+- **Converter**: Data transformation between Splunk ES and OpenAEV formats
 - **Trace Service**: Trace creation with Splunk ES search links
 - **Configuration System**: Hierarchical configuration management with Pydantic validation
 - **Parent Process Parser**: Utility for extracting UUIDs from URL paths
@@ -333,4 +333,4 @@ This architecture allows for easy extension and customization while maintaining 
 
 ## License
 
-This project is licensed under the terms specified in the main OpenBAS project.
+This project is licensed under the terms specified in the main OpenAEV project.

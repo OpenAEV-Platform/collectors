@@ -1,6 +1,6 @@
 # Contributing to SentinelOne Collector
 
-This document provides guidance for contributing to the SentinelOne collector for OpenBAS. This collector is now feature-complete with SentinelOne-specific implementation.
+This document provides guidance for contributing to the SentinelOne collector for OpenAEV. This collector is now feature-complete with SentinelOne-specific implementation.
 
 ## Current Implementation Status
 
@@ -39,20 +39,20 @@ This document provides guidance for contributing to the SentinelOne collector fo
 
 ### Poetry Extras
 
-- `--extra prod`: Get pyobas from PyPI (production releases)
-- `--extra current`: Get pyobas from Git release/current branch
-- `--extra local`: Get pyobas locally from `../../client-python`
+- `--extra prod`: Get pyoaev from PyPI (production releases)
+- `--extra current`: Get pyoaev from Git release/current branch
+- `--extra local`: Get pyoaev locally from `../../client-python`
 
 ### Development Installation
 
 ```bash
-# Development setup with current pyobas version
+# Development setup with current pyoaev version
 poetry install -E current --with dev,test
 
 # Production setup
 poetry install -E prod
 
-# Local development with local pyobas
+# Local development with local pyoaev
 poetry install -E local --with dev,test
 ```
 
@@ -321,4 +321,4 @@ The following components are platform-agnostic and can be reused:
 - Provide example configurations for different scenarios
 - Include troubleshooting guides for common issues
 
-This collector provides a production-ready SentinelOne integration for OpenBAS with comprehensive error handling, configurable retry logic, and detailed trace generation.
+This collector provides a production-ready SentinelOne integration for OpenAEV with comprehensive error handling, configurable retry logic, and detailed trace generation.
