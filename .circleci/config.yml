@@ -48,7 +48,12 @@ jobs:
       - run: # this is only to satisfy poetry; not used
           working_directory: ~/
           name: Clone pyoaev
-          command: git clone -b main https://github.com/OpenAEV-Platform/client-python
+          command: |
+            if [ "${CIRCLE_BRANCH}" = "release/current" ]; then
+              git clone -b release/current https://github.com/OpenBAS-Platform/client-python
+            else
+              git clone -b main https://github.com/OpenAEV-Platform/client-python
+            fi
       - run:
           working_directory: ~/openaev/crowdstrike
           name: Install poetry
