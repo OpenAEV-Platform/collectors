@@ -52,7 +52,7 @@ jobs:
       - run:
           working_directory: ~/openaev/crowdstrike
           name: Install poetry
-          command: pip install poetry==2.1.3 && poetry config installer.re-resolve false
+          command: cat poetry.lock && pip install poetry==2.1.3 && poetry config installer.re-resolve false
       - run:
           working_directory: ~/openaev/crowdstrike
           name: install crowdstrike
