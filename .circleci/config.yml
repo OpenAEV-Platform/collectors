@@ -52,7 +52,7 @@ jobs:
             if [ "${CIRCLE_BRANCH}" = "release/current" ]; then
               git clone -b release/current https://github.com/OpenBAS-Platform/client-python
             else
-              git clone -b main https://github.com/OpenAEV-Platform/client-python
+              git clone -b release/current https://github.com/OpenBAS-Platform/client-python
             fi
       - run:
           working_directory: ~/openaev/crowdstrike
