@@ -18,4 +18,4 @@ RUN cd ${installdir}/dist && pip3 install --no-cache-dir "$(ls *.whl)[prod]"
 # necessary for icon location
 WORKDIR ${installdir}
 
-CMD ["python3", "-m", "microsoft_intune.openbas_microsoft_intune"]
+CMD ["python3", "-m", "microsoft_intune.openaev_microsoft_intune"]

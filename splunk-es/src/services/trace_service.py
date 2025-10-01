@@ -9,7 +9,7 @@ from datetime import datetime
 from typing import Any
 from urllib.parse import quote
 
-from pyobas.apis.inject_expectation.model import (  # type: ignore[import-untyped]
+from pyoaev.apis.inject_expectation.model import (  # type: ignore[import-untyped]
     DetectionExpectation,
     PreventionExpectation,
 )
@@ -26,7 +26,7 @@ class SplunkESTraceService:
     """Splunk ES-specific trace service provider.
 
     This service extracts trace information from expectation processing results
-    and converts them into OpenBAS expectation traces using proper Pydantic models.
+    and converts them into OpenAEV expectation traces using proper Pydantic models.
     """
 
     def __init__(self, config: ConfigLoader | None = None) -> None:
@@ -57,7 +57,7 @@ class SplunkESTraceService:
             collector_id: ID of the collector.
 
         Returns:
-            List of ExpectationTrace models for OpenBAS.
+            List of ExpectationTrace models for OpenAEV.
 
         Raises:
             SplunkESValidationError: If inputs are invalid.
@@ -139,7 +139,7 @@ class SplunkESTraceService:
             collector_id: ID of the collector.
 
         Returns:
-            ExpectationTrace model for OpenBAS.
+            ExpectationTrace model for OpenAEV.
 
         Raises:
             SplunkESValidationError: If inputs are invalid.

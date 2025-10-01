@@ -1,11 +1,11 @@
-# OpenBAS Tanium Threat Response Collector
+# OpenAEV Tanium Threat Response Collector
 
 Table of Contents
 
-- [OpenBAS Tanium Threat Response Collector](#openbas-tanium-threat-response-collector)
+- [OpenAEV Tanium Threat Response Collector](#openaev-tanium-threat-response-collector)
     - [Prerequisites](#prerequisites)
     - [Configuration variables](#configuration-variables)
-        - [OpenBAS environment variables](#openbas-environment-variables)
+        - [OpenAEV environment variables](#openaev-environment-variables)
         - [Base collector environment variables](#base-collector-environment-variables)
         - [Collector extra parameters environment variables](#collector-extra-parameters-environment-variables)
     - [Deployment](#deployment)
@@ -22,14 +22,14 @@ To use this collector, you need to have a Tanium instance and create an API toke
 There are a number of configuration options, which are set either in `docker-compose.yml` (for Docker) or
 in `config.yml` (for manual deployment).
 
-### OpenBAS environment variables
+### OpenAEV environment variables
 
-Below are the parameters you'll need to set for OpenBAS:
+Below are the parameters you'll need to set for OpenAEV:
 
 | Parameter     | config.yml    | Docker environment variable | Mandatory | Description                                          |
 |---------------|---------------|-----------------------------|-----------|------------------------------------------------------|
-| OpenBAS URL   | openbas.url   | `OPENBAS_URL`               | Yes       | The URL of the OpenBAS platform.                     |
-| OpenBAS Token | openbas.token | `OPENBAS_TOKEN`             | Yes       | The default admin token set in the OpenBAS platform. |
+| OpenAEV URL   | openaev.url   | `OPENAEV_URL`               | Yes       | The URL of the OpenAEV platform.                     |
+| OpenAEV Token | openaev.token | `OPENAEV_TOKEN`             | Yes       | The default admin token set in the OpenAEV platform. |
 
 ### Base collector environment variables
 
@@ -90,8 +90,8 @@ Install the environment:
 poetry install --extras prod
 ```
 
-**Development** (note that you should also clone the [pyobas](OpenBAS-Platform/client-python) repository [according to
-these instructions](../README.md#simultaneous-development-on-pyobas-and-a-collector))
+**Development** (note that you should also clone the [pyoaev](OpenAEV-Platform/client-python) repository [according to
+these instructions](../README.md#simultaneous-development-on-pyoaev-and-a-collector))
 ```shell
 # development environment
 poetry install --extras dev
@@ -100,13 +100,13 @@ poetry install --extras dev
 Then, start the collector:
 
 ```shell
-poetry run python -m tanium_threat_response.openbas_tanium_threat_response
+poetry run python -m tanium_threat_response.openaev_tanium_threat_response
 ```
 
 ## Behavior
 
 The collector retrieves recent alerts (last 45 minutes) from Tanium Threat Response d matches them with attacks executed
-by OpenBAS agents to validate prevention and detection expectations.
+by OpenAEV agents to validate prevention and detection expectations.
 
-The collector identifies matches using the parent process name. OpenBAS attacks are
-recognized by the parent process name format: `openbas-implant-INJECT_ID.exe`.
+The collector identifies matches using the parent process name. OpenAEV attacks are
+recognized by the parent process name format: `openaev-implant-INJECT_ID.exe`.

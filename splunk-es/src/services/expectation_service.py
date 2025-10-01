@@ -9,12 +9,12 @@ import logging
 from datetime import timedelta
 from typing import Any
 
-from pyobas.apis.inject_expectation.model import (  # type: ignore[import-untyped]
+from pyoaev.apis.inject_expectation.model import (  # type: ignore[import-untyped]
     DetectionExpectation,
     PreventionExpectation,
 )
-from pyobas.helpers import OpenBASDetectionHelper  # type: ignore[import-untyped]
-from pyobas.signatures.types import SignatureTypes  # type: ignore[import-untyped]
+from pyoaev.helpers import OpenAEVDetectionHelper  # type: ignore[import-untyped]
+from pyoaev.signatures.types import SignatureTypes  # type: ignore[import-untyped]
 
 from ..collector.models import ExpectationResult
 from ..models.configs.config_loader import ConfigLoader
@@ -134,7 +134,7 @@ class SplunkESExpectationService:
     def handle_batch_expectations(
         self,
         expectations: list[DetectionExpectation | PreventionExpectation],
-        detection_helper: OpenBASDetectionHelper,
+        detection_helper: OpenAEVDetectionHelper,
     ) -> list[ExpectationResult]:
         """Handle a batch of expectations.
 
@@ -143,7 +143,7 @@ class SplunkESExpectationService:
 
         Args:
             expectations: List of expectations to process.
-            detection_helper: OpenBAS detection helper.
+            detection_helper: OpenAEV detection helper.
 
         Returns:
             List of ExpectationResult objects.
@@ -218,13 +218,13 @@ class SplunkESExpectationService:
     def process_expectation(
         self,
         expectation: DetectionExpectation | PreventionExpectation,
-        detection_helper: OpenBASDetectionHelper,
+        detection_helper: OpenAEVDetectionHelper,
     ) -> ExpectationResult:
         """Process a single expectation based on its type.
 
         Args:
             expectation: The expectation to process (Detection only for Splunk ES).
-            detection_helper: OpenBAS detection helper instance.
+            detection_helper: OpenAEV detection helper instance.
 
         Returns:
             ExpectationResult containing the processing outcome.
@@ -261,13 +261,13 @@ class SplunkESExpectationService:
     def handle_detection_expectation(
         self,
         expectation: DetectionExpectation,
-        detection_helper: OpenBASDetectionHelper,
+        detection_helper: OpenAEVDetectionHelper,
     ) -> ExpectationResult:
         """Handle a detection expectation.
 
         Args:
             expectation: The detection expectation to process.
-            detection_helper: OpenBAS detection helper instance.
+            detection_helper: OpenAEV detection helper instance.
 
         Returns:
             ExpectationResult containing the processing outcome.
@@ -281,7 +281,7 @@ class SplunkESExpectationService:
     def handle_prevention_expectation(
         self,
         expectation: PreventionExpectation,
-        detection_helper: OpenBASDetectionHelper,
+        detection_helper: OpenAEVDetectionHelper,
     ) -> ExpectationResult:
         """Handle a prevention expectation.
 
@@ -290,7 +290,7 @@ class SplunkESExpectationService:
 
         Args:
             expectation: The prevention expectation to process.
-            detection_helper: OpenBAS detection helper instance.
+            detection_helper: OpenAEV detection helper instance.
 
         Returns:
             ExpectationResult indicating that prevention is not supported.
@@ -310,14 +310,14 @@ class SplunkESExpectationService:
     def _handle_expectation(
         self,
         expectation: DetectionExpectation,
-        detection_helper: OpenBASDetectionHelper,
+        detection_helper: OpenAEVDetectionHelper,
         expectation_type: str,
     ) -> dict[str, Any]:
         """Core logic for handling expectations.
 
         Args:
             expectation: The expectation to process.
-            detection_helper: OpenBAS detection helper instance.
+            detection_helper: OpenAEV detection helper instance.
             expectation_type: Type of expectation ('detection').
 
         Returns:
@@ -438,7 +438,7 @@ class SplunkESExpectationService:
         self,
         oaev_data: list[dict[str, Any]],
         matching_signatures: list[dict[str, str]],
-        detection_helper: OpenBASDetectionHelper,
+        detection_helper: OpenAEVDetectionHelper,
         expectation_type: str,
     ) -> dict[str, Any]:
         """Match OAEV data against expectation signatures.
@@ -446,7 +446,7 @@ class SplunkESExpectationService:
         Args:
             oaev_data: List of OAEV formatted data.
             matching_signatures: Signatures to match against.
-            detection_helper: OpenBAS detection helper.
+            detection_helper: OpenAEV detection helper.
             expectation_type: Type of expectation ('detection').
 
         Returns:
@@ -542,14 +542,14 @@ class SplunkESExpectationService:
         self,
         signatures: list[dict[str, str]],
         data_item: dict[str, Any],
-        detection_helper: OpenBASDetectionHelper,
+        detection_helper: OpenAEVDetectionHelper,
     ) -> bool:
         """Match signatures using detection_helper with proper OR logic.
 
         Args:
             signatures: List of signature dictionaries.
             data_item: OAEV data item to match against.
-            detection_helper: OpenBAS detection helper instance.
+            detection_helper: OpenAEV detection helper instance.
 
         Returns:
             True if matching succeeds, False otherwise.

@@ -1,12 +1,12 @@
-# OpenBAS SentinelOne Collector
+# OpenAEV SentinelOne Collector
 
-A SentinelOne EDR integration for OpenBAS that validates security expectations by querying SentinelOne's Deep Visibility and Threats APIs.
+A SentinelOne EDR integration for OpenAEV that validates security expectations by querying SentinelOne's Deep Visibility and Threats APIs.
 
 **Note**: Requires access to a SentinelOne Management Console with appropriate API permissions.
 
 ## Overview
 
-This collector validates OpenBAS expectations by querying your SentinelOne environment for matching security events via the SentinelOne API. When OpenBAS runs security exercises, this collector automatically checks if the expected security threats were actually detected and/or prevented in your EDR, providing visibility into your detection and prevention capabilities.
+This collector validates OpenAEV expectations by querying your SentinelOne environment for matching security events via the SentinelOne API. When OpenAEV runs security exercises, this collector automatically checks if the expected security threats were actually detected and/or prevented in your EDR, providing visibility into your detection and prevention capabilities.
 
 The collector uses SentinelOne's Deep Visibility events for detection validation and combines them with threat data for prevention validation.
 
@@ -20,7 +20,7 @@ The collector uses SentinelOne's Deep Visibility events for detection validation
 
 ## Requirements
 
-- OpenBAS Platform
+- OpenAEV Platform
 - SentinelOne Management Console with API access
 - Python 3.12+ (for manual deployment)
 - SentinelOne API token with appropriate permissions
@@ -37,14 +37,14 @@ The collector supports multiple configuration sources in order of precedence:
 2. YAML configuration file (`src/config.yml`)
 3. Default values
 
-### OpenBAS environment variables
+### OpenAEV environment variables
 
-Below are the parameters you'll need to set for OpenBAS:
+Below are the parameters you'll need to set for OpenAEV:
 
 | Parameter     | config.yml    | Docker environment variable | Mandatory | Description                                          |
 |---------------|---------------|-----------------------------|-----------|------------------------------------------------------|
-| OpenBAS URL   | openbas.url   | `OPENBAS_URL`               | Yes       | The URL of the OpenBAS platform.                    |
-| OpenBAS Token | openbas.token | `OPENBAS_TOKEN`             | Yes       | The default admin token set in the OpenBAS platform.|
+| OpenAEV URL   | openaev.url   | `OPENAEV_URL`               | Yes       | The URL of the OpenAEV platform.                    |
+| OpenAEV Token | openaev.token | `OPENAEV_TOKEN`             | Yes       | The default admin token set in the OpenAEV platform.|
 
 ### Base collector environment variables
 
@@ -75,9 +75,9 @@ Below are the parameters you'll need to set for the collector:
 
 #### YAML Configuration (`src/config.yml`)
 ```yaml
-openbas:
-  url: "https://your-openbas-instance.com"
-  token: "your-openbas-token"
+openaev:
+  url: "https://your-openaev-instance.com"
+  token: "your-openaev-token"
 
 collector:
   id: "sentinelone--your-unique-uuid"
@@ -94,8 +94,8 @@ sentinelone:
 
 #### Environment Variables
 ```bash
-export OPENBAS_URL="https://your-openbas-instance.com"
-export OPENBAS_TOKEN="your-openbas-token"
+export OPENAEV_URL="https://your-openaev-instance.com"
+export OPENAEV_TOKEN="your-openaev-token"
 export COLLECTOR_ID="sentinelone--your-unique-uuid"
 export SENTINELONE_BASE_URL="https://your-sentinelone-console.sentinelone.net"
 export SENTINELONE_API_KEY="your-sentinelone-api-token"
@@ -129,28 +129,28 @@ export SENTINELONE_API_KEY="your-sentinelone-api-token"
 
 ```bash
 # Build the container
-docker build -t openbas-sentinelone-collector .
+docker build -t openaev-sentinelone-collector .
 
 # Run with environment variables
 docker run -d \
-  -e OPENBAS_URL="https://your-openbas-instance.com" \
-  -e OPENBAS_TOKEN="your-token" \
+  -e OPENAEV_URL="https://your-openaev-instance.com" \
+  -e OPENAEV_TOKEN="your-token" \
   -e COLLECTOR_ID="sentinelone--your-uuid" \
   -e SENTINELONE_BASE_URL="https://your-console.sentinelone.net" \
   -e SENTINELONE_API_KEY="your-api-key" \
-  openbas-sentinelone-collector
+  openaev-sentinelone-collector
 
 # Or run with configuration file mounted
 docker run -d \
   -v /path/to/config.yml:/app/src/config.yml:ro \
-  openbas-sentinelone-collector
+  openaev-sentinelone-collector
 ```
 
 ## Behavior
 
 ### Supported Signature Types
 
-The collector supports the following OpenBAS signature types:
+The collector supports the following OpenAEV signature types:
 
 - **`parent_process_name`**: Process names to search for in SentinelOne Deep Visibility
 - **`start_date`**: Start time for the search query (ISO 8601 format)
@@ -158,12 +158,12 @@ The collector supports the following OpenBAS signature types:
 
 ### Processing Flow
 
-1. **Expectation Retrieval**: Fetches pending expectations from OpenBAS
+1. **Expectation Retrieval**: Fetches pending expectations from OpenAEV
 2. **Signature Extraction**: Extracts supported signature types from expectations
 3. **Deep Visibility Query**: Searches SentinelOne for matching process execution events
 4. **Threat Correlation**: For prevention expectations, correlates events with threat data
 5. **Expectation Validation**: Matches found data against expectation criteria
-6. **Result Reporting**: Updates expectation status in OpenBAS
+6. **Result Reporting**: Updates expectation status in OpenAEV
 7. **Trace Creation**: Creates detailed traces linking back to SentinelOne console
 
 ### Detection vs Prevention Logic
@@ -296,4 +296,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, coding standards, 
 
 ## License
 
-This project is licensed under the terms specified in the main OpenBAS project.
+This project is licensed under the terms specified in the main OpenAEV project.

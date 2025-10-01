@@ -7,7 +7,7 @@ for expectation processing. It separates trace concerns from the main expectatio
 import logging
 from typing import Any
 
-from pyobas.client import OpenBAS  # type: ignore[import-untyped]
+from pyoaev.client import OpenAEV  # type: ignore[import-untyped]
 
 from .exception import TraceCreationError, TraceSubmissionError, TracingError
 from .models import ExpectationResult
@@ -20,19 +20,19 @@ class TraceManager:
     """Manages trace creation and submission for expectations.
 
     This manager handles all trace-related operations, including creating traces
-    from expectation results and submitting them to the OpenBAS API.
+    from expectation results and submitting them to the OpenAEV API.
     """
 
     def __init__(
         self,
-        oaev_api: OpenBAS,
+        oaev_api: OpenAEV,
         collector_id: str,
         trace_service: TraceServiceProvider | None = None,
     ) -> None:
         """Initialize trace manager.
 
         Args:
-            oaev_api: OpenBAS API client.
+            oaev_api: OpenAEV API client.
             collector_id: ID of the collector.
             trace_service: Service for creating traces from results.
 
@@ -58,7 +58,7 @@ class TraceManager:
         """Create and submit traces from expectation results.
 
         Creates traces from the provided expectation results using the trace service
-        and submits them to the OpenBAS API.
+        and submits them to the OpenAEV API.
 
         Args:
             results: List of ExpectationResult objects.
@@ -86,7 +86,7 @@ class TraceManager:
                 return
 
             self.logger.info(
-                f"{LOG_PREFIX} Created {len(traces)} traces, submitting to OpenBAS..."
+                f"{LOG_PREFIX} Created {len(traces)} traces, submitting to OpenAEV..."
             )
             self._submit_traces(traces)
 
@@ -97,7 +97,7 @@ class TraceManager:
             raise TracingError(f"Error creating and submitting traces: {e}") from e
 
     def _submit_traces(self, traces: list[Any]) -> None:
-        """Submit traces to the OpenBAS API.
+        """Submit traces to the OpenAEV API.
 
         Converts traces to API format and submits them using bulk creation.
         Falls back to individual creation if bulk submission fails.
@@ -120,7 +120,7 @@ class TraceManager:
                 return
 
             self.logger.debug(
-                f"{LOG_PREFIX} Submitting {len(trace_dicts)} trace dictionaries to OpenBAS"
+                f"{LOG_PREFIX} Submitting {len(trace_dicts)} trace dictionaries to OpenAEV"
             )
             self.logger.debug(
                 f"{LOG_PREFIX} Trace data preview: {trace_dicts[:2] if len(trace_dicts) > 2 else trace_dicts}"
@@ -133,7 +133,7 @@ class TraceManager:
             self.logger.info(
                 f"{LOG_PREFIX} Successfully created {len(trace_dicts)} expectation traces"
             )
-            self.logger.debug(f"{LOG_PREFIX} OpenBAS response: {response}")
+            self.logger.debug(f"{LOG_PREFIX} OpenAEV response: {response}")
 
         except Exception as e:
             self.logger.error(f"{LOG_PREFIX} Bulk trace submission failed: {e}")

@@ -1,18 +1,18 @@
 import boto3
 from botocore.exceptions import ClientError, NoCredentialsError
-from pyobas.helpers import OpenBASCollectorHelper, OpenBASConfigHelper
+from pyoaev.helpers import OpenAEVCollectorHelper, OpenAEVConfigHelper
 
 
-class OpenBASAWSResources:
+class OpenAEVAWSResources:
     def __init__(self):
-        self.config = OpenBASConfigHelper(
+        self.config = OpenAEVConfigHelper(
             __file__,
             {
                 # API information
-                "openbas_url": {"env": "OPENBAS_URL", "file_path": ["openbas", "url"]},
-                "openbas_token": {
-                    "env": "OPENBAS_TOKEN",
-                    "file_path": ["openbas", "token"],
+                "openaev_url": {"env": "OPENAEV_URL", "file_path": ["openaev", "url"]},
+                "openaev_token": {
+                    "env": "OPENAEV_TOKEN",
+                    "file_path": ["openaev", "token"],
                 },
                 # Config information
                 "collector_id": {
@@ -57,10 +57,10 @@ class OpenBASAWSResources:
                 },
             },
         )
-        self.helper = OpenBASCollectorHelper(
+        self.helper = OpenAEVCollectorHelper(
             config=self.config,
             icon="aws_resources/img/icon-aws-resources.png",
-            collector_type="openbas_aws_resources",
+            collector_type="openaev_aws_resources",
         )
 
         # AWS settings
@@ -103,7 +103,7 @@ class OpenBASAWSResources:
             if self.assume_role_arn:
                 sts_client = self.base_session.client("sts")
                 assumed_role = sts_client.assume_role(
-                    RoleArn=self.assume_role_arn, RoleSessionName="OpenBASAWSCollector"
+                    RoleArn=self.assume_role_arn, RoleSessionName="OpenAEVAWSCollector"
                 )
                 credentials = assumed_role["Credentials"]
                 self.session = boto3.Session(
@@ -350,7 +350,7 @@ class OpenBASAWSResources:
                     "asset_description": f"AWS EC2 Instance - Type: {instance_type}, Region: {region}, AZ: {availability_zone}, State: {state}",
                 }
 
-                # Prepare tag IDs list for OpenBAS tags
+                # Prepare tag IDs list for OpenAEV tags
                 tag_ids = []
                 tag_colors = {
                     "source": "#ef4444",  # Red
@@ -443,5 +443,5 @@ class OpenBASAWSResources:
 
 
 if __name__ == "__main__":
-    openBASAWSResources = OpenBASAWSResources()
-    openBASAWSResources.start()
+    openAEVAWSResources = OpenAEVAWSResources()
+    openAEVAWSResources.start()

@@ -21,7 +21,7 @@ class ParentProcessParser:
         self.uuid_pattern = (
             r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
         )
-        self.parent_process_pattern = r"obas-implant-([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})-agent-([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})"
+        self.parent_process_pattern = r"oaev-implant-([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})-agent-([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})"
 
     def extract_uuids_from_parent_process_name(
         self, parent_process_name: str
@@ -30,13 +30,13 @@ class ParentProcessParser:
 
         Args:
             parent_process_name: The parent process name containing UUIDs.
-                Expected format: 'obas-implant-{UUID1}-agent-{UUID2}'
+                Expected format: 'oaev-implant-{UUID1}-agent-{UUID2}'
 
         Returns:
             Tuple of (inject_uuid, agent_uuid) if found, None otherwise.
 
         Example:
-            Input: 'obas-implant-877b423b-ae91-4fc5-86c3-fa8ea3c938ba-agent-1402422f-2eaa-4fbd-80b2-b30df1b83b19'
+            Input: 'oaev-implant-877b423b-ae91-4fc5-86c3-fa8ea3c938ba-agent-1402422f-2eaa-4fbd-80b2-b30df1b83b19'
             Output: ('877b423b-ae91-4fc5-86c3-fa8ea3c938ba', '1402422f-2eaa-4fbd-80b2-b30df1b83b19')
 
         """
@@ -84,7 +84,7 @@ class ParentProcessParser:
         Example:
             Input: inject_uuid='877b423b-ae91-4fc5-86c3-fa8ea3c938ba',
                    agent_uuid='1402422f-2eaa-4fbd-80b2-b30df1b83b19'
-            Output: 'obas-implant-877b423b-ae91-4fc5-86c3-fa8ea3c938ba-agent-1402422f-2eaa-4fbd-80b2-b30df1b83b19'
+            Output: 'oaev-implant-877b423b-ae91-4fc5-86c3-fa8ea3c938ba-agent-1402422f-2eaa-4fbd-80b2-b30df1b83b19'
 
         """
         if not inject_uuid or not agent_uuid:
@@ -94,7 +94,7 @@ class ParentProcessParser:
             return ""
 
         try:
-            parent_process_name = f"obas-implant-{inject_uuid}-agent-{agent_uuid}"
+            parent_process_name = f"oaev-implant-{inject_uuid}-agent-{agent_uuid}"
             self.logger.debug(
                 f"{LOG_PREFIX} Constructed parent process name: {parent_process_name}"
             )

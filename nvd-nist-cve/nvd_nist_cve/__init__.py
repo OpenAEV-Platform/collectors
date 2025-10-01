@@ -1,7 +1,7 @@
 from .nvd_nist_cve_configuration import NvdNistCveConfiguration
-from .openbas_nvd_nist_cve import main
+from .openaev_nvd_nist_cve import main
 
-__author__ = "OpenBAS Team"
+__author__ = "OpenAEV Team"
 __email__ = "contact@filigran.io"
 
 __all__ = [

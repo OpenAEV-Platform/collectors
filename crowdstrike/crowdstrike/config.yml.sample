@@ -1,4 +1,4 @@
-openbas:
+openaev:
   url: 'http://localhost:8080'
   token: 'ChangeMe'
 

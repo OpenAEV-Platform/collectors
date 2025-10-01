@@ -2,8 +2,8 @@
 
 import os
 
-from pyobas.daemons import CollectorDaemon  # type: ignore[import-untyped]
-from pyobas.helpers import OpenBASDetectionHelper  # type: ignore[import-untyped]
+from pyoaev.daemons import CollectorDaemon  # type: ignore[import-untyped]
+from pyoaev.helpers import OpenAEVDetectionHelper  # type: ignore[import-untyped]
 from src.services.expectation_service import SplunkESExpectationService
 from src.services.trace_service import SplunkESTraceService
 from src.services.utils import SplunkESConfig
@@ -17,7 +17,7 @@ from .expectation_handler import GenericExpectationHandler
 from .expectation_manager import GenericExpectationManager
 
 LOG_PREFIX = "[Collector]"
-COLLECTOR_TYPE = "openbas_splunk_es"
+COLLECTOR_TYPE = "openaev_splunk_es"
 
 
 class Collector(CollectorDaemon):  # type: ignore[misc]
@@ -61,7 +61,7 @@ class Collector(CollectorDaemon):  # type: ignore[misc]
         """Set up the collector.
 
         Initializes Splunk Enterprise Security services, expectation handler, expectation manager,
-        and OpenBAS detection helper. Sets up the collector for processing expectations.
+        and OpenAEV detection helper. Sets up the collector for processing expectations.
 
         Raises:
             CollectorSetupError: If collector setup fails.
@@ -90,7 +90,7 @@ class Collector(CollectorDaemon):  # type: ignore[misc]
             )
 
             supported_signatures = self.splunkes_service.get_supported_signatures()
-            self.oaev_detection_helper = OpenBASDetectionHelper(
+            self.oaev_detection_helper = OpenAEVDetectionHelper(
                 logger=self.logger,
                 relevant_signatures_types=supported_signatures,
             )

@@ -20,7 +20,7 @@ class SentinelOneTraceService:
     """SentinelOne-specific trace service provider.
 
     This service extracts trace information from expectation processing results
-    and converts them into OpenBAS expectation traces using proper Pydantic models.
+    and converts them into OpenAEV expectation traces using proper Pydantic models.
     """
 
     def __init__(self, config: ConfigLoader | None = None) -> None:
@@ -50,7 +50,7 @@ class SentinelOneTraceService:
             collector_id: ID of the collector.
 
         Returns:
-            List of ExpectationTrace models for OpenBAS.
+            List of ExpectationTrace models for OpenAEV.
 
         Raises:
             SentinelOneValidationError: If inputs are invalid.
@@ -132,7 +132,7 @@ class SentinelOneTraceService:
             collector_id: ID of the collector.
 
         Returns:
-            ExpectationTrace model for OpenBAS.
+            ExpectationTrace model for OpenAEV.
 
         Raises:
             SentinelOneValidationError: If inputs are invalid.

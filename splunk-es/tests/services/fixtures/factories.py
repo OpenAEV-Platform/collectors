@@ -16,9 +16,9 @@ from src.services.models import SplunkESAlert, SplunkESSearchCriteria
 
 
 class ConfigLoaderOAEVFactory(ModelFactory[_ConfigLoaderOAEV]):
-    """Factory for OpenBAS configuration.
+    """Factory for OpenAEV configuration.
 
-    Creates test instances of OpenBAS configuration with required
+    Creates test instances of OpenAEV configuration with required
     environment variables automatically set.
     """
 
@@ -35,8 +35,8 @@ class ConfigLoaderOAEVFactory(ModelFactory[_ConfigLoaderOAEV]):
             _ConfigLoaderOAEV instance with test configuration.
 
         """
-        os.environ["OPENBAS_URL"] = "https://test-openbas.example.com"
-        os.environ["OPENBAS_TOKEN"] = "test-openbas-token-12345"  # noqa: S105
+        os.environ["OPENAEV_URL"] = "https://test-openaev.example.com"
+        os.environ["OPENAEV_TOKEN"] = "test-openaev-token-12345"  # noqa: S105
         return super().build(**kwargs)
 
 
@@ -83,13 +83,13 @@ class ConfigLoaderCollectorFactory(ModelFactory[ConfigLoaderCollector]):
 class ConfigLoaderFactory(ModelFactory[ConfigLoader]):
     """Factory for main configuration.
 
-    Creates complete test configuration instances combining OpenBAS,
+    Creates complete test configuration instances combining OpenAEV,
     collector, and Splunk ES settings using subfactories.
     """
 
     __check_model__ = False
 
-    openbas = Use(ConfigLoaderOAEVFactory.build)
+    openaev = Use(ConfigLoaderOAEVFactory.build)
     collector = Use(ConfigLoaderCollectorFactory.build)
     splunk_es = Use(ConfigLoaderSplunkESFactory.build)
 
@@ -150,7 +150,7 @@ class ExpectationResultFactory(ModelFactory[ExpectationResult]):
 class ExpectationTraceFactory(ModelFactory[ExpectationTrace]):
     """Factory for ExpectationTrace.
 
-    Creates test instances of expectation traces for OpenBAS
+    Creates test instances of expectation traces for OpenAEV
     with properly formatted trace data.
     """
 
@@ -197,7 +197,7 @@ class MockObjectsFactory:
             match_result: Whether the helper should return matches (default True).
 
         Returns:
-            Mock OpenBASDetectionHelper instance.
+            Mock OpenAEVDetectionHelper instance.
 
         """
         mock_helper = Mock()

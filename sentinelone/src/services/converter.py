@@ -14,7 +14,7 @@ from .model_threat import SentinelOneThreat
 LOG_PREFIX = "[SentinelOneConverter]"
 
 
-OBAS_IMPLANT_PREFIX = "obas-implant-"
+OBAS_IMPLANT_PREFIX = "oaev-implant-"
 
 
 class Converter:

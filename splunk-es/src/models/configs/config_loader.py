@@ -10,7 +10,7 @@ from pydantic_settings import (
     PydanticBaseSettingsSource,
     YamlConfigSettingsSource,
 )
-from pyobas.configuration import Configuration
+from pyoaev.configuration import Configuration
 from src.models.configs import (
     ConfigBaseSettings,
     _ConfigLoaderCollector,
@@ -41,12 +41,12 @@ class ConfigLoaderCollector(_ConfigLoaderCollector):
 class ConfigLoader(ConfigBaseSettings):
     """Configuration loader for the collector.
 
-    Main configuration class that combines OpenBAS, collector, and SplunkES
+    Main configuration class that combines OpenAEV, collector, and SplunkES
     settings. Supports loading from YAML files, environment variables, and
     provides methods for converting to daemon-compatible format.
     """
 
-    openbas: _ConfigLoaderOAEV = Field(
+    openaev: _ConfigLoaderOAEV = Field(
         default_factory=_ConfigLoaderOAEV,  # type: ignore[unused-ignore]
         description="OpenAEV configurations.",
     )
@@ -127,9 +127,9 @@ class ConfigLoader(ConfigBaseSettings):
         """
         return Configuration(
             config_hints={
-                # OpenBAS configuration (flattened)
-                "openbas_url": {"data": str(self.openbas.url)},
-                "openbas_token": {"data": self.openbas.token},
+                # OpenAEV configuration (flattened)
+                "openaev_url": {"data": str(self.openaev.url)},
+                "openaev_token": {"data": self.openaev.token},
                 # Collector configuration (flattened)
                 "collector_id": {"data": self.collector.id},
                 "collector_name": {"data": self.collector.name},

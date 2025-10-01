@@ -1,10 +1,10 @@
 version: '3'
 services:
   collector-microsoft-intune:
-    image: openbas/collector-microsoft-intune:latest
+    image: openaev/collector-microsoft-intune:latest
     environment:
-      - OPENBAS_URL=${OPENBAS_URL}
-      - OPENBAS_TOKEN=${OPENBAS_TOKEN}
+      - OPENAEV_URL=${OPENAEV_URL}
+      - OPENAEV_TOKEN=${OPENAEV_TOKEN}
       - COLLECTOR_ID=${COLLECTOR_ID}
       - COLLECTOR_NAME=${COLLECTOR_NAME}
       - COLLECTOR_PERIOD=${COLLECTOR_PERIOD}

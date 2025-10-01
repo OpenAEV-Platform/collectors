@@ -4,20 +4,20 @@ from typing import Any, Dict, List, Optional
 import requests
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
-from pyobas.helpers import OpenBASCollectorHelper, OpenBASConfigHelper
+from pyoaev.helpers import OpenAEVCollectorHelper, OpenAEVConfigHelper
 
 
-class OpenBASGoogleWorkspace:
+class OpenAEVGoogleWorkspace:
     def __init__(self):
         self.session = requests.Session()
-        self.config = OpenBASConfigHelper(
+        self.config = OpenAEVConfigHelper(
             __file__,
             {
                 # API information
-                "openbas_url": {"env": "OPENBAS_URL", "file_path": ["openbas", "url"]},
-                "openbas_token": {
-                    "env": "OPENBAS_TOKEN",
-                    "file_path": ["openbas", "token"],
+                "openaev_url": {"env": "OPENAEV_URL", "file_path": ["openaev", "url"]},
+                "openaev_token": {
+                    "env": "OPENAEV_TOKEN",
+                    "file_path": ["openaev", "token"],
                 },
                 # Config information
                 "collector_id": {
@@ -68,10 +68,10 @@ class OpenBASGoogleWorkspace:
                 },
             },
         )
-        self.helper = OpenBASCollectorHelper(
+        self.helper = OpenAEVCollectorHelper(
             config=self.config,
             icon="google_workspace/img/icon-google-workspace.png",
-            collector_type="openbas_google_workspace",
+            collector_type="openaev_google_workspace",
         )
 
         # Configuration
@@ -228,7 +228,7 @@ class OpenBASGoogleWorkspace:
     def _create_user_with_tags(
         self, user: Dict[str, Any], team_ids: List[str] = None
     ) -> None:
-        """Create or update a user in OpenBAS with appropriate tags."""
+        """Create or update a user in OpenAEV with appropriate tags."""
         # Define tag colors
         tag_colors = {
             "source": "#ef4444",  # Red
@@ -318,7 +318,7 @@ class OpenBASGoogleWorkspace:
         if tag_ids:
             user_data["user_tags"] = tag_ids
 
-        # Upsert user to OpenBAS
+        # Upsert user to OpenAEV
         try:
             self.helper.api.user.upsert(user_data)
             self.helper.collector_logger.debug(f"Created/updated user: {primary_email}")
@@ -343,11 +343,11 @@ class OpenBASGoogleWorkspace:
             if not group_email:
                 continue
 
-            # Create or update team in OpenBAS
+            # Create or update team in OpenAEV
             team_data = {"team_name": group_name}
             try:
-                openbas_team = self.helper.api.team.upsert(team_data)
-                team_id = openbas_team.get("team_id")
+                openaev_team = self.helper.api.team.upsert(team_data)
+                team_id = openaev_team.get("team_id")
                 self.helper.collector_logger.debug(
                     f"Created/updated team: {group_name}"
                 )
@@ -418,5 +418,5 @@ class OpenBASGoogleWorkspace:
 
 
 if __name__ == "__main__":
-    openBASGoogleWorkspace = OpenBASGoogleWorkspace()
-    openBASGoogleWorkspace.start()
+    openAEVGoogleWorkspace = OpenAEVGoogleWorkspace()
+    openAEVGoogleWorkspace.start()

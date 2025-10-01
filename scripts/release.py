@@ -3,7 +3,7 @@ import logging
 import os
 
 import requests
-from OBAS_utils.release_utils import closeRelease
+from OAEV_utils.release_utils import closeRelease
 
 logging.basicConfig(encoding="utf-8", level=logging.INFO)
 
@@ -54,22 +54,22 @@ os.system(
 
 # -> README.md
 os.system(
-    "grep -rli 'OpenBAS Platform >= "
+    "grep -rli 'OpenAEV Platform >= "
     + previous_version
-    + "' * | xargs -i@ sed -i 's/OpenBAS Platform >= "
+    + "' * | xargs -i@ sed -i 's/OpenAEV Platform >= "
     + previous_version.replace(".", "\\.")
-    + "/OpenBAS Platform >= "
+    + "/OpenAEV Platform >= "
     + new_version.replace(".", "\\.")
     + "/g' @"
 )
 
-# pyobas= = x.x.x -> pyproject.toml
+# pyoaev= = x.x.x -> pyproject.toml
 os.system(
-    "grep -rli 'pyobas = \""
+    "grep -rli 'pyoaev = \""
     + previous_version
-    + "\"' **/pyproject.toml | xargs -i@ sed -i 's/pyobas = \""
+    + "\"' **/pyproject.toml | xargs -i@ sed -i 's/pyoaev = \""
     + previous_version.replace(".", "\\.")
-    + '"/pyobas = "'
+    + '"/pyoaev = "'
     + new_version.replace(".", "\\.")
     + "\"/g' @"
 )
@@ -102,7 +102,7 @@ os.system("gren release > /dev/null 2>&1")
 # Modify the release note
 logging.info("[collectors] Getting the current release note")
 release = requests.get(
-    "https://api.github.com/repos/OpenBAS-Platform/collectors/releases/latest",
+    "https://api.github.com/repos/OpenAEV-Platform/collectors/releases/latest",
     headers={
         "Accept": "application/vnd.github+json",
         "Authorization": "Bearer " + github_token,
@@ -114,7 +114,7 @@ release_body = release_data["body"]
 
 logging.info("[collectors] Generating the new release note")
 github_release_note = requests.post(
-    "https://api.github.com/repos/OpenBAS-Platform/collectors/releases/generate-notes",
+    "https://api.github.com/repos/OpenAEV-Platform/collectors/releases/generate-notes",
     headers={
         "Accept": "application/vnd.github+json",
         "Authorization": "Bearer " + github_token,
@@ -137,7 +137,7 @@ else:
 
 logging.info("[collectors] Updating the release")
 requests.patch(
-    "https://api.github.com/repos/OpenBAS-Platform/collectors/releases/"
+    "https://api.github.com/repos/OpenAEV-Platform/collectors/releases/"
     + str(release_data["id"]),
     headers={
         "Accept": "application/vnd.github+json",
@@ -148,7 +148,7 @@ requests.patch(
 )
 
 closeRelease(
-    "https://api.github.com/repos/OpenBAS-Platform/collectors",
+    "https://api.github.com/repos/OpenAEV-Platform/collectors",
     new_version,
     github_token,
 )

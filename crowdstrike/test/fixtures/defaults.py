@@ -1,20 +1,20 @@
 from unittest.mock import patch
 
-from pyobas.helpers import (
-    OpenBASCollectorHelper,
-    OpenBASConfigHelper,
-    OpenBASDetectionHelper,
+from pyoaev.helpers import (
+    OpenAEVCollectorHelper,
+    OpenAEVConfigHelper,
+    OpenAEVDetectionHelper,
 )
-from pyobas.signatures.signature_type import SignatureType
-from pyobas.signatures.types import MatchTypes, SignatureTypes
+from pyoaev.signatures.signature_type import SignatureType
+from pyoaev.signatures.types import MatchTypes, SignatureTypes
 
 from crowdstrike.crowdstrike_api_handler import CrowdstrikeApiHandler
-from crowdstrike.openbas_crowdstrike import OpenBASCrowdStrike
+from crowdstrike.openaev_crowdstrike import OpenAEVCrowdStrike
 from crowdstrike.query_strategy.base import Base
 
 DEFAULT_COLLECTOR_CONFIG = {
-    "openbas_url": {"data": "http://fake_openbas_base_url"},
-    "openbas_token": {"data": "openbas_uuid_token"},
+    "openaev_url": {"data": "http://fake_openaev_base_url"},
+    "openaev_token": {"data": "openaev_uuid_token"},
     # Config information
     "collector_id": {"data": "collector_uuid_identifier"},
     "collector_name": {"data": "CrowdStrike Endpoint Security"},
@@ -41,30 +41,30 @@ FAKE_DOCUMENT = {"document_id": "fake_document_id"}
 FAKE_SECURITY_PLATFORM = {"asset_id": "fake_asset_id"}
 
 
-def get_default_openbas_config_helper(
+def get_default_openaev_config_helper(
     config: dict = DEFAULT_COLLECTOR_CONFIG,
-) -> OpenBASConfigHelper:
-    return OpenBASConfigHelper(variables=config, base_path="fake_path")
+) -> OpenAEVConfigHelper:
+    return OpenAEVConfigHelper(variables=config, base_path="fake_path")
 
 
-@patch("pyobas.apis.document.DocumentManager.upsert")
-@patch("pyobas.apis.security_platform.SecurityPlatformManager.upsert")
-@patch("pyobas.mixins.CreateMixin.create")
+@patch("pyoaev.apis.document.DocumentManager.upsert")
+@patch("pyoaev.apis.security_platform.SecurityPlatformManager.upsert")
+@patch("pyoaev.mixins.CreateMixin.create")
 @patch("builtins.open")
-def get_default_openbas_collector_helper(
+def get_default_openaev_collector_helper(
     mock_open,
     mockMixinCreate,
     mock_security_platform_upsert,
     mock_document_upsert,
-    config: OpenBASConfigHelper = get_default_openbas_config_helper(),
-) -> OpenBASCollectorHelper:
+    config: OpenAEVConfigHelper = get_default_openaev_config_helper(),
+) -> OpenAEVCollectorHelper:
     mock_document_upsert.return_value = FAKE_DOCUMENT
     mock_security_platform_upsert.return_value = FAKE_SECURITY_PLATFORM
     mock_open.return_value = None
-    return OpenBASCollectorHelper(
+    return OpenAEVCollectorHelper(
         config=config,
         icon="some.png",
-        collector_type="openbas_crowdstrike",
+        collector_type="openaev_crowdstrike",
         security_platform_type=config.get_conf("collector_platform"),
         connect_run_and_terminate=True,
     )
@@ -77,10 +77,10 @@ def get_default_signature_types(
 
 
 def get_default_detection_helper(
-    helper: OpenBASCollectorHelper = get_default_openbas_collector_helper(),
+    helper: OpenAEVCollectorHelper = get_default_openaev_collector_helper(),
     signature_types: list[SignatureType] = get_default_signature_types(),
 ):
-    return OpenBASDetectionHelper(
+    return OpenAEVDetectionHelper(
         logger=helper.collector_logger,
         relevant_signatures_types=[
             signature_type.label.value for signature_type in signature_types
@@ -89,7 +89,7 @@ def get_default_detection_helper(
 
 
 def get_default_api_handler(
-    helper: OpenBASCollectorHelper = get_default_openbas_collector_helper(),
+    helper: OpenAEVCollectorHelper = get_default_openaev_collector_helper(),
 ) -> CrowdstrikeApiHandler:
     return CrowdstrikeApiHandler(
         helper=helper,
@@ -101,12 +101,12 @@ def get_default_api_handler(
 
 def get_default_collector(
     strategy,
-    config: OpenBASConfigHelper = get_default_openbas_config_helper(),
-    helper: OpenBASCollectorHelper = get_default_openbas_collector_helper(),
-    detection_helper: OpenBASDetectionHelper = get_default_detection_helper(),
+    config: OpenAEVConfigHelper = get_default_openaev_config_helper(),
+    helper: OpenAEVCollectorHelper = get_default_openaev_collector_helper(),
+    detection_helper: OpenAEVDetectionHelper = get_default_detection_helper(),
     signature_types: list[SignatureType] = get_default_signature_types(),
 ):
-    return OpenBASCrowdStrike(
+    return OpenAEVCrowdStrike(
         strategy=strategy,
         config=config,
         helper=helper,

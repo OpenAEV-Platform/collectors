@@ -1,10 +1,10 @@
-# OpenBAS Atomic Red Team Collector
+# OpenAEV Atomic Red Team Collector
 
 Table of Contents
 
-- [OpenBAS Atomic Red Team Collector](#openbas-atomic-red-team-collector)
+- [OpenAEV Atomic Red Team Collector](#openaev-atomic-red-team-collector)
     - [Configuration variables](#configuration-variables)
-        - [OpenBAS environment variables](#openbas-environment-variables)
+        - [OpenAEV environment variables](#openaev-environment-variables)
         - [Base collector environment variables](#base-collector-environment-variables)
     - [Deployment](#deployment)
         - [Docker Deployment](#docker-deployment)
@@ -16,14 +16,14 @@ Table of Contents
 There are a number of configuration options, which are set either in `docker-compose.yml` (for Docker) or
 in `config.yml` (for manual deployment).
 
-### OpenBAS environment variables
+### OpenAEV environment variables
 
-Below are the parameters you'll need to set for OpenBAS:
+Below are the parameters you'll need to set for OpenAEV:
 
 | Parameter     | config.yml    | Docker environment variable | Mandatory | Description                                          |
 |---------------|---------------|-----------------------------|-----------|------------------------------------------------------|
-| OpenBAS URL   | openbas.url   | `OPENBAS_URL`               | Yes       | The URL of the OpenBAS platform.                     |
-| OpenBAS Token | openbas.token | `OPENBAS_TOKEN`             | Yes       | The default admin token set in the OpenBAS platform. |
+| OpenAEV URL   | openaev.url   | `OPENAEV_URL`               | Yes       | The URL of the OpenAEV platform.                     |
+| OpenAEV Token | openaev.token | `OPENAEV_TOKEN`             | Yes       | The default admin token set in the OpenAEV platform. |
 
 ### Base collector environment variables
 
@@ -72,8 +72,8 @@ Install the environment:
 poetry install --extras prod
 ```
 
-**Development** (note that you should also clone the [pyobas](OpenBAS-Platform/client-python) repository [according to
-these instructions](../README.md#simultaneous-development-on-pyobas-and-a-collector))
+**Development** (note that you should also clone the [pyoaev](OpenAEV-Platform/client-python) repository [according to
+these instructions](../README.md#simultaneous-development-on-pyoaev-and-a-collector))
 ```shell
 # development environment
 poetry install --extras dev
@@ -82,10 +82,10 @@ poetry install --extras dev
 Then, start the collector:
 
 ```shell
-poetry run python -m atomic_red_team.openbas_atomic_red_team
+poetry run python -m atomic_red_team.openaev_atomic_red_team
 ```
 
 ## Behavior
 
-This collector retrieves the Atomic Red Team GitHub repository to extract payloads and import them into your OpenBAS
+This collector retrieves the Atomic Red Team GitHub repository to extract payloads and import them into your OpenAEV
 instance.

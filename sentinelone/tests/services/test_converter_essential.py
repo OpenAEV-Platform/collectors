@@ -37,14 +37,14 @@ class TestConverterEssential:
         assert result_none == []  # noqa: S101
         assert result_empty == []  # noqa: S101
 
-    def test_convert_dv_event_with_obas_parent_process(self):
-        """Test converting DV event with obas-implant parent process name.
+    def test_convert_dv_event_with_oaev_parent_process(self):
+        """Test converting DV event with oaev-implant parent process name.
 
         Verifies that Deep Visibility events containing OBAS implant process
         names are properly converted to OAEV format with correct structure.
         """
         converter = Converter()
-        parent_process_name = "obas-implant-test-12345"
+        parent_process_name = "oaev-implant-test-12345"
         dv_event = DeepVisibilityEventFactory.build(
             src_proc_parent_name=parent_process_name
         )
@@ -58,8 +58,8 @@ class TestConverterEssential:
             parent_process_name
         ]
 
-    def test_convert_dv_event_without_obas_process_names(self):
-        """Test converting DV event without any obas-implant process names.
+    def test_convert_dv_event_without_oaev_process_names(self):
+        """Test converting DV event without any oaev-implant process names.
 
         Verifies that Deep Visibility events without OBAS implant patterns
         result in empty conversion output as they're not relevant for OAEV.
@@ -101,7 +101,7 @@ class TestConverterEssential:
         converter = Converter()
 
         dv_event = DeepVisibilityEventFactory.build(
-            src_proc_parent_name="obas-implant-dv-test"
+            src_proc_parent_name="oaev-implant-dv-test"
         )
         threat = SentinelOneThreatFactory.build(threat_id="threat-mixed-test")
         mixed_data = [dv_event, threat]

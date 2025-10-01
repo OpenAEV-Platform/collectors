@@ -5,13 +5,13 @@ import time
 from datetime import datetime, timedelta
 from typing import Any
 
-from pyobas.apis.inject_expectation.model import (  # type: ignore[import-untyped]
+from pyoaev.apis.inject_expectation.model import (  # type: ignore[import-untyped]
     DetectionExpectation,
     PreventionExpectation,
 )
-from pyobas.client import OpenBAS  # type: ignore[import-untyped]
-from pyobas.helpers import OpenBASDetectionHelper  # type: ignore[import-untyped]
-from pyobas.signatures.types import SignatureTypes  # type: ignore[import-untyped]
+from pyoaev.client import OpenAEV  # type: ignore[import-untyped]
+from pyoaev.helpers import OpenAEVDetectionHelper  # type: ignore[import-untyped]
+from pyoaev.signatures.types import SignatureTypes  # type: ignore[import-untyped]
 
 from .exception import (
     APIError,
@@ -41,7 +41,7 @@ class GenericExpectationManager:
 
     def __init__(
         self,
-        oaev_api: OpenBAS,
+        oaev_api: OpenAEV,
         collector_id: str,
         expectation_handler: GenericExpectationHandler,
         trace_service: TraceServiceProvider | None = None,
@@ -49,7 +49,7 @@ class GenericExpectationManager:
         """Initialize generic expectation manager.
 
         Args:
-            oaev_api: OpenBAS API client.
+            oaev_api: OpenAEV API client.
             collector_id: ID of the collector.
             expectation_handler: Handler for processing expectations.
             trace_service: Optional service for creating traces.
@@ -80,15 +80,15 @@ class GenericExpectationManager:
         )
 
     def process_expectations(
-        self, detection_helper: OpenBASDetectionHelper
+        self, detection_helper: OpenAEVDetectionHelper
     ) -> ProcessingSummary:
         """Process all expectations using the injected handler.
 
-        Fetches expectations from OpenBAS, processes them through the handler,
-        updates expectations in OpenBAS, and creates traces.
+        Fetches expectations from OpenAEV, processes them through the handler,
+        updates expectations in OpenAEV, and creates traces.
 
         Args:
-            detection_helper: OpenBAS detection helper.
+            detection_helper: OpenAEV detection helper.
 
         Returns:
             ProcessingSummary containing processing results.
@@ -100,7 +100,7 @@ class GenericExpectationManager:
         try:
             self.logger.info(f"{LOG_PREFIX} Starting expectation processing cycle")
 
-            self.logger.debug(f"{LOG_PREFIX} Fetching expectations from OpenBAS...")
+            self.logger.debug(f"{LOG_PREFIX} Fetching expectations from OpenAEV...")
             expectations = self._fetch_expectations_with_timeout()
 
             if not expectations:
@@ -134,7 +134,7 @@ class GenericExpectationManager:
                 supported_expectations, detection_helper
             )
 
-            self.logger.debug(f"{LOG_PREFIX} Updating expectations in OpenBAS...")
+            self.logger.debug(f"{LOG_PREFIX} Updating expectations in OpenAEV...")
             self._bulk_update_expectations(results)
 
             self.logger.debug(f"{LOG_PREFIX} Creating and submitting traces...")
@@ -171,10 +171,10 @@ class GenericExpectationManager:
             ) from e
 
     def _bulk_update_expectations(self, results: list[ExpectationResult]) -> None:
-        """Bulk update expectations in OpenBAS.
+        """Bulk update expectations in OpenAEV.
 
         Prepares bulk data from results and attempts to update expectations
-        using the OpenBAS bulk update API.
+        using the OpenAEV bulk update API.
 
         Args:
             results: List of ExpectationResult objects to update.
@@ -215,7 +215,7 @@ class GenericExpectationManager:
         """Prepare bulk data from results.
 
         Transforms ExpectationResult objects into dictionary format
-        required by the OpenBAS bulk update API.
+        required by the OpenAEV bulk update API.
 
         Args:
             results: List of ExpectationResult objects.
@@ -308,7 +308,7 @@ class GenericExpectationManager:
 
         """
         try:
-            self.logger.debug(f"{LOG_PREFIX} Attempting bulk update via OpenBAS API...")
+            self.logger.debug(f"{LOG_PREFIX} Attempting bulk update via OpenAEV API...")
             self.oaev_api.inject_expectation.bulk_update(
                 inject_expectation_input_by_id=bulk_data
             )
@@ -399,7 +399,7 @@ class GenericExpectationManager:
     ) -> list[DetectionExpectation | PreventionExpectation]:
         """Keep fetching expectations until we get ones with end_date or 5min timeout.
 
-        Continuously fetches expectations from OpenBAS until either:
+        Continuously fetches expectations from OpenAEV until either:
         1. Expectations with end_date signatures are found, or
         2. The 5-minute timeout is reached.
 

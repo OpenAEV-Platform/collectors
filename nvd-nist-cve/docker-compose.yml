@@ -1,10 +1,10 @@
 version: '3'
 services:
   collector-nvd-nist-cve:
-    image: openbas/collector-nvd-nist-cve:latest
+    image: openaev/collector-nvd-nist-cve:latest
     environment:
-      - OPENBAS_URL=${OPENBAS_URL}
-      - OPENBAS_TOKEN=${OPENBAS_TOKEN}
+      - OPENAEV_URL=${OPENAEV_URL}
+      - OPENAEV_TOKEN=${OPENAEV_TOKEN}
       - COLLECTOR_ID=${COLLECTOR_ID}
       - COLLECTOR_NAME=${COLLECTOR_NAME:-"CVE by NVD NIST"}
       - COLLECTOR_LOG_LEVEL=${COLLECTOR_LOG_LEVEL:-warn}

@@ -8,12 +8,12 @@ how to fetch data, and how to process expectations.
 import logging
 from typing import Any
 
-from pyobas.apis.inject_expectation.model import (  # type: ignore[import-untyped]
+from pyoaev.apis.inject_expectation.model import (  # type: ignore[import-untyped]
     DetectionExpectation,
     PreventionExpectation,
 )
-from pyobas.helpers import OpenBASDetectionHelper  # type: ignore[import-untyped]
-from pyobas.signatures.types import SignatureTypes  # type: ignore[import-untyped]
+from pyoaev.helpers import OpenAEVDetectionHelper  # type: ignore[import-untyped]
+from pyoaev.signatures.types import SignatureTypes  # type: ignore[import-untyped]
 
 from ..collector.models import ExpectationResult
 from ..models.configs.config_loader import ConfigLoader
@@ -120,7 +120,7 @@ class SentinelOneExpectationService:
     def handle_batch_expectations(
         self,
         expectations: list[DetectionExpectation | PreventionExpectation],
-        detection_helper: OpenBASDetectionHelper,
+        detection_helper: OpenAEVDetectionHelper,
     ) -> list[ExpectationResult]:
         """Handle a batch of expectations.
 
@@ -129,7 +129,7 @@ class SentinelOneExpectationService:
 
         Args:
             expectations: List of expectations to process.
-            detection_helper: OpenBAS detection helper.
+            detection_helper: OpenAEV detection helper.
 
         Returns:
             List of ExpectationResult objects.
@@ -204,13 +204,13 @@ class SentinelOneExpectationService:
     def process_expectation(
         self,
         expectation: DetectionExpectation | PreventionExpectation,
-        detection_helper: OpenBASDetectionHelper,
+        detection_helper: OpenAEVDetectionHelper,
     ) -> ExpectationResult:
         """Process a single expectation based on its type.
 
         Args:
             expectation: The expectation to process (Detection or Prevention).
-            detection_helper: OpenBAS detection helper instance.
+            detection_helper: OpenAEV detection helper instance.
 
         Returns:
             ExpectationResult containing the processing outcome.
@@ -242,13 +242,13 @@ class SentinelOneExpectationService:
     def handle_detection_expectation(
         self,
         expectation: DetectionExpectation,
-        detection_helper: OpenBASDetectionHelper,
+        detection_helper: OpenAEVDetectionHelper,
     ) -> ExpectationResult:
         """Handle a detection expectation.
 
         Args:
             expectation: The detection expectation to process.
-            detection_helper: OpenBAS detection helper instance.
+            detection_helper: OpenAEV detection helper instance.
 
         Returns:
             ExpectationResult containing the processing outcome.
@@ -262,13 +262,13 @@ class SentinelOneExpectationService:
     def handle_prevention_expectation(
         self,
         expectation: PreventionExpectation,
-        detection_helper: OpenBASDetectionHelper,
+        detection_helper: OpenAEVDetectionHelper,
     ) -> ExpectationResult:
         """Handle a prevention expectation.
 
         Args:
             expectation: The prevention expectation to process.
-            detection_helper: OpenBAS detection helper instance.
+            detection_helper: OpenAEV detection helper instance.
 
         Returns:
             ExpectationResult containing the processing outcome.
@@ -282,14 +282,14 @@ class SentinelOneExpectationService:
     def _handle_expectation(
         self,
         expectation: DetectionExpectation | PreventionExpectation,
-        detection_helper: OpenBASDetectionHelper,
+        detection_helper: OpenAEVDetectionHelper,
         expectation_type: str,
     ) -> dict[str, Any]:
         """Core logic for handling expectations.
 
         Args:
             expectation: The expectation to process.
-            detection_helper: OpenBAS detection helper instance.
+            detection_helper: OpenAEV detection helper instance.
             expectation_type: Type of expectation ('detection' or 'prevention').
 
         Returns:
@@ -410,7 +410,7 @@ class SentinelOneExpectationService:
         self,
         oaev_data: list[dict[str, Any]],
         matching_signatures: list[dict[str, str]],
-        detection_helper: OpenBASDetectionHelper,
+        detection_helper: OpenAEVDetectionHelper,
         expectation_type: str,
     ) -> dict[str, Any]:
         """Match OAEV data against expectation signatures using unified DV+Threat analysis.
@@ -423,7 +423,7 @@ class SentinelOneExpectationService:
         Args:
             oaev_data: List of OAEV formatted data (contains both DV and Threat data).
             matching_signatures: Signatures to match against.
-            detection_helper: OpenBAS detection helper.
+            detection_helper: OpenAEV detection helper.
             expectation_type: Type of expectation ('detection' or 'prevention').
 
         Returns:

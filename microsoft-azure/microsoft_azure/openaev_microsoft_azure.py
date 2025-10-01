@@ -1,18 +1,18 @@
 import requests
-from pyobas.helpers import OpenBASCollectorHelper, OpenBASConfigHelper
+from pyoaev.helpers import OpenAEVCollectorHelper, OpenAEVConfigHelper
 
 
-class OpenBASMicrosoftAzure:
+class OpenAEVMicrosoftAzure:
     def __init__(self):
         self.session = requests.Session()
-        self.config = OpenBASConfigHelper(
+        self.config = OpenAEVConfigHelper(
             __file__,
             {
                 # API information
-                "openbas_url": {"env": "OPENBAS_URL", "file_path": ["openbas", "url"]},
-                "openbas_token": {
-                    "env": "OPENBAS_TOKEN",
-                    "file_path": ["openbas", "token"],
+                "openaev_url": {"env": "OPENAEV_URL", "file_path": ["openaev", "url"]},
+                "openaev_token": {
+                    "env": "OPENAEV_TOKEN",
+                    "file_path": ["openaev", "token"],
                 },
                 # Config information
                 "collector_id": {
@@ -57,10 +57,10 @@ class OpenBASMicrosoftAzure:
                 },
             },
         )
-        self.helper = OpenBASCollectorHelper(
+        self.helper = OpenAEVCollectorHelper(
             config=self.config,
             icon="microsoft_azure/img/icon-microsoft-azure.png",
-            collector_type="openbas_microsoft_azure",
+            collector_type="openaev_microsoft_azure",
         )
 
         # Azure settings
@@ -345,7 +345,7 @@ class OpenBASMicrosoftAzure:
                     "asset_description": f"Azure VM - Size: {vm_size}, Location: {vm_location}",
                 }
 
-                # Prepare tag IDs list for OpenBAS tags
+                # Prepare tag IDs list for OpenAEV tags
                 tag_ids = []
                 tag_colors = {
                     "source": "#ef4444",  # Red
@@ -436,5 +436,5 @@ class OpenBASMicrosoftAzure:
 
 
 if __name__ == "__main__":
-    openBASMicrosoftAzure = OpenBASMicrosoftAzure()
-    openBASMicrosoftAzure.start()
+    openAEVMicrosoftAzure = OpenAEVMicrosoftAzure()
+    openAEVMicrosoftAzure.start()

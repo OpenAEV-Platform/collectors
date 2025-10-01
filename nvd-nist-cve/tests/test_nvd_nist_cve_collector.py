@@ -11,8 +11,8 @@ class NvdNistCveCollectorTest(TestCase):
     @patch.dict(
         "os.environ",
         {
-            "OPENBAS_URL": "http://localhost:8080",
-            "OPENBAS_TOKEN": "super-token",
+            "OPENAEV_URL": "http://localhost:8080",
+            "OPENAEV_TOKEN": "super-token",
             "COLLECTOR_ID": "collector-42",
             "NVD_NIST_CVE_API_KEY": "nist-api-key",
         },

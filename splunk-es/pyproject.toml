@@ -15,7 +15,7 @@ requires-python = ">=3.11,<3.13"
 dynamic = ["dependencies"]
 
 [tool.poetry.dependencies]
-pyobas = [
+pyoaev = [
     {markers = "extra == 'prod' and extra != 'local' and extra != 'current'",version = "^1.18.18"},
     {markers = "extra == 'local' and extra != 'current' and extra != 'prod'",path = "../../client-python", develop = true},
     {markers = "extra == 'current' and extra != 'prod' and extra != 'local'",git = "https://github.com/OpenAEV-Platform/client-python.git", branch = "release/current"},
@@ -25,9 +25,9 @@ pydantic-settings = "^2.10.1"
 requests = "^2.32.5"
 
 [tool.poetry.extras]
-prod = ["pyobas"]
-current = ["pyobas"]
-local = ["pyobas"]
+prod = ["pyoaev"]
+current = ["pyoaev"]
+local = ["pyoaev"]
 
 [tool.poetry.group.dev.dependencies]
 isort = "^6.0.1"

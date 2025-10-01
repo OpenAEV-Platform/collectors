@@ -17,9 +17,9 @@ from src.services.model_threat import SentinelOneThreat
 
 
 class ConfigLoaderOAEVFactory(ModelFactory[_ConfigLoaderOAEV]):
-    """Factory for OpenBAS configuration.
+    """Factory for OpenAEV configuration.
 
-    Creates test instances of OpenBAS configuration with required
+    Creates test instances of OpenAEV configuration with required
     environment variables automatically set.
     """
 
@@ -36,8 +36,8 @@ class ConfigLoaderOAEVFactory(ModelFactory[_ConfigLoaderOAEV]):
             _ConfigLoaderOAEV instance with test configuration.
 
         """
-        os.environ["OPENBAS_URL"] = "https://test-openbas.example.com"
-        os.environ["OPENBAS_TOKEN"] = "test-openbas-token-12345"  # noqa: S105
+        os.environ["OPENAEV_URL"] = "https://test-openaev.example.com"
+        os.environ["OPENAEV_TOKEN"] = "test-openaev-token-12345"  # noqa: S105
         return super().build(**kwargs)
 
 
@@ -82,13 +82,13 @@ class ConfigLoaderCollectorFactory(ModelFactory[ConfigLoaderCollector]):
 class ConfigLoaderFactory(ModelFactory[ConfigLoader]):
     """Factory for main configuration.
 
-    Creates complete test configuration instances combining OpenBAS,
+    Creates complete test configuration instances combining OpenAEV,
     collector, and SentinelOne settings using subfactories.
     """
 
     __check_model__ = False
 
-    openbas = Use(ConfigLoaderOAEVFactory.build)
+    openaev = Use(ConfigLoaderOAEVFactory.build)
     collector = Use(ConfigLoaderCollectorFactory.build)
     sentinelone = Use(ConfigLoaderSentinelOneFactory.build)
 
@@ -149,7 +149,7 @@ class ExpectationResultFactory(ModelFactory[ExpectationResult]):
 class ExpectationTraceFactory(ModelFactory[ExpectationTrace]):
     """Factory for ExpectationTrace.
 
-    Creates test instances of expectation traces for OpenBAS
+    Creates test instances of expectation traces for OpenAEV
     with properly formatted trace data.
     """
 
@@ -186,7 +186,7 @@ class MockObjectsFactory:
             match_result: Whether the helper should return matches (default True).
 
         Returns:
-            Mock OpenBASDetectionHelper instance.
+            Mock OpenAEVDetectionHelper instance.
 
         """
         mock_helper = Mock()
@@ -265,7 +265,7 @@ class TestDataFactory:
             {
                 "parent_process_name": {
                     "type": "simple",
-                    "data": [f"obas-implant-test-{uuid.uuid4().hex[:8]}"],
+                    "data": [f"oaev-implant-test-{uuid.uuid4().hex[:8]}"],
                 },
                 "threat_id": {
                     "type": "simple",
@@ -286,7 +286,7 @@ class TestDataFactory:
             {
                 "parent_process_name": {
                     "type": "simple",
-                    "data": [f"obas-implant-test-{uuid.uuid4().hex[:8]}"],
+                    "data": [f"oaev-implant-test-{uuid.uuid4().hex[:8]}"],
                 },
                 "threat_id": {
                     "type": "simple",
@@ -323,7 +323,7 @@ def create_test_config(**overrides) -> ConfigLoader:
 
 
 def create_test_dv_events(count: int = 1) -> list[DeepVisibilityEvent]:
-    """Create test Deep Visibility events with obas-implant patterns.
+    """Create test Deep Visibility events with oaev-implant patterns.
 
     Args:
         count: Number of events to create (default 1).
@@ -336,12 +336,12 @@ def create_test_dv_events(count: int = 1) -> list[DeepVisibilityEvent]:
     for i in range(count):
         if i % 2 == 0:
             event = DeepVisibilityEventFactory.build(
-                src_proc_parent_name=f"obas-implant-test-{uuid.uuid4().hex[:8]}"
+                src_proc_parent_name=f"oaev-implant-test-{uuid.uuid4().hex[:8]}"
             )
         else:
             event = DeepVisibilityEventFactory.build(
                 src_proc_parent_name=f"regular-parent-{i}",
-                src_proc_name=f"obas-implant-test-{uuid.uuid4().hex[:8]}",
+                src_proc_name=f"oaev-implant-test-{uuid.uuid4().hex[:8]}",
             )
         events.append(event)
     return events

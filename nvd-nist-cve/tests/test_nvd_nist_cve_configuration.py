@@ -9,8 +9,8 @@ class NvdNistCveConfigurationTest(TestCase):
     @patch.dict(
         "os.environ",
         {
-            "OPENBAS_URL": "http://localhost:8080",
-            "OPENBAS_TOKEN": "super-token",
+            "OPENAEV_URL": "http://localhost:8080",
+            "OPENAEV_TOKEN": "super-token",
             "COLLECTOR_ID": "collector-42",
             "NVD_NIST_CVE_API_KEY": "nist-api-key",
         },
@@ -19,8 +19,8 @@ class NvdNistCveConfigurationTest(TestCase):
         config = NvdNistCveConfiguration()
 
         # Check a few known config keys
-        assert config.get("openbas_url") == "http://localhost:8080"
-        assert config.get("openbas_token") == "super-token"
+        assert config.get("openaev_url") == "http://localhost:8080"
+        assert config.get("openaev_token") == "super-token"
         assert config.get("collector_id") == "collector-42"
         assert config.get("collector_name") == "NVD NIST CVE Collector"  # default
         assert config.get("collector_period") == 7200  # default

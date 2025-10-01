@@ -1,10 +1,10 @@
 version: "3"
 services:
   collector-sentinelone:
-    image: openbas/collector-sentinelone:rolling
+    image: openaev/collector-sentinelone:rolling
     environment:
-      - OPENBAS_URL=http://localhost
-      - OPENBAS_TOKEN=ChangeMe
+      - OPENAEV_URL=http://localhost
+      - OPENAEV_TOKEN=ChangeMe
       - COLLECTOR_ID=ChangeMe
       - SENTINELONE_BASE_URL=https://change.me
       - SENTINELONE_API_KEY=ChangeMe

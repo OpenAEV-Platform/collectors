@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "openbas-microsoft-entra-collector"
+name = "openaev-microsoft-entra-collector"
 version = "1.18.20"
 description = "A Collector for Microsoft Entra asset management system"
 authors = ["Filigran <contact@filigran.io>"]
@@ -11,7 +11,7 @@ packages = [
 
 [tool.poetry.dependencies]
 python = "^3.11"
-pyobas = [
+pyoaev = [
     { markers = "extra == 'prod' and extra != 'dev'", version = "1.18.20", source = "pypi"  },
     { markers = "extra == 'dev' and extra != 'prod'", path = "../../client-python", develop = true },
 ]
