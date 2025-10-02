@@ -50,7 +50,7 @@ jobs:
           name: Clone pyoaev
           command: |
             if [ "${CIRCLE_BRANCH}" = "release/current" ]; then
-              git clone -b release/current https://github.com/OpenBAS-Platform/client-python
+              git clone -b release/current https://github.com/OpenAEV-Platform/client-python
             else
               git clone -b main https://github.com/OpenAEV-Platform/client-python
             fi
@@ -178,6 +178,26 @@ jobs:
             fi
             docker save -o ~/openaev/images/collector-crowdstrike openaev/collector-crowdstrike:${CIRCLE_SHA1}
       - run:
+          working_directory: ~/openaev/sentinelone
+          name: Build Docker image openaev/collector-sentinelone
+          command: |
+            if [ "${CIRCLE_BRANCH}" = "release/current" ]; then
+              docker build --progress=plain -t openaev/collector-sentinelone:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
+            else 
+              docker build --progress=plain -t openaev/collector-sentinelone:${CIRCLE_SHA1} .
+            fi
+            docker save -o ~/openaev/images/collector-sentinelone openaev/collector-sentinelone:${CIRCLE_SHA1}
+      - run:
+          working_directory: ~/openaev/splunk-es
+          name: Build Docker image openaev/collector-splunk-es
+          command: |
+            if [ "${CIRCLE_BRANCH}" = "release/current" ]; then
+              docker build --progress=plain -t openaev/collector-splunk-es:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
+            else 
+              docker build --progress=plain -t openaev/collector-splunk-es:${CIRCLE_SHA1} .
+            fi
+            docker save -o ~/openaev/images/collector-splunk-es openaev/collector-splunk-es:${CIRCLE_SHA1}
+      - run:
           working_directory: ~/openaev/openaev
           name: Build Docker image openaev/collector-openaev
           command: |
@@ -293,6 +313,12 @@ jobs:
             docker image load < collector-crowdstrike
             docker tag openaev/collector-crowdstrike:${CIRCLE_SHA1} openaev/collector-crowdstrike:${IMAGETAG}
             docker tag openaev/collector-crowdstrike:${CIRCLE_SHA1} openbas/collector-crowdstrike:${IMAGETAG}
+            docker image load < collector-sentinelone
+            docker tag openaev/collector-sentinelone:${CIRCLE_SHA1} openaev/collector-sentinelone:${IMAGETAG}
+            docker tag openaev/collector-sentinelone:${CIRCLE_SHA1} openbas/collector-sentinelone:${IMAGETAG}
+            docker image load < collector-splunk-es
+            docker tag openaev/collector-splunk-es:${CIRCLE_SHA1} openaev/collector-splunk-es:${IMAGETAG}
+            docker tag openaev/collector-splunk-es:${CIRCLE_SHA1} openbas/collector-splunk-es:${IMAGETAG}
             docker image load < collector-openaev
             docker tag openaev/collector-openaev:${CIRCLE_SHA1} openaev/collector-openaev:${IMAGETAG}
             docker tag openaev/collector-openaev:${CIRCLE_SHA1} openbas/collector-openbas:${IMAGETAG}
@@ -326,6 +352,10 @@ jobs:
             docker push openbas/collector-atomic-red-team:${IMAGETAG}
             # docker push openaev/collector-crowdstrike:${IMAGETAG}
             docker push openbas/collector-crowdstrike:${IMAGETAG}
+            # docker push openaev/collector-sentinelone:${IMAGETAG}
+            docker push openbas/collector-sentinelone:${IMAGETAG}
+            # docker push openaev/collector-splunk-es:${IMAGETAG}
+            docker push openbas/collector-splunk-es:${IMAGETAG}
             # docker push openaev/collector-openaev:${IMAGETAG}
             docker push openbas/collector-openbas:${IMAGETAG}
             # docker push openaev/collector-microsoft-azure:${IMAGETAG}
@@ -355,6 +385,10 @@ jobs:
               docker tag openaev/collector-atomic-red-team:${IMAGETAG} openbas/collector-atomic-red-team:latest
               docker tag openaev/collector-crowdstrike:${IMAGETAG} openaev/collector-crowdstrike:latest
               docker tag openaev/collector-crowdstrike:${IMAGETAG} openbas/collector-crowdstrike:latest
+              docker tag openaev/collector-sentinelone:${IMAGETAG} openaev/collector-sentinelone:latest
+              docker tag openaev/collector-sentinelone:${IMAGETAG} openbas/collector-sentinelone:latest
+              docker tag openaev/collector-splunk-es:${IMAGETAG} openaev/collector-splunk-es:latest
+              docker tag openaev/collector-splunk-es:${IMAGETAG} openbas/collector-splunk-es:latest
               docker tag openaev/collector-openaev:${IMAGETAG} openaev/collector-openaev:latest
               docker tag openaev/collector-openaev:${IMAGETAG} openbas/collector-openbas:latest
               docker tag openaev/collector-microsoft-azure:${IMAGETAG} openaev/collector-microsoft-azure:latest
@@ -382,6 +416,10 @@ jobs:
               docker push openbas/collector-atomic-red-team:latest
               docker push openaev/collector-crowdstrike:latest
               docker push openbas/collector-crowdstrike:latest
+              docker push openaev/collector-sentinelone:latest
+              docker push openbas/collector-sentinelone:latest
+              docker push openaev/collector-splunk-es:latest
+              docker push openbas/collector-splunk-es:latest
               docker push openaev/collector-openaev:latest
               docker push openbas/collector-openbas:latest
               docker push openaev/collector-microsoft-azure:latest
