@@ -139,8 +139,12 @@ class ConfigLoader(ConfigBaseSettings):
                 "collector_icon_filepath": {"data": self.collector.icon_filepath},
                 # SentinelOne configuration (flattened)
                 "sentinelone_base_url": {"data": str(self.sentinelone.base_url)},
-                "sentinelone_api_key": {"data": self.sentinelone.api_key.get_secret_value()},
-                "sentinelone_default_time_window": {"data": self.sentinelone.time_window},
+                "sentinelone_api_key": {
+                    "data": self.sentinelone.api_key.get_secret_value()
+                },
+                "sentinelone_default_time_window": {
+                    "data": self.sentinelone.time_window
+                },
                 "sentinelone_offset": {"data": self.sentinelone.offset},
                 "sentinelone_max_retry": {"data": self.sentinelone.max_retry},
             }
