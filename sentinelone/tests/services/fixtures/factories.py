@@ -329,7 +329,7 @@ def create_test_dv_events(count: int = 1) -> list[DeepVisibilityEvent]:
         count: Number of events to create (default 1).
 
     Returns:
-        List of DeepVisibilityEvent instances with OBAS implant patterns.
+        List of DeepVisibilityEvent instances with OAEV implant patterns.
 
     """
     events = []

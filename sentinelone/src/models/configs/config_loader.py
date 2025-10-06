@@ -128,20 +128,20 @@ class ConfigLoader(ConfigBaseSettings):
         return Configuration(
             config_hints={
                 # OpenAEV configuration (flattened)
-                "openaev_url": str(self.openaev.url),
-                "openaev_token": self.openaev.token,
+                "openaev_url": {"data": str(self.openaev.url)},
+                "openaev_token": {"data": self.openaev.token},
                 # Collector configuration (flattened)
-                "collector_id": self.collector.id,
-                "collector_name": self.collector.name,
-                "collector_platform": self.collector.platform,
-                "collector_log_level": self.collector.log_level,
-                "collector_period": int(self.collector.period.total_seconds()),  # type: ignore[union-attr]
-                "collector_icon_filepath": self.collector.icon_filepath,
+                "collector_id": {"data": self.collector.id},
+                "collector_name": {"data": self.collector.name},
+                "collector_platform": {"data": self.collector.platform},
+                "collector_log_level": {"data": self.collector.log_level},
+                "collector_period": {"data": int(self.collector.period.total_seconds())},  # type: ignore[union-attr]
+                "collector_icon_filepath": {"data": self.collector.icon_filepath},
                 # SentinelOne configuration (flattened)
-                "sentinelone_base_url": str(self.sentinelone.base_url),
-                "sentinelone_api_key": self.sentinelone.api_key.get_secret_value(),
-                "sentinelone_default_time_window": self.sentinelone.time_window,
-                "sentinelone_offset": self.sentinelone.offset,
-                "sentinelone_max_retry": self.sentinelone.max_retry,
+                "sentinelone_base_url": {"data": str(self.sentinelone.base_url)},
+                "sentinelone_api_key": {"data": self.sentinelone.api_key.get_secret_value()},
+                "sentinelone_default_time_window": {"data": self.sentinelone.time_window},
+                "sentinelone_offset": {"data": self.sentinelone.offset},
+                "sentinelone_max_retry": {"data": self.sentinelone.max_retry},
             }
         )

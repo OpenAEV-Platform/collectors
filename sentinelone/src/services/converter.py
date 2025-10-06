@@ -14,7 +14,7 @@ from .model_threat import SentinelOneThreat
 LOG_PREFIX = "[SentinelOneConverter]"
 
 
-OBAS_IMPLANT_PREFIX = "oaev-implant-"
+OAEV_IMPLANT_PREFIX = "oaev-implant-"
 
 
 class Converter:
@@ -192,7 +192,7 @@ class Converter:
                 )
 
             if dvdata.src_proc_parent_name and dvdata.src_proc_parent_name.startswith(
-                OBAS_IMPLANT_PREFIX
+                OAEV_IMPLANT_PREFIX
             ):
                 oaev_data["parent_process_name"] = {
                     "type": "simple",
@@ -202,7 +202,7 @@ class Converter:
                     f"{LOG_PREFIX} Using parent process name: {dvdata.src_proc_parent_name}"
                 )
             elif dvdata.src_proc_name and dvdata.src_proc_name.startswith(
-                OBAS_IMPLANT_PREFIX
+                OAEV_IMPLANT_PREFIX
             ):
                 oaev_data["parent_process_name"] = {
                     "type": "simple",
@@ -213,7 +213,7 @@ class Converter:
                 )
             else:
                 self.logger.debug(
-                    f"{LOG_PREFIX} No OBAS implant process name found in DV data"
+                    f"{LOG_PREFIX} No OAEV implant process name found in DV data"
                 )
 
             if dvdata.tgt_file_sha1:
@@ -346,7 +346,7 @@ class Converter:
             for dv_event in related_dv_events:
                 if (
                     dv_event.src_proc_parent_name
-                    and dv_event.src_proc_parent_name.startswith(OBAS_IMPLANT_PREFIX)
+                    and dv_event.src_proc_parent_name.startswith(OAEV_IMPLANT_PREFIX)
                 ):
                     oaev_data["parent_process_name"] = {
                         "type": "fuzzy",
@@ -355,7 +355,7 @@ class Converter:
                     }
                     break
                 elif dv_event.src_proc_name and dv_event.src_proc_name.startswith(
-                    OBAS_IMPLANT_PREFIX
+                    OAEV_IMPLANT_PREFIX
                 ):
                     oaev_data["parent_process_name"] = {
                         "type": "fuzzy",

@@ -40,7 +40,7 @@ class TestConverterEssential:
     def test_convert_dv_event_with_oaev_parent_process(self):
         """Test converting DV event with oaev-implant parent process name.
 
-        Verifies that Deep Visibility events containing OBAS implant process
+        Verifies that Deep Visibility events containing OAEV implant process
         names are properly converted to OAEV format with correct structure.
         """
         converter = Converter()
@@ -61,7 +61,7 @@ class TestConverterEssential:
     def test_convert_dv_event_without_oaev_process_names(self):
         """Test converting DV event without any oaev-implant process names.
 
-        Verifies that Deep Visibility events without OBAS implant patterns
+        Verifies that Deep Visibility events without OAEV implant patterns
         result in empty conversion output as they're not relevant for OAEV.
         """
         converter = Converter()
