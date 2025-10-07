@@ -49,10 +49,10 @@ jobs:
           working_directory: ~/
           name: Clone pyoaev
           command: |
-            if [ "${CIRCLE_BRANCH}" = "release/current" ]; then
-              git clone -b release/current https://github.com/OpenAEV-Platform/client-python
-            else
+            if [ "${CIRCLE_BRANCH}" = "main" ]; then
               git clone -b main https://github.com/OpenAEV-Platform/client-python
+            else
+              git clone -b release/current https://github.com/OpenAEV-Platform/client-python
             fi
       - run:
           working_directory: ~/openaev/crowdstrike
