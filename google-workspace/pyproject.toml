@@ -21,8 +21,8 @@ google-auth-httplib2 = "^0.2.0"
 google-auth-oauthlib = "^1.2.1"
 
 [tool.poetry.extras]
-prod = []
-dev = []
+prod = ["pyoaev"]
+dev = ["pyoaev"]
 
 [build-system]
 requires = ["poetry-core"]
