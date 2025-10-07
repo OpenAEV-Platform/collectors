@@ -19,8 +19,8 @@ crowdstrike-falconpy = "1.5.4"
 pydantic = "2.11.7"
 
 [tool.poetry.extras]
-prod = []
-dev = []
+prod = ["pyoaev"]
+dev = ["pyoaev"]
 
 [build-system]
 requires = ["poetry-core"]
