@@ -18,8 +18,8 @@ pyoaev = [
 msgraph-sdk = "1.40.0"
 
 [tool.poetry.extras]
-prod = []
-dev = []
+prod = ["pyoaev"]
+dev = ["pyoaev"]
 
 [build-system]
 requires = ["poetry-core"]

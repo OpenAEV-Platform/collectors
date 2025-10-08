@@ -70,8 +70,8 @@ pyoaev = [
 ]
 
 [tool.poetry.extras]
-prod = []
-dev = []
+prod = ["pyoaev"]
+dev = ["pyoaev"]
 ```
 
 ### Simultaneous development on pyoaev and a collector
