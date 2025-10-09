@@ -171,7 +171,7 @@ class FetcherDeepVisibility:
         try:
             endpoint = f"{self.client_api.base_url}/web/api/v2.1/dv/init-query"
 
-            query = f'(srcProcParentName contains "{oaev_implant_id}" OR srcProcName contains "{oaev_implant_id}") AND eventType="Pre Execution Detection"'
+            query = f'srcProcParentName contains "{oaev_implant_id}" OR srcProcName contains "{oaev_implant_id}"'
             body = {
                 "query": query,
                 "fromDate": start_date,
