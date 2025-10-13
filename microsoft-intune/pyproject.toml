@@ -16,7 +16,7 @@ pyoaev = [
     { markers = "extra == 'dev' and extra != 'prod'", path = "../../client-python", develop = true },
 ]
 msal = "1.31.1"
-requests = "2.32.3"
+requests = "2.32.5"
 
 [tool.poetry.extras]
 prod = ["pyoaev"]
