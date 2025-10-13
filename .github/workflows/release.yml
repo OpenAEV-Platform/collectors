@@ -28,7 +28,7 @@ jobs:
         working-directory: collectors
     steps:
       - name: checkout repo content
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: OpenAEV-Platform/collectors
           ref: ${{ inputs.branch_collectors }}
