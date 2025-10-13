@@ -8,7 +8,7 @@
     "filigran team"
   ],
   "prConcurrentLimit": 2,
-  "baseBranches": [
+  "baseBranchPatterns": [
     "release/current",
     "main"
   ],
