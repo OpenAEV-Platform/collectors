@@ -33,7 +33,7 @@ jobs:
           repository: OpenAEV-Platform/collectors
           ref: ${{ inputs.branch_collectors }}
       - name: setup python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: 3.13 #install the python needed
       - name: Install dependencies
