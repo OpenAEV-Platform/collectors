@@ -16,7 +16,7 @@ pyoaev = [
     { markers = "extra == 'dev' and extra != 'prod'", path = "../../client-python", develop = true },
 ]
 crowdstrike-falconpy = "1.5.4"
-pydantic = "2.11.7"
+pydantic = "2.12.3"
 
 [tool.poetry.extras]
 prod = ["pyoaev"]
