@@ -6,15 +6,15 @@ A SentinelOne EDR integration for OpenAEV that validates security expectations b
 
 ## Overview
 
-This collector validates OpenAEV expectations by querying your SentinelOne environment for matching security events via the SentinelOne API. When OpenAEV runs security exercises, this collector automatically checks if the expected security threats were actually detected and/or prevented in your EDR, providing visibility into your detection and prevention capabilities.
+This collector validates OpenAEV expectations by querying your SentinelOne environment for threat data via the SentinelOne API. When OpenAEV runs security exercises, this collector automatically checks if the expected security threats were detected in your EDR by matching threat information and associated events, providing visibility into your detection capabilities.
 
-The collector uses SentinelOne's Deep Visibility events for detection validation and combines them with threat data for prevention validation.
+The collector uses SentinelOne's Threats API to fetch threat data and correlates it with threat events to validate expectations.
 
 ## Features
 
-- **Detection Validation**: Queries SentinelOne Deep Visibility events to verify process execution detections
-- **Prevention Validation**: Combines Deep Visibility events with threat data to verify prevention actions
-- **Retry Mechanism**: Built-in retry logic with configurable delays to handle event ingestion latency
+- **Threat-Based Validation**: Queries SentinelOne Threats API to validate security expectations against detected threats
+- **Batch Processing**: Processes expectations in configurable batches for improved performance
+- **Event Correlation**: Correlates threat data with threat events to extract process execution details
 - **Trace Generation**: Creates detailed traces with links back to SentinelOne console
 - **Flexible Configuration**: Support for YAML, environment variables, and multiple deployment scenarios
 
@@ -23,7 +23,7 @@ The collector uses SentinelOne's Deep Visibility events for detection validation
 - OpenAEV Platform
 - SentinelOne Management Console with API access
 - Python 3.12+ (for manual deployment)
-- SentinelOne API token with appropriate permissions
+- SentinelOne API token with Threats and Threat Events permissions
 
 ## Configuration
 
@@ -33,9 +33,9 @@ There are a number of configuration options, which are set either in `docker-com
 in `config.yml` (for manual deployment).
 
 The collector supports multiple configuration sources in order of precedence:
-1. Environment variables
-2. YAML configuration file (`src/config.yml`)
-3. Default values
+1. `.env` file (if present in src directory)
+2. YAML configuration file (`src/config.yml`, if present)
+3. Environment variables (fallback)
 
 ### OpenAEV environment variables
 
@@ -54,22 +54,21 @@ Below are the parameters you'll need to set for running the collector properly:
 |------------------|---------------------|-----------------------------|-------------------------|-----------|-----------------------------------------------------------------------------------------------|
 | Collector ID     | collector.id        | `COLLECTOR_ID`              | sentinelone--0b13e3f7-5c9e-46f5-acc4-33032e9b4921 | Yes       | A unique `UUIDv4` identifier for this collector instance.                                     |
 | Collector Name   | collector.name      | `COLLECTOR_NAME`            | SentinelOne             | No        | Name of the collector.                                                                        |
-| Collector Period | collector.period    | `COLLECTOR_PERIOD`          | PT1M                    | No        | Collection interval (ISO 8601 format).                                                       |
+| Collector Period | collector.period    | `COLLECTOR_PERIOD`          | PT2M                    | No        | Collection interval (ISO 8601 format).                                                       |
 | Log Level        | collector.log_level | `COLLECTOR_LOG_LEVEL`       | error                   | No        | Determines the verbosity of the logs. Options are `debug`, `info`, `warn`, or `error`.      |
-| Type             | collector.type      | `COLLECTOR_TYPE`            | openaev_sentinelone     | No        | Type of the collector                                                                         |
 | Platform         | collector.platform  | `COLLECTOR_PLATFORM`        | EDR                     | No        | Type of security platform this collector works for. One of: `EDR, XDR, SIEM, SOAR, NDR, ISPM` |
+| Icon Filepath    | collector.icon_filepath | `COLLECTOR_ICON_FILEPATH` | src/img/sentinelone-logo.png | No        | Path to the icon file of the collector.                                           |
 
 ### Collector extra parameters environment variables
 
 Below are the parameters you'll need to set for the collector:
 
-| Parameter         | config.yml                    | Docker environment variable | Default                     | Mandatory | Description                                                                                        |
-|-------------------|-------------------------------|-----------------------------|-----------------------------|-----------|----------------------------------------------------------------------------------------------------|
-| Base URL          | sentinelone.base_url          | `SENTINELONE_BASE_URL`      | https://api.sentinelone.com | No        | SentinelOne Management Console URL                                                                 |
-| API Key           | sentinelone.api_key           | `SENTINELONE_API_KEY`       |                             | Yes       | SentinelOne API token with Deep Visibility and Threats permissions                                |
-| Time Window       | sentinelone.time_window       | `SENTINELONE_TIME_WINDOW`   | PT1H                        | No        | Default search time window when no date signatures are provided (ISO 8601 format)                |
-| Offset            | sentinelone.offset            | `SENTINELONE_OFFSET`        | PT1M                        | No        | Delay before API calls to account for event ingestion latency (ISO 8601 format)                  |
-| Max Retry         | sentinelone.max_retry         | `SENTINELONE_MAX_RETRY`     | 5                           | No        | Maximum number of retry attempts after the initial API call fails or returns no results          |
+| Parameter                | config.yml                           | Docker environment variable            | Default                     | Mandatory | Description                                                                                        |
+|--------------------------|--------------------------------------|----------------------------------------|-----------------------------|-----------|----------------------------------------------------------------------------------------------------|
+| Base URL                 | sentinelone.base_url                 | `SENTINELONE_BASE_URL`                 | https://api.sentinelone.com | No        | SentinelOne Management Console URL                                                                 |
+| API Key                  | sentinelone.api_key                  | `SENTINELONE_API_KEY`                  |                             | Yes       | SentinelOne API token with Threats and Threat Events permissions                                  |
+| Time Window              | sentinelone.time_window              | `SENTINELONE_TIME_WINDOW`              | PT1H                        | No        | Default search time window when no date signatures are provided (ISO 8601 format)                |
+| Expectation Batch Size   | sentinelone.expectation_batch_size   | `SENTINELONE_EXPECTATION_BATCH_SIZE`   | 50                          | No        | Number of expectations to process in each batch for batch-based processing                         |
 
 ### Example Configuration Files
 
@@ -88,8 +87,8 @@ collector:
 sentinelone:
   base_url: "https://your-sentinelone-console.sentinelone.net"
   api_key: "your-sentinelone-api-token"
-  offset: "PT2M"
-  max_retry: 3
+  time_window: "PT1H"
+  expectation_batch_size: 50
 ```
 
 #### Environment Variables
@@ -152,40 +151,38 @@ docker run -d \
 
 The collector supports the following OpenAEV signature types:
 
-- **`parent_process_name`**: Process names to search for in SentinelOne Deep Visibility
-- **`start_date`**: Start time for the search query (ISO 8601 format)
-- **`end_date`**: End time for the search query (ISO 8601 format)
+- **`parent_process_name`**: Process names to match against threat event data
+- **`target_hostname_address`**: Target hostnames to filter threat queries
+- **`end_date`**: End time for the threat search query (ISO 8601 format)
 
 ### Processing Flow
 
 1. **Expectation Retrieval**: Fetches pending expectations from OpenAEV
-2. **Signature Extraction**: Extracts supported signature types from expectations
-3. **Deep Visibility Query**: Searches SentinelOne for matching process execution events
-4. **Threat Correlation**: For prevention expectations, correlates events with threat data
-5. **Expectation Validation**: Matches found data against expectation criteria
-6. **Result Reporting**: Updates expectation status in OpenAEV
-7. **Trace Creation**: Creates detailed traces linking back to SentinelOne console
+2. **Batch Creation**: Groups expectations into configurable batches for processing
+3. **Time Window Determination**: Extracts time windows from expectations or uses default configuration
+4. **Threat Fetching**: Queries SentinelOne Threats API for the determined time window
+5. **Event Correlation**: Fetches threat events for each identified threat
+6. **Expectation Matching**: Matches threat data and events against expectation criteria using detection helper
+7. **Result Reporting**: Updates expectation status in OpenAEV
+8. **Trace Creation**: Creates detailed traces linking back to SentinelOne console
 
-### Detection vs Prevention Logic
+### Threat Matching Logic
 
-#### Detection Expectations
-- Queries SentinelOne Deep Visibility for process execution events
-- Matches against `parent_process_name` signatures
-- Success indicates the process was detected by SentinelOne
+The collector validates expectations by:
 
-#### Prevention Expectations
-- Queries Deep Visibility events AND correlates with threat data
-- Requires both process detection and associated threat information
-- Success indicates the process was both detected and prevented
+1. **Threat Data Conversion**: Converts SentinelOne threat objects to OpenAEV-compatible format
+2. **Process Name Extraction**: Extracts parent process names from threat events, focusing on `oaev-implant-*` prefixed processes
+3. **Signature Matching**: Uses OpenAEV detection helper to match extracted data against expectation signatures
+4. **Static vs Dynamic Threats**: Handles both static threat indicators and dynamic threats with associated events
 
-### Retry Mechanism
+### Batch Processing
 
-The collector implements intelligent retry logic to handle SentinelOne's event ingestion delays:
+The collector implements efficient batch processing to handle large volumes of expectations:
 
-1. **Initial Delay**: Waits for configured offset before first API call
-2. **Progressive Retries**: Retries up to `max_retry` times with delays between attempts
-3. **Dynamic Time Windows**: Updates end times on each retry to catch newly ingested events
-4. **Graceful Degradation**: Returns available data even if some queries fail
+1. **Configurable Batch Size**: Processes expectations in batches based on `expectation_batch_size` configuration
+2. **Time Window Optimization**: Extracts and consolidates time windows across batch expectations
+3. **Bulk Threat Fetching**: Fetches threats for the entire time window rather than individual queries
+4. **Parallel Event Processing**: Efficiently correlates threat events across the batch
 
 ## API Requirements
 
@@ -193,36 +190,33 @@ The collector implements intelligent retry logic to handle SentinelOne's event i
 
 Your SentinelOne API token requires the following permissions:
 
-- **Deep Visibility**: Read access to query process execution events
-- **Threats**: Read access to correlate prevention data
+- **Threats**: Read access to query threat information
+- **Threat Events**: Read access to retrieve threat event details
 - **Console Access**: General API access to the Management Console
 
 ### API Endpoints Used
 
-- `POST /web/api/v2.1/dv/init-query`: Initialize Deep Visibility searches
-- `GET /web/api/v2.1/dv/events`: Retrieve Deep Visibility events
-- `GET /web/api/v2.1/threats`: Query threat information by content hash
+- `GET /web/api/v2.1/threats`: Query threat information using time-based filters
+- `GET /web/api/v2.1/threat-events`: Retrieve detailed threat event information
 
 ### Rate Limiting
 
 The collector respects SentinelOne's API rate limits by:
-- Implementing delays between API calls
-- Using batch processing where possible
-- Providing configurable retry intervals
+- Processing expectations in configurable batches
+- Consolidating time windows to minimize API calls
 
 ## Troubleshooting
 
 ### Common Issues
 
-#### No Events Found
-- **Symptom**: Collector reports no matching events despite expecting them
+#### No Threats Found
+- **Symptom**: Collector reports no matching threats despite expecting them
 - **Causes**:
-  - Event ingestion delay in SentinelOne
-  - Incorrect process names in expectations
-  - Time window too narrow
+  - Threat ingestion delay in SentinelOne
+  - Incorrect process names or hostnames in expectations
+  - Time window too narrow for threat detection
 - **Solutions**:
-  - Increase `sentinelone.offset` configuration
-  - Verify process names match SentinelOne data
+  - Verify process names match threat event data
   - Extend `sentinelone.time_window` for broader searches
 
 #### API Authentication Errors
@@ -232,7 +226,6 @@ The collector respects SentinelOne's API rate limits by:
   - Insufficient API permissions
 - **Solutions**:
   - Verify API token in SentinelOne console
-  - Check token permissions for Deep Visibility and Threats
 
 #### Connection Timeouts
 - **Symptom**: HTTP timeout errors or connection failures
@@ -262,7 +255,9 @@ collector:
 
 #### Key Log Patterns
 - `[SentinelOneClientAPI]`: API communication and responses
-- `[SentinelOneExpectationService]`: Expectation processing logic
+- `[SentinelOneExpectationService]`: Batch expectation processing logic
+- `[SentinelOneThreatFetcher]`: Threat data fetching operations
+- `[SentinelOneThreatEventsFetcher]`: Threat events fetching operations
 - `[CollectorExpectationManager]`: High-level processing flow
 - `[SentinelOneTraceService]`: Trace creation and submission
 
@@ -270,20 +265,22 @@ collector:
 
 #### For High-Volume Environments
 - Reduce `collector.period` for more frequent processing
-- Increase `sentinelone.max_retry` for better reliability
-- Adjust `sentinelone.offset` based on your environment's ingestion patterns
+- Increase `sentinelone.expectation_batch_size` for better throughput
+- Monitor API rate limits and ingestion patterns in your environment
 
 #### For Low-Latency Requirements
-- Decrease `sentinelone.offset` to reduce processing delays
 - Use shorter time windows in expectations for faster queries
-- Monitor API rate limits and adjust retry intervals accordingly
+- Reduce `collector.period` for more frequent collection cycles
+- Monitor API rate limits and ingestion patterns accordingly
 
 ## Architecture
 
 The collector uses a modular, service-provider architecture:
 
 - **Collector Core**: Main daemon handling scheduling and coordination
-- **Expectation Service**: SentinelOne-specific business logic
+- **Expectation Service**: Batch processing and threat correlation logic
+- **Threat Fetcher**: Dedicated service for fetching threat data
+- **Threat Events Fetcher**: Service for retrieving threat event details
 - **Client API**: SentinelOne API communication layer
 - **Trace Service**: Trace creation and submission
 - **Configuration System**: Hierarchical configuration management
