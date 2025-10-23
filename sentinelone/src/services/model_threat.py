@@ -1,7 +1,4 @@
-"""SentinelOne Threat Models.
-
-This module provides Pydantic models for threat operations.
-"""
+"""SentinelOne Threat Models."""
 
 from typing import Any, Optional
 
@@ -12,44 +9,39 @@ class SentinelOneThreat(BaseModel):
     """SentinelOne threat model."""
 
     threat_id: str = Field(..., description="Unique identifier for the threat")
+    hostname: Optional[str] = Field(None, description="Agent computer name")
+    is_mitigated: bool = Field(False, description="Whether threat has been mitigated")
+    is_static: bool = Field(False, description="Whether threat is static")
     _raw: Optional[dict[str, Any]] = PrivateAttr(default=None)
 
-    def is_mitigated(self) -> bool:
-        """Check if the threat has been successfully mitigated.
-
-        Returns:
-            True if at least one mitigation status has status="success".
-
-        """
-        if not self._raw:
-            return False
-
-        mitigation_status = self._raw.get("mitigationStatus", [])
-        if not isinstance(mitigation_status, list):
-            return False
-
-        return any(
-            status.get("status") == "success"
-            for status in mitigation_status
-            if isinstance(status, dict)
+    def __str__(self) -> str:
+        """Detaield representation with key debugging information."""
+        return (
+            f"SentinelOneThreat(threat_id='{self.threat_id}', "
+            f"hostname='{self.hostname}', is_mitigated={self.is_mitigated}, is_static={self.is_static})"
         )
 
-    @property
-    def content_hash(self) -> Optional[str]:
-        """Get the content hash from the raw threat data.
+    @staticmethod
+    def get_parent_process_name_from_events(events: list[dict]) -> list[str]:
+        """Extract parent process names from threat events data.
+
+        Args:
+            events: List of event dictionaries from threat_events endpoint.
 
         Returns:
-            Content hash if available, None otherwise.
+            List of unique parent process names found in events.
 
         """
-        if not self._raw:
-            return None
+        if not events:
+            return []
 
-        threat_info = self._raw.get("threatInfo", {})
-        if isinstance(threat_info, dict):
-            return threat_info.get("sha1")
+        parent_process_names = set()
+        for event in events:
+            parent_process_name = event.get("parentProcessName")
+            if parent_process_name:
+                parent_process_names.add(parent_process_name)
 
-        return None
+        return list(parent_process_names)
 
 
 class SentinelOneThreatsResponse(BaseModel):
@@ -76,14 +68,31 @@ class SentinelOneThreatsResponse(BaseModel):
         raw_threats = response_data.get("data", [])
 
         for raw_threat in raw_threats:
-            threat_id = None
-            if raw_threat.get("threatInfo") and raw_threat["threatInfo"].get(
-                "threatId"
-            ):
-                threat_id = raw_threat["threatInfo"]["threatId"]
+            threat_info = raw_threat.get("threatInfo", {})
+            threat_id = threat_info.get("threatId")
 
             if threat_id:
-                threat = SentinelOneThreat(threat_id=threat_id)
+                agent_realtime_info = raw_threat.get("agentRealtimeInfo", {})
+                hostname = agent_realtime_info.get("agentComputerName")
+
+                mitigation_status = raw_threat.get("mitigationStatus", [])
+                is_mitigated = False
+                if isinstance(mitigation_status, list):
+                    is_mitigated = any(
+                        status.get("status") == "success"
+                        for status in mitigation_status
+                        if isinstance(status, dict)
+                    )
+
+                detection_type = threat_info.get("detectionType", "").lower()
+                is_static = detection_type == "static"
+
+                threat = SentinelOneThreat(
+                    threat_id=threat_id,
+                    hostname=hostname,
+                    is_mitigated=is_mitigated,
+                    is_static=is_static,
+                )
                 threat._raw = raw_threat
                 threats.append(threat)
 
