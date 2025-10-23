@@ -27,7 +27,7 @@ from .trace_service_provider import TraceServiceProvider
 LOG_PREFIX = "[CollectorExpectationManager]"
 
 # Constants
-FETCH_TIMEOUT_MINUTES = 5
+FETCH_TIMEOUT_MINUTES = 2
 SLEEP_INTERVAL_SECONDS = 30
 PROGRESS_LOG_INTERVAL = 10
 
@@ -429,6 +429,10 @@ class GenericExpectationManager:
                         source_id=self.collector_id
                     )
                 )
+                self.logger.debug(
+                    f"{LOG_PREFIX} Fetched {len(expectations)} expectations, reversing order..."
+                )
+                expectations = list(reversed(expectations))
             except Exception as e:
                 self.logger.warning(
                     f"{LOG_PREFIX} Error fetching expectations: {e}, retrying..."
