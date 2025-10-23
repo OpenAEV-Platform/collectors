@@ -5,7 +5,6 @@ from unittest.mock import Mock, patch
 import pytest
 from tests.services.fixtures.factories import (
     ConfigLoaderFactory,
-    DeepVisibilityEventFactory,
     ExpectationResultFactory,
     ExpectationTraceFactory,
     MockObjectsFactory,
@@ -57,28 +56,6 @@ def mock_detection_helper_no_match():
 
     """
     return MockObjectsFactory.create_mock_detection_helper(match_result=False)
-
-
-@pytest.fixture
-def sample_dv_event():
-    """Provide a sample Deep Visibility event.
-
-    Returns:
-        DeepVisibilityEvent instance for testing.
-
-    """
-    return DeepVisibilityEventFactory.build()
-
-
-@pytest.fixture
-def sample_dv_events():
-    """Provide a list of sample Deep Visibility events.
-
-    Returns:
-        List of 3 DeepVisibilityEvent instances for testing.
-
-    """
-    return [DeepVisibilityEventFactory.build() for _ in range(3)]
 
 
 @pytest.fixture
@@ -246,7 +223,6 @@ def disable_sleep():
         yield
 
 
-# Parametrized fixtures for testing different scenarios
 @pytest.fixture(params=[1, 3, 5])
 def various_counts(request):
     """Provide various counts for testing different data sizes.
@@ -289,7 +265,6 @@ def expectation_types(request):
     return request.param
 
 
-# Factory fixtures that can be called in tests
 @pytest.fixture
 def config_factory():
     """Provide the ConfigLoaderFactory for creating configs in tests.
@@ -299,17 +274,6 @@ def config_factory():
 
     """
     return ConfigLoaderFactory
-
-
-@pytest.fixture
-def dv_event_factory():
-    """Provide the DeepVisibilityEventFactory for creating DV events.
-
-    Returns:
-        DeepVisibilityEventFactory class for generating test DV events.
-
-    """
-    return DeepVisibilityEventFactory
 
 
 @pytest.fixture
@@ -367,7 +331,6 @@ def mock_objects_factory():
     return MockObjectsFactory
 
 
-# Cleanup fixtures
 @pytest.fixture(autouse=True)
 def cleanup_mocks():
     """Auto-cleanup mocks after each test.
@@ -379,10 +342,8 @@ def cleanup_mocks():
 
     """
     yield
-    # Any cleanup logic can go here if needed
 
 
-# Error simulation fixtures
 @pytest.fixture
 def api_error_responses():
     """Provide various API error responses for testing error handling.

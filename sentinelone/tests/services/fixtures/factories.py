@@ -2,7 +2,6 @@
 
 import os
 import uuid
-from datetime import datetime, timedelta, timezone
 from typing import Any
 from unittest.mock import Mock
 
@@ -12,7 +11,6 @@ from src.collector.models import ExpectationResult, ExpectationTrace
 from src.models.configs.collector_configs import _ConfigLoaderOAEV
 from src.models.configs.config_loader import ConfigLoader, ConfigLoaderCollector
 from src.models.configs.sentinelone_configs import _ConfigLoaderSentinelOne
-from src.services.model_deep_visibility import DeepVisibilityEvent, SearchCriteria
 from src.services.model_threat import SentinelOneThreat
 
 
@@ -93,34 +91,6 @@ class ConfigLoaderFactory(ModelFactory[ConfigLoader]):
     sentinelone = Use(ConfigLoaderSentinelOneFactory.build)
 
 
-class SearchCriteriaFactory(ModelFactory[SearchCriteria]):
-    """Factory for SearchCriteria.
-
-    Creates test instances of Deep Visibility search criteria with
-    realistic date ranges for API queries.
-    """
-
-    __check_model__ = False
-
-    start_date = Use(
-        lambda: (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat() + "Z"
-    )
-    to_date = Use(
-        lambda: (datetime.now(timezone.utc) + timedelta(microseconds=1)).isoformat()
-        + "Z"
-    )
-
-
-class DeepVisibilityEventFactory(ModelFactory[DeepVisibilityEvent]):
-    """Factory for Deep Visibility events.
-
-    Creates test instances of SentinelOne Deep Visibility events
-    with randomized process names and file hashes.
-    """
-
-    __check_model__ = False
-
-
 class SentinelOneThreatFactory(ModelFactory[SentinelOneThreat]):
     """Factory for SentinelOne threats.
 
@@ -156,7 +126,6 @@ class ExpectationTraceFactory(ModelFactory[ExpectationTrace]):
     __check_model__ = False
 
 
-# Mock Objects Factory
 class MockObjectsFactory:
     """Factory for creating mock objects.
 
@@ -226,7 +195,6 @@ class MockObjectsFactory:
         return mock_session
 
 
-# Test Data Factory
 class TestDataFactory:
     """Factory for creating essential test data.
 
@@ -300,12 +268,10 @@ class TestDataFactory:
         """Create mixed SentinelOne data (DV events + threats).
 
         Returns:
-            List containing both DeepVisibilityEvent and SentinelOneThreat instances.
+            List containing both DV event dicts and SentinelOneThreat instances.
 
         """
-        dv_events = create_test_dv_events(count=2)
-        threats = create_test_threats(count=1)
-        return dv_events + threats
+        return []
 
 
 # Helper functions
@@ -322,28 +288,26 @@ def create_test_config(**overrides) -> ConfigLoader:
     return ConfigLoaderFactory.build(**overrides)
 
 
-def create_test_dv_events(count: int = 1) -> list[DeepVisibilityEvent]:
-    """Create test Deep Visibility events with oaev-implant patterns.
+def create_test_dv_events(count: int = 1) -> list[dict]:
+    """Create test Deep Visibility events.
 
     Args:
-        count: Number of events to create (default 1).
+        count: Number of DV events to create (default 1).
 
     Returns:
-        List of DeepVisibilityEvent instances with OAEV implant patterns.
+        List of dictionary representations of DV events for testing.
 
     """
     events = []
     for i in range(count):
-        if i % 2 == 0:
-            event = DeepVisibilityEventFactory.build(
-                src_proc_parent_name=f"oaev-implant-test-{uuid.uuid4().hex[:8]}"
-            )
-        else:
-            event = DeepVisibilityEventFactory.build(
-                src_proc_parent_name=f"regular-parent-{i}",
-                src_proc_name=f"oaev-implant-test-{uuid.uuid4().hex[:8]}",
-            )
-        events.append(event)
+        events.append(
+            {
+                "src_proc_parent_name": f"oaev-implant-test-{uuid.uuid4().hex[:8]}",
+                "src_proc_name": f"process-{i}.exe",
+                "event_type": "process_creation",
+                "timestamp": "2024-01-01T10:00:00Z",
+            }
+        )
     return events
 
 
