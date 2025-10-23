@@ -55,7 +55,7 @@ class _ConfigLoaderCollector(ConfigBaseSettings):
     )
     period: timedelta | None = Field(
         alias="COLLECTOR_PERIOD",
-        default=timedelta(minutes=1),
+        default=timedelta(minutes=2),
         description="Duration between two scheduled runs of the collector (ISO 8601 format).",
     )
     icon_filepath: str | None = Field(
