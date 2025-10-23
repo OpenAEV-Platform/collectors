@@ -15,7 +15,7 @@ pyoaev = [
     { markers = "extra == 'prod' and extra != 'dev'", version = "1.18.20", source = "pypi"  },
     { markers = "extra == 'dev' and extra != 'prod'", path = "../../client-python", develop = true },
 ]
-msgraph-sdk = "1.40.0"
+msgraph-sdk = "1.47.0"
 msal = "1.33.0"
 
 [tool.poetry.extras]
