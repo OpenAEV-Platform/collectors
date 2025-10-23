@@ -22,19 +22,13 @@ class _ConfigLoaderSentinelOne(ConfigBaseSettings):
         alias="SENTINELONE_API_KEY",
         description="API Key for the SentinelOne API.",
     )
-
     time_window: timedelta = Field(
         alias="SENTINELONE_TIME_WINDOW",
         default=timedelta(hours=1),
         description="Time window for SentinelOne threat searches when no date signatures are provided (ISO 8601 format).",
     )
-    offset: timedelta = Field(
-        alias="SENTINELONE_OFFSET",
-        default=timedelta(minutes=1),
-        description="Duration to wait before each API call attempt. This offset accounts for event ingestion delay in SentinelOne (ISO 8601 format).",
-    )
-    max_retry: int = Field(
-        alias="SENTINELONE_MAX_RETRY",
-        default=5,
-        description="Maximum number of retry attempts after the initial API call fails or returns no results.",
+    expectation_batch_size: int = Field(
+        alias="SENTINELONE_EXPECTATION_BATCH_SIZE",
+        default=50,
+        description="Number of expectations to process in each batch for batch-based processing.",
     )
