@@ -51,7 +51,6 @@ class Collector(CollectorDaemon):  # type: ignore[misc]
 
             logging.basicConfig(level=logging.ERROR)
             self.logger = logging.getLogger(__name__)
-            self.logger.error(f"{LOG_PREFIX} Failed to initialize collector: {err}")
             raise CollectorConfigError(
                 f"Failed to initialize the collector: {err}"
             ) from err
@@ -74,7 +73,7 @@ class Collector(CollectorDaemon):  # type: ignore[misc]
             self.logger.debug(f"{LOG_PREFIX} Initializing SentinelOne services...")
 
             self.sentinelone_service = SentinelOneExpectationService(
-                self.config_instance
+                config=self.config_instance
             )
 
             self.trace_service = SentinelOneTraceService(self.config_instance)
