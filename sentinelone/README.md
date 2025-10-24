@@ -4,6 +4,8 @@ A SentinelOne EDR integration for OpenAEV that validates security expectations b
 
 **Note**: Requires access to a SentinelOne Management Console with appropriate API permissions.
 
+**⚠️ Deep Visibility License Warning**: All static engine alerts rely on Deep Visibility, which is only compatible with Complete licenses. However, behavioral detection will be properly handled even with Core or Control licenses. The `enable_deep_visibility_search` configuration option (defaulted to False) allows you to enable this feature when you have the appropriate license.
+
 ## Overview
 
 This collector validates OpenAEV expectations by querying your SentinelOne environment for threat data via the SentinelOne API. When OpenAEV runs security exercises, this collector automatically checks if the expected security threats were detected in your EDR by matching threat information and associated events, providing visibility into your detection capabilities.
@@ -69,6 +71,7 @@ Below are the parameters you'll need to set for the collector:
 | API Key                  | sentinelone.api_key                  | `SENTINELONE_API_KEY`                  |                             | Yes       | SentinelOne API token with Threats and Threat Events permissions                                  |
 | Time Window              | sentinelone.time_window              | `SENTINELONE_TIME_WINDOW`              | PT1H                        | No        | Default search time window when no date signatures are provided (ISO 8601 format)                |
 | Expectation Batch Size   | sentinelone.expectation_batch_size   | `SENTINELONE_EXPECTATION_BATCH_SIZE`   | 50                          | No        | Number of expectations to process in each batch for batch-based processing                         |
+| Enable Deep Visibility   | sentinelone.enable_deep_visibility_search | `SENTINELONE_ENABLE_DEEP_VISIBILITY_SEARCH` | false                  | No        | Enable Deep Visibility search for advanced threat detection (requires Complete license)           |
 
 ### Example Configuration Files
 
@@ -89,6 +92,7 @@ sentinelone:
   api_key: "your-sentinelone-api-token"
   time_window: "PT1H"
   expectation_batch_size: 50
+  enable_deep_visibility_search: false
 ```
 
 #### Environment Variables
@@ -98,6 +102,7 @@ export OPENAEV_TOKEN="your-openaev-token"
 export COLLECTOR_ID="sentinelone--your-unique-uuid"
 export SENTINELONE_BASE_URL="https://your-sentinelone-console.sentinelone.net"
 export SENTINELONE_API_KEY="your-sentinelone-api-token"
+export SENTINELONE_ENABLE_DEEP_VISIBILITY_SEARCH="false"
 ```
 
 ## Deployment
@@ -175,6 +180,22 @@ The collector validates expectations by:
 3. **Signature Matching**: Uses OpenAEV detection helper to match extracted data against expectation signatures
 4. **Static vs Dynamic Threats**: Handles both static threat indicators and dynamic threats with associated events
 
+### Deep Visibility Integration
+
+The collector's behavior varies based on the Deep Visibility feature availability:
+
+- **Deep Visibility Enabled** (`enable_deep_visibility_search: true`):
+  - Requires SentinelOne Complete license
+  - Provides comprehensive threat detection including static engine alerts
+  - Supports full range of static threat indicators
+
+- **Deep Visibility Disabled** (`enable_deep_visibility_search: false`, default):
+  - Compatible with Core and Control licenses
+  - Focuses on behavioral threat detection
+  - Maintains full functionality for dynamic threats and behavioral analysis
+
+**Important**: When Deep Visibility is disabled, static engine-based expectations may not be fully validated, but all behavioral-based detections will continue to work normally.
+
 ### Batch Processing
 
 The collector implements efficient batch processing to handle large volumes of expectations:
@@ -193,17 +214,23 @@ Your SentinelOne API token requires the following permissions:
 - **Threats**: Read access to query threat information
 - **Threat Events**: Read access to retrieve threat event details
 - **Console Access**: General API access to the Management Console
+- **Deep Visibility** (Optional): Required when `enable_deep_visibility_search` is enabled, needs Complete license
 
 ### API Endpoints Used
 
 - `GET /web/api/v2.1/threats`: Query threat information using time-based filters
 - `GET /web/api/v2.1/threat-events`: Retrieve detailed threat event information
+- **Deep Visibility endpoints** (when enabled):
+  - `POST /web/api/v2.1/dv/init-query`: Initialize Deep Visibility query with SHA1 hashes and time range
+  - `GET /web/api/v2.1/dv/query-status`: Poll query status and progress until completion  
+  - `GET /web/api/v2.1/dv/events`: Retrieve Deep Visibility events for completed query
 
 ### Rate Limiting
 
 The collector respects SentinelOne's API rate limits by:
 - Processing expectations in configurable batches
 - Consolidating time windows to minimize API calls
+- Adjusting query complexity based on Deep Visibility availability
 
 ## Troubleshooting
 
@@ -237,6 +264,18 @@ The collector respects SentinelOne's API rate limits by:
   - Verify network connectivity to SentinelOne
   - Check `sentinelone.base_url` configuration
   - Review firewall and proxy settings
+
+#### Deep Visibility Issues
+- **Symptom**: Static threats not being detected or matched
+- **Causes**:
+  - Deep Visibility disabled in configuration
+  - Insufficient SentinelOne license (Core/Control instead of Complete)
+  - Deep Visibility feature not properly configured in SentinelOne
+- **Solutions**:
+  - Set `sentinelone.enable_deep_visibility_search: true` if you have Complete license
+  - Verify your SentinelOne license includes Deep Visibility features
+  - Focus on behavioral expectations when using Core/Control licenses
+  - Check SentinelOne console for Deep Visibility configuration status
 
 ### Logging
 
