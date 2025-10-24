@@ -1,16 +1,16 @@
 """Essential tests for SentinelOne Deep Visibility Fetcher service - Gherkin GWT Format."""
 
-import pytest
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import Mock, patch
-from src.services.fetcher_deep_visibility import FetcherDeepVisibility
+
+import pytest
 from src.services.exception import (
     SentinelOneValidationError,
 )
+from src.services.fetcher_deep_visibility import FetcherDeepVisibility
 from tests.gwt_shared import (
     given_initialized_client_api,
 )
-
 
 # --------
 # Scenarios
@@ -236,12 +236,14 @@ def _mock_deep_visibility_batch_success_response(fetcher, sha1_list):
 
     mock_events = []
     for i, sha1 in enumerate(sha1_list):
-        mock_events.append({
-            "fileSha1": sha1,
-            "processName": f"test_process_{i}.exe",
-            "timestamp": f"2023-01-01T12:0{i}:00Z",
-            "eventType": "Process Creation",
-        })
+        mock_events.append(
+            {
+                "fileSha1": sha1,
+                "processName": f"test_process_{i}.exe",
+                "timestamp": f"2023-01-01T12:0{i}:00Z",
+                "eventType": "Process Creation",
+            }
+        )
 
     return patch.multiple(
         fetcher,

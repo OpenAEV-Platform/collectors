@@ -3,7 +3,7 @@
 import logging
 import re
 import time
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from requests import ConnectionError, RequestException, Timeout
@@ -287,7 +287,7 @@ class FetcherDeepVisibility:
         ):
             raise
         except Exception as e:
-            raise SentinglOneAPIError(f"Error executing DV query: {e}") from e
+            raise SentinelOneAPIError(f"Error executing DV query: {e}") from e
 
     def _wait_for_query_completion(self, query_id: str) -> None:
         """Wait for DV query to complete processing.
@@ -359,11 +359,11 @@ class FetcherDeepVisibility:
                     f"HTTP request failed for query status: {e}"
                 ) from e
             except Exception as e:
-                raise SentinelOneApiError(
+                raise SentinelOneAPIError(
                     f"Unexpected error checking query status: {e}"
                 ) from e
 
-        raise SentinelOneApiError(
+        raise SentinelOneAPIError(
             f"Query {query_id} did not complete within {MAX_STATUS_POLL_ATTEMPTS} attempts"
         )
 
