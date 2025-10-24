@@ -7,7 +7,6 @@ from src.services.exception import (
 )
 from src.services.model_threat import SentinelOneThreat
 
-
 # --------
 # Scenarios
 # --------
@@ -213,5 +212,7 @@ def _then_single_threat_converted_completely(
 
     assert "target_hostname_address" in converted  # noqa: S101
     assert converted["target_hostname_address"]["type"] == "fuzzy"  # noqa: S101
-    assert converted["target_hostname_address"]["data"] == [threat.hostname]  # noqa: S101
+    assert converted["target_hostname_address"]["data"] == [  # noqa: S101
+        threat.hostname
+    ]
     assert converted["target_hostname_address"]["score"] == 95  # noqa: S101

@@ -1,14 +1,11 @@
 """Essential tests for SentinelOne Client API service - Gherkin GWT Format."""
 
 from requests import Session
-
 from src.services.client_api import SentinelOneClientAPI
-from tests.gwt_shared import (
-    # Given methods
+from tests.gwt_shared import (  # Given methods
     given_test_config,
     then_client_api_initialized_successfully,
 )
-
 
 # --------
 # Scenarios

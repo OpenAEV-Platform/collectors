@@ -1,9 +1,9 @@
 """Essential tests for SentinelOne Expectation Service - Gherkin GWT Format."""
 
-import pytest
 from unittest.mock import Mock
 from uuid import uuid4
 
+import pytest
 from pyoaev.signatures.types import SignatureTypes
 from src.services.expectation_service import (
     ExpectationResult,
@@ -15,7 +15,6 @@ from tests.gwt_shared import (
     given_test_config,
     then_expectation_service_initialized_successfully,
 )
-
 
 # --------
 # Scenarios
@@ -82,6 +81,93 @@ def test_handle_prevention_expectation():
 
     # Then: A prevention result should be returned
     _then_prevention_result_returned(result, expectation)
+
+
+# Scenario: Handle static threats with Deep Visibility enabled
+def test_handle_static_threats_with_deep_visibility_enabled():
+    """Scenario: Handle static threats with Deep Visibility enabled."""
+    # Given: A detection helper
+    detection_helper = _given_mock_detection_helper()
+    # Given: A static expectation
+    expectation = _given_static_expectation()
+
+    # When: I handle the static expectation with Deep Visibility enabled
+    with _given_expectation_service_with_deep_visibility_enabled() as service:
+        mock_static_threats = _given_mock_static_threats_for_service(service)
+        mock_dv_events = _given_mock_deep_visibility_events_for_service(service)
+
+        with mock_static_threats, mock_dv_events:
+            result = _when_handle_batch_expectations(
+                service, [expectation], detection_helper
+            )
+
+    # Then: A static result with Deep Visibility events should be returned
+    _then_static_result_with_deep_visibility_returned(result, expectation)
+
+
+# Scenario: Handle static threats with Deep Visibility disabled
+def test_handle_static_threats_with_deep_visibility_disabled():
+    """Scenario: Handle static threats with Deep Visibility disabled."""
+    # Given: A detection helper
+    detection_helper = _given_mock_detection_helper()
+    # Given: A static expectation
+    expectation = _given_static_expectation()
+
+    # When: I handle the static expectation with Deep Visibility disabled
+    with _given_expectation_service_with_deep_visibility_disabled() as service:
+        mock_static_threats = _given_mock_static_threats_for_service(service)
+
+        with mock_static_threats:
+            result = _when_handle_batch_expectations(
+                service, [expectation], detection_helper
+            )
+
+    # Then: A static result without Deep Visibility events should be returned
+    _then_static_result_without_deep_visibility_returned(result, expectation)
+
+
+# Scenario: Verify Deep Visibility fetcher is called when enabled
+def test_deep_visibility_fetcher_called_when_enabled():
+    """Scenario: Verify Deep Visibility fetcher is called when enabled."""
+    # Given: A detection helper
+    detection_helper = _given_mock_detection_helper()
+    # Given: A static expectation
+    static_expectation = _given_static_expectation()
+
+    # When: I handle the static expectation with Deep Visibility enabled
+    with _given_expectation_service_with_deep_visibility_enabled() as service:
+        mock_static_threats = _given_mock_static_threats_for_service(service)
+        mock_dv_events = _given_mock_deep_visibility_events_for_service(service)
+
+        with mock_static_threats, mock_dv_events as dv_mock:
+            _when_handle_batch_expectations(
+                service, [static_expectation], detection_helper
+            )
+
+            # Then: Deep Visibility fetcher should have been called
+            dv_mock.assert_called_once()
+
+
+# Scenario: Verify Deep Visibility fetcher is not called when disabled
+def test_deep_visibility_fetcher_not_called_when_disabled():
+    """Scenario: Verify Deep Visibility fetcher is not called when disabled."""
+    # Given: A detection helper
+    detection_helper = _given_mock_detection_helper()
+    # Given: A static expectation
+    static_expectation = _given_static_expectation()
+
+    # When: I handle the static expectation with Deep Visibility disabled
+    with _given_expectation_service_with_deep_visibility_disabled() as service:
+        mock_static_threats = _given_mock_static_threats_for_service(service)
+        mock_dv_events = _given_mock_deep_visibility_events_for_service(service)
+
+        with mock_static_threats, mock_dv_events as dv_mock:
+            _when_handle_batch_expectations(
+                service, [static_expectation], detection_helper
+            )
+
+            # Then: Deep Visibility fetcher should not have been called
+            dv_mock.assert_not_called()
 
 
 # Scenario: Match threats to expectations
@@ -273,6 +359,207 @@ def _given_unmitigated_threat():
     )
 
 
+# Given: An expectation service with Deep Visibility enabled
+def _given_expectation_service_with_deep_visibility_enabled():
+    """Create an expectation service with Deep Visibility enabled.
+
+    Returns:
+        Context manager that yields SentinelOneExpectationService with Deep Visibility enabled.
+
+    """
+    import os
+    from contextlib import contextmanager
+    from unittest.mock import patch
+
+    @contextmanager
+    def _service_context():
+        with patch.dict(
+            os.environ, {"SENTINELONE_ENABLE_DEEP_VISIBILITY_SEARCH": "true"}
+        ):
+            config = given_test_config()
+            yield SentinelOneExpectationService(config)
+
+    return _service_context()
+
+
+# Given: An expectation service with Deep Visibility disabled
+def _given_expectation_service_with_deep_visibility_disabled():
+    """Create an expectation service with Deep Visibility disabled.
+
+    Returns:
+        Context manager that yields SentinelOneExpectationService with Deep Visibility disabled.
+
+    """
+    import os
+    from contextlib import contextmanager
+    from unittest.mock import patch
+
+    @contextmanager
+    def _service_context():
+        with patch.dict(
+            os.environ, {"SENTINELONE_ENABLE_DEEP_VISIBILITY_SEARCH": "false"}
+        ):
+            config = given_test_config()
+            yield SentinelOneExpectationService(config)
+
+    return _service_context()
+
+
+# Given: A static expectation
+def _given_static_expectation():
+    """Create a static expectation.
+
+    Returns:
+        Mock static expectation.
+
+    """
+    hostname_sig = _create_mock_signature(
+        SignatureTypes.SIG_TYPE_TARGET_HOSTNAME_ADDRESS, "static-host.example.com"
+    )
+    end_date_sig = _create_mock_signature(
+        Mock(value="end_date"), "2024-01-01T12:00:00Z"
+    )
+
+    expectation = _create_mock_expectation(
+        expectation_id="static_test_1", signatures=[hostname_sig, end_date_sig]
+    )
+    return expectation
+
+
+# Given: Mock static threats for service
+def _given_mock_static_threats_for_service(service):
+    """Set up mock static threats for the service.
+
+    Args:
+        service: The expectation service to mock.
+
+    """
+    from unittest.mock import patch
+
+    static_threats = [
+        SentinelOneThreat(
+            threat_id="static_threat_1",
+            hostname="static-host.example.com",
+            is_mitigated=False,
+            is_static=True,
+            sha1="a1b2c3d4e5f6789012345678901234567890abcd",
+        ),
+        SentinelOneThreat(
+            threat_id="static_threat_2",
+            hostname="static-host.example.com",
+            is_mitigated=False,
+            is_static=True,
+            sha1="b2c3d4e5f6789012345678901234567890abcdef",
+        ),
+    ]
+
+    return patch.object(
+        service.threat_fetcher,
+        "fetch_threats_for_time_window",
+        return_value=static_threats,
+    )
+
+
+# Given: Mock mixed threats for service
+def _given_mock_mixed_threats_for_service(service):
+    """Set up mock mixed threats (static and non-static) for the service.
+
+    Args:
+        service: The expectation service to mock.
+
+    """
+    from unittest.mock import patch
+
+    mixed_threats = [
+        SentinelOneThreat(
+            threat_id="static_threat_1",
+            hostname="mixed-host.example.com",
+            is_mitigated=False,
+            is_static=True,
+            sha1="a1b2c3d4e5f6789012345678901234567890abcd",
+        ),
+        SentinelOneThreat(
+            threat_id="behavior_threat_1",
+            hostname="mixed-host.example.com",
+            is_mitigated=False,
+            is_static=False,
+            sha1=None,
+        ),
+    ]
+
+    return patch.object(
+        service.threat_fetcher,
+        "fetch_threats_for_time_window",
+        return_value=mixed_threats,
+    )
+
+
+# Given: Mock Deep Visibility events for service
+def _given_mock_deep_visibility_events_for_service(service):
+    """Set up mock Deep Visibility events for the service.
+
+    Args:
+        service: The expectation service to mock.
+
+    """
+    from unittest.mock import patch
+
+    mock_dv_events = {
+        "a1b2c3d4e5f6789012345678901234567890abcd": [
+            {
+                "fileSha1": "a1b2c3d4e5f6789012345678901234567890abcd",
+                "processName": "oaev-implant-test.exe",
+                "timestamp": "2024-01-01T12:00:00Z",
+                "eventType": "Process Creation",
+                "parentProcessName": "cmd.exe",
+            }
+        ],
+        "b2c3d4e5f6789012345678901234567890abcdef": [
+            {
+                "fileSha1": "b2c3d4e5f6789012345678901234567890abcdef",
+                "processName": "oaev-implant-test2.exe",
+                "timestamp": "2024-01-01T12:01:00Z",
+                "eventType": "Process Creation",
+                "parentProcessName": "powershell.exe",
+            }
+        ],
+    }
+
+    return patch.object(
+        service.deep_visibility_fetcher,
+        "fetch_events_for_batch_sha1",
+        return_value=mock_dv_events,
+    )
+
+
+# Given: Mock threat events for service
+def _given_mock_threat_events_for_service(service):
+    """Set up mock threat events for the service.
+
+    Args:
+        service: The expectation service to mock.
+
+    """
+    from unittest.mock import patch
+
+    mock_threat_events = {
+        "behavior_threat_1": [
+            {
+                "processName": "oaev-implant-behavior.exe",
+                "parentProcessName": "cmd.exe",
+                "timestamp": "2024-01-01T12:00:00Z",
+                "eventType": "Process Creation",
+            }
+        ]
+    }
+
+    return patch.object(
+        service.threat_events_fetcher,
+        "fetch_events_for_threat",
+        return_value=mock_threat_events,
+    )
+
+
 # --------
 # When Methods
 # --------
@@ -317,7 +604,8 @@ def _when_handle_batch_expectations(service, expectations, detection_helper):
         List of expectation results.
 
     """
-    return service.handle_batch_expectations(expectations, detection_helper)
+    results, _ = service.handle_batch_expectations(expectations, detection_helper)
+    return results
 
 
 # When: I match threats to expectations
@@ -431,7 +719,37 @@ def _then_match_succeeds_without_mitigation_requirement(matches):
 
     """
     assert matches is not None  # noqa: S101
-    assert isinstance(matches, list)  # noqa: S101
+
+
+# Then: A static result with Deep Visibility events should be returned
+def _then_static_result_with_deep_visibility_returned(result, expectation):
+    """Verify a static result with Deep Visibility events was returned.
+
+    Args:
+        result: The result to verify.
+        expectation: The original expectation.
+
+    """
+    assert len(result) == 1  # noqa: S101
+    assert isinstance(result[0], ExpectationResult)  # noqa: S101
+    assert result[0].expectation_id == expectation.inject_expectation_id  # noqa: S101
+    assert result[0].is_valid  # noqa: S101
+    assert len(result[0].matched_alerts) > 0  # noqa: S101
+
+
+# Then: A static result without Deep Visibility events should be returned
+def _then_static_result_without_deep_visibility_returned(result, expectation):
+    """Verify a static result without Deep Visibility events was returned.
+
+    Args:
+        result: The result to verify.
+        expectation: The original expectation.
+
+    """
+    assert len(result) == 1  # noqa: S101
+    assert isinstance(result[0], ExpectationResult)  # noqa: S101
+    assert result[0].expectation_id == expectation.inject_expectation_id  # noqa: S101
+    assert result[0].is_valid  # noqa: S101
 
 
 # --------

@@ -1,12 +1,11 @@
 """Essential tests for SentinelOne Trace Service - Gherkin GWT Format."""
 
 import pytest
-from src.services.trace_service import SentinelOneTraceService
 from src.services.exception import SentinelOneValidationError
+from src.services.trace_service import SentinelOneTraceService
 from tests.gwt_shared import (
     given_test_config,
 )
-
 
 # --------
 # Scenarios
@@ -50,6 +49,21 @@ def test_create_traces_from_valid_expectation_results():
 
     # Then: Traces should be created successfully
     _then_traces_created_successfully(traces, results)
+
+
+# Scenario: Trace timestamp format is correct for Java backend
+def test_trace_timestamp_format_is_correct():
+    """Scenario: Trace timestamp format is correct for Java backend."""
+    # Given: A valid trace service
+    service = _given_valid_trace_service()
+    # Given: Valid expectation results with matching alerts
+    results = _given_valid_expectation_results_with_alerts()
+
+    # When: I create traces from the results
+    traces = _when_create_traces_from_results(service, results)
+
+    # Then: Timestamp format should be valid for Java backend
+    _then_timestamp_format_is_valid(traces)
 
 
 # --------
@@ -203,3 +217,21 @@ def _then_traces_created_successfully(traces, results):
         assert hasattr(trace, "inject_expectation_trace_expectation")  # noqa: S101
         assert hasattr(trace, "inject_expectation_trace_alert_name")  # noqa: S101
         assert hasattr(trace, "inject_expectation_trace_alert_link")  # noqa: S101
+
+
+# Then: Timestamp format should be valid for Java backend
+def _then_timestamp_format_is_valid(traces):
+    """Verify timestamp format is valid for Java backend.
+
+    Args:
+        traces: The created traces to verify.
+
+    """
+    import re
+
+    valid_timestamp_pattern = r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$"
+
+    for trace in traces:
+        timestamp = trace.inject_expectation_trace_date
+        assert re.match(valid_timestamp_pattern, timestamp)  # noqa: S101
+        assert "+00:00Z" not in timestamp  # noqa: S101

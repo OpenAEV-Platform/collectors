@@ -5,22 +5,21 @@ across multiple test files to maximize code reusability and maintain consistency
 in test structure.
 """
 
+from os import environ as os_environ
 from typing import Any, Dict, List
 from unittest.mock import Mock, patch
-from os import environ as os_environ
 
 import pytest
 from src.collector import Collector
 from src.services.client_api import SentinelOneClientAPI
 from src.services.converter import SentinelOneConverter
-from src.services.expectation_service import SentinelOneExpectationService
-from src.services.model_threat import SentinelOneThreat
 from src.services.exception import (
     SentinelOneValidationError,
 )
+from src.services.expectation_service import SentinelOneExpectationService
+from src.services.model_threat import SentinelOneThreat
 from tests.conftest import mock_env_vars
 from tests.services.fixtures.factories import create_test_config
-
 
 # ========================================================================
 # SHARED GIVEN METHODS - Set up test preconditions
@@ -478,16 +477,24 @@ def then_collector_has_valid_configuration(
     """
     daemon_config = collector.config_instance.to_daemon_config()
 
-    assert daemon_config.get("openaev_url") == expected_config.get("OPENAEV_URL")  # noqa: S101
-    assert daemon_config.get("openaev_token") == expected_config.get("OPENAEV_TOKEN")  # noqa: S101
-    assert daemon_config.get("collector_id") == expected_config.get("COLLECTOR_ID")  # noqa: S101
-    assert daemon_config.get("collector_name") == expected_config.get("COLLECTOR_NAME")  # noqa: S101
-    assert daemon_config.get("sentinelone_base_url") == expected_config.get(  # noqa: S101
-        "SENTINELONE_BASE_URL"
+    assert daemon_config.get("openaev_url") == expected_config.get(  # noqa: S101
+        "OPENAEV_URL"
     )
-    assert daemon_config.get("sentinelone_api_key") == expected_config.get(  # noqa: S101
-        "SENTINELONE_API_KEY"
+    assert daemon_config.get("openaev_token") == expected_config.get(  # noqa: S101
+        "OPENAEV_TOKEN"
     )
+    assert daemon_config.get("collector_id") == expected_config.get(  # noqa: S101
+        "COLLECTOR_ID"
+    )
+    assert daemon_config.get("collector_name") == expected_config.get(  # noqa: S101
+        "COLLECTOR_NAME"
+    )
+    assert daemon_config.get(  # noqa: S101
+        "sentinelone_base_url"
+    ) == expected_config.get("SENTINELONE_BASE_URL")
+    assert daemon_config.get(  # noqa: S101
+        "sentinelone_api_key"
+    ) == expected_config.get("SENTINELONE_API_KEY")
 
 
 def then_converter_initialized_successfully(converter: SentinelOneConverter) -> None:
@@ -566,7 +573,9 @@ def then_single_threat_converted_completely(
     if threat.hostname:
         assert "target_hostname_address" in converted  # noqa: S101
         assert converted["target_hostname_address"]["type"] == "fuzzy"  # noqa: S101
-        assert converted["target_hostname_address"]["data"] == [threat.hostname]  # noqa: S101
+        assert converted["target_hostname_address"]["data"] == [  # noqa: S101
+            threat.hostname
+        ]
         assert converted["target_hostname_address"]["score"] == 95  # noqa: S101
 
 
@@ -657,7 +666,9 @@ def then_private_method_converts_properly(
 
     if threat.hostname:
         assert "target_hostname_address" in result  # noqa: S101
-        assert result["target_hostname_address"]["data"] == [threat.hostname]  # noqa: S101
+        assert result["target_hostname_address"]["data"] == [  # noqa: S101
+            threat.hostname
+        ]
 
 
 # Session and Configuration Validation Then Methods
