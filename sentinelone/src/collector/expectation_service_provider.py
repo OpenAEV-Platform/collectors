@@ -60,7 +60,7 @@ class ExpectationServiceProvider(Protocol):
 
     def handle_batch_expectations(
         self, expectations: list[Any], detection_helper: OpenAEVDetectionHelper
-    ) -> list[ExpectationResult]:
+    ) -> tuple[list[ExpectationResult], int]:
         """Handle a batch of expectations efficiently.
 
         Args:
@@ -68,7 +68,9 @@ class ExpectationServiceProvider(Protocol):
             detection_helper: OpenAEV detection helper instance.
 
         Returns:
-            List of ExpectationResult objects for each processed expectation.
+            Tuple of (results, skipped_count) where:
+            - results: List of ExpectationResult objects for processed expectations
+            - skipped_count: Number of expectations skipped due to missing end_date
 
         """
         ...

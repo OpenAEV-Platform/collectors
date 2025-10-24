@@ -139,7 +139,7 @@ class GenericExpectationHandler:
         self,
         expectations: list[Any],
         detection_helper: OpenAEVDetectionHelper,
-    ) -> list[ExpectationResult]:
+    ) -> tuple[list[ExpectationResult], int]:
         """Handle a batch of expectations by delegating to the service provider.
 
         Post-processes results to ensure completeness by filling in missing
@@ -150,7 +150,9 @@ class GenericExpectationHandler:
             detection_helper: OpenAEV detection helper instance.
 
         Returns:
-            List of ExpectationResult objects.
+            Tuple of (results, skipped_count) where:
+            - results: List of ExpectationResult objects for processed expectations
+            - skipped_count: Number of expectations skipped due to missing end_date
 
         Raises:
             ExpectationHandlerError: If batch processing fails.
@@ -161,7 +163,7 @@ class GenericExpectationHandler:
                 f"{LOG_PREFIX} Starting batch processing of {len(expectations)} expectations"
             )
 
-            results = self.service_provider.handle_batch_expectations(
+            results, skipped_count = self.service_provider.handle_batch_expectations(
                 expectations, detection_helper
             )
 
@@ -179,10 +181,10 @@ class GenericExpectationHandler:
             invalid_count = len(results) - valid_count
 
             self.logger.info(
-                f"{LOG_PREFIX} Batch processing completed: {valid_count} valid, {invalid_count} invalid out of {len(results)} total"
+                f"{LOG_PREFIX} Batch processing completed: {valid_count} valid, {invalid_count} invalid, {skipped_count} skipped"
             )
 
-            return results
+            return results, skipped_count
 
         except Exception as e:
             self.logger.error(f"{LOG_PREFIX} Batch processing failed: {e}")
