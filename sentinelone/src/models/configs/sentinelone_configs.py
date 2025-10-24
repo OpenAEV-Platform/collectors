@@ -32,3 +32,8 @@ class _ConfigLoaderSentinelOne(ConfigBaseSettings):
         default=50,
         description="Number of expectations to process in each batch for batch-based processing.",
     )
+    enable_deep_visibility_search: bool = Field(
+        alias="SENTINELONE_ENABLE_DEEP_VISIBILITY_SEARCH",
+        default=False,
+        description="Enable deep visibility search for SentinelOne threat searches.",
+    )
