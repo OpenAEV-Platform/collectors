@@ -1,13 +1,12 @@
 """Essential tests for SentinelOne Threat Events Fetcher service - Gherkin GWT Format."""
 
 import pytest
-from src.services.fetcher_threat_events import FetcherThreatEvents
 from src.services.exception import SentinelOneValidationError
+from src.services.fetcher_threat_events import FetcherThreatEvents
 from tests.gwt_shared import (
     given_initialized_client_api,
     given_threat_with_complete_data,
 )
-
 
 # --------
 # Scenarios

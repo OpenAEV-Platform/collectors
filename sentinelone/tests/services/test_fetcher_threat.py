@@ -1,12 +1,11 @@
 """Essential tests for SentinelOne Threat Fetcher service - Gherkin GWT Format."""
 
 import pytest
+from src.services.exception import SentinelOneNetworkError, SentinelOneValidationError
 from src.services.fetcher_threat import FetcherThreat
-from src.services.exception import SentinelOneValidationError, SentinelOneNetworkError
 from tests.gwt_shared import (
     given_initialized_client_api,
 )
-
 
 # --------
 # Scenarios
@@ -77,8 +76,9 @@ def test_handle_api_connection_error():
     time_window = _given_valid_time_window()
 
     # When: I attempt to fetch threats with connection error
-    from requests.exceptions import ConnectionError
     from unittest.mock import patch
+
+    from requests.exceptions import ConnectionError
 
     with patch.object(
         fetcher.client_api.session,
@@ -200,8 +200,9 @@ def _given_api_connection_will_fail(fetcher):
         fetcher: The threat fetcher instance to mock.
 
     """
-    from requests.exceptions import ConnectionError
     from unittest.mock import patch
+
+    from requests.exceptions import ConnectionError
 
     with patch.object(
         fetcher.client_api.session,
@@ -332,4 +333,6 @@ def _then_threats_returned_successfully(threats):
     # Basic verification that we got threats back
     from src.services.model_threat import SentinelOneThreat
 
-    assert all(isinstance(threat, SentinelOneThreat) for threat in threats)  # noqa: S101
+    assert all(  # noqa: S101
+        isinstance(threat, SentinelOneThreat) for threat in threats
+    )
