@@ -148,5 +148,8 @@ class ConfigLoader(ConfigBaseSettings):
                 "sentinelone_expectation_batch_size": {
                     "data": self.sentinelone.expectation_batch_size
                 },
+                "sentinelone_enable_deep_visibility_search": {
+                    "data": self.sentinelone.enable_deep_visibility_search
+                },
             }
         )
