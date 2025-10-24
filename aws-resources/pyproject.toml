@@ -16,7 +16,7 @@ pyoaev = [
     { markers = "extra == 'dev' and extra != 'prod'", path = "../../client-python", develop = true },
 ]
 boto3 = "1.40.21"
-botocore = "1.40.21"
+botocore = "1.40.59"
 
 [tool.poetry.extras]
 prod = ["pyoaev"]
