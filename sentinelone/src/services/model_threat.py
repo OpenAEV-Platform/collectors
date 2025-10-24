@@ -12,13 +12,14 @@ class SentinelOneThreat(BaseModel):
     hostname: Optional[str] = Field(None, description="Agent computer name")
     is_mitigated: bool = Field(False, description="Whether threat has been mitigated")
     is_static: bool = Field(False, description="Whether threat is static")
+    sha1: Optional[str] = Field(None, description="SHA1 hash of the threat file")
     _raw: Optional[dict[str, Any]] = PrivateAttr(default=None)
 
     def __str__(self) -> str:
         """Detaield representation with key debugging information."""
         return (
             f"SentinelOneThreat(threat_id='{self.threat_id}', "
-            f"hostname='{self.hostname}', is_mitigated={self.is_mitigated}, is_static={self.is_static})"
+            f"hostname='{self.hostname}', is_mitigated={self.is_mitigated}, is_static={self.is_static}, sha1='{self.sha1}')"
         )
 
     @staticmethod
@@ -42,6 +43,35 @@ class SentinelOneThreat(BaseModel):
                 parent_process_names.add(parent_process_name)
 
         return list(parent_process_names)
+
+    @staticmethod
+    def get_parent_process_name_from_dv_events(events: list[dict]) -> list[str]:
+        """Extract parent process names from Deep Visibility events data.
+
+        Checks both parentProcessName and processName fields since OAEV implants
+        can appear in either field.
+
+        Args:
+            events: List of Deep Visibility event dictionaries.
+
+        Returns:
+            List of unique process names found in events (both parent and process names).
+
+        """
+        if not events:
+            return []
+
+        process_names = set()
+        for event in events:
+            parent_process_name = event.get("parentProcessName")
+            if parent_process_name:
+                process_names.add(parent_process_name)
+
+            process_name = event.get("processName")
+            if process_name:
+                process_names.add(process_name)
+
+        return list(process_names)
 
 
 class SentinelOneThreatsResponse(BaseModel):
@@ -87,11 +117,14 @@ class SentinelOneThreatsResponse(BaseModel):
                 detection_type = threat_info.get("detectionType", "").lower()
                 is_static = detection_type == "static"
 
+                sha1 = threat_info.get("sha1")
+
                 threat = SentinelOneThreat(
                     threat_id=threat_id,
                     hostname=hostname,
                     is_mitigated=is_mitigated,
                     is_static=is_static,
+                    sha1=sha1,
                 )
                 threat._raw = raw_threat
                 threats.append(threat)
