@@ -1,8 +1,6 @@
 """Generic Expectation Manager."""
 
 import logging
-import time
-from datetime import datetime, timedelta
 from typing import Any
 
 from pyoaev.apis.inject_expectation.model import (  # type: ignore[import-untyped]
@@ -11,7 +9,6 @@ from pyoaev.apis.inject_expectation.model import (  # type: ignore[import-untype
 )
 from pyoaev.client import OpenAEV  # type: ignore[import-untyped]
 from pyoaev.helpers import OpenAEVDetectionHelper  # type: ignore[import-untyped]
-from pyoaev.signatures.types import SignatureTypes  # type: ignore[import-untyped]
 
 from .exception import (
     APIError,
@@ -25,11 +22,6 @@ from .trace_manager import TraceManager
 from .trace_service_provider import TraceServiceProvider
 
 LOG_PREFIX = "[CollectorExpectationManager]"
-
-# Constants
-FETCH_TIMEOUT_MINUTES = 2
-SLEEP_INTERVAL_SECONDS = 30
-PROGRESS_LOG_INTERVAL = 10
 
 
 class GenericExpectationManager:
@@ -101,11 +93,17 @@ class GenericExpectationManager:
             self.logger.info(f"{LOG_PREFIX} Starting expectation processing cycle")
 
             self.logger.debug(f"{LOG_PREFIX} Fetching expectations from OpenAEV...")
-            expectations = self._fetch_expectations_with_timeout()
+            expectations = self._fetch_expectations()
 
             if not expectations:
                 self.logger.warning(f"{LOG_PREFIX} No expectations found to process")
-                return ProcessingSummary(processed=0, valid=0, invalid=0, skipped=0)
+                return ProcessingSummary(
+                    processed=0,
+                    valid=0,
+                    invalid=0,
+                    skipped=0,
+                    total_processing_time=None,
+                )
 
             supported_expectations = [
                 exp
@@ -130,8 +128,10 @@ class GenericExpectationManager:
             self.logger.debug(
                 f"{LOG_PREFIX} Processing expectations through handler..."
             )
-            results = self.expectation_handler.handle_batch_expectations(
-                supported_expectations, detection_helper
+            results, service_skipped_count = (
+                self.expectation_handler.handle_batch_expectations(
+                    supported_expectations, detection_helper
+                )
             )
 
             self.logger.debug(f"{LOG_PREFIX} Updating expectations in OpenAEV...")
@@ -143,11 +143,14 @@ class GenericExpectationManager:
             valid_count = sum(1 for r in results if r.is_valid)
             invalid_count = len(results) - valid_count
 
+            total_skipped = skipped_count + service_skipped_count
+
             summary = ProcessingSummary(
                 processed=len(results),
                 valid=valid_count,
                 invalid=invalid_count,
-                skipped=skipped_count,
+                skipped=total_skipped,
+                total_processing_time=None,
             )
 
             self.logger.info(
@@ -156,7 +159,7 @@ class GenericExpectationManager:
 
             self.logger.info(
                 f"{LOG_PREFIX} Processing cycle completed: {valid_count} valid, "
-                f"{invalid_count} invalid, {skipped_count} skipped"
+                f"{invalid_count} invalid, {total_skipped} skipped ({skipped_count} unsupported types, {service_skipped_count} no end_date)"
             )
 
             return summary
@@ -394,149 +397,30 @@ class GenericExpectationManager:
                 f"Failed to update expectation {expectation_id}: {individual_error}"
             ) from individual_error
 
-    def _fetch_expectations_with_timeout(
+    def _fetch_expectations(
         self,
     ) -> list[DetectionExpectation | PreventionExpectation]:
-        """Keep fetching expectations until we get ones with end_date or 5min timeout.
-
-        Continuously fetches expectations from OpenAEV until either:
-        1. Expectations with end_date signatures are found, or
-        2. The 5-minute timeout is reached.
+        """Fetch expectations from OpenAEV.
 
         Returns:
-            List of expectations that meet the criteria.
+            List of expectations.
 
         """
-        start_time = datetime.utcnow()
-        timeout = timedelta(minutes=FETCH_TIMEOUT_MINUTES)
-        attempt_count = 0
-
         self.logger.debug(
             f"{LOG_PREFIX} Fetching expectations for collector: {self.collector_id}"
         )
 
-        while (datetime.utcnow() - start_time) < timeout:
-            attempt_count += 1
-            elapsed = datetime.utcnow() - start_time
-
-            self.logger.debug(
-                f"{LOG_PREFIX} Expectation fetch attempt {attempt_count} (elapsed: {elapsed.total_seconds():.1f}s)"
-            )
-
-            try:
-                expectations = (
-                    self.oaev_api.inject_expectation.expectations_models_for_source(
-                        source_id=self.collector_id
-                    )
-                )
-                self.logger.debug(
-                    f"{LOG_PREFIX} Fetched {len(expectations)} expectations, reversing order..."
-                )
-                expectations = list(reversed(expectations))
-            except Exception as e:
-                self.logger.warning(
-                    f"{LOG_PREFIX} Error fetching expectations: {e}, retrying..."
-                )
-                self._interruptible_sleep(SLEEP_INTERVAL_SECONDS)
-                continue
-
-            if not expectations:
-                self.logger.debug(
-                    f"{LOG_PREFIX} No expectations found, waiting {SLEEP_INTERVAL_SECONDS}s before retry..."
-                )
-                self._interruptible_sleep(SLEEP_INTERVAL_SECONDS)
-                continue
-
-            self.logger.debug(
-                f"{LOG_PREFIX} Found {len(expectations)} expectations, checking for end_date..."
-            )
-
-            has_end_date = self._check_for_end_date(expectations)
-
-            if has_end_date:
-                self.logger.info(
-                    f"{LOG_PREFIX} Found {len(expectations)} expectations with end_date after {attempt_count} attempts"
-                )
-                return expectations  # type: ignore[no-any-return]
-
-            self.logger.debug(
-                f"{LOG_PREFIX} No end_date found in expectations, waiting {SLEEP_INTERVAL_SECONDS}s before retry..."
-            )
-            self._interruptible_sleep(SLEEP_INTERVAL_SECONDS)
-
-        self.logger.warning(
-            f"{LOG_PREFIX} Timeout reached after {attempt_count} attempts ({timeout.total_seconds()}s)"
-        )
-
         try:
-            final_expectations = (
+            expectations = (
                 self.oaev_api.inject_expectation.expectations_models_for_source(
                     source_id=self.collector_id
                 )
             )
-        except Exception as e:
-            self.logger.error(f"{LOG_PREFIX} Final expectations fetch failed: {e}")
-            return []
-
-        if final_expectations:
-            self.logger.info(
-                f"{LOG_PREFIX} Processing {len(final_expectations)} expectations without end_date requirement"
+            self.logger.debug(
+                f"{LOG_PREFIX} Fetched {len(expectations)} expectations, reversing order..."
             )
-        return final_expectations or []
-
-    def _check_for_end_date(
-        self, expectations: list[DetectionExpectation | PreventionExpectation]
-    ) -> bool:
-        """Check if any expectation has end_date signature.
-
-        Args:
-            expectations: List of expectations to check.
-
-        Returns:
-            True if any expectation contains an end_date signature.
-
-        """
-        try:
-            for expectation in expectations:
-                if hasattr(expectation, "inject_expectation_signatures"):
-                    for signature in expectation.inject_expectation_signatures:
-                        if signature.type == SignatureTypes.SIG_TYPE_END_DATE:
-                            return True
-            return False
+            expectations = list(reversed(expectations))
+            return expectations
         except Exception as e:
-            self.logger.debug(f"{LOG_PREFIX} Error checking for end_date: {e}")
-            return False
-
-    def _interruptible_sleep(self, seconds: int) -> None:
-        """Sleep for the given seconds, but check for interrupts every second.
-
-        Provides interruptible sleep that responds to KeyboardInterrupt (Ctrl+C)
-        and logs progress for longer sleep periods.
-
-        Args:
-            seconds: Number of seconds to sleep.
-
-        """
-        if seconds <= 0:
-            return
-
-        self.logger.debug(
-            f"{LOG_PREFIX} Sleeping for {seconds} seconds (interruptible)..."
-        )
-
-        for i in range(seconds):
-            try:
-                time.sleep(1)
-
-                if (
-                    seconds >= SLEEP_INTERVAL_SECONDS
-                    and (i + 1) % PROGRESS_LOG_INTERVAL == 0
-                ):
-                    self.logger.debug(
-                        f"{LOG_PREFIX} Sleep progress: {i + 1}/{seconds} seconds"
-                    )
-            except KeyboardInterrupt:
-                import sys
-
-                self.logger.info(f"{LOG_PREFIX} Sleep interrupted by user (Ctrl+C)")
-                sys.exit(0)
+            self.logger.error(f"{LOG_PREFIX} Error fetching expectations: {e}")
+            return []
