@@ -157,7 +157,7 @@ class SentinelOneTraceService:
             self.logger.debug(f"{LOG_PREFIX} Using trace builder URL: {trace_link}")
 
             trace_date = datetime.now(UTC).replace(microsecond=0)
-            date_str = trace_date.isoformat() + "Z"
+            date_str = trace_date.isoformat().replace("+00:00", "Z")
             self.logger.debug(f"{LOG_PREFIX} Generated trace date: {date_str}")
 
             trace = ExpectationTrace(
