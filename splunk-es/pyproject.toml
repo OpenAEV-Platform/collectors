@@ -30,7 +30,7 @@ current = ["pyoaev"]
 local = ["pyoaev"]
 
 [tool.poetry.group.dev.dependencies]
-isort = "^6.0.1"
+isort = "^7.0.0"
 ruff = "^0.12.11"
 mypy = "^1.17.1"
 black = "^25.1.0"
