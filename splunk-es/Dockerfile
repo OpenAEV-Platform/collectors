@@ -1,5 +1,5 @@
 
-FROM python:3.13-alpine AS builder
+FROM python:3.14-alpine AS builder
 
 # poetry version available on Ubuntu 24.04
 RUN pip3 install poetry==2.1.3
@@ -10,7 +10,7 @@ ARG installdir=/collector
 ADD . ${installdir}
 RUN cd ${installdir} && poetry build
 
-FROM python:3.13-alpine AS runner
+FROM python:3.14-alpine AS runner
 
 # Declare the build argument
 ARG PYOAEV_GIT_BRANCH_OVERRIDE
