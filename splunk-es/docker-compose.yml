@@ -1,0 +1,12 @@
+version: "3"
+services:
+  collector-splunkes:
+    image: openaev/collector-splunk-es:rolling
+    environment:
+      - OPENAEV_URL=http://localhost
+      - OPENAEV_TOKEN=ChangeMe
+      - COLLECTOR_ID=ChangeMe
+      - SPLUNKES_BASE_URL=https://change.me
+      - SPLUNKES_USERNAME=ChangeMe
+      - SPLUNKES_PASSWORD=ChangeMe
+    restart: always

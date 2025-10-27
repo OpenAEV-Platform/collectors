@@ -13,9 +13,9 @@ from test.fixtures.defaults import DEFAULT_SIGNATURE_TYPES, get_default_api_hand
 from unittest.mock import patch
 
 from pydantic import ValidationError
-from pyobas.exceptions import OpenBASError
-from pyobas.signatures.signature_type import SignatureType
-from pyobas.signatures.types import MatchTypes, SignatureTypes
+from pyoaev.exceptions import OpenAEVError
+from pyoaev.signatures.signature_type import SignatureType
+from pyoaev.signatures.types import MatchTypes, SignatureTypes
 
 from crowdstrike.query_strategy.alert import Alert, Item
 
@@ -155,7 +155,7 @@ class TestAlert(unittest.TestCase):
             }
         )
 
-        with self.assertRaises(OpenBASError):
+        with self.assertRaises(OpenAEVError):
             TestAlert.STRATEGY.extract_signature_data(
                 # purposefully pass an arbitrary string instead of SignatureTypes enum item
                 item,

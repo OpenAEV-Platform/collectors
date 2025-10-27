@@ -1,10 +1,10 @@
-# OpenBAS Microsoft Entra Collector
+# OpenAEV Microsoft Entra Collector
 
 Table of Contents
 
-- [OpenBAS Microsoft Entra Collector](#openbas-microsoft-entra-collector)
+- [OpenAEV Microsoft Entra Collector](#openaev-microsoft-entra-collector)
     - [Configuration variables](#configuration-variables)
-        - [OpenBAS environment variables](#openbas-environment-variables)
+        - [OpenAEV environment variables](#openaev-environment-variables)
         - [Base collector environment variables](#base-collector-environment-variables)
         - [Collector extra parameters environment variables](#collector-extra-parameters-environment-variables)
     - [Deployment](#deployment)
@@ -17,14 +17,14 @@ Table of Contents
 There are a number of configuration options, which are set either in `docker-compose.yml` (for Docker) or
 in `config.yml` (for manual deployment).
 
-### OpenBAS environment variables
+### OpenAEV environment variables
 
-Below are the parameters you'll need to set for OpenBAS:
+Below are the parameters you'll need to set for OpenAEV:
 
 | Parameter     | config.yml | Docker environment variable | Mandatory | Description                                          |
 |---------------|------------|-----------------------------|-----------|------------------------------------------------------|
-| OpenBAS URL   | url        | `OPENBAS_URL`               | Yes       | The URL of the OpenBAS platform.                     |
-| OpenBAS Token | token      | `OPENBAS_TOKEN`             | Yes       | The default admin token set in the OpenBAS platform. |
+| OpenAEV URL   | url        | `OPENAEV_URL`               | Yes       | The URL of the OpenAEV platform.                     |
+| OpenAEV Token | token      | `OPENAEV_TOKEN`             | Yes       | The default admin token set in the OpenAEV platform. |
 
 ### Base collector environment variables
 
@@ -36,7 +36,6 @@ Below are the parameters you'll need to set for running the collector properly:
 | Collector Name   | collector.name      | `COLLECTOR_NAME`             | Microsoft Entra         | No        | Name of the collector.                                                                 |
 | Collector Period | collector.period    | `COLLECTOR_PERIOD`           | 60                      | No        | The time interval at which your collector will run (int, seconds).                     |
 | Log Level        | collector.log_level | `COLLECTOR_LOG_LEVEL`        | warn                    | No        | Determines the verbosity of the logs. Options are `debug`, `info`, `warn`, or `error`. |
-| Type             | collector.type      | `COLLECTOR_TYPE`             | openbas_microsoft_entra | No        | Type of the collector                                                                  |
 
 ### Collector extra parameters environment variables
 
@@ -91,8 +90,8 @@ Install the environment:
 poetry install --extras prod
 ```
 
-**Development** (note that you should also clone the [pyobas](OpenBAS-Platform/client-python) repository [according to
-these instructions](../README.md#simultaneous-development-on-pyobas-and-a-collector))
+**Development** (note that you should also clone the [pyoaev](OpenAEV-Platform/client-python) repository [according to
+these instructions](../README.md#simultaneous-development-on-pyoaev-and-a-collector))
 ```shell
 # development environment
 poetry install --extras dev
@@ -101,10 +100,10 @@ poetry install --extras dev
 Then, start the collector:
 
 ```shell
-poetry run python -m microsoft_entra.openbas_microsoft_entra
+poetry run python -m microsoft_entra.openaev_microsoft_entra
 ```
 
 ## Behavior
 
-This collector retrieves your users and teams from your Microsoft Entra instance and import them into your OpenBAS
+This collector retrieves your users and teams from your Microsoft Entra instance and import them into your OpenAEV
 instance.

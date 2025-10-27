@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "openbas-tanium-threat-response-collector"
+name = "openaev-tanium-threat-response-collector"
 version = "1.18.20"
 description = "A Collector for Tanium Threat Response security suite"
 authors = ["Filigran <contact@filigran.io>"]
@@ -11,15 +11,15 @@ packages = [
 
 [tool.poetry.dependencies]
 python = "^3.11"
-pyobas = [
+pyoaev = [
     { markers = "extra == 'prod' and extra != 'dev'", version = "1.18.20", source = "pypi"  },
     { markers = "extra == 'dev' and extra != 'prod'", path = "../../client-python", develop = true },
 ]
 thefuzz = "0.22.1"
 
 [tool.poetry.extras]
-prod = []
-dev = []
+prod = ["pyoaev"]
+dev = ["pyoaev"]
 
 [build-system]
 requires = ["poetry-core"]

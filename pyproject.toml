@@ -9,15 +9,16 @@ package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.11"
-openbas-atomic-red-team-collector = { path = "./atomic-red-team" }
-openbas-crowdstrike-collector = { path = "./crowdstrike" }
-openbas-microsoft-defender-collector = { path = "./microsoft-defender" }
-openbas-microsoft-entra-collector = { path = "./microsoft-entra" }
-openbas-microsoft-sentinel-collector = { path = "./microsoft-sentinel" }
-openbas-mitre-attack-collector = { path = "./mitre-attack" }
-openbas-tanium-threat-response-collector = { path = "./tanium-threat-response" }
-# install pyobas explicitly to force getting the dep from the local path in dev mode
-pyobas = [
+openaev-atomic-red-team-collector = { path = "./atomic-red-team" }
+openaev-crowdstrike-collector = { path = "./crowdstrike" }
+openaev-microsoft-defender-collector = { path = "./microsoft-defender" }
+openaev-microsoft-entra-collector = { path = "./microsoft-entra" }
+openaev-microsoft-sentinel-collector = { path = "./microsoft-sentinel" }
+openaev-mitre-attack-collector = { path = "./mitre-attack" }
+openaev-nvd-nist-cve-collector = { path = "./nvd-nist-cve" }
+openaev-tanium-threat-response-collector = { path = "./tanium-threat-response" }
+# install pyoaev explicitly to force getting the dep from the local path in dev mode
+pyoaev = [
     { markers = "extra != 'dev'", version = "1.18.20", source = "pypi"  },
     { markers = "extra == 'dev'", path = "../client-python", develop = true },
 ]

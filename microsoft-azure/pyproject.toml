@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "openbas-microsoft-azure-collector"
+name = "openaev-microsoft-azure-collector"
 version = "1.18.20"
 description = "A Collector for Microsoft Azure Virtual Machines"
 authors = ["Filigran <contact@filigran.io>"]
@@ -11,7 +11,7 @@ packages = [
 
 [tool.poetry.dependencies]
 python = "^3.11"
-pyobas = [
+pyoaev = [
     { markers = "extra == 'prod' and extra != 'dev'", version = "1.18.20", source = "pypi"  },
     { markers = "extra == 'dev' and extra != 'prod'", path = "../../client-python", develop = true },
 ]
@@ -19,8 +19,8 @@ msal = "1.31.1"
 requests = "2.32.3"
 
 [tool.poetry.extras]
-prod = []
-dev = []
+prod = ["pyoaev"]
+dev = ["pyoaev"]
 
 [build-system]
 requires = ["poetry-core"]

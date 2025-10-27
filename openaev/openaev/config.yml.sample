@@ -1,0 +1,10 @@
+openaev:
+  url: 'http://localhost:3001'
+  token: 'ChangeMe'
+
+collector:
+  id: 'changeme'
+  name: 'OpenAEV Datasets'
+  period: 604800
+  log_level: 'info'
+

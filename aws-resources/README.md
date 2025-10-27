@@ -1,8 +1,8 @@
-# OpenBAS Amazon Web Services
+# OpenAEV Amazon Web Services
 
 ## Description
 
-This collector enables OpenBAS to import EC2 instances from AWS accounts as endpoints.
+This collector enables OpenAEV to import EC2 instances from AWS accounts as endpoints.
 
 ## Features
 
@@ -27,7 +27,7 @@ This collector enables OpenBAS to import EC2 instances from AWS accounts as endp
 1. **Create an IAM User:**
    - Go to AWS Console → IAM → Users
    - Click "Add users"
-   - Enter a username (e.g., "openbas-collector")
+   - Enter a username (e.g., "openaev-collector")
    - Select "Programmatic access" for Access type
    - Click "Next: Permissions"
 
@@ -48,7 +48,7 @@ This collector enables OpenBAS to import EC2 instances from AWS accounts as endp
    - Click "Create role"
    - Select "AWS service" → "EC2"
    - Attach `AmazonEC2ReadOnlyAccess` policy
-   - Name the role (e.g., "OpenBASCollectorRole")
+   - Name the role (e.g., "OpenAEVCollectorRole")
 
 2. **Attach Role to EC2 Instance:**
    - Launch or modify your EC2 instance
@@ -88,14 +88,14 @@ For security best practices, create a custom policy with only required permissio
 }
 ```
 
-### OpenBAS Configuration
+### OpenAEV Configuration
 
 Create or update `config.yml`:
 
 ```yaml
-openbas:
-  url: 'http://your-openbas-url:3001'
-  token: 'your-openbas-token'
+openaev:
+  url: 'http://your-openaev-url:3001'
+  token: 'your-openaev-token'
 
 collector:
   id: 'unique-collector-id'
@@ -115,7 +115,7 @@ collector:
 
 1. Build the Docker image:
 ```bash
-docker build -t openbas-aws-resources-collector .
+docker build -t openaev-aws-resources-collector .
 ```
 
 2. Run with docker-compose:
@@ -135,15 +135,15 @@ poetry install
 
 3. Run the collector:
 ```bash
-poetry run python aws_resources/openbas_aws_resources.py
+poetry run python aws_resources/openaev_aws_resources.py
 ```
 
 ## Environment Variables
 
 All configuration can be provided via environment variables:
 
-- `OPENBAS_URL`: OpenBAS platform URL
-- `OPENBAS_TOKEN`: OpenBAS API token
+- `OPENAEV_URL`: OpenAEV platform URL
+- `OPENAEV_TOKEN`: OpenAEV API token
 - `COLLECTOR_ID`: Unique collector identifier
 - `COLLECTOR_NAME`: Display name for the collector
 - `COLLECTOR_PERIOD`: Collection interval in seconds
@@ -235,4 +235,4 @@ If collector runs but finds no instances:
 
 ## Support
 
-For issues or questions, please open an issue in the OpenBAS GitHub repository.
+For issues or questions, please open an issue in the OpenAEV GitHub repository.

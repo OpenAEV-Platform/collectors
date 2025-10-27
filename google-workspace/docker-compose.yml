@@ -1,13 +1,12 @@
 services:
   collector-google-workspace:
-    image: openbas/collector-google-workspace:latest
+    image: openaev/collector-google-workspace:latest
     environment:
-      - OPENBAS_URL=${OPENBAS_URL}
-      - OPENBAS_TOKEN=${OPENBAS_TOKEN}
+      - OPENAEV_URL=${OPENAEV_URL}
+      - OPENAEV_TOKEN=${OPENAEV_TOKEN}
       - COLLECTOR_ID=${COLLECTOR_ID}
       - COLLECTOR_NAME=${COLLECTOR_NAME:-"Google Workspace"}
       - COLLECTOR_LOG_LEVEL=${COLLECTOR_LOG_LEVEL:-warn}
-      - COLLECTOR_TYPE=${COLLECTOR_TYPE:-openbas_google_workspace}
       - COLLECTOR_PERIOD=${COLLECTOR_PERIOD:-60}
       - GOOGLE_WORKSPACE_SERVICE_ACCOUNT_JSON=${GOOGLE_WORKSPACE_SERVICE_ACCOUNT_JSON}
       - GOOGLE_WORKSPACE_DELEGATED_ADMIN_EMAIL=${GOOGLE_WORKSPACE_DELEGATED_ADMIN_EMAIL}

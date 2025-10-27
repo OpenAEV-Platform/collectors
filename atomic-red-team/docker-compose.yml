@@ -1,12 +1,11 @@
 services:
   collector-atomic-red-team:
-    image: openbas/collector-atomic-red-team:latest
+    image: openaev/collector-atomic-red-team:latest
     environment:
-      - OPENBAS_URL=${OPENBAS_URL}
-      - OPENBAS_TOKEN=${OPENBAS_TOKEN}
+      - OPENAEV_URL=${OPENAEV_URL}
+      - OPENAEV_TOKEN=${OPENAEV_TOKEN}
       - COLLECTOR_ID=${COLLECTOR_ID}
       - COLLECTOR_NAME=${COLLECTOR_NAME:-"Atomic Red Team"}
       - COLLECTOR_PERIOD=${COLLECTOR_PERIOD:-604800}
-      - COLLECTOR_TYPE=${COLLECTOR_TYPE:-openbas_atomic_red_team}
       - COLLECTOR_LOG_LEVEL=${COLLECTOR_LOG_LEVEL:-warn}
     restart: unless-stopped

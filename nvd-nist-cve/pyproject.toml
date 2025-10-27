@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "openaev-nvd-nist-cve-collector"
+version = "1.18.20"
+description = "Collector for retrieve CVE from NVD by Nist"
+authors = ["Filigran <contact@filigran.io>"]
+license = "Apache-2.0"
+readme = "README.md"
+packages = [{include = "nvd_nist_cve"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+pyoaev = [
+    { markers = "extra == 'prod' and extra != 'dev'", version = "1.18.20", source = "pypi"  },
+    { markers = "extra == 'dev' and extra != 'prod'", path = "../../client-python", develop = true },
+]
+
+[tool.poetry.extras]
+prod = ["pyoaev"]
+dev = ["pyoaev"]
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

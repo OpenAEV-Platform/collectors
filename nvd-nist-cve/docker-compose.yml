@@ -1,0 +1,15 @@
+version: '3'
+services:
+  collector-nvd-nist-cve:
+    image: openaev/collector-nvd-nist-cve:latest
+    environment:
+      - OPENAEV_URL=${OPENAEV_URL}
+      - OPENAEV_TOKEN=${OPENAEV_TOKEN}
+      - COLLECTOR_ID=${COLLECTOR_ID}
+      - COLLECTOR_NAME=${COLLECTOR_NAME:-"CVE by NVD NIST"}
+      - COLLECTOR_LOG_LEVEL=${COLLECTOR_LOG_LEVEL:-warn}
+      - COLLECTOR_PERIOD=${COLLECTOR_PERIOD:-7200}
+      - NVD_NIST_CVE_API_BASE_URL=${NVD_NIST_CVE_API_BASE_URL:-https://services.nvd.nist.gov/rest/json}
+      - NVD_NIST_CVE_API_KEY=${NVD_NIST_CVE_API_KEY}
+      - NVD_NIST_CVE_START_YEAR=${NVD_NIST_CVE_START_YEAR:-2019}
+    restart: unless-stopped

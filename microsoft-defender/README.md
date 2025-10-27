@@ -1,11 +1,11 @@
-# OpenBAS Microsoft Defender Collector
+# OpenAEV Microsoft Defender Collector
 
 Table of Contents
 
-- [OpenBAS Microsoft Defender Collector](#openbas-microsoft-defender-collector)
+- [OpenAEV Microsoft Defender Collector](#openaev-microsoft-defender-collector)
     - [Prerequisites](#prerequisites)
     - [Configuration variables](#configuration-variables)
-        - [OpenBAS environment variables](#openbas-environment-variables)
+        - [OpenAEV environment variables](#openaev-environment-variables)
         - [Base collector environment variables](#base-collector-environment-variables)
         - [Collector extra parameters environment variables](#collector-extra-parameters-environment-variables)
     - [Deployment](#deployment)
@@ -25,14 +25,14 @@ The permission type should be **Application** or **Delegated Work Account**.
 There are a number of configuration options, which are set either in `docker-compose.yml` (for Docker) or
 in `config.yml` (for manual deployment).
 
-### OpenBAS environment variables
+### OpenAEV environment variables
 
-Below are the parameters you'll need to set for OpenBAS:
+Below are the parameters you'll need to set for OpenAEV:
 
 | Parameter     | config.yml    | Docker environment variable | Mandatory | Description                                          |
 |---------------|---------------|-----------------------------|-----------|------------------------------------------------------|
-| OpenBAS URL   | openbas.url   | `OPENBAS_URL`               | Yes       | The URL of the OpenBAS platform.                     |
-| OpenBAS Token | openbas.token | `OPENBAS_TOKEN`             | Yes       | The default admin token set in the OpenBAS platform. |
+| OpenAEV URL   | openaev.url   | `OPENAEV_URL`               | Yes       | The URL of the OpenAEV platform.                     |
+| OpenAEV Token | openaev.token | `OPENAEV_TOKEN`             | Yes       | The default admin token set in the OpenAEV platform. |
 
 ### Base collector environment variables
 
@@ -44,7 +44,6 @@ Below are the parameters you'll need to set for running the collector properly:
 | Collector Name   | collector.name      | `COLLECTOR_NAME`            | Microsoft Defender         | No        | Name of the collector.                                                                        |
 | Collector Period | collector.period    | `COLLECTOR_PERIOD`          | 60                         | No        | The time interval at which your collector will run (int, seconds).                            |
 | Log Level        | collector.log_level | `COLLECTOR_LOG_LEVEL`       | warn                       | No        | Determines the verbosity of the logs. Options are `debug`, `info`, `warn`, or `error`.        |
-| Type             | collector.type      | `COLLECTOR_TYPE`            | openbas_microsoft_defender | No        | Type of the collector                                                                         |
 | Platform         | collector.platform  | `COLLECTOR_PLATFORM`        | EDR                        | No        | Type of security platform this collector works for. One of: `EDR, XDR, SIEM, SOAR, NDR, ISPM` |
 
 ### Collector extra parameters environment variables
@@ -99,8 +98,8 @@ Install the environment:
 poetry install --extras prod
 ```
 
-**Development** (note that you should also clone the [pyobas](OpenBAS-Platform/client-python) repository [according to
-these instructions](../README.md#simultaneous-development-on-pyobas-and-a-collector))
+**Development** (note that you should also clone the [pyoaev](OpenAEV-Platform/client-python) repository [according to
+these instructions](../README.md#simultaneous-development-on-pyoaev-and-a-collector))
 ```shell
 # development environment
 poetry install --extras dev
@@ -109,13 +108,13 @@ poetry install --extras dev
 Then, start the collector:
 
 ```shell
-poetry run python -m microsoft_defender.openbas_microsoft_defender
+poetry run python -m microsoft_defender.openaev_microsoft_defender
 ```
 
 ## Behavior
 
 The collector retrieves recent alerts (last 45 minutes) from Microsoft Defender and matches them with attacks executed
-by OpenBAS agents to validate prevention and detection expectations.
+by OpenAEV agents to validate prevention and detection expectations.
 
-The collector identifies matches using the parent process name. OpenBAS attacks are
-recognized by the parent process name format: `openbas-implant-INJECT_ID.exe`.
+The collector identifies matches using the parent process name. OpenAEV attacks are
+recognized by the parent process name format: `openaev-implant-INJECT_ID.exe`.

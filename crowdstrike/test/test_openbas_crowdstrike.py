@@ -6,8 +6,8 @@ from unittest.mock import patch
 from crowdstrike.query_strategy.alert import Item
 
 
-class TestOpenBASCrowdstrike(unittest.TestCase):
-    @patch("pyobas.apis.InjectExpectationManager.update")
+class TestOpenAEVCrowdstrike(unittest.TestCase):
+    @patch("pyoaev.apis.InjectExpectationManager.update")
     def test_when_alert_matches_update_prevention_expectation(
         self, mock_expectation_update
     ):
@@ -69,7 +69,7 @@ class TestOpenBASCrowdstrike(unittest.TestCase):
             },
         )
 
-    @patch("pyobas.apis.InjectExpectationManager.update")
+    @patch("pyoaev.apis.InjectExpectationManager.update")
     def test_when_alert_matches_but_not_prevented_update_prevention_expectation(
         self, mock_expectation_update
     ):
@@ -132,7 +132,7 @@ class TestOpenBASCrowdstrike(unittest.TestCase):
             },
         )
 
-    @patch("pyobas.apis.InjectExpectationManager.update")
+    @patch("pyoaev.apis.InjectExpectationManager.update")
     def test_when_alert_matches_update_detection_expectation(
         self, mock_expectation_update
     ):
@@ -195,7 +195,7 @@ class TestOpenBASCrowdstrike(unittest.TestCase):
             },
         )
 
-    @patch("pyobas.apis.InjectExpectationManager.update")
+    @patch("pyoaev.apis.InjectExpectationManager.update")
     def test_when_expectation_has_expected_hostname_signature_ignore_it(
         self, mock_expectation_update
     ):
@@ -259,7 +259,7 @@ class TestOpenBASCrowdstrike(unittest.TestCase):
             },
         )
 
-    @patch("pyobas.apis.InjectExpectationManager.update")
+    @patch("pyoaev.apis.InjectExpectationManager.update")
     def test_when_alert_fails_to_match_dont_update_prevention_expectation(
         self, mock_expectation_update
     ):
@@ -297,7 +297,7 @@ class TestOpenBASCrowdstrike(unittest.TestCase):
         mock_expectation_update.assert_not_called()
         self.assertEqual(0, len(traces))
 
-    @patch("pyobas.apis.InjectExpectationManager.update")
+    @patch("pyoaev.apis.InjectExpectationManager.update")
     def test_when_signatures_match_when_unknown_expectation_type_skip_updating_expectation(
         self, mock_expectation_update
     ):

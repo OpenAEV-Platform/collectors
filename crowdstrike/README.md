@@ -1,4 +1,4 @@
-# OpenBAS CrowdStrike Endpoint Security Collector
+# OpenAEV CrowdStrike Endpoint Security Collector
 
 The CrowdStrike Endpoint Security collector.
 
@@ -12,14 +12,14 @@ details dictate what data is actually available to the collector.
 There are a number of configuration options, which are set either in `docker-compose.yml` (for Docker) or
 in `config.yml` (for manual deployment).
 
-### OpenBAS environment variables
+### OpenAEV environment variables
 
-Below are the parameters you'll need to set for OpenBAS:
+Below are the parameters you'll need to set for OpenAEV:
 
 | Parameter     | config.yml    | Docker environment variable | Mandatory | Description                                          |
 |---------------|---------------|-----------------------------|-----------|------------------------------------------------------|
-| OpenBAS URL   | openbas.url   | `OPENBAS_URL`               | Yes       | The URL of the OpenBAS platform.                     |
-| OpenBAS Token | openbas.token | `OPENBAS_TOKEN`             | Yes       | The default admin token set in the OpenBAS platform. |
+| OpenAEV URL   | openaev.url   | `OPENAEV_URL`               | Yes       | The URL of the OpenAEV platform.                     |
+| OpenAEV Token | openaev.token | `OPENAEV_TOKEN`             | Yes       | The default admin token set in the OpenAEV platform. |
 
 ### Base collector environment variables
 
@@ -31,7 +31,6 @@ Below are the parameters you'll need to set for running the collector properly:
 | Collector Name   | collector.name      | `COLLECTOR_NAME`            | CrowdStrike Endpoint Security | No        | Name of the collector.                                                                        |
 | Collector Period | collector.period    | `COLLECTOR_PERIOD`          | 60                            | No        | The time interval at which your collector will run (int, seconds).                            |
 | Log Level        | collector.log_level | `COLLECTOR_LOG_LEVEL`       | warn                          | No        | Determines the verbosity of the logs. Options are `debug`, `info`, `warn`, or `error`.        |
-| Type             | collector.type      | `COLLECTOR_TYPE`            | openbas_crowdstrike           | No        | Type of the collector                                                                         |
 | Platform         | collector.platform  | `COLLECTOR_PLATFORM`        | EDR                           | No        | Type of security platform this collector works for. One of: `EDR, XDR, SIEM, SOAR, NDR, ISPM` |
 
 ### Collector extra parameters environment variables
@@ -73,7 +72,7 @@ docker compose up -d
 
 Get a local copy
 ```commandline
-git checkout https://github.com/OpenBAS-Platform/collectors
+git checkout https://github.com/OpenAEV-Platform/collectors
 cd ./collectors/crowdstrike
 ```
 Install the environment:
@@ -83,8 +82,8 @@ Install the environment:
 poetry install --extras prod
 ```
 
-**Development** (note that you should also clone the [pyobas](OpenBAS-Platform/client-python) repository [according to
-these instructions](../README.md#simultaneous-development-on-pyobas-and-a-collector))
+**Development** (note that you should also clone the [pyoaev](OpenAEV-Platform/client-python) repository [according to
+these instructions](../README.md#simultaneous-development-on-pyoaev-and-a-collector))
 ```shell
 # development environment
 poetry install --extras dev
@@ -92,13 +91,13 @@ poetry install --extras dev
 
 ## Usage
 ```commandline
-poetry run python -m crowdstrike.openbas_crowdstrike
+poetry run python -m crowdstrike.openaev_crowdstrike
 ```
 
 ## Behavior
 
 The collector retrieves recent alerts (last 45 minutes) from Crowdstrike and matches them with attacks executed
-by OpenBAS agents to validate prevention and detection expectations.
+by OpenAEV agents to validate prevention and detection expectations.
 
 ## Development
 

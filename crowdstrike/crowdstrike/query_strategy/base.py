@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 
-from pyobas.exceptions import OpenBASError
-from pyobas.signatures.signature_type import SignatureType
-from pyobas.signatures.types import SignatureTypes
+from pyoaev.exceptions import OpenAEVError
+from pyoaev.signatures.signature_type import SignatureType
+from pyoaev.signatures.types import SignatureTypes
 
 
 class Base(ABC):
@@ -34,7 +34,7 @@ class Base(ABC):
                         self.extract_signature_data(data_item, signature_type.label)
                     )
                 )
-            except OpenBASError as oe:
+            except OpenAEVError as oe:
                 self.api.helper.collector_logger.warning(
                     f"Skipping signature type: {oe}"
                 )

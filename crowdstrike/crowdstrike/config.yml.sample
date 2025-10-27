@@ -1,10 +1,9 @@
-openbas:
+openaev:
   url: 'http://localhost:8080'
   token: 'ChangeMe'
 
 collector:
   id: 'ChangeMe'
-  type: 'crowdStrike_endpoint_security'
   name: 'CrowdStrike Endpoint Security'
   period: 60
   log_level: 'info'

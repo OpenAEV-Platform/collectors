@@ -1,13 +1,12 @@
 services:
   collector-microsoft-entra:
-    image: openbas/collector-microsoft-entra:latest
+    image: openaev/collector-microsoft-entra:latest
     environment:
-      - OPENBAS_URL=${OPENBAS_URL}
-      - OPENBAS_TOKEN=${OPENBAS_TOKEN}
+      - OPENAEV_URL=${OPENAEV_URL}
+      - OPENAEV_TOKEN=${OPENAEV_TOKEN}
       - COLLECTOR_ID=${COLLECTOR_ID}
       - COLLECTOR_NAME=${COLLECTOR_NAME:-"Microsoft Entra"}
       - COLLECTOR_LOG_LEVEL=${COLLECTOR_LOG_LEVEL:-warn}
-      - COLLECTOR_TYPE=${COLLECTOR_TYPE:-openbas_microsoft_entra}
       - COLLECTOR_PERIOD=${COLLECTOR_PERIOD:-60}
       - MICROSOFT_ENTRA_TENANT_ID=${MICROSOFT_ENTRA_TENANT_ID}
       - MICROSOFT_ENTRA_CLIENT_ID=${MICROSOFT_ENTRA_CLIENT_ID}

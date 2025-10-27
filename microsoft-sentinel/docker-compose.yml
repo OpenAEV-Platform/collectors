@@ -1,13 +1,12 @@
 services:
   collector-microsoft-sentinel:
-    image: openbas/collector-microsoft-sentinel:latest
+    image: openaev/collector-microsoft-sentinel:latest
     environment:
-      - OPENBAS_URL=${OPENBAS_URL}
-      - OPENBAS_TOKEN=${OPENBAS_TOKEN}
+      - OPENAEV_URL=${OPENAEV_URL}
+      - OPENAEV_TOKEN=${OPENAEV_TOKEN}
       - COLLECTOR_ID=${COLLECTOR_ID}
       - COLLECTOR_NAME=${COLLECTOR_NAME:-"Microsoft Sentinel"}
       - COLLECTOR_LOG_LEVEL=${COLLECTOR_LOG_LEVEL:-warn}
-      - COLLECTOR_TYPE=${COLLECTOR_TYPE:-openbas_microsoft_sentinel}
       - COLLECTOR_PERIOD=${COLLECTOR_PERIOD:-60}
       - COLLECTOR_PLATFORM=${COLLECTOR_PLATFORM:-SIEM}
       - MICROSOFT_SENTINEL_TENANT_ID=${MICROSOFT_SENTINEL_TENANT_ID}

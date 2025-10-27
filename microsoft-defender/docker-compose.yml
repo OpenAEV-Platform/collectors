@@ -1,12 +1,11 @@
 services:
   collector-microsoft-defender:
-    image: openbas/collector-microsoft-defender:latest
+    image: openaev/collector-microsoft-defender:latest
     environment:
-      - OPENBAS_URL=${OPENBAS_URL}
-      - OPENBAS_TOKEN=${OPENBAS_TOKEN}
+      - OPENAEV_URL=${OPENAEV_URL}
+      - OPENAEV_TOKEN=${OPENAEV_TOKEN}
       - COLLECTOR_ID=${COLLECTOR_ID}
       - COLLECTOR_NAME=${COLLECTOR_NAME:-"Microsoft Defender"}
-      - COLLECTOR_TYPE=${COLLECTOR_TYPE:-openbas_microsoft_defender}
       - COLLECTOR_LOG_LEVEL=${COLLECTOR_LOG_LEVEL:-warn}
       - COLLECTOR_PERIOD=${COLLECTOR_PERIOD:-60}
       - COLLECTOR_PLATFORM=${COLLECTOR_PLATFORM:-EDR}
