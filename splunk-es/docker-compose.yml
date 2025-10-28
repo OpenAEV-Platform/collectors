@@ -1,7 +1,7 @@
 version: "3"
 services:
   collector-splunkes:
-    image: openaev/collector-sentinelone:rolling
+    image: openaev/collector-splunk-es:rolling
     environment:
       - OPENAEV_URL=http://localhost
       - OPENAEV_TOKEN=ChangeMe
