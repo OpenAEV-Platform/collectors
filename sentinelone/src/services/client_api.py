@@ -60,11 +60,13 @@ class SentinelOneClientAPI:
         """
         try:
             session = requests.Session()
-            session.headers.update({
-                "Authorization": f"ApiToken {self.api_key}",
-                "Content-Type": "application/json",
-                "Accept": "application/json",
-            })
+            session.headers.update(
+                {
+                    "Authorization": f"ApiToken {self.api_key}",
+                    "Content-Type": "application/json",
+                    "Accept": "application/json",
+                }
+            )
 
             return session
         except Exception as e:
