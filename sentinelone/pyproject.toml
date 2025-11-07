@@ -7,7 +7,7 @@ packages = [{ include = "src" }, { include = "tests" }]
 
 [project]
 name = "SentinelOneCollector"
-version = "1.18.20"
+version = "2.0.2"
 description = "Collector for SentinelOne EDR."
 readme = "README.md"
 
@@ -16,7 +16,7 @@ dynamic = ["dependencies"]
 
 [tool.poetry.dependencies]
 pyoaev = [
-    {markers = "extra == 'prod' and extra != 'local' and extra != 'current'",version = "^1.18.20"},
+    {markers = "extra == 'prod' and extra != 'local' and extra != 'current'",version = "^2.0.2"},
     {markers = "extra == 'local' and extra != 'current' and extra != 'prod'",path = "../../client-python", develop = true},
     {markers = "extra == 'current' and extra != 'prod' and extra != 'local'",git = "https://github.com/OpenAEV-Platform/client-python.git", branch = "release/current"},
 ]
