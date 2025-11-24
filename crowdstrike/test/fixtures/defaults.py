@@ -2,11 +2,7 @@ import logging
 from unittest.mock import patch
 
 from pyoaev.configuration import Configuration
-from pyoaev.helpers import (
-    OpenAEVCollectorHelper,
-    OpenAEVConfigHelper,
-    OpenAEVDetectionHelper,
-)
+from pyoaev.helpers import OpenAEVDetectionHelper
 from pyoaev.signatures.signature_type import SignatureType
 from pyoaev.signatures.types import MatchTypes, SignatureTypes
 
