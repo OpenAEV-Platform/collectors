@@ -1,5 +1,7 @@
+import logging
 from unittest.mock import patch
 
+from pyoaev.configuration import Configuration
 from pyoaev.helpers import (
     OpenAEVCollectorHelper,
     OpenAEVConfigHelper,
@@ -41,33 +43,14 @@ FAKE_DOCUMENT = {"document_id": "fake_document_id"}
 FAKE_SECURITY_PLATFORM = {"asset_id": "fake_asset_id"}
 
 
-def get_default_openaev_config_helper(
+def get_default_logger() -> logging.Logger:
+    return logging.getLogger(__name__)
+
+
+def get_default_configuration(
     config: dict = DEFAULT_COLLECTOR_CONFIG,
-) -> OpenAEVConfigHelper:
-    return OpenAEVConfigHelper(variables=config, base_path="fake_path")
-
-
-@patch("pyoaev.apis.document.DocumentManager.upsert")
-@patch("pyoaev.apis.security_platform.SecurityPlatformManager.upsert")
-@patch("pyoaev.mixins.CreateMixin.create")
-@patch("builtins.open")
-def get_default_openaev_collector_helper(
-    mock_open,
-    mockMixinCreate,
-    mock_security_platform_upsert,
-    mock_document_upsert,
-    config: OpenAEVConfigHelper = get_default_openaev_config_helper(),
-) -> OpenAEVCollectorHelper:
-    mock_document_upsert.return_value = FAKE_DOCUMENT
-    mock_security_platform_upsert.return_value = FAKE_SECURITY_PLATFORM
-    mock_open.return_value = None
-    return OpenAEVCollectorHelper(
-        config=config,
-        icon="some.png",
-        collector_type="openaev_crowdstrike",
-        security_platform_type=config.get_conf("collector_platform"),
-        connect_run_and_terminate=True,
-    )
+) -> Configuration:
+    return Configuration(config_hints=config)
 
 
 def get_default_signature_types(
@@ -77,11 +60,11 @@ def get_default_signature_types(
 
 
 def get_default_detection_helper(
-    helper: OpenAEVCollectorHelper = get_default_openaev_collector_helper(),
+    logger: logging.Logger = get_default_logger(),
     signature_types: list[SignatureType] = get_default_signature_types(),
 ):
     return OpenAEVDetectionHelper(
-        logger=helper.collector_logger,
+        logger=logger,
         relevant_signatures_types=[
             signature_type.label.value for signature_type in signature_types
         ],
@@ -89,27 +72,37 @@ def get_default_detection_helper(
 
 
 def get_default_api_handler(
-    helper: OpenAEVCollectorHelper = get_default_openaev_collector_helper(),
+    logger: logging.Logger = get_default_logger(),
+    configuration: Configuration = get_default_configuration(),
 ) -> CrowdstrikeApiHandler:
     return CrowdstrikeApiHandler(
-        helper=helper,
-        client_id=helper.config_helper.get_conf("crowdstrike_client_id"),
-        client_secret=helper.config_helper.get_conf("crowdstrike_client_secret"),
-        base_url=helper.config_helper.get_conf("crowdstrike_api_base_url"),
+        logger=logger,
+        client_id=configuration.get("crowdstrike_client_id"),
+        client_secret=configuration.get("crowdstrike_client_secret"),
+        base_url=configuration.get("crowdstrike_api_base_url"),
     )
 
 
+@patch("pyoaev.apis.document.DocumentManager.upsert")
+@patch("pyoaev.apis.security_platform.SecurityPlatformManager.upsert")
+@patch("pyoaev.mixins.CreateMixin.create")
+@patch("builtins.open")
 def get_default_collector(
     strategy,
-    config: OpenAEVConfigHelper = get_default_openaev_config_helper(),
-    helper: OpenAEVCollectorHelper = get_default_openaev_collector_helper(),
+    mock_open,
+    _mock_mixin_create,
+    mock_security_platform_upsert,
+    mock_document_upsert,
+    configuration: Configuration = get_default_configuration(),
     detection_helper: OpenAEVDetectionHelper = get_default_detection_helper(),
     signature_types: list[SignatureType] = get_default_signature_types(),
 ):
+    mock_document_upsert.return_value = FAKE_DOCUMENT
+    mock_security_platform_upsert.return_value = FAKE_SECURITY_PLATFORM
+    mock_open.return_value = None
     return OpenAEVCrowdStrike(
         strategy=strategy,
-        config=config,
-        helper=helper,
+        configuration=configuration,
         detection_helper=detection_helper,
         signature_types=signature_types,
     )

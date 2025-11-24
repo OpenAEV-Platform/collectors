@@ -35,8 +35,6 @@ class Base(ABC):
                     )
                 )
             except OpenAEVError as oe:
-                self.api.helper.collector_logger.warning(
-                    f"Skipping signature type: {oe}"
-                )
+                self.api.logger.warning(f"Skipping signature type: {oe}")
                 continue
         return data
