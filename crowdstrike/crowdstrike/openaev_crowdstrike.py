@@ -2,46 +2,61 @@ from datetime import datetime, timedelta
 
 import pytz
 from dateutil.parser import parse
-from pyoaev.helpers import (
-    OpenAEVCollectorHelper,
-    OpenAEVConfigHelper,
-    OpenAEVDetectionHelper,
-)
+from pyoaev.configuration import Configuration
+from pyoaev.daemons import CollectorDaemon
+from pyoaev.helpers import OpenAEVDetectionHelper
 from pyoaev.signatures.signature_type import SignatureType
 from pyoaev.signatures.types import MatchTypes, SignatureTypes
 
+from crowdstrike.configuration.config_loader import ConfigLoader
 from crowdstrike.crowdstrike_api_handler import CrowdstrikeApiHandler
 from crowdstrike.query_strategy.alert import Alert, Item
 from crowdstrike.query_strategy.base import Base
 
 
-class OpenAEVCrowdStrike:
+class OpenAEVCrowdStrike(CollectorDaemon):
     def __init__(
         self,
-        strategy: Base,
-        config: OpenAEVConfigHelper,
-        helper: OpenAEVCollectorHelper,
-        detection_helper: OpenAEVDetectionHelper,
-        signature_types,
+        configuration: Configuration,
+        strategy: Base = None,
+        detection_helper: OpenAEVDetectionHelper = None,
+        signature_types=None,
     ):
-        self.strategy = strategy
-        self.config = config
-        self.helper = helper
-        self.detection_helper = detection_helper
-        self.signature_types = signature_types
+        super().__init__(
+            configuration=configuration,
+            callback=self._process,
+            collector_type="openaev_crowdstrike",
+        )
+        self.strategy = strategy or Alert(
+            api_handler=CrowdstrikeApiHandler(
+                logger=self.logger,
+                client_id=self._configuration.get("crowdstrike_client_id"),
+                client_secret=self._configuration.get("crowdstrike_client_secret"),
+                base_url=self._configuration.get("crowdstrike_api_base_url"),
+            )
+        )
+        self.signature_types = signature_types or [
+            SignatureType(
+                SignatureTypes.SIG_TYPE_PARENT_PROCESS_NAME,
+                match_type=MatchTypes.MATCH_TYPE_FUZZY,
+                match_score=95,
+            ),
+        ]
+        self.detection_helper = detection_helper or OpenAEVDetectionHelper(
+            self.logger,
+            [signature_type.label.value for signature_type in self.signature_types],
+        )
         self.scanning_delta = 45
 
     # --- FETCHER ---
 
     def _fetch_expectations(self, start_time):
-        self.helper.collector_logger.info("Gathering expectations for executed injects")
+        self.logger.info("Gathering expectations for executed injects")
         # Get expectation that are NOT FILLED for this collector
-        expectations = (
-            self.helper.api.inject_expectation.expectations_assets_for_source(
-                self.config.get_conf("collector_id")
-            )
+        expectations = self.api.inject_expectation.expectations_assets_for_source(
+            self._configuration.get("collector_id")
         )
-        self.helper.collector_logger.info(
+        self.logger.info(
             "Found " + str(len(expectations)) + " expectations waiting to be matched"
         )
 
@@ -55,14 +70,14 @@ class OpenAEVCrowdStrike:
 
             # Check if the expectation is expired: created date is greater than request start time
             if expectation_date < start_time:
-                self.helper.collector_logger.info(
+                self.logger.info(
                     f"Expectation expired, failing inject {expectation['inject_expectation_inject']} "
                     f"({expectation['inject_expectation_type']})"
                 )
-                self.helper.api.inject_expectation.update(
+                self.api.inject_expectation.update(
                     expectation["inject_expectation_id"],
                     {
-                        "collector_id": self.config.get_conf("collector_id"),
+                        "collector_id": self._configuration.get("collector_id"),
                         "result": (
                             "Not Detected"
                             if expectation["inject_expectation_type"] == "DETECTION"
@@ -97,13 +112,11 @@ class OpenAEVCrowdStrike:
         """
         traces_to_create: list[dict[str, str]] = []
 
-        self.helper.collector_logger.debug(
-            "Total expectations returned: " + str(len(expectations))
-        )
+        self.logger.debug("Total expectations returned: " + str(len(expectations)))
 
         for expectation in expectations:
             if expectation.get("inject_expectation_signatures") is None:
-                self.helper.collector_logger.warning(
+                self.logger.warning(
                     f"No expected signatures found in expectation #{expectation.get('id')}"
                 )
                 continue
@@ -124,15 +137,15 @@ class OpenAEVCrowdStrike:
                         success_or_failure = self.strategy.is_prevented(alert)
                         result = "Prevented" if success_or_failure else "Not Prevented"
                     else:
-                        self.helper.collector_logger.warning(
+                        self.logger.warning(
                             f"Unsupported expectation type for now: {expectation.get('inject_expectation_type')}"
                         )
                         continue
 
-                    self.helper.api.inject_expectation.update(
+                    self.api.inject_expectation.update(
                         expectation["inject_expectation_id"],
                         {
-                            "collector_id": self.config.get_conf("collector_id"),
+                            "collector_id": self._configuration.get("collector_id"),
                             "result": result,
                             "is_success": success_or_failure,
                             "metadata": {"alertId": self.strategy.get_alert_id(alert)},
@@ -140,7 +153,7 @@ class OpenAEVCrowdStrike:
                     )
 
                     # Save alert to openaev for current matched expectation. Duplicate alerts are handled by openaev itself
-                    self.helper.collector_logger.info(
+                    self.logger.info(
                         "Expectation matched, adding trace for expectation "
                         + expectation["inject_expectation_id"]
                         + " ("
@@ -152,11 +165,11 @@ class OpenAEVCrowdStrike:
                             "inject_expectation_trace_expectation": expectation[
                                 "inject_expectation_id"
                             ],
-                            "inject_expectation_trace_source_id": self.config.get_conf(
+                            "inject_expectation_trace_source_id": self._configuration.get(
                                 "collector_id"
                             ),
                             "inject_expectation_trace_alert_name": alert.display_name,
-                            "inject_expectation_trace_alert_link": self.config.get_conf(
+                            "inject_expectation_trace_alert_link": self._configuration.get(
                                 "crowdstrike_ui_base_url"
                             )
                             + "/unified-detections/"
@@ -179,105 +192,10 @@ class OpenAEVCrowdStrike:
             expectations=self._fetch_expectations(start_time),
         )
 
-        self.helper.api.inject_expectation_trace.bulk_create(
+        self.api.inject_expectation_trace.bulk_create(
             payload={"expectation_traces": traces}
         )
 
-    def start(self):
-        period = self.config.get_conf("collector_period", True, 60)
-        self.helper.schedule(self._process, period)
-
 
 if __name__ == "__main__":
-    config = OpenAEVConfigHelper(
-        __file__,
-        {
-            # API information
-            "openaev_url": {"env": "OPENAEV_URL", "file_path": ["openaev", "url"]},
-            "openaev_token": {
-                "env": "OPENAEV_TOKEN",
-                "file_path": ["openaev", "token"],
-            },
-            # Config information
-            "collector_id": {
-                "env": "COLLECTOR_ID",
-                "file_path": ["collector", "id"],
-            },
-            "collector_name": {
-                "env": "COLLECTOR_NAME",
-                "file_path": ["collector", "name"],
-                "default": "CrowdStrike Endpoint Security",
-            },
-            "collector_period": {
-                "env": "COLLECTOR_PERIOD",
-                "file_path": ["collector", "period"],
-                "is_number": True,
-                "default": 60,
-            },
-            "collector_log_level": {
-                "env": "COLLECTOR_LOG_LEVEL",
-                "file_path": ["collector", "log_level"],
-                "default": "warn",
-            },
-            "collector_platform": {
-                "env": "COLLECTOR_PLATFORM",
-                "file_path": ["collector", "platform"],
-                "default": "EDR",
-            },
-            # CrowdStrike
-            "crowdstrike_client_id": {
-                "env": "CROWDSTRIKE_CLIENT_ID",
-                "file_path": ["crowdstrike", "client_id"],
-            },
-            "crowdstrike_client_secret": {
-                "env": "CROWDSTRIKE_CLIENT_SECRET",
-                "file_path": ["crowdstrike", "client_secret"],
-            },
-            "crowdstrike_api_base_url": {
-                "env": "CROWDSTRIKE_API_BASE_URL",
-                "file_path": ["crowdstrike", "api_base_url"],
-                "default": "https://api.us-2.crowdstrike.com",
-            },
-            "crowdstrike_ui_base_url": {
-                "env": "CROWDSTRIKE_UI_BASE_URL",
-                "file_path": ["crowdstrike", "ui_base_url"],
-                "default": "https://falcon.us-2.crowdstrike.com",
-            },
-        },
-    )
-
-    helper = OpenAEVCollectorHelper(
-        config=config,
-        icon="crowdstrike/img/icon-crowdstrike.png",
-        collector_type="openaev_crowdstrike",
-        security_platform_type=config.get_conf("collector_platform") or "EDR",
-    )
-
-    signature_types = [
-        SignatureType(
-            SignatureTypes.SIG_TYPE_PARENT_PROCESS_NAME,
-            match_type=MatchTypes.MATCH_TYPE_FUZZY,
-            match_score=95,
-        ),
-    ]
-
-    detection_helper = OpenAEVDetectionHelper(
-        helper.collector_logger,
-        [signature_type.label.value for signature_type in signature_types],
-    )
-
-    api_handler = CrowdstrikeApiHandler(
-        helper=helper,
-        client_id=config.get_conf("crowdstrike_client_id"),
-        client_secret=config.get_conf("crowdstrike_client_secret"),
-        base_url=config.get_conf("crowdstrike_api_base_url"),
-    )
-    strategy = Alert(api_handler=api_handler)
-    collector = OpenAEVCrowdStrike(
-        strategy=strategy,
-        config=config,
-        helper=helper,
-        detection_helper=detection_helper,
-        signature_types=signature_types,
-    )
-    collector.start()
+    OpenAEVCrowdStrike(configuration=ConfigLoader().to_daemon_config()).start()
