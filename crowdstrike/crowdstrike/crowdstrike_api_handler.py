@@ -4,8 +4,8 @@ from falconpy import Alerts as CsAlerts
 
 
 class CrowdstrikeApiHandler:
-    def __init__(self, helper, client_id, client_secret, base_url):
-        self.helper = helper
+    def __init__(self, logger, client_id, client_secret, base_url):
+        self.logger = logger
         self.client_id = client_id
         self.client_secret = client_secret
         self.base_url = base_url
@@ -36,13 +36,13 @@ class CrowdstrikeApiHandler:
             if alerts_response["status_code"] == 200:
                 return alerts_response["body"]["resources"]
             else:
-                self.helper.collector_logger.info(
+                self.logger.info(
                     "No alerts ID found for this specific parameters :"
                     + str(parameters)
                 )
                 return []
 
-        self.helper.collector_logger.error(
+        self.logger.error(
             "Could not fetch alerts from the Crowdstrike backend: "
             + str((response.get("body") or {}).get("errors"))
         )
