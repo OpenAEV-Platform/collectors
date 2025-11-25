@@ -16,7 +16,7 @@ pyoaev = [
     { markers = "extra == 'dev' and extra != 'prod'", path = "../../client-python", develop = true },
 ]
 msgraph-sdk = "1.40.0"
-msal = "1.33.0"
+msal = "1.34.0"
 
 [tool.poetry.extras]
 prod = ["pyoaev"]
