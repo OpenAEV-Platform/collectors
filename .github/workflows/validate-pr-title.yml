@@ -20,7 +20,7 @@ jobs:
           
           # Skip validation for renovate
           if [[ "$TITLE" == *"chore(deps)"* ]]; then
-            echo "ℹ️ Skipping validation for renovate Prs."
+            echo "⚠️ Skipping validation for renovate Prs."
             exit 0
           fi
           
