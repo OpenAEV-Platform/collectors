@@ -18,7 +18,7 @@ jobs:
           TITLE="${{ github.event.pull_request.title }}"
           echo "PR title: $TITLE"
           
-          # Skip validation for chore(deps)
+          # Skip validation for renovate
           if [[ "$TITLE" == *"chore(deps)"* ]]; then
             echo "ℹ️ Skipping validation for renovate Prs."
             exit 0
