@@ -44,5 +44,7 @@ class ConfigLoader(SettingsLoader):
                 },
                 "crowdstrike_api_base_url": {"data": self.crowdstrike.api_base_url},
                 "crowdstrike_ui_base_url": {"data": self.crowdstrike.ui_base_url},
-            }
+            },
+            config_base_model = self
+
         )

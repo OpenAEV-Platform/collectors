@@ -25,3 +25,9 @@ dev = ["pyoaev"]
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.cmw]
+config-dump-command = "poetry run python -m crowdstrike.openaev_crowdstrike --dump-config-schema"
+icon-path = "crowdstrike/img/icon-crowdstrike.png"
+slug = "openaev_crowdstrike"
+use_cases = ["cti", "vuln-hunting"]
