@@ -414,7 +414,9 @@ class OpenAEVAtomicRedTeam:
                                 "elevation_required", False
                             ),
                             "payload_prerequisites": prerequisites,
-                            "payload_domains": self.security_domain.get_associated_security_domains(atomic_test["name"], atomic_test["description"]),
+                            "payload_domains": self.security_domain.get_associated_security_domains(
+                                atomic_test["name"], atomic_test["description"]
+                            ),
                         }
 
                         # Add tags if we have any
