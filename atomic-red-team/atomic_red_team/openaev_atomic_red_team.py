@@ -415,7 +415,7 @@ class OpenAEVAtomicRedTeam:
                             ),
                             "payload_prerequisites": prerequisites,
                             "payload_domains": self.security_domain.get_associated_security_domains(
-                                atomic_test["name"], atomic_test["description"]
+                                atomic_test["name"]
                             ),
                         }
 
