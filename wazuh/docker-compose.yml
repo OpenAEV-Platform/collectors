@@ -1,0 +1,65 @@
+services:
+  wazuh-collector:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: openaev/collector-wazuh:latest
+    container_name: openaev-wazuh-collector
+    restart: unless-stopped
+    
+    environment:
+      # OpenAEV Configuration
+      - OPENAEV_URL=${OPENAEV_URL}
+      - OPENAEV_TOKEN=${OPENAEV_TOKEN}
+
+      # Collector Configuration
+      - COLLECTOR_ID=${COLLECTOR_ID:-wazuh-collector-001}
+      - COLLECTOR_NAME=${COLLECTOR_NAME:-Wazuh SIEM Collector}
+      - COLLECTOR_TYPE=${COLLECTOR_TYPE:-wazuh}
+      - COLLECTOR_PLATFORM=${COLLECTOR_PLATFORM:-SIEM}
+      - COLLECTOR_PERIOD=${COLLECTOR_PERIOD:-60}
+      - COLLECTOR_MIN_RULE_LEVEL=${COLLECTOR_MIN_RULE_LEVEL:-3}
+      - COLLECTOR_VERBOSE=${COLLECTOR_VERBOSE:-false}
+
+      # Indexer Configuration (OpenSearch/Elasticsearch)
+      - INDEXER_HOST=${INDEXER_HOST}
+      - INDEXER_PORT=${INDEXER_PORT:-9200}
+      - INDEXER_USERNAME=${INDEXER_USERNAME:-admin}
+      - INDEXER_PASSWORD=${INDEXER_PASSWORD}
+      - INDEXER_USE_SSL=${INDEXER_USE_SSL:-true}
+      - INDEXER_VERIFY_CERTS=${INDEXER_VERIFY_CERTS:-false}
+      - INDEXER_CA_CERTS=${INDEXER_CA_CERTS:-}
+      - INDEXER_INDEX_PATTERN=${INDEXER_INDEX_PATTERN:-wazuh-alerts-*}
+      - INDEXER_ALERT_LIMIT=${INDEXER_ALERT_LIMIT:-10000}
+
+      # Dashboard Configuration (for alert links in OpenAEV)
+      - DASHBOARD_URL=${DASHBOARD_URL:-}
+    
+    # Resource limits (adjust based on your needs)
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+networks:
+  default:
+    name: openaev-network
