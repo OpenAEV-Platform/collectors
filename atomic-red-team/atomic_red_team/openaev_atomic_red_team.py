@@ -4,7 +4,7 @@ import re
 import requests
 import yaml
 from pyoaev.helpers import OpenAEVCollectorHelper, OpenAEVConfigHelper
-from pyoaev.security_domain.types import SecurityDomains
+from atomic_red_team.openaev_security_domain import OpenAEVSecurityDomain
 
 ATOMIC_RED_TEAM_INDEX = "https://raw.githubusercontent.com/redcanaryco/atomic-red-team/master/atomics/Indexes/index.yaml"
 
@@ -55,18 +55,6 @@ UNVERIFIED = "UNVERIFIED"
 VERIFIED = "VERIFIED"
 
 COMMUNITY = "COMMUNITY"
-
-NETWORK_KEYWORDS = ["network", "ftp", "smb", "llmnr", "nmap"]
-
-WEB_APP_KEYWORDS = ["web"]
-
-EMAIL_INFILTRATION_KEYWORDS = ["mail", "phishing"]
-
-DATA_EXFILTRATION_KEYWORDS = ["exfiltrat"]
-
-URL_FILTERING_KEYWORDS = ["bitsadmin"]
-
-CLOUD_KEYWORDS = ["aws", "azure", "gcp"]
 
 
 def flatten_chain(matrix):
@@ -212,32 +200,6 @@ def _format_generic_command(string_to_analyse, arguments):
     )
 
 
-def _find_in_keywords(keywords, search):
-    return any(keyword.lower() in search.lower() for keyword in keywords)
-
-    # Define the domain by item
-
-
-def _get_associated_security_domains(name):
-    domains = []
-    domains.append(SecurityDomains.ENDPOINT.value)
-
-    if _find_in_keywords(NETWORK_KEYWORDS, name):
-        domains.append(SecurityDomains.NETWORK.value)
-    if _find_in_keywords(WEB_APP_KEYWORDS, name):
-        domains.append(SecurityDomains.WEB_APP.value)
-    if _find_in_keywords(EMAIL_INFILTRATION_KEYWORDS, name):
-        domains.append(SecurityDomains.EMAIL_INFILTRATION.value)
-    if _find_in_keywords(DATA_EXFILTRATION_KEYWORDS, name):
-        domains.append(SecurityDomains.DATA_EXFILTRATION.value)
-    if _find_in_keywords(URL_FILTERING_KEYWORDS, name):
-        domains.append(SecurityDomains.URL_FILTERING.value)
-    if _find_in_keywords(CLOUD_KEYWORDS, name):
-        domains.append(SecurityDomains.CLOUD.value)
-
-    return domains
-
-
 class OpenAEVAtomicRedTeam:
     def __init__(self):
         self.session = requests.Session()
@@ -278,6 +240,7 @@ class OpenAEVAtomicRedTeam:
             icon="atomic_red_team/img/icon-atomic-red-team.png",
             collector_type="openaev_atomic_red_team",
         )
+        self.securitydomain = OpenAEVSecurityDomain()
 
     def _create_or_get_tag(self, tag_name, tag_color="#6b7280"):
         """Create or get a tag and return its ID."""
@@ -451,7 +414,7 @@ class OpenAEVAtomicRedTeam:
                                 "elevation_required", False
                             ),
                             "payload_prerequisites": prerequisites,
-                            "payload_domains": _get_associated_security_domains(
+                            "payload_domains": self.securitydomain.get_associated_security_domains(
                                 atomic_test["name"]
                             ),
                         }
