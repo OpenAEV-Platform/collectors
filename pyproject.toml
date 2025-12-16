@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "collectors"
-version = "2.0.7"
+version = "2.0.8"
 description = "A collection of Collectors for interfacing with security software"
 authors = ["Filigran <contact@filigran.io>"]
 license = "Apache-2.0"
@@ -19,7 +19,7 @@ openaev-nvd-nist-cve-collector = { path = "./nvd-nist-cve" }
 openaev-tanium-threat-response-collector = { path = "./tanium-threat-response" }
 # install pyoaev explicitly to force getting the dep from the local path in dev mode
 pyoaev = [
-    { markers = "extra != 'dev'", version = "2.0.7", source = "pypi"  },
+    { markers = "extra != 'dev'", version = "2.0.8", source = "pypi"  },
     { markers = "extra == 'dev'", path = "../client-python", develop = true },
 ]
 
