@@ -3,7 +3,6 @@ from pyoaev.security_domain.types import SecurityDomains
 
 class OpenAEVSecurityDomain:
 
-
     NETWORK_KEYWORDS = ["network", "ftp", "smb", "llmnr", "nmap"]
 
     WEB_APP_KEYWORDS = ["web"]
@@ -16,10 +15,8 @@ class OpenAEVSecurityDomain:
 
     CLOUD_KEYWORDS = ["aws", "azure", "gcp"]
 
-
     def _find_in_keywords(self, keywords, search):
         return any(keyword.lower() in search.lower() for keyword in keywords)
-
 
     def get_associated_security_domains(self, name):
         domains = []
