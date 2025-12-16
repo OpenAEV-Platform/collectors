@@ -211,10 +211,13 @@ def _format_generic_command(string_to_analyse, arguments):
         else string_to_analyse
     )
 
+
 def _find_in_keywords(keywords, search):
     return any(keyword.lower() in search.lower() for keyword in keywords)
 
     # Define the domain by item
+
+
 def _get_associated_security_domains(name):
     domains = []
     domains.append(SecurityDomains.ENDPOINT.value)
