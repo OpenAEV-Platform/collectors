@@ -1,13 +1,14 @@
 import requests
-from pyoaev.helpers import OpenAEVCollectorHelper, OpenAEVConfigHelper
+from microsoft_azure.configuration.config_loader import ConfigLoader
 from pyoaev.configuration import Configuration
 from pyoaev.daemons import CollectorDaemon
-from microsoft_azure.configuration.config_loader import ConfigLoader
+
 
 class OpenAEVMicrosoftAzure(CollectorDaemon):
-    def __init__(self,
-                 configuration: Configuration,
-                 ):
+    def __init__(
+        self,
+        configuration: Configuration,
+    ):
         super().__init__(
             configuration=configuration,
             callback=self._process_message,
@@ -20,8 +21,12 @@ class OpenAEVMicrosoftAzure(CollectorDaemon):
         self.tenant_id = self._configuration.get("microsoft_azure_tenant_id")
         self.client_id = self._configuration.get("microsoft_azure_client_id")
         self.client_secret = self._configuration.get("microsoft_azure_client_secret")
-        self.subscription_id = self._configuration.get("microsoft_azure_subscription_id")
-        self.resource_groups = self._configuration.get("microsoft_azure_resource_groups")
+        self.subscription_id = self._configuration.get(
+            "microsoft_azure_subscription_id"
+        )
+        self.resource_groups = self._configuration.get(
+            "microsoft_azure_resource_groups"
+        )
 
         # Parse resource groups (comma-separated)
         self.resource_groups_list = [
@@ -56,9 +61,7 @@ class OpenAEVMicrosoftAzure(CollectorDaemon):
 
             if "access_token" in result:
                 self.access_token = result["access_token"]
-                self.logger.info(
-                    "Successfully authenticated with Azure"
-                )
+                self.logger.info("Successfully authenticated with Azure")
                 return True
             else:
                 self.logger.error(
@@ -191,9 +194,7 @@ class OpenAEVMicrosoftAzure(CollectorDaemon):
                                 f"Could not process network interface {nic_id}: {str(e)}"
                             )
         except Exception as e:
-            self.logger.warning(
-                f"Error extracting network profile for VM: {str(e)}"
-            )
+            self.logger.warning(f"Error extracting network profile for VM: {str(e)}")
 
         return ips
 
@@ -220,9 +221,7 @@ class OpenAEVMicrosoftAzure(CollectorDaemon):
             result = self.api.tag.upsert(tag_data)
             return result.get("tag_id")
         except Exception as e:
-            self.logger.warning(
-                f"Failed to upsert tag {tag_name}: {e}"
-            )
+            self.logger.warning(f"Failed to upsert tag {tag_name}: {e}")
             return None
 
     def _process_message(self) -> None:
@@ -367,18 +366,15 @@ class OpenAEVMicrosoftAzure(CollectorDaemon):
                 # Upsert endpoint
                 try:
                     self.api.endpoint.upsert(endpoint)
-                    self.logger.info(
-                        f"Successfully upserted endpoint: {vm_name}"
-                    )
+                    self.logger.info(f"Successfully upserted endpoint: {vm_name}")
                 except Exception as e:
-                    self.logger.error(
-                        f"Failed to upsert endpoint {vm_name}: {str(e)}"
-                    )
+                    self.logger.error(f"Failed to upsert endpoint {vm_name}: {str(e)}")
 
             self.logger.info("Azure VM collection completed")
 
         except Exception as e:
             self.logger.error(f"Error during VM collection: {str(e)}")
+
 
 if __name__ == "__main__":
     OpenAEVMicrosoftAzure(configuration=ConfigLoader().to_daemon_config()).start()

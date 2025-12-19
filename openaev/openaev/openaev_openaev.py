@@ -3,16 +3,17 @@ import mimetypes
 import zipfile
 
 import requests
-from pyoaev.helpers import OpenAEVCollectorHelper, OpenAEVConfigHelper
 from pyoaev.configuration import Configuration
 from pyoaev.daemons import CollectorDaemon
+
 from openaev.configuration.config_loader import ConfigLoader
 
 
 class OpenAEVOpenAEV(CollectorDaemon):
-    def __init__(self,
-            configuration: Configuration,
-        ):
+    def __init__(
+        self,
+        configuration: Configuration,
+    ):
         super().__init__(
             configuration=configuration,
             callback=self._process_message,
@@ -27,18 +28,14 @@ class OpenAEVOpenAEV(CollectorDaemon):
             result = self.api.tag.upsert(tag_data)
             return result.get("tag_id")
         except Exception as e:
-            self.logger.warning(
-                f"Failed to upsert tag {tag_name}: {e}"
-            )
+            self.logger.warning(f"Failed to upsert tag {tag_name}: {e}")
             return None
 
     def _process_message(self) -> None:
         openaev_import_only_native = self._configuration.get(
             "openaev_import_only_native"
         )
-        openaev_url_prefix = self._configuration.get(
-            "openaev_url_prefix"
-        )
+        openaev_url_prefix = self._configuration.get("openaev_url_prefix")
         response = self.session.get(url=openaev_url_prefix + "manifest.json")
         payloads = response.json()
         payload_external_ids = []
@@ -52,9 +49,7 @@ class OpenAEVOpenAEV(CollectorDaemon):
                 continue
 
             payload_information = payload.get("payload_information")
-            self.logger.info(
-                "Importing payload " + payload_information["payload_name"]
-            )
+            self.logger.info("Importing payload " + payload_information["payload_name"])
 
             # Create tags
             tags_mapping = {}
@@ -152,6 +147,7 @@ class OpenAEVOpenAEV(CollectorDaemon):
                 "payload_external_ids": payload_external_ids,
             }
         )
+
 
 if __name__ == "__main__":
     OpenAEVOpenAEV(configuration=ConfigLoader().to_daemon_config()).start()

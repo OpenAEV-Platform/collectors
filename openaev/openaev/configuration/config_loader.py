@@ -1,8 +1,10 @@
+from pydantic import Field
 from pyoaev.configuration import Configuration, SettingsLoader
-from openaev.configuration.collector_config_override import CollectorConfigOverride
+
+from openaev.configuration.collector_config_override import \
+    CollectorConfigOverride
 from openaev.configuration.openaev_config_override import OpenaevConfigOverride
 
-from pydantic import Field
 
 class ConfigLoader(SettingsLoader):
     openaev: OpenaevConfigOverride = Field(default_factory=OpenaevConfigOverride)
@@ -27,5 +29,5 @@ class ConfigLoader(SettingsLoader):
                 "openaev_url_prefix": {"data": self.openaev.url_prefix},
                 "openaev_import_only_native": {"data": self.openaev.import_only_native},
             },
-            config_base_model=self
+            config_base_model=self,
         )

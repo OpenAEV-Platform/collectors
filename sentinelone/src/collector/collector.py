@@ -3,16 +3,14 @@
 import os
 
 from pyoaev.daemons import CollectorDaemon  # type: ignore[import-untyped]
-from pyoaev.helpers import OpenAEVDetectionHelper  # type: ignore[import-untyped]
+from pyoaev.helpers import \
+    OpenAEVDetectionHelper  # type: ignore[import-untyped]
 from src.services.expectation_service import SentinelOneExpectationService
 from src.services.trace_service import SentinelOneTraceService
 from src.services.utils import SentinelOneConfig
 
-from .exception import (
-    CollectorConfigError,
-    CollectorProcessingError,
-    CollectorSetupError,
-)
+from .exception import (CollectorConfigError, CollectorProcessingError,
+                        CollectorSetupError)
 from .expectation_handler import GenericExpectationHandler
 from .expectation_manager import GenericExpectationManager
 

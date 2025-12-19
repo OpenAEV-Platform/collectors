@@ -6,17 +6,12 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 from pyoaev.apis.inject_expectation.model.expectation import (
-    DetectionExpectation,
-    PreventionExpectation,
-)
+    DetectionExpectation, PreventionExpectation)
 from pyoaev.signatures.types import SignatureTypes
 
 from .client_api import SentinelOneClientAPI
 from .converter import SentinelOneConverter
-from .exception import (
-    SentinelOneAPIError,
-    SentinelOneExpectationError,
-)
+from .exception import SentinelOneAPIError, SentinelOneExpectationError
 from .fetcher_deep_visibility import FetcherDeepVisibility
 from .fetcher_threat import FetcherThreat
 from .fetcher_threat_events import FetcherThreatEvents

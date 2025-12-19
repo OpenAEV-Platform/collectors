@@ -1,7 +1,9 @@
 from pydantic import Field
-from pyoaev.configuration import ConfigLoaderOAEV, Configuration, SettingsLoader
+from pyoaev.configuration import (ConfigLoaderOAEV, Configuration,
+                                  SettingsLoader)
 
-from crowdstrike.configuration.collector_config_override import CollectorConfigOverride
+from crowdstrike.configuration.collector_config_override import \
+    CollectorConfigOverride
 from crowdstrike.configuration.crowdstrike_settings import CrowdstrikeSettings
 
 
@@ -44,5 +46,5 @@ class ConfigLoader(SettingsLoader):
                 "crowdstrike_api_base_url": {"data": self.crowdstrike.api_base_url},
                 "crowdstrike_ui_base_url": {"data": self.crowdstrike.ui_base_url},
             },
-            config_base_model = self
+            config_base_model=self,
         )

@@ -4,10 +4,8 @@ from typing import Generator, Optional
 
 from nvd_nist_cve.nvd_nist_cve_api_handler import NvdNistCveApiHandler
 from nvd_nist_cve.nvd_nist_cve_configuration import NvdNistCveConfiguration
-from nvd_nist_cve.configuration.config_loader import ConfigLoader
-
-from pyoaev.daemons import CollectorDaemon
 from pyoaev.configuration import Configuration
+from pyoaev.daemons import CollectorDaemon
 
 
 @dataclass
@@ -18,9 +16,7 @@ class CVEProcessor:
 
 
 class NvdNistCveCollector(CollectorDaemon):
-    def __init__(self,
-                 configuration: Configuration
-                 ):
+    def __init__(self, configuration: Configuration):
         """
         Initialize NVD NIST CVE collector.
 
@@ -294,4 +290,3 @@ class NvdNistCveCollector(CollectorDaemon):
                     f"{counters['total_send']} total vulnerabilities that contains CVSS 3.1 and sent to API"
                 )
                 break
-

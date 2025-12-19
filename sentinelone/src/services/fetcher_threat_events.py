@@ -4,16 +4,10 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 from requests.exceptions import (  # type: ignore[import-untyped]
-    ConnectionError,
-    RequestException,
-    Timeout,
-)
+    ConnectionError, RequestException, Timeout)
 
-from .exception import (
-    SentinelOneAPIError,
-    SentinelOneNetworkError,
-    SentinelOneValidationError,
-)
+from .exception import (SentinelOneAPIError, SentinelOneNetworkError,
+                        SentinelOneValidationError)
 from .model_threat import SentinelOneThreat
 
 if TYPE_CHECKING:

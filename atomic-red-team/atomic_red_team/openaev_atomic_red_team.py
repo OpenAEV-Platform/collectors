@@ -3,10 +3,9 @@ import re
 
 import requests
 import yaml
-from pyoaev.helpers import OpenAEVCollectorHelper, OpenAEVConfigHelper
+from atomic_red_team.configuration.config_loader import ConfigLoader
 from pyoaev.configuration import Configuration
 from pyoaev.daemons import CollectorDaemon
-from atomic_red_team.configuration.config_loader import ConfigLoader
 
 ATOMIC_RED_TEAM_INDEX = "https://raw.githubusercontent.com/redcanaryco/atomic-red-team/master/atomics/Indexes/index.yaml"
 
@@ -203,13 +202,14 @@ def _format_generic_command(string_to_analyse, arguments):
 
 
 class OpenAEVAtomicRedTeam(CollectorDaemon):
-    def __init__(self,
-                 configuration: Configuration,
-                 ):
+    def __init__(
+        self,
+        configuration: Configuration,
+    ):
         super().__init__(
             configuration=configuration,
             callback=self._process_message,
-            collector_type="openaev_atomic_red_team"
+            collector_type="openaev_atomic_red_team",
         )
         self.session = requests.Session()
 
@@ -220,9 +220,7 @@ class OpenAEVAtomicRedTeam(CollectorDaemon):
             result = self.api.tag.upsert(tag_data)
             return result.get("tag_id")
         except Exception as e:
-            self.logger.warning(
-                f"Failed to upsert tag {tag_name}: {e}"
-            )
+            self.logger.warning(f"Failed to upsert tag {tag_name}: {e}")
             return None
 
     def _process_message(self) -> None:
@@ -230,13 +228,9 @@ class OpenAEVAtomicRedTeam(CollectorDaemon):
         art_index = yaml.safe_load(response.text)
         payload_external_ids = []
         for kill_chain_phase in art_index:
-            self.logger.info(
-                "Importing kill chain phase " + kill_chain_phase
-            )
+            self.logger.info("Importing kill chain phase " + kill_chain_phase)
             for attack_pattern in art_index[kill_chain_phase]:
-                self.logger.info(
-                    "Importing attack pattern " + attack_pattern
-                )
+                self.logger.info("Importing attack pattern " + attack_pattern)
                 for atomic_test in art_index[kill_chain_phase][attack_pattern][
                     "atomic_tests"
                 ]:
@@ -284,9 +278,7 @@ class OpenAEVAtomicRedTeam(CollectorDaemon):
                         and "command" in atomic_test["executor"]
                         and atomic_test["executor"]["command"] is not None
                     ):
-                        self.logger.info(
-                            "Importing atomic test " + atomic_test["name"]
-                        )
+                        self.logger.info("Importing atomic test " + atomic_test["name"])
                         platforms = list(
                             dict.fromkeys(
                                 flatten_chain(
@@ -357,7 +349,9 @@ class OpenAEVAtomicRedTeam(CollectorDaemon):
                             "payload_status": UNVERIFIED,
                             "payload_external_id": atomic_test["auto_generated_guid"],
                             "payload_type": "Command",
-                            "payload_collector": self._configuration.get("collector_id"),
+                            "payload_collector": self._configuration.get(
+                                "collector_id"
+                            ),
                             "payload_name": atomic_test["name"],
                             "payload_description": atomic_test["description"],
                             "payload_platforms": platforms,
@@ -399,6 +393,7 @@ class OpenAEVAtomicRedTeam(CollectorDaemon):
                 "payload_external_ids": payload_external_ids,
             }
         )
+
 
 if __name__ == "__main__":
     OpenAEVAtomicRedTeam(configuration=ConfigLoader().to_daemon_config()).start()

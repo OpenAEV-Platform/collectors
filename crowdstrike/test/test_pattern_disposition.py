@@ -1,13 +1,10 @@
 import unittest
 
-from crowdstrike.pattern_disposition import (
-    ALL_MODIFY,
-    ALL_PREVENT,
-    MODIFY_KILL_ACTION_FAILED,
-    MODIFY_POLICY_DISABLED,
-    PREVENT_KILL_PROCESS,
-    is_prevented,
-)
+from crowdstrike.pattern_disposition import (ALL_MODIFY, ALL_PREVENT,
+                                             MODIFY_KILL_ACTION_FAILED,
+                                             MODIFY_POLICY_DISABLED,
+                                             PREVENT_KILL_PROCESS,
+                                             is_prevented)
 
 
 class TestAlert(unittest.TestCase):

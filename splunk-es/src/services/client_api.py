@@ -7,20 +7,12 @@ from typing import Any
 
 import requests  # type: ignore[import-untyped]
 from requests.exceptions import (  # type: ignore[import-untyped]
-    ConnectionError,
-    RequestException,
-    Timeout,
-)
+    ConnectionError, RequestException, Timeout)
 
 from ..models.configs.config_loader import ConfigLoader
-from .exception import (
-    SplunkESAPIError,
-    SplunkESAuthenticationError,
-    SplunkESNetworkError,
-    SplunkESQueryError,
-    SplunkESSessionError,
-    SplunkESValidationError,
-)
+from .exception import (SplunkESAPIError, SplunkESAuthenticationError,
+                        SplunkESNetworkError, SplunkESQueryError,
+                        SplunkESSessionError, SplunkESValidationError)
 from .models import SplunkESAlert, SplunkESResponse, SplunkESSearchCriteria
 from .utils.parent_process_parser import ParentProcessParser
 

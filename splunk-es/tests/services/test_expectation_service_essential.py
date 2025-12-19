@@ -5,18 +5,14 @@ from unittest.mock import Mock
 import pytest
 from pyoaev.signatures.types import SignatureTypes
 from src.collector.models import ExpectationResult
-from src.services.exception import (
-    SplunkESExpectationError,
-    SplunkESNoAlertsFoundError,
-    SplunkESNoMatchingAlertsError,
-    SplunkESValidationError,
-)
+from src.services.exception import (SplunkESExpectationError,
+                                    SplunkESNoAlertsFoundError,
+                                    SplunkESNoMatchingAlertsError,
+                                    SplunkESValidationError)
 from src.services.expectation_service import SplunkESExpectationService
-from tests.services.fixtures.factories import (
-    MockObjectsFactory,
-    TestDataFactory,
-    create_test_config,
-)
+from tests.services.fixtures.factories import (MockObjectsFactory,
+                                               TestDataFactory,
+                                               create_test_config)
 
 
 class TestSplunkESExpectationServiceEssential:

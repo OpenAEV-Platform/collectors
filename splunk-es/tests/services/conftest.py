@@ -3,15 +3,13 @@
 from unittest.mock import Mock, patch
 
 import pytest
-from tests.services.fixtures.factories import (
-    ConfigLoaderFactory,
-    ExpectationResultFactory,
-    ExpectationTraceFactory,
-    MockObjectsFactory,
-    SplunkESAlertFactory,
-    TestDataFactory,
-    create_test_config,
-)
+from tests.services.fixtures.factories import (ConfigLoaderFactory,
+                                               ExpectationResultFactory,
+                                               ExpectationTraceFactory,
+                                               MockObjectsFactory,
+                                               SplunkESAlertFactory,
+                                               TestDataFactory,
+                                               create_test_config)
 
 
 @pytest.fixture

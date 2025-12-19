@@ -2,9 +2,7 @@
 
 import pytest
 from src.services.converter import SentinelOneConverter
-from src.services.exception import (
-    SentinelOneValidationError,
-)
+from src.services.exception import SentinelOneValidationError
 from src.services.model_threat import SentinelOneThreat
 
 # --------

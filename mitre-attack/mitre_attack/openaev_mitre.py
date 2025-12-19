@@ -1,21 +1,22 @@
 import requests
+from mitre_attack.configuration.config_loader import ConfigLoader
 from pyoaev.configuration import Configuration
 from pyoaev.daemons import CollectorDaemon
-
-from mitre_attack.configuration.config_loader import ConfigLoader
 
 ENTERPRISE_ATTACK_URI = (
     "https://github.com/mitre/cti/raw/master/enterprise-attack/enterprise-attack.json"
 )
 
+
 class OpenAEVMitre(CollectorDaemon):
-    def __init__(self,
-                 configuration: Configuration,
-        ):
+    def __init__(
+        self,
+        configuration: Configuration,
+    ):
         super().__init__(
             configuration=configuration,
             callback=self._process_message,
-            collector_type="openaev_mitre_attack"
+            collector_type="openaev_mitre_attack",
         )
         self.session = requests.Session()
 
@@ -94,12 +95,8 @@ class OpenAEVMitre(CollectorDaemon):
     def _process_message(self) -> None:
         response = self.session.get(url=ENTERPRISE_ATTACK_URI)
 
-        self.logger.debug(
-            str.format("Response headers: {}", response.headers)
-        )
-        self.logger.debug(
-            str.format("Response raw: {}", response.text[:200])
-        )
+        self.logger.debug(str.format("Response headers: {}", response.headers))
+        self.logger.debug(str.format("Response raw: {}", response.text[:200]))
 
         enterprise_attack = response.json()
         objects = enterprise_attack.get("objects")
@@ -123,6 +120,6 @@ class OpenAEVMitre(CollectorDaemon):
         # Sync attack patterns
         self._attack_patterns(attack_patterns, kill_chain_phases, relationships)
 
+
 if __name__ == "__main__":
     OpenAEVMitre(configuration=ConfigLoader().to_daemon_config()).start()
-

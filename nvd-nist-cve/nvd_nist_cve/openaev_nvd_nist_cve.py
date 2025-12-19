@@ -1,5 +1,5 @@
-from nvd_nist_cve.nvd_nist_cve_collector import NvdNistCveCollector
 from nvd_nist_cve.configuration.config_loader import ConfigLoader
+from nvd_nist_cve.nvd_nist_cve_collector import NvdNistCveCollector
 
 
 def main():
@@ -19,4 +19,3 @@ def main():
 
 if __name__ == "__main__":
     NvdNistCveCollector(configuration=ConfigLoader().to_daemon_config()).start()
-

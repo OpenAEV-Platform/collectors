@@ -1,28 +1,23 @@
 from datetime import datetime
 
 import pytz
-import requests
 from dateutil.parser import parse
 from dateutil.relativedelta import relativedelta
-from microsoft_sentinel.api_handler import SentinelApiHandler
-from pyoaev.helpers import (
-    OpenAEVCollectorHelper,
-    OpenAEVConfigHelper,
-    OpenAEVDetectionHelper,
-)
-from pyoaev.daemons import CollectorDaemon
-from pyoaev.configuration import Configuration
 from microsoft_sentinel.configuration.config_loader import ConfigLoader
+from pyoaev.configuration import Configuration
+from pyoaev.daemons import CollectorDaemon
+from pyoaev.helpers import (OpenAEVDetectionHelper)
 
 
 class OpenAEVMicrosoftSentinel(CollectorDaemon):
-    def __init__(self,
-                 configuration: Configuration,
-                 ):
+    def __init__(
+        self,
+        configuration: Configuration,
+    ):
         super().__init__(
             configuration=configuration,
             callback=self._process_message,
-            collector_type="openaev_microsoft_sentinel"
+            collector_type="openaev_microsoft_sentinel",
         )
 
         self.log_analytics_url = "https://api.loganalytics.azure.com/v1"
@@ -114,10 +109,8 @@ class OpenAEVMicrosoftSentinel(CollectorDaemon):
     def _process_alerts(self):
         self.logger.info("Gathering expectations for executed injects")
         # Get expectation that are NOT FILLED for this collector
-        expectations = (
-            self.api.inject_expectation.expectations_assets_for_source(
-                self.config.get_conf("collector_id")
-            )
+        expectations = self.api.inject_expectation.expectations_assets_for_source(
+            self.config.get_conf("collector_id")
         )
 
         self.logger.info(
@@ -125,9 +118,7 @@ class OpenAEVMicrosoftSentinel(CollectorDaemon):
         )
 
         if not any(expectations):
-            self.logger.info(
-                "No expectations found: skipping iteration."
-            )
+            self.logger.info("No expectations found: skipping iteration.")
             return
 
         limit_date = datetime.now().astimezone(pytz.UTC) - relativedelta(
@@ -146,9 +137,7 @@ class OpenAEVMicrosoftSentinel(CollectorDaemon):
 
         if len(data["tables"]) == 0:
             return
-        self.logger.info(
-            "Found " + str(len(data["tables"][0]["rows"])) + " alerts"
-        )
+        self.logger.info("Found " + str(len(data["tables"][0]["rows"])) + " alerts")
         columns = data["tables"][0]["columns"]
         columns_index = {}
         for idx, column in enumerate(columns):
@@ -159,9 +148,7 @@ class OpenAEVMicrosoftSentinel(CollectorDaemon):
         for expectation in expectations:
             if expectation["inject_expectation_asset"] not in endpoint_per_asset:
                 endpoint_per_asset[expectation["inject_expectation_asset"]] = (
-                    self.api.endpoint.get(
-                        expectation["inject_expectation_asset"]
-                    )
+                    self.api.endpoint.get(expectation["inject_expectation_asset"])
                 )
 
             # Check expired expectation

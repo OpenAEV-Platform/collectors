@@ -10,7 +10,8 @@ from polyfactory import Use
 from polyfactory.factories.pydantic_factory import ModelFactory
 from src.collector.models import ExpectationResult, ExpectationTrace
 from src.models.configs.collector_configs import _ConfigLoaderOAEV
-from src.models.configs.config_loader import ConfigLoader, ConfigLoaderCollector
+from src.models.configs.config_loader import (ConfigLoader,
+                                              ConfigLoaderCollector)
 from src.models.configs.splunkes_configs import _ConfigLoaderSplunkES
 from src.services.models import SplunkESAlert, SplunkESSearchCriteria
 

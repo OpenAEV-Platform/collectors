@@ -6,9 +6,7 @@ from datetime import timedelta
 import requests  # type: ignore[import-untyped]
 
 from ..models.configs.config_loader import ConfigLoader
-from .exception import (
-    SentinelOneSessionError,
-)
+from .exception import SentinelOneSessionError
 
 LOG_PREFIX = "[SentinelOneClientAPI]"
 

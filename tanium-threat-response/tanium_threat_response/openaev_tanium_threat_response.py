@@ -6,29 +6,25 @@ import pytz
 import requests
 from dateutil.parser import parse
 from dateutil.relativedelta import relativedelta
-from pyoaev.helpers import (
-    OpenAEVCollectorHelper,
-    OpenAEVConfigHelper,
-    OpenAEVDetectionHelper,
-)
-from tanium_threat_response.api_handler import TaniumApiHandler
-from pyoaev.daemons import CollectorDaemon
 from pyoaev.configuration import Configuration
-
+from pyoaev.daemons import CollectorDaemon
+from pyoaev.helpers import (OpenAEVDetectionHelper)
 from tanium_threat_response.configuration.config_loader import ConfigLoader
+
 
 def _is_unix_absolute_path(path):
     return path.startswith("/")
 
 
 class OpenAEVTaniumThreatResponse(CollectorDaemon):
-    def __init__(self,
-                 configuration: Configuration,
-                 ):
+    def __init__(
+        self,
+        configuration: Configuration,
+    ):
         super().__init__(
             configuration=configuration,
             callback=self._process_message,
-            collector_type="openaev_tanium_threat_response"
+            collector_type="openaev_tanium_threat_response",
         )
         self.session = requests.Session()
 
@@ -211,14 +207,10 @@ class OpenAEVTaniumThreatResponse(CollectorDaemon):
 
     def _process_message(self) -> None:
         self.logger.info("Gathering expectations for executed injects")
-        expectations = (
-            self.api.inject_expectation.detection_expectations_for_source(
-                self.config.get_conf("collector_id"), self.scanning_delta
-            )
+        expectations = self.api.inject_expectation.detection_expectations_for_source(
+            self.config.get_conf("collector_id"), self.scanning_delta
         )
-        self.logger.debug(
-            "Total expectations returned: " + str(len(expectations))
-        )
+        self.logger.debug("Total expectations returned: " + str(len(expectations)))
         expectations_not_filled = list(
             filter(
                 lambda expectation: not self._is_expectation_filled(expectation),
@@ -240,9 +232,7 @@ class OpenAEVTaniumThreatResponse(CollectorDaemon):
             "/plugin/products/threat-response/api/v1/alerts",
             {"sort": "-createdAt"},
         )
-        self.logger.info(
-            "Found " + str(len(alerts)) + " alerts (taking first 200)"
-        )
+        self.logger.info("Found " + str(len(alerts)) + " alerts (taking first 200)")
 
         # For each expectation, try to find the proper alert to assign a detection or prevention result
         for expectation in expectations:
@@ -323,6 +313,6 @@ class OpenAEVTaniumThreatResponse(CollectorDaemon):
                             }
                         )
 
+
 if __name__ == "__main__":
     OpenAEVTaniumThreatResponse(configuration=ConfigLoader().to_daemon_config()).start()
-

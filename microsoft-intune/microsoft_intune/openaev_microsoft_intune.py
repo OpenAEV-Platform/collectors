@@ -1,14 +1,14 @@
 import requests
-from pyoaev.helpers import OpenAEVCollectorHelper, OpenAEVConfigHelper
+from microsoft_intune.configuration.config_loader import ConfigLoader
 from pyoaev.configuration import Configuration
 from pyoaev.daemons import CollectorDaemon
-from microsoft_intune.configuration.config_loader import ConfigLoader
 
 
 class OpenAEVMicrosoftIntune(CollectorDaemon):
-    def __init__(self,
-                 configuration: Configuration,
-                 ):
+    def __init__(
+        self,
+        configuration: Configuration,
+    ):
         super().__init__(
             configuration=configuration,
             callback=self._process_message,
@@ -55,9 +55,7 @@ class OpenAEVMicrosoftIntune(CollectorDaemon):
 
             if "access_token" in result:
                 self.access_token = result["access_token"]
-                self.logger.info(
-                    "Successfully authenticated with Microsoft Graph"
-                )
+                self.logger.info("Successfully authenticated with Microsoft Graph")
                 return True
             else:
                 self.logger.error(
@@ -195,14 +193,10 @@ class OpenAEVMicrosoftIntune(CollectorDaemon):
                         )
 
                 if not group_found:
-                    self.logger.warning(
-                        f"Device group '{group_filter}' not found"
-                    )
+                    self.logger.warning(f"Device group '{group_filter}' not found")
 
             if not allowed_device_ids:
-                self.logger.warning(
-                    "No devices found in specified groups"
-                )
+                self.logger.warning("No devices found in specified groups")
                 return []
 
         # Build filter if provided
@@ -316,23 +310,17 @@ class OpenAEVMicrosoftIntune(CollectorDaemon):
             result = self.api.tag.upsert(tag_data)
             return result.get("tag_id")
         except Exception as e:
-            self.logger.warning(
-                f"Failed to upsert tag {tag_name}: {e}"
-            )
+            self.logger.warning(f"Failed to upsert tag {tag_name}: {e}")
             return None
 
     def _process_message(self) -> None:
         """Process message to collect devices and upsert them as endpoints."""
         try:
-            self.logger.info(
-                "Starting Microsoft Intune device collection..."
-            )
+            self.logger.info("Starting Microsoft Intune device collection...")
 
             # Get all managed devices
             devices = self._get_managed_devices()
-            self.logger.info(
-                f"Found {len(devices)} managed devices in Intune"
-            )
+            self.logger.info(f"Found {len(devices)} managed devices in Intune")
 
             # Process each device and upsert as endpoint
             for device in devices:
@@ -502,22 +490,17 @@ class OpenAEVMicrosoftIntune(CollectorDaemon):
                 # Upsert endpoint
                 try:
                     self.api.endpoint.upsert(endpoint)
-                    self.logger.info(
-                        f"Successfully upserted endpoint: {device_name}"
-                    )
+                    self.logger.info(f"Successfully upserted endpoint: {device_name}")
                 except Exception as e:
                     self.logger.error(
                         f"Failed to upsert endpoint {device_name}: {str(e)}"
                     )
 
-            self.logger.info(
-                "Microsoft Intune device collection completed"
-            )
+            self.logger.info("Microsoft Intune device collection completed")
 
         except Exception as e:
-            self.logger.error(
-                f"Error during device collection: {str(e)}"
-            )
+            self.logger.error(f"Error during device collection: {str(e)}")
+
 
 if __name__ == "__main__":
     OpenAEVMicrosoftIntune(configuration=ConfigLoader().to_daemon_config()).start()

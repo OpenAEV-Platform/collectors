@@ -3,7 +3,8 @@
 import logging
 from typing import Any
 
-from .exception import SentinelOneDataConversionError, SentinelOneValidationError
+from .exception import (SentinelOneDataConversionError,
+                        SentinelOneValidationError)
 from .model_threat import SentinelOneThreat
 
 LOG_PREFIX = "[SentinelOneConverter]"

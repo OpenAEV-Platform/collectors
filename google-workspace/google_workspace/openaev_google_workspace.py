@@ -3,20 +3,21 @@ from typing import Any, Dict, List, Optional
 
 import requests
 from google.oauth2 import service_account
-from googleapiclient.discovery import build
-from pyoaev.helpers import OpenAEVCollectorHelper, OpenAEVConfigHelper
-from pyoaev.daemons import CollectorDaemon
-from pyoaev.configuration import Configuration
 from google_workspace.configuration.config_loader import ConfigLoader
+from googleapiclient.discovery import build
+from pyoaev.configuration import Configuration
+from pyoaev.daemons import CollectorDaemon
+
 
 class OpenAEVGoogleWorkspace(CollectorDaemon):
-    def __init__(self,
-                 configuration: Configuration,
-                 ):
+    def __init__(
+        self,
+        configuration: Configuration,
+    ):
         super().__init__(
             configuration=configuration,
             callback=self._process_message,
-            collector_type="openaev_google_workspace"
+            collector_type="openaev_google_workspace",
         )
         self.session = requests.Session()
 
@@ -34,9 +35,7 @@ class OpenAEVGoogleWorkspace(CollectorDaemon):
             result = self.api.tag.upsert(tag_data)
             return result.get("tag_id")
         except Exception as e:
-            self.logger.warning(
-                f"Failed to upsert tag {tag_name}: {e}"
-            )
+            self.logger.warning(f"Failed to upsert tag {tag_name}: {e}")
             return None
 
     def _get_service(self) -> Any:
@@ -161,9 +160,7 @@ class OpenAEVGoogleWorkspace(CollectorDaemon):
                     break
 
         except Exception as e:
-            self.logger.warning(
-                f"Error fetching members for group {group_id}: {e}"
-            )
+            self.logger.warning(f"Error fetching members for group {group_id}: {e}")
 
         return members
 
@@ -265,17 +262,13 @@ class OpenAEVGoogleWorkspace(CollectorDaemon):
             self.api.user.upsert(user_data)
             self.logger.debug(f"Created/updated user: {primary_email}")
         except Exception as e:
-            self.logger.error(
-                f"Failed to upsert user {primary_email}: {e}"
-            )
+            self.logger.error(f"Failed to upsert user {primary_email}: {e}")
 
     def _sync_groups_and_members(self, service: Any) -> None:
         """Sync Google Workspace groups as teams and their members as users."""
         # Get all groups
         groups = self._get_all_groups(service)
-        self.logger.info(
-            f"Found {len(groups)} groups in Google Workspace"
-        )
+        self.logger.info(f"Found {len(groups)} groups in Google Workspace")
 
         # Process each group
         for group in groups:
@@ -290,15 +283,11 @@ class OpenAEVGoogleWorkspace(CollectorDaemon):
             try:
                 openaev_team = self.api.team.upsert(team_data)
                 team_id = openaev_team.get("team_id")
-                self.logger.debug(
-                    f"Created/updated team: {group_name}"
-                )
+                self.logger.debug(f"Created/updated team: {group_name}")
 
                 # Get group members
                 members = self._get_group_members(service, group_email)
-                self.logger.debug(
-                    f"Found {len(members)} members in group {group_name}"
-                )
+                self.logger.debug(f"Found {len(members)} members in group {group_name}")
 
                 # Process each member
                 for member in members:
@@ -314,16 +303,12 @@ class OpenAEVGoogleWorkspace(CollectorDaemon):
                             )
 
             except Exception as e:
-                self.logger.error(
-                    f"Failed to process group {group_name}: {e}"
-                )
+                self.logger.error(f"Failed to process group {group_name}: {e}")
 
     def _sync_all_users(self, service: Any) -> None:
         """Sync all Google Workspace users without group associations."""
         users = self._get_all_users(service)
-        self.logger.info(
-            f"Found {len(users)} users in Google Workspace"
-        )
+        self.logger.info(f"Found {len(users)} users in Google Workspace")
 
         for user in users:
             self._create_user_with_tags(user)
@@ -336,15 +321,11 @@ class OpenAEVGoogleWorkspace(CollectorDaemon):
 
             if self.sync_all_users:
                 # Sync all users without group associations
-                self.logger.info(
-                    "Syncing all users from Google Workspace"
-                )
+                self.logger.info("Syncing all users from Google Workspace")
                 self._sync_all_users(service)
             else:
                 # Sync groups and their members
-                self.logger.info(
-                    "Syncing groups and members from Google Workspace"
-                )
+                self.logger.info("Syncing groups and members from Google Workspace")
                 self._sync_groups_and_members(service)
 
             self.logger.info("Synchronization completed successfully")
@@ -353,6 +334,6 @@ class OpenAEVGoogleWorkspace(CollectorDaemon):
             self.logger.error(f"Error during synchronization: {e}")
             raise
 
+
 if __name__ == "__main__":
     OpenAEVGoogleWorkspace(configuration=ConfigLoader().to_daemon_config()).start()
-

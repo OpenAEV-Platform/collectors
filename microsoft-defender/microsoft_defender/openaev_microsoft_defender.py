@@ -7,20 +7,13 @@ import requests
 from azure.identity.aio import ClientSecretCredential
 from dateutil.parser import parse
 from dateutil.relativedelta import relativedelta
+from microsoft_defender.configuration.config_loader import ConfigLoader
 from msgraph import GraphServiceClient
-from msgraph.generated.security.microsoft_graph_security_run_hunting_query.run_hunting_query_post_request_body import (
-    RunHuntingQueryPostRequestBody,
-)
-from pyoaev.helpers import (
-    OpenAEVCollectorHelper,
-    OpenAEVConfigHelper,
-    OpenAEVDetectionHelper,
-)
-
+from msgraph.generated.security.microsoft_graph_security_run_hunting_query.run_hunting_query_post_request_body import \
+    RunHuntingQueryPostRequestBody
 from pyoaev.configuration import Configuration
 from pyoaev.daemons import CollectorDaemon
-from microsoft_defender.configuration.config_loader import ConfigLoader
-
+from pyoaev.helpers import (OpenAEVDetectionHelper)
 
 # This is the "god query" that aggregates a bunch of alert-related data
 # distributed in various tables within the Microsoft Defender saas.
@@ -111,9 +104,10 @@ fileEvidence
 
 
 class OpenAEVMicrosoftDefender(CollectorDaemon):
-    def __init__(self,
-                 configuration: Configuration,
-                 ):
+    def __init__(
+        self,
+        configuration: Configuration,
+    ):
         super().__init__(
             configuration=configuration,
             callback=self._process_message,
@@ -306,10 +300,8 @@ class OpenAEVMicrosoftDefender(CollectorDaemon):
     async def _process_alerts(self, graph_client):
         self.logger.info("Gathering expectations for executed injects")
         # Get expectation that are NOT FILLED for this collector
-        expectations = (
-            self.api.inject_expectation.expectations_assets_for_source(
-                self.config.get_conf("collector_id")
-            )
+        expectations = self.api.inject_expectation.expectations_assets_for_source(
+            self.config.get_conf("collector_id")
         )
 
         self.logger.info(
@@ -317,9 +309,7 @@ class OpenAEVMicrosoftDefender(CollectorDaemon):
         )
 
         if not any(expectations):
-            self.logger.info(
-                "No expectations found: skipping iteration."
-            )
+            self.logger.info("No expectations found: skipping iteration.")
             return
 
         limit_date = datetime.now().astimezone(pytz.UTC) - relativedelta(
@@ -443,6 +433,7 @@ class OpenAEVMicrosoftDefender(CollectorDaemon):
         # Execute
         loop = asyncio.get_event_loop()
         loop.run_until_complete(self._process_alerts(graph_client))
+
 
 if __name__ == "__main__":
     OpenAEVMicrosoftDefender(configuration=ConfigLoader().to_daemon_config()).start()

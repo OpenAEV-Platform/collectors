@@ -1,19 +1,19 @@
 import boto3
-from botocore.exceptions import ClientError, NoCredentialsError
-from pyoaev.helpers import OpenAEVCollectorHelper, OpenAEVConfigHelper
-from pyoaev.daemons import CollectorDaemon
-from pyoaev.configuration import Configuration
 from aws_resources.configuration.config_loader import ConfigLoader
+from botocore.exceptions import ClientError, NoCredentialsError
+from pyoaev.configuration import Configuration
+from pyoaev.daemons import CollectorDaemon
 
 
 class OpenAEVAWSResources(CollectorDaemon):
-    def __init__(self,
-                 configuration: Configuration,
-                 ):
+    def __init__(
+        self,
+        configuration: Configuration,
+    ):
         super().__init__(
             configuration=configuration,
             callback=self._process_message,
-            collector_type="openaev_aws_resources"
+            collector_type="openaev_aws_resources",
         )
 
         # AWS settings
@@ -82,9 +82,7 @@ class OpenAEVAWSResources(CollectorDaemon):
             self.logger.error(f"AWS client error: {str(e)}")
             raise
         except Exception as e:
-            self.logger.error(
-                f"Failed to initialize AWS session: {str(e)}"
-            )
+            self.logger.error(f"Failed to initialize AWS session: {str(e)}")
             raise
 
     def _discover_regions(self):
@@ -95,9 +93,7 @@ class OpenAEVAWSResources(CollectorDaemon):
             self.regions_list = [
                 region["RegionName"] for region in regions_response["Regions"]
             ]
-            self.logger.info(
-                f"Discovered {len(self.regions_list)} AWS regions"
-            )
+            self.logger.info(f"Discovered {len(self.regions_list)} AWS regions")
         except ClientError as e:
             self.logger.error(f"Failed to discover regions: {str(e)}")
             # Fall back to common regions
@@ -135,9 +131,11 @@ class OpenAEVAWSResources(CollectorDaemon):
 
             return instances
         except ClientError as e:
-            (self.logger.error(
-                f"Failed to get instances from region {region}: {str(e)}"
-            ))
+            (
+                self.logger.error(
+                    f"Failed to get instances from region {region}: {str(e)}"
+                )
+            )
             return []
 
     def _determine_platform(self, instance):
@@ -216,9 +214,7 @@ class OpenAEVAWSResources(CollectorDaemon):
             result = self.api.tag.upsert(tag_data)
             return result.get("tag_id")
         except Exception as e:
-            self.logger.warning(
-                f"Failed to upsert tag {tag_name}: {e}"
-            )
+            self.logger.warning(f"Failed to upsert tag {tag_name}: {e}")
             return None
 
     def _process_message(self) -> None:
@@ -230,9 +226,7 @@ class OpenAEVAWSResources(CollectorDaemon):
 
             # Collect instances from all specified regions
             for region in self.regions_list:
-                self.logger.info(
-                    f"Collecting EC2 instances from region: {region}"
-                )
+                self.logger.info(f"Collecting EC2 instances from region: {region}")
                 instances = self._get_instances_from_region(region)
 
                 # Add region information to each instance
@@ -240,13 +234,9 @@ class OpenAEVAWSResources(CollectorDaemon):
                     instance["_region"] = region
 
                 all_instances.extend(instances)
-                self.logger.info(
-                    f"Found {len(instances)} instances in region {region}"
-                )
+                self.logger.info(f"Found {len(instances)} instances in region {region}")
 
-            self.logger.info(
-                f"Total EC2 instances found: {len(all_instances)}"
-            )
+            self.logger.info(f"Total EC2 instances found: {len(all_instances)}")
 
             # Process each instance and upsert as endpoint
             for instance in all_instances:
@@ -273,9 +263,7 @@ class OpenAEVAWSResources(CollectorDaemon):
 
                 # Skip terminated instances
                 if state == "terminated":
-                    self.logger.debug(
-                        f"Skipping terminated instance {instance_name}"
-                    )
+                    self.logger.debug(f"Skipping terminated instance {instance_name}")
                     continue
 
                 # Determine platform and architecture
@@ -388,6 +376,7 @@ class OpenAEVAWSResources(CollectorDaemon):
 
         except Exception as e:
             self.logger.error(f"Error during EC2 collection: {str(e)}")
+
 
 if __name__ == "__main__":
     OpenAEVAWSResources(configuration=ConfigLoader().to_daemon_config()).start()

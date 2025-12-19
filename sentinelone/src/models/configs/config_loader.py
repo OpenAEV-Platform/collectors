@@ -3,20 +3,12 @@
 from pathlib import Path
 
 from pydantic import Field
-from pydantic_settings import (
-    BaseSettings,
-    DotEnvSettingsSource,
-    EnvSettingsSource,
-    PydanticBaseSettingsSource,
-    YamlConfigSettingsSource,
-)
+from pydantic_settings import (BaseSettings, DotEnvSettingsSource,
+                               EnvSettingsSource, PydanticBaseSettingsSource,
+                               YamlConfigSettingsSource)
 from pyoaev.configuration import Configuration
-from src.models.configs import (
-    ConfigBaseSettings,
-    _ConfigLoaderCollector,
-    _ConfigLoaderOAEV,
-    _ConfigLoaderSentinelOne,
-)
+from src.models.configs import (ConfigBaseSettings, _ConfigLoaderCollector,
+                                _ConfigLoaderOAEV, _ConfigLoaderSentinelOne)
 
 
 class ConfigLoaderCollector(_ConfigLoaderCollector):

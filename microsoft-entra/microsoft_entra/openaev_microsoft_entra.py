@@ -2,17 +2,17 @@ import asyncio
 
 import requests
 from azure.identity.aio import ClientSecretCredential
+from microsoft_entra.configuration.config_loader import ConfigLoader
 from msgraph import GraphServiceClient
-from pyoaev.helpers import OpenAEVCollectorHelper, OpenAEVConfigHelper
 from pyoaev.configuration import Configuration
 from pyoaev.daemons import CollectorDaemon
-from microsoft_entra.configuration.config_loader import ConfigLoader
 
 
 class OpenAEVMicrosoftEntra(CollectorDaemon):
-    def __init__(self,
-                 configuration: Configuration,
-                 ):
+    def __init__(
+        self,
+        configuration: Configuration,
+    ):
         super().__init__(
             configuration=configuration,
             callback=self._process_message,
@@ -30,9 +30,7 @@ class OpenAEVMicrosoftEntra(CollectorDaemon):
             result = self.api.tag.upsert(tag_data)
             return result.get("tag_id")
         except Exception as e:
-            self.logger.warning(
-                f"Failed to upsert tag {tag_name}: {e}"
-            )
+            self.logger.warning(f"Failed to upsert tag {tag_name}: {e}")
             return None
 
     async def create_users(self, graph_client, group_id, openaev_team):

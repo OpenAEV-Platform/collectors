@@ -6,23 +6,14 @@ following the SentinelOne pattern with KISS principles.
 
 from .client_api import SplunkESClientAPI
 from .converter import Converter
-from .exception import (
-    SplunkESAPIError,
-    SplunkESAuthenticationError,
-    SplunkESConfigurationError,
-    SplunkESDataConversionError,
-    SplunkESExpectationError,
-    SplunkESFetchError,
-    SplunkESMatchingError,
-    SplunkESNetworkError,
-    SplunkESNoAlertsFoundError,
-    SplunkESNoMatchingAlertsError,
-    SplunkESQueryError,
-    SplunkESServiceError,
-    SplunkESSessionError,
-    SplunkESTimeoutError,
-    SplunkESValidationError,
-)
+from .exception import (SplunkESAPIError, SplunkESAuthenticationError,
+                        SplunkESConfigurationError,
+                        SplunkESDataConversionError, SplunkESExpectationError,
+                        SplunkESFetchError, SplunkESMatchingError,
+                        SplunkESNetworkError, SplunkESNoAlertsFoundError,
+                        SplunkESNoMatchingAlertsError, SplunkESQueryError,
+                        SplunkESServiceError, SplunkESSessionError,
+                        SplunkESTimeoutError, SplunkESValidationError)
 from .expectation_service import SplunkESExpectationService
 from .models import SplunkESAlert, SplunkESResponse, SplunkESSearchCriteria
 from .trace_service import SplunkESTraceService
