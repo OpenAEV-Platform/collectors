@@ -4,6 +4,9 @@ import re
 import requests
 import yaml
 from pyoaev.helpers import OpenAEVCollectorHelper, OpenAEVConfigHelper
+from pyoaev.configuration import Configuration
+from pyoaev.daemons import CollectorDaemon
+from atomic_red_team.configuration.config_loader import ConfigLoader
 
 ATOMIC_RED_TEAM_INDEX = "https://raw.githubusercontent.com/redcanaryco/atomic-red-team/master/atomics/Indexes/index.yaml"
 
@@ -199,55 +202,25 @@ def _format_generic_command(string_to_analyse, arguments):
     )
 
 
-class OpenAEVAtomicRedTeam:
-    def __init__(self):
+class OpenAEVAtomicRedTeam(CollectorDaemon):
+    def __init__(self,
+                 configuration: Configuration,
+                 ):
+        super().__init__(
+            configuration=configuration,
+            callback=self._process_message,
+            collector_type="openaev_atomic_red_team"
+        )
         self.session = requests.Session()
-        self.config = OpenAEVConfigHelper(
-            __file__,
-            {
-                # API information
-                "openaev_url": {"env": "OPENAEV_URL", "file_path": ["openaev", "url"]},
-                "openaev_token": {
-                    "env": "OPENAEV_TOKEN",
-                    "file_path": ["openaev", "token"],
-                },
-                # Config information
-                "collector_id": {
-                    "env": "COLLECTOR_ID",
-                    "file_path": ["collector", "id"],
-                },
-                "collector_name": {
-                    "env": "COLLECTOR_NAME",
-                    "file_path": ["collector", "name"],
-                    "default": "Atomic Red Team",
-                },
-                "collector_log_level": {
-                    "env": "COLLECTOR_LOG_LEVEL",
-                    "file_path": ["collector", "log_level"],
-                    "default": "warn",
-                },
-                "collector_period": {
-                    "env": "COLLECTOR_PERIOD",
-                    "file_path": ["collector", "period"],
-                    "is_number": True,
-                    "default": 86400,
-                },
-            },
-        )
-        self.helper = OpenAEVCollectorHelper(
-            config=self.config,
-            icon="atomic_red_team/img/icon-atomic-red-team.png",
-            collector_type="openaev_atomic_red_team",
-        )
 
     def _create_or_get_tag(self, tag_name, tag_color="#6b7280"):
         """Create or get a tag and return its ID."""
         try:
             tag_data = {"tag_name": tag_name, "tag_color": tag_color}
-            result = self.helper.api.tag.upsert(tag_data)
+            result = self.api.tag.upsert(tag_data)
             return result.get("tag_id")
         except Exception as e:
-            self.helper.collector_logger.warning(
+            self.logger.warning(
                 f"Failed to upsert tag {tag_name}: {e}"
             )
             return None
@@ -257,11 +230,11 @@ class OpenAEVAtomicRedTeam:
         art_index = yaml.safe_load(response.text)
         payload_external_ids = []
         for kill_chain_phase in art_index:
-            self.helper.collector_logger.info(
+            self.logger.info(
                 "Importing kill chain phase " + kill_chain_phase
             )
             for attack_pattern in art_index[kill_chain_phase]:
-                self.helper.collector_logger.info(
+                self.logger.info(
                     "Importing attack pattern " + attack_pattern
                 )
                 for atomic_test in art_index[kill_chain_phase][attack_pattern][
@@ -311,7 +284,7 @@ class OpenAEVAtomicRedTeam:
                         and "command" in atomic_test["executor"]
                         and atomic_test["executor"]["command"] is not None
                     ):
-                        self.helper.collector_logger.info(
+                        self.logger.info(
                             "Importing atomic test " + atomic_test["name"]
                         )
                         platforms = list(
@@ -384,7 +357,7 @@ class OpenAEVAtomicRedTeam:
                             "payload_status": UNVERIFIED,
                             "payload_external_id": atomic_test["auto_generated_guid"],
                             "payload_type": "Command",
-                            "payload_collector": self.helper.config.get("collector_id"),
+                            "payload_collector": self._configuration.get("collector_id"),
                             "payload_name": atomic_test["name"],
                             "payload_description": atomic_test["description"],
                             "payload_platforms": platforms,
@@ -418,23 +391,14 @@ class OpenAEVAtomicRedTeam:
                         if tag_ids:
                             payload["payload_tags"] = tag_ids
 
-                        self.helper.api.payload.upsert(payload)
+                        self.api.payload.upsert(payload)
                         payload_external_ids.append(payload["payload_external_id"])
-        self.helper.api.payload.deprecate(
+        self.api.payload.deprecate(
             {
-                "collector_id": self.helper.config.get("collector_id"),
+                "collector_id": self.config.get("collector_id"),
                 "payload_external_ids": payload_external_ids,
             }
         )
 
-    # Start the main loop
-    def start(self):
-        period = self.config.get_conf(
-            "collector_period", default=86400, is_number=True
-        )  # 7 days
-        self.helper.schedule(message_callback=self._process_message, delay=period)
-
-
 if __name__ == "__main__":
-    openAEVAtomicRedTeam = OpenAEVAtomicRedTeam()
-    openAEVAtomicRedTeam.start()
+    OpenAEVAtomicRedTeam(configuration=ConfigLoader().to_daemon_config()).start()

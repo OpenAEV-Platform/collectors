@@ -11,7 +11,7 @@ from openaev.configuration.config_loader import ConfigLoader
 
 class OpenAEVOpenAEV(CollectorDaemon):
     def __init__(self,
-            configuration: Configuration
+            configuration: Configuration,
         ):
         super().__init__(
             configuration=configuration,

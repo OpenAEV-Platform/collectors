@@ -18,7 +18,7 @@ class NvdNistCveConfiguration(Configuration):
             super().__init__(
                 config_hints=config_hints,
                 config_file_path=os.path.join(
-                    Path(__file__).parent.resolve(), "config.yml"
+                    Path(__file__).parent.resolve(), "../config.yml"
                 ),
             )
         except Exception as e:

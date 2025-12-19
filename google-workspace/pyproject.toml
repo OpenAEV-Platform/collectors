@@ -27,3 +27,13 @@ dev = ["pyoaev"]
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+
+[tool.cmw]
+install-command = "poetry install --extras dev"
+config-dump-command = "poetry run python -m google_workspace.openaev_google_workspace --dump-config-schema"
+icon-path = "google_workspace/img/icon-google-workspace.png"
+slug = "openaev_google_workspace"
+title="Google Workspace"
+container_type="COLLECTOR"
+

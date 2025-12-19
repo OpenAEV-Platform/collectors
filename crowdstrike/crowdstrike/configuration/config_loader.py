@@ -6,7 +6,6 @@ from crowdstrike.configuration.crowdstrike_settings import CrowdstrikeSettings
 
 
 class ConfigLoader(SettingsLoader):
-
     openaev: ConfigLoaderOAEV = Field(default_factory=ConfigLoaderOAEV)
     collector: CollectorConfigOverride = Field(default_factory=CollectorConfigOverride)
     crowdstrike: CrowdstrikeSettings = Field(default_factory=CrowdstrikeSettings)
@@ -46,5 +45,4 @@ class ConfigLoader(SettingsLoader):
                 "crowdstrike_ui_base_url": {"data": self.crowdstrike.ui_base_url},
             },
             config_base_model = self
-
         )

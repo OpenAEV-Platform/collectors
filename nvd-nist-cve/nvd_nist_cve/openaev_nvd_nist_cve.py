@@ -1,4 +1,5 @@
 from nvd_nist_cve.nvd_nist_cve_collector import NvdNistCveCollector
+from nvd_nist_cve.configuration.config_loader import ConfigLoader
 
 
 def main():
@@ -9,7 +10,7 @@ def main():
     Designed to run in a containerized environment.
     """
     try:
-        collector = NvdNistCveCollector()
+        collector = NvdNistCveCollector(configuration=ConfigLoader().to_daemon_config())
         collector.start()
     except Exception as e:
         print(f"Collector failed to start: {e}")
@@ -17,4 +18,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    NvdNistCveCollector(configuration=ConfigLoader().to_daemon_config()).start()
+

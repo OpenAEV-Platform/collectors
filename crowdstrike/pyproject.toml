@@ -32,4 +32,6 @@ config-dump-command = "poetry run python -m crowdstrike.openaev_crowdstrike --du
 icon-path = "crowdstrike/img/icon-crowdstrike.png"
 slug = "openaev_crowdstrike"
 use_cases = ["cti", "vuln-hunting"]
-new_prop = "nouveau"
+title = "Crowdstrike"
+container_type="COLLECTOR"
+short_description="The CrowdStrike Endpoint Security collector."

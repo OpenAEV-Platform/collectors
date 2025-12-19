@@ -24,3 +24,15 @@ dev = ["pyoaev"]
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+
+[tool.cmw]
+install-command = "poetry install --extras dev"
+config-dump-command = "poetry run python -m microsoft_sentinel.openaev_microsoft_sentinel --dump-config-schema"
+icon-path = "microsoft_sentinel/img/icon-microsoft-sentinel.png"
+slug = "openaev_microsoft_sentinel"
+title="Microsoft Sentinel"
+container_type="COLLECTOR"
+
+
+

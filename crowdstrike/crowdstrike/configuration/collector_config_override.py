@@ -1,7 +1,6 @@
 from pydantic import Field
 from pyoaev.configuration import ConfigLoaderCollector
 
-
 class CollectorConfigOverride(ConfigLoaderCollector):
 
     icon_filepath: str | None = Field(

@@ -24,3 +24,12 @@ dev = ["pyoaev"]
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.cmw]
+install-command = "poetry install --extras dev"
+config-dump-command = "poetry run python -m tanium_threat_response.openaev_tanium_threat_response --dump-config-schema"
+icon-path = "tanium_threat_response/img/icon-tanium.png"
+slug = "openaev_tanium_threat_response"
+title="Tanium Threat Response"
+container_type="COLLECTOR"
+

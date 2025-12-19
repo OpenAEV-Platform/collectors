@@ -4,76 +4,33 @@ import requests
 from azure.identity.aio import ClientSecretCredential
 from msgraph import GraphServiceClient
 from pyoaev.helpers import OpenAEVCollectorHelper, OpenAEVConfigHelper
+from pyoaev.configuration import Configuration
+from pyoaev.daemons import CollectorDaemon
+from microsoft_entra.configuration.config_loader import ConfigLoader
 
 
-class OpenAEVMicrosoftEntra:
-    def __init__(self):
-        self.session = requests.Session()
-        self.config = OpenAEVConfigHelper(
-            __file__,
-            {
-                # API information
-                "openaev_url": {"env": "OPENAEV_URL", "file_path": ["openaev", "url"]},
-                "openaev_token": {
-                    "env": "OPENAEV_TOKEN",
-                    "file_path": ["openaev", "token"],
-                },
-                # Config information
-                "collector_id": {
-                    "env": "COLLECTOR_ID",
-                    "file_path": ["collector", "id"],
-                },
-                "collector_name": {
-                    "env": "COLLECTOR_NAME",
-                    "file_path": ["collector", "name"],
-                    "default": "Microsoft Entra",
-                },
-                "collector_log_level": {
-                    "env": "COLLECTOR_LOG_LEVEL",
-                    "file_path": ["collector", "log_level"],
-                    "default": "warn",
-                },
-                "collector_period": {
-                    "env": "COLLECTOR_PERIOD",
-                    "file_path": ["collector", "period"],
-                    "is_number": True,
-                    "default": 60,
-                },
-                "microsoft_entra_tenant_id": {
-                    "env": "MICROSOFT_ENTRA_TENANT_ID",
-                    "file_path": ["collector", "microsoft_entra_tenant_id"],
-                },
-                "microsoft_entra_client_id": {
-                    "env": "MICROSOFT_ENTRA_CLIENT_ID",
-                    "file_path": ["collector", "microsoft_entra_client_id"],
-                },
-                "microsoft_entra_client_secret": {
-                    "env": "MICROSOFT_ENTRA_CLIENT_SECRET",
-                    "file_path": ["collector", "microsoft_entra_client_secret"],
-                },
-                "include_external": {
-                    "env": "INCLUDE_EXTERNAL",
-                    "file_path": ["collector", "include_external"],
-                },
-            },
-        )
-        self.helper = OpenAEVCollectorHelper(
-            config=self.config,
-            icon="microsoft_entra/img/icon-microsoft-entra.png",
+class OpenAEVMicrosoftEntra(CollectorDaemon):
+    def __init__(self,
+                 configuration: Configuration,
+                 ):
+        super().__init__(
+            configuration=configuration,
+            callback=self._process_message,
             collector_type="openaev_microsoft_entra",
         )
+        self.session = requests.Session()
 
         # External
-        self.include_external = self.config.get_conf("include_external", default=False)
+        self.include_external = self._configuration.get("include_external")
 
     def _create_or_get_tag(self, tag_name, tag_color="#6b7280"):
         """Create or get a tag and return its ID."""
         try:
             tag_data = {"tag_name": tag_name, "tag_color": tag_color}
-            result = self.helper.api.tag.upsert(tag_data)
+            result = self.api.tag.upsert(tag_data)
             return result.get("tag_id")
         except Exception as e:
-            self.helper.collector_logger.warning(
+            self.logger.warning(
                 f"Failed to upsert tag {tag_name}: {e}"
             )
             return None
@@ -161,7 +118,7 @@ class OpenAEVMicrosoftEntra:
                     if tag_ids:
                         user["user_tags"] = tag_ids
 
-                    self.helper.api.user.upsert(user)
+                    self.api.user.upsert(user)
 
         # iterate over result batches > 100 rows
         while members is not None and members.odata_next_link is not None:
@@ -243,14 +200,14 @@ class OpenAEVMicrosoftEntra:
                         if tag_ids:
                             user["user_tags"] = tag_ids
 
-                        self.helper.api.user.upsert(user)
+                        self.api.user.upsert(user)
 
     async def create_groups(self, graph_client):
         groups = await graph_client.groups.get()
         if groups:
             for i in range(len(groups.value)):
                 team = {"team_name": groups.value[i].display_name}
-                openaev_team = self.helper.api.team.upsert(team)
+                openaev_team = self.api.team.upsert(team)
                 await self.create_users(graph_client, groups.value[i].id, openaev_team)
         # iterate over result batches > 100 rows
         while groups is not None and groups.odata_next_link is not None:
@@ -258,7 +215,7 @@ class OpenAEVMicrosoftEntra:
             if groups:
                 for i in range(len(groups.value)):
                     team = {"team_name": groups.value[i].display_name}
-                    openaev_team = self.helper.api.team.upsert(team)
+                    openaev_team = self.api.team.upsert(team)
                     await self.create_users(
                         graph_client, groups.value[i].id, openaev_team
                     )
@@ -267,9 +224,9 @@ class OpenAEVMicrosoftEntra:
         # Auth
         scopes = ["https://graph.microsoft.com/.default"]
         credential = ClientSecretCredential(
-            tenant_id=self.config.get_conf("microsoft_entra_tenant_id"),
-            client_id=self.config.get_conf("microsoft_entra_client_id"),
-            client_secret=self.config.get_conf("microsoft_entra_client_secret"),
+            tenant_id=self._configuration.get("microsoft_entra_tenant_id"),
+            client_id=self._configuration.get("microsoft_entra_client_id"),
+            client_secret=self._configuration.get("microsoft_entra_client_secret"),
         )
         graph_client = GraphServiceClient(credential, scopes)  # type: ignore
 
@@ -277,12 +234,6 @@ class OpenAEVMicrosoftEntra:
         loop = asyncio.get_event_loop()
         loop.run_until_complete(self.create_groups(graph_client))
 
-    # Start the main loop
-    def start(self):
-        period = self.config.get_conf("collector_period", default=3600, is_number=True)
-        self.helper.schedule(message_callback=self._process_message, delay=period)
-
 
 if __name__ == "__main__":
-    openAEVMicrosoftEntra = OpenAEVMicrosoftEntra()
-    openAEVMicrosoftEntra.start()
+    OpenAEVMicrosoftEntra(configuration=ConfigLoader().to_daemon_config()).start()

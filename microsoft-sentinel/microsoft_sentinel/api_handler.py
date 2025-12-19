@@ -9,7 +9,6 @@ import requests
 class SentinelApiHandler:
     def __init__(
         self,
-        helper,
         tenant_id,
         client_id,
         client_secret,
@@ -19,7 +18,6 @@ class SentinelApiHandler:
         self.tenant_id = tenant_id
         self.client_id = client_id
         self.client_secret = client_secret
-        self.helper = helper
         self.ssl_verify = ssl_verify
         self._auth()
 
@@ -51,7 +49,7 @@ class SentinelApiHandler:
         type=None,
     ):
         self._auth()
-        self.helper.collector_logger.info("Query " + method + " on " + url)
+        self.logger.info("Query " + method + " on " + url)
         headers = {"Authorization": "Bearer " + self.token}
         if method != "upload":
             headers["content-type"] = content_type
@@ -148,4 +146,4 @@ class SentinelApiHandler:
         elif r.status_code == 401:
             raise ValueError("Query failed, permission denied")
         else:
-            self.helper.collector_logger.info(r.text)
+            self.logger.info(r.text)
