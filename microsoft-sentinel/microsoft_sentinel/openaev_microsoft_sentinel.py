@@ -110,7 +110,7 @@ class OpenAEVMicrosoftSentinel(CollectorDaemon):
         self.logger.info("Gathering expectations for executed injects")
         # Get expectation that are NOT FILLED for this collector
         expectations = self.api.inject_expectation.expectations_assets_for_source(
-            self.config.get_conf("collector_id")
+            self._configuration.get("collector_id")
         )
 
         self.logger.info(

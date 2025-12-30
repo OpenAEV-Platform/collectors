@@ -12,7 +12,7 @@ class CollectorConfigOverride(ConfigLoaderCollector):
         description="Collector display name",
     )
     icon_filepath: str | None = Field(
-        default="microsoft-defender/img/icon-microsoft-defender.png",
+        default="microsoft_defender/img/icon-microsoft-defender.png",
         description="Path to the icon file",
     )
     microsoft_defender_tenant_id: str = Field(

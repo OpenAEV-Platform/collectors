@@ -301,7 +301,7 @@ class OpenAEVMicrosoftDefender(CollectorDaemon):
         self.logger.info("Gathering expectations for executed injects")
         # Get expectation that are NOT FILLED for this collector
         expectations = self.api.inject_expectation.expectations_assets_for_source(
-            self.config.get_conf("collector_id")
+            self._configuration.get("collector_id")
         )
 
         self.logger.info(
@@ -344,7 +344,7 @@ class OpenAEVMicrosoftDefender(CollectorDaemon):
                 self.api.inject_expectation.update(
                     expectation["inject_expectation_id"],
                     {
-                        "collector_id": self.config.get_conf("collector_id"),
+                        "collector_id": self._configuration.get("collector_id"),
                         "result": (
                             "Not Detected"
                             if expectation["inject_expectation_type"] == "DETECTION"
@@ -372,7 +372,7 @@ class OpenAEVMicrosoftDefender(CollectorDaemon):
                         self.api.inject_expectation.update(
                             expectation["inject_expectation_id"],
                             {
-                                "collector_id": self.config.get_conf("collector_id"),
+                                "collector_id": self._configuration.get("collector_id"),
                                 "result": "Detected",
                                 "is_success": True,
                                 "metadata": {"alertId": alert_data.get("AlertId")},
@@ -385,7 +385,7 @@ class OpenAEVMicrosoftDefender(CollectorDaemon):
                         self.api.inject_expectation.update(
                             expectation["inject_expectation_id"],
                             {
-                                "collector_id": self.config.get_conf("collector_id"),
+                                "collector_id": self._configuration.get("collector_id"),
                                 "result": "Prevented",
                                 "is_success": True,
                                 "metadata": {"alertId": alert_data.get("AlertId")},
@@ -406,7 +406,7 @@ class OpenAEVMicrosoftDefender(CollectorDaemon):
                                 "inject_expectation_trace_expectation": expectation[
                                     "inject_expectation_id"
                                 ],
-                                "inject_expectation_trace_source_id": self.config.get_conf(
+                                "inject_expectation_trace_source_id": self._configuration.get(
                                     "collector_id"
                                 ),
                                 "inject_expectation_trace_alert_name": self._extract_alert_name(
@@ -424,9 +424,9 @@ class OpenAEVMicrosoftDefender(CollectorDaemon):
     def _process_message(self) -> None:
         # Auth
         credential = ClientSecretCredential(
-            tenant_id=self.config.get_conf("microsoft_defender_tenant_id"),
-            client_id=self.config.get_conf("microsoft_defender_client_id"),
-            client_secret=self.config.get_conf("microsoft_defender_client_secret"),
+            tenant_id=self._configuration.get("microsoft_defender_tenant_id"),
+            client_id=self._configuration.get("microsoft_defender_client_id"),
+            client_secret=self._configuration.get("microsoft_defender_client_secret"),
         )
         graph_client = GraphServiceClient(credential, scopes=self.scopes)  # type: ignore
 

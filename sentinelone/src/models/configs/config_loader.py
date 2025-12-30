@@ -143,5 +143,6 @@ class ConfigLoader(ConfigBaseSettings):
                 "sentinelone_enable_deep_visibility_search": {
                     "data": self.sentinelone.enable_deep_visibility_search
                 },
-            }
+            },
+        config_base_model = self,
         )

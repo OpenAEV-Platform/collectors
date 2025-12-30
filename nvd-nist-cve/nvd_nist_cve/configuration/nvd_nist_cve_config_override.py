@@ -9,7 +9,6 @@ class NvdNistCveConfigOverride(BaseSettings):
 
     api_key: SecretStr = Field(
         description="The nvd nst cve API key.",
-        default="ab68bc7e-77be-4117-bbf7-683a2ba7c604",
     )
     api_base_url: str = Field(
         description="The base URL for the nvd nst cve APIs. ",

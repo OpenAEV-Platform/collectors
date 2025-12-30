@@ -142,5 +142,6 @@ class ConfigLoader(ConfigBaseSettings):
                 "splunk_es_time_window": {"data": self.splunk_es.time_window},
                 "splunk_es_max_retry": {"data": self.splunk_es.max_retry},
                 "splunk_es_offset": {"data": self.splunk_es.offset},
-            }
+            },
+        config_base_model = self,
         )

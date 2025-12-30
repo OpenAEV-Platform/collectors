@@ -4,7 +4,6 @@ from pyoaev.configuration import ConfigLoaderCollector
 
 class CollectorConfigOverride(ConfigLoaderCollector):
     id: str = Field(
-        default="openaev_google_workspace",
         description="Collector unique identifier",
     )
     name: str = Field(

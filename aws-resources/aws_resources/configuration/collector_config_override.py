@@ -18,15 +18,12 @@ class CollectorConfigOverride(ConfigLoaderCollector):
     aws_access_key_id: str = Field(
         description="AWS Access Key ID",
     )
-
     aws_secret_access_key: str = Field(
         description="AWS Secret Access Key",
     )
-
     aws_session_token: str = Field(
         description="AWS Session Token (for temporary credentials)",
     )
-
     aws_assume_role_arn: str = Field(
         description="ARN of IAM role to assume",
     )
