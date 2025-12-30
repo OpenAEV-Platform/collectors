@@ -10,7 +10,9 @@ from typing import Any
 from urllib.parse import quote
 
 from pyoaev.apis.inject_expectation.model import (  # type: ignore[import-untyped]
-    DetectionExpectation, PreventionExpectation)
+    DetectionExpectation,
+    PreventionExpectation,
+)
 
 from ..collector.models import ExpectationResult, ExpectationTrace
 from ..models.configs.config_loader import ConfigLoader

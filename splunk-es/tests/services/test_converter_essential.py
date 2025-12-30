@@ -1,8 +1,10 @@
 """Essential tests for Splunk ES Converter service."""
 
 from src.services.converter import Converter
-from tests.services.fixtures.factories import (SplunkESAlertFactory,
-                                               create_test_splunk_alerts)
+from tests.services.fixtures.factories import (
+    SplunkESAlertFactory,
+    create_test_splunk_alerts,
+)
 
 
 class TestConverterEssential:

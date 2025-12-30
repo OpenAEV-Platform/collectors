@@ -4,13 +4,18 @@ import logging
 from typing import Any
 
 from pyoaev.apis.inject_expectation.model import (  # type: ignore[import-untyped]
-    DetectionExpectation, PreventionExpectation)
+    DetectionExpectation,
+    PreventionExpectation,
+)
 from pyoaev.client import OpenAEV  # type: ignore[import-untyped]
-from pyoaev.helpers import \
-    OpenAEVDetectionHelper  # type: ignore[import-untyped]
+from pyoaev.helpers import OpenAEVDetectionHelper  # type: ignore[import-untyped]
 
-from .exception import (APIError, BulkUpdateError, ExpectationProcessingError,
-                        ExpectationUpdateError)
+from .exception import (
+    APIError,
+    BulkUpdateError,
+    ExpectationProcessingError,
+    ExpectationUpdateError,
+)
 from .expectation_handler import GenericExpectationHandler
 from .models import ExpectationResult, ProcessingSummary
 from .trace_manager import TraceManager

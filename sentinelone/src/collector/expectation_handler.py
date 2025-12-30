@@ -4,11 +4,11 @@ import logging
 from typing import Any
 
 from pyoaev.apis.inject_expectation.model import (  # type: ignore[import-untyped]
-    DetectionExpectation, PreventionExpectation)
-from pyoaev.helpers import \
-    OpenAEVDetectionHelper  # type: ignore[import-untyped]
-from pyoaev.signatures.types import \
-    SignatureTypes  # type: ignore[import-untyped]
+    DetectionExpectation,
+    PreventionExpectation,
+)
+from pyoaev.helpers import OpenAEVDetectionHelper  # type: ignore[import-untyped]
+from pyoaev.signatures.types import SignatureTypes  # type: ignore[import-untyped]
 
 from .exception import ExpectationHandlerError
 from .expectation_service_provider import ExpectationServiceProvider

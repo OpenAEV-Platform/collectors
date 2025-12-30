@@ -6,7 +6,9 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 from pyoaev.apis.inject_expectation.model.expectation import (
-    DetectionExpectation, PreventionExpectation)
+    DetectionExpectation,
+    PreventionExpectation,
+)
 from pyoaev.signatures.types import SignatureTypes
 
 from .client_api import SentinelOneClientAPI

@@ -8,9 +8,9 @@ from dateutil.parser import parse
 from dateutil.relativedelta import relativedelta
 from pyoaev.configuration import Configuration
 from pyoaev.daemons import CollectorDaemon
-from pyoaev.helpers import (OpenAEVDetectionHelper)
-from tanium_threat_response.configuration.config_loader import ConfigLoader
+from pyoaev.helpers import OpenAEVDetectionHelper
 from tanium_threat_response.api_handler import TaniumApiHandler
+from tanium_threat_response.configuration.config_loader import ConfigLoader
 
 
 def _is_unix_absolute_path(path):

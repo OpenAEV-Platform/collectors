@@ -10,22 +10,28 @@ from datetime import timedelta
 from typing import Any
 
 from pyoaev.apis.inject_expectation.model import (  # type: ignore[import-untyped]
-    DetectionExpectation, PreventionExpectation)
-from pyoaev.helpers import \
-    OpenAEVDetectionHelper  # type: ignore[import-untyped]
-from pyoaev.signatures.types import \
-    SignatureTypes  # type: ignore[import-untyped]
+    DetectionExpectation,
+    PreventionExpectation,
+)
+from pyoaev.helpers import OpenAEVDetectionHelper  # type: ignore[import-untyped]
+from pyoaev.signatures.types import SignatureTypes  # type: ignore[import-untyped]
 
 from ..collector.models import ExpectationResult
 from ..models.configs.config_loader import ConfigLoader
 from .client_api import SplunkESClientAPI
 from .converter import Converter
-from .exception import (SplunkESAPIError, SplunkESConfigurationError,
-                        SplunkESDataConversionError, SplunkESExpectationError,
-                        SplunkESMatchingError, SplunkESNetworkError,
-                        SplunkESNoAlertsFoundError,
-                        SplunkESNoMatchingAlertsError, SplunkESServiceError,
-                        SplunkESValidationError)
+from .exception import (
+    SplunkESAPIError,
+    SplunkESConfigurationError,
+    SplunkESDataConversionError,
+    SplunkESExpectationError,
+    SplunkESMatchingError,
+    SplunkESNetworkError,
+    SplunkESNoAlertsFoundError,
+    SplunkESNoMatchingAlertsError,
+    SplunkESServiceError,
+    SplunkESValidationError,
+)
 
 LOG_PREFIX = "[SplunkESExpectationService]"
 

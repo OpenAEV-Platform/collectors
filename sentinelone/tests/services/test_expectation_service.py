@@ -5,12 +5,16 @@ from uuid import uuid4
 
 import pytest
 from pyoaev.signatures.types import SignatureTypes
-from src.services.expectation_service import (ExpectationResult,
-                                              SentinelOneExpectationService)
+from src.services.expectation_service import (
+    ExpectationResult,
+    SentinelOneExpectationService,
+)
 from src.services.model_threat import SentinelOneThreat
 from tests.gwt_shared import (
-    given_initialized_expectation_service, given_test_config,
-    then_expectation_service_initialized_successfully)
+    given_initialized_expectation_service,
+    given_test_config,
+    then_expectation_service_initialized_successfully,
+)
 
 # --------
 # Scenarios

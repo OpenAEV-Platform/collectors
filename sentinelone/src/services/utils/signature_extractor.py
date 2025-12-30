@@ -7,7 +7,9 @@ from pyoaev.signatures.types import SignatureTypes
 
 if TYPE_CHECKING:
     from pyoaev.apis.inject_expectation.model.expectation import (
-        DetectionExpectation, PreventionExpectation)
+        DetectionExpectation,
+        PreventionExpectation,
+    )
 
 
 class SignatureExtractor:

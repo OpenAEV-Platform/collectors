@@ -9,11 +9,12 @@ from dateutil.parser import parse
 from dateutil.relativedelta import relativedelta
 from microsoft_defender.configuration.config_loader import ConfigLoader
 from msgraph import GraphServiceClient
-from msgraph.generated.security.microsoft_graph_security_run_hunting_query.run_hunting_query_post_request_body import \
-    RunHuntingQueryPostRequestBody
+from msgraph.generated.security.microsoft_graph_security_run_hunting_query.run_hunting_query_post_request_body import (
+    RunHuntingQueryPostRequestBody,
+)
 from pyoaev.configuration import Configuration
 from pyoaev.daemons import CollectorDaemon
-from pyoaev.helpers import (OpenAEVDetectionHelper)
+from pyoaev.helpers import OpenAEVDetectionHelper
 
 # This is the "god query" that aggregates a bunch of alert-related data
 # distributed in various tables within the Microsoft Defender saas.

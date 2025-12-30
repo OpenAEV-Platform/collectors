@@ -1,8 +1,7 @@
 from pydantic import Field
 from pyoaev.configuration import Configuration, SettingsLoader
 
-from openaev.configuration.collector_config_override import \
-    CollectorConfigOverride
+from openaev.configuration.collector_config_override import CollectorConfigOverride
 from openaev.configuration.openaev_config_override import OpenaevConfigOverride
 
 

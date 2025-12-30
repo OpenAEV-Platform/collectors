@@ -3,12 +3,20 @@
 from pathlib import Path
 
 from pydantic import Field
-from pydantic_settings import (BaseSettings, DotEnvSettingsSource,
-                               EnvSettingsSource, PydanticBaseSettingsSource,
-                               YamlConfigSettingsSource)
+from pydantic_settings import (
+    BaseSettings,
+    DotEnvSettingsSource,
+    EnvSettingsSource,
+    PydanticBaseSettingsSource,
+    YamlConfigSettingsSource,
+)
 from pyoaev.configuration import Configuration
-from src.models.configs import (ConfigBaseSettings, _ConfigLoaderCollector,
-                                _ConfigLoaderOAEV, _ConfigLoaderSplunkES)
+from src.models.configs import (
+    ConfigBaseSettings,
+    _ConfigLoaderCollector,
+    _ConfigLoaderOAEV,
+    _ConfigLoaderSplunkES,
+)
 
 
 class ConfigLoaderCollector(_ConfigLoaderCollector):
@@ -143,5 +151,5 @@ class ConfigLoader(ConfigBaseSettings):
                 "splunk_es_max_retry": {"data": self.splunk_es.max_retry},
                 "splunk_es_offset": {"data": self.splunk_es.offset},
             },
-            config_base_model = self,
+            config_base_model=self,
         )

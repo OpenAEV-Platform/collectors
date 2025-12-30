@@ -5,10 +5,8 @@ from unittest.mock import Mock, patch
 import pytest
 from requests import Session
 from src.services.client_api import SplunkESClientAPI
-from src.services.exception import (SplunkESAPIError,
-                                    SplunkESAuthenticationError)
-from tests.services.fixtures.factories import (TestDataFactory,
-                                               create_test_config)
+from src.services.exception import SplunkESAPIError, SplunkESAuthenticationError
+from tests.services.fixtures.factories import TestDataFactory, create_test_config
 
 
 class TestSplunkESClientAPIEssential:

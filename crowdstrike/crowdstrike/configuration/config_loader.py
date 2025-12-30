@@ -1,9 +1,7 @@
 from pydantic import Field
-from pyoaev.configuration import (ConfigLoaderOAEV, Configuration,
-                                  SettingsLoader)
+from pyoaev.configuration import ConfigLoaderOAEV, Configuration, SettingsLoader
 
-from crowdstrike.configuration.collector_config_override import \
-    CollectorConfigOverride
+from crowdstrike.configuration.collector_config_override import CollectorConfigOverride
 from crowdstrike.configuration.crowdstrike_settings import CrowdstrikeSettings
 
 

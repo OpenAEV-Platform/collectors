@@ -6,7 +6,7 @@ from dateutil.relativedelta import relativedelta
 from microsoft_sentinel.configuration.config_loader import ConfigLoader
 from pyoaev.configuration import Configuration
 from pyoaev.daemons import CollectorDaemon
-from pyoaev.helpers import (OpenAEVDetectionHelper)
+from pyoaev.helpers import OpenAEVDetectionHelper
 
 
 class OpenAEVMicrosoftSentinel(CollectorDaemon):

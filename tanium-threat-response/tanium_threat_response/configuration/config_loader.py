@@ -1,8 +1,8 @@
 from pydantic import Field
-from pyoaev.configuration import (ConfigLoaderOAEV, Configuration,
-                                  SettingsLoader)
-from tanium_threat_response.configuration.collector_config_override import \
-    CollectorConfigOverride
+from pyoaev.configuration import ConfigLoaderOAEV, Configuration, SettingsLoader
+from tanium_threat_response.configuration.collector_config_override import (
+    CollectorConfigOverride,
+)
 
 
 class ConfigLoader(SettingsLoader):

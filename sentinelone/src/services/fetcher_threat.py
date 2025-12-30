@@ -5,10 +5,16 @@ from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
 from requests.exceptions import (  # type: ignore[import-untyped]
-    ConnectionError, RequestException, Timeout)
+    ConnectionError,
+    RequestException,
+    Timeout,
+)
 
-from .exception import (SentinelOneAPIError, SentinelOneNetworkError,
-                        SentinelOneValidationError)
+from .exception import (
+    SentinelOneAPIError,
+    SentinelOneNetworkError,
+    SentinelOneValidationError,
+)
 from .model_threat import SentinelOneThreat, SentinelOneThreatsResponse
 
 if TYPE_CHECKING:

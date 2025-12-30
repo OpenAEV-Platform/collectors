@@ -9,8 +9,11 @@ from typing import Any
 from requests import ConnectionError, RequestException, Timeout
 
 from .client_api import SentinelOneClientAPI
-from .exception import (SentinelOneAPIError, SentinelOneNetworkError,
-                        SentinelOneValidationError)
+from .exception import (
+    SentinelOneAPIError,
+    SentinelOneNetworkError,
+    SentinelOneValidationError,
+)
 
 LOG_PREFIX = "[FetcherDeepVisibility]"
 REQUEST_TIMEOUT_SECONDS = 30

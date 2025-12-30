@@ -1,12 +1,15 @@
 import unittest
 from datetime import datetime
 from test.fixtures.crowdstrike_alerts_v2 import (
-    ALERT_DATA, GET_ALERTS_V2_FAILURE_RESPONSE, GET_ALERTS_V2_SUCCESS_RESPONSE,
+    ALERT_DATA,
+    GET_ALERTS_V2_FAILURE_RESPONSE,
+    GET_ALERTS_V2_SUCCESS_RESPONSE,
     GET_ALERTS_V2_SUCCESS_RESPONSE_NO_ITEMS,
     GET_ALERTS_V2_SUCCESS_RESPONSE_WITH_MALFORMED_DATA,
-    QUERY_ALERTS_V2_FAILURE_RESPONSE, QUERY_ALERTS_V2_SUCCESS_RESPONSE)
-from test.fixtures.defaults import (DEFAULT_SIGNATURE_TYPES,
-                                    get_default_api_handler)
+    QUERY_ALERTS_V2_FAILURE_RESPONSE,
+    QUERY_ALERTS_V2_SUCCESS_RESPONSE,
+)
+from test.fixtures.defaults import DEFAULT_SIGNATURE_TYPES, get_default_api_handler
 from unittest.mock import patch
 
 from pydantic import ValidationError
