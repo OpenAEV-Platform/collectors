@@ -26,10 +26,4 @@ build-backend = "poetry.core.masonry.api"
 install-command = "poetry install --extras dev"
 config-dump-command = "poetry run python -m nvd_nist_cve.openaev_nvd_nist_cve --dump-config-schema"
 icon-path = "nvd_nist_cve/img/icon-nist.png"
-slug = "openaev_nvd_nist_cve"
-title="NVD Nist CVE"
-container_type="COLLECTOR"
-short_description="The NVD NIST CVE collector is a standalone Python process that collects data from the NVD (National Vulnerability Database)."
-
-
 

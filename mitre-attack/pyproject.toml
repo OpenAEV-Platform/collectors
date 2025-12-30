@@ -28,9 +28,5 @@ build-backend = "poetry.core.masonry.api"
 install-command = "poetry install --extras dev"
 config-dump-command = "poetry run python -m mitre_attack.openaev_mitre --dump-config-schema"
 icon-path = "mitre_attack/img/icon-mitre-attack.png"
-slug = "openaev_mitre_attack"
-title="Mitre Attack"
-container_type="COLLECTOR"
-
 
 

@@ -29,8 +29,4 @@ build-backend = "poetry.core.masonry.api"
 install-command = "poetry install --extras dev"
 config-dump-command = "poetry run python -m microsoft_entra.openaev_microsoft_entra --dump-config-schema"
 icon-path = "microsoft_entra/img/icon-microsoft-entra.png"
-slug = "openaev_microsoft_entra"
-title="Microsoft Entra"
-container_type="COLLECTOR"
-
 

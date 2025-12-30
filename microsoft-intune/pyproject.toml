@@ -30,8 +30,3 @@ build-backend = "poetry.core.masonry.api"
 install-command = "poetry install --extras dev"
 config-dump-command = "poetry run python -m microsoft_intune.openaev_microsoft_intune --dump-config-schema"
 icon-path = "microsoft_intune/img/icon-microsoft-intune.png"
-slug = "microsoft_intune"
-title="Microsoft Intune"
-container_type="COLLECTOR"
-short_description="This collector enables OpenAEV to import managed devices from Microsoft Intune as endpoints."
-

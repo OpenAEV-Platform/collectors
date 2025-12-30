@@ -28,9 +28,3 @@ build-backend = "poetry.core.masonry.api"
 install-command = "poetry install --extras dev"
 config-dump-command = "poetry run python -m openaev.openaev_openaev --dump-config-schema"
 icon-path = "openaev/img/icon-openaev.png"
-slug = "openaev_openaev"
-use_cases = ["payloads", "datasets"]
-title="OpenAEV"
-container_type="COLLECTOR"
-short_description="This collector allows to import the OpenAEV payloads repository in order to pre-populate your OpenAEV instance with out-of-the-box payloads."
-

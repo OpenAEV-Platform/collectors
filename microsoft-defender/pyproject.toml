@@ -30,8 +30,4 @@ build-backend = "poetry.core.masonry.api"
 install-command = "poetry install --extras dev"
 config-dump-command = "poetry run python -m microsoft_defender.openaev_microsoft_defender --dump-config-schema"
 icon-path = "microsoft_defender/img/icon-microsoft-defender.png"
-slug = "openaev_microsoft_defender"
-title="Microsoft Defender"
-container_type="COLLECTOR"
-
 

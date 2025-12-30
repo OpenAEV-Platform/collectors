@@ -113,7 +113,7 @@ export SENTINELONE_ENABLE_DEEP_VISIBILITY_SEARCH="false"
    ```bash
    git clone <repository-url>
    cd sentinelone
-   poetry install -E current --with dev
+   poetry install --extras local
    ```
 
 2. **Configure the Collector**:

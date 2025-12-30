@@ -121,3 +121,9 @@ exclude = [
     '^.venv',
 ]
 plugins = ["pydantic.mypy"]
+
+[tool.cmw]
+install-command = "poetry install --extras local"
+config-dump-command = "poetry run python src --dump-config-schema"
+icon-path = "src/img/splunk-logo.png"
+
