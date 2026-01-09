@@ -2,12 +2,12 @@
 
 ## Repository Overview
 
-This repository contains **OpenAEV collectors** - Python-based integrations that interface with security tools (EDR, XDR, SIEM, etc.) to collect security data and alerts for the OpenAEV platform. The repository is a **monorepo** containing 15+ individual collectors, each with its own Python package.
+This repository contains **OpenAEV collectors** - Python-based integrations that interface with security tools (EDR, XDR, SIEM, etc.) to collect security data and alerts for the OpenAEV platform. The repository is a **monorepo** containing 15 individual collectors, each with its own Python package.
 
 **Key Facts:**
 - **Language**: Python 3.11+ (CI uses Python 3.13)
 - **Package Manager**: Poetry 2.1.3+
-- **Size**: Medium-sized monorepo with ~15 collectors
+- **Size**: Medium-sized monorepo with 15 collectors
 - **CI/CD**: CircleCI (`.circleci/config.yml`)
 - **License**: Apache 2.0
 
@@ -99,7 +99,10 @@ black .
 
 - **black**: No custom config, uses defaults
 - **isort**: Must use `--profile black` to match black's style
-- **flake8**: Config in `.flake8` - ignores E203, E266, E501, W503, F403, F401, max line length 120
+- **flake8**: Config in `.flake8`:
+  - Ignores: E203, E266, E501, W503, F403, F401
+  - Max line length: 120
+  - Selects: B,C,E,F,W,T4,B9 (enables specific checker categories)
 
 **IMPORTANT**: The CircleCI `linter` job ignores all E and W errors with `--ignore=E,W`. Do NOT change this without testing on CI.
 
