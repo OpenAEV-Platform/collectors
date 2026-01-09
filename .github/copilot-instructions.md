@@ -12,13 +12,16 @@ This repository contains **OpenAEV collectors** - Python-based integrations that
 - **License**: Apache 2.0
 
 **Collectors in this repository:**
-- atomic-red-team, aws-resources, crowdstrike, google-workspace, microsoft-azure, microsoft-defender, microsoft-entra, microsoft-intune, microsoft-sentinel, mitre-attack, nvd-nist-cve, openaev, sentinelone, splunk-es, tanium-threat-response
+- **Included in root pyproject.toml**: atomic-red-team, crowdstrike, microsoft-defender, microsoft-entra, microsoft-sentinel, mitre-attack, nvd-nist-cve, tanium-threat-response
+- **Standalone collectors**: aws-resources, google-workspace, microsoft-azure, microsoft-intune, openaev, sentinelone, splunk-es
+
+(Total: 15 collectors, but only 8 are installed when using `poetry install` at the repository root)
 
 ## Critical Build Requirements
 
 ### Poetry and Dependency Management
 
-**IMPORTANT**: This repository uses **"mutually exclusive extra markers"** for the `pyoaev` dependency. Read the [Poetry documentation on exclusive extras](https://python-poetry.org/docs/dependency-specification/#exclusive-extras) before making dependency changes.
+**IMPORTANT**: This repository uses **"mutually exclusive extra markers"** for the `pyoaev` dependency. This is a Poetry feature where different dependency sources are selected based on the extras specified. See the pyproject.toml files for the exact syntax.
 
 **Two installation modes:**
 1. **Production mode**: Uses `pyoaev` from PyPI
@@ -102,6 +105,7 @@ black .
 - **flake8**: Has a `.flake8` config file BUT CircleCI overrides it:
   - **`.flake8` config**: Ignores E203, E266, E501, W503, F403, F401; max line length 120; selects B,C,E,F,W,T4,B9
   - **CircleCI command**: Uses `flake8 --ignore=E,W` which ignores ALL E and W error codes
+  - Note: The select statement enables categories, and individual codes in ignore take precedence
   
 **IMPORTANT**: To match CI behavior locally, use `flake8 --ignore=E,W .` (same as CI) rather than relying on the `.flake8` config file.
 
