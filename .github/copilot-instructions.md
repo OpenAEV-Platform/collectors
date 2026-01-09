@@ -123,50 +123,6 @@ collector-name/
 
 **Per-collector:** `pyproject.toml`, `Dockerfile`, `docker-compose.yml`, `.env.sample`, `README.md`
 
-## Code Review Guidelines
-
-When reviewing code, focus on:
-
-### Security Critical Issues
-- Check for hardcoded secrets, API keys, or credentials
-- Look for SQL injection and XSS vulnerabilities
-- Verify proper input validation and sanitization
-- Review authentication and authorization logic
-
-### Performance Red Flags
-- Identify N+1 database query problems
-- Spot inefficient loops and algorithmic issues
-- Check for memory leaks and resource cleanup
-- Review caching opportunities for expensive operations
-
-### Code Quality Essentials
-- Functions should be focused and appropriately sized
-- Use clear, descriptive naming conventions
-- Ensure proper error handling throughout
-
-### Review Style
-- Be specific and actionable in feedback
-- Explain the "why" behind recommendations
-- Acknowledge good patterns when you see them
-- Ask clarifying questions when code intent is unclear
-
-**Always prioritize security vulnerabilities and performance issues that could impact users.**
-
-**Always suggest changes to improve readability.** For example:
-```python
-# Instead of:
-if (user.email and user.email.find('@') != -1 and len(user.email) > 5):
-    submit_button.enabled = True
-else:
-    submit_button.enabled = False
-
-# Consider:
-def is_valid_email(email):
-    return email and '@' in email and len(email) > 5
-
-submit_button.enabled = is_valid_email(user.email)
-```
-
 ## Best Practices
 
 1. **ALWAYS run linters before committing** - CI will fail otherwise
