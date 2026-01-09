@@ -85,7 +85,7 @@ isort --profile black --check .
 # Run black check  
 black --check .
 
-# Run flake8
+# Run flake8 (use CI's command to match CI behavior)
 flake8 --ignore=E,W .
 ```
 
@@ -99,12 +99,11 @@ black .
 
 - **black**: No custom config, uses defaults
 - **isort**: Must use `--profile black` to match black's style
-- **flake8**: Config in `.flake8`:
-  - Ignores: E203, E266, E501, W503, F403, F401
-  - Max line length: 120
-  - Selects: B,C,E,F,W,T4,B9 (enables specific checker categories)
-
-**IMPORTANT**: The CircleCI `linter` job ignores all E and W errors with `--ignore=E,W`. Do NOT change this without testing on CI.
+- **flake8**: Has a `.flake8` config file BUT CircleCI overrides it:
+  - **`.flake8` config**: Ignores E203, E266, E501, W503, F403, F401; max line length 120; selects B,C,E,F,W,T4,B9
+  - **CircleCI command**: Uses `flake8 --ignore=E,W` which ignores ALL E and W error codes
+  
+**IMPORTANT**: To match CI behavior locally, use `flake8 --ignore=E,W .` (same as CI) rather than relying on the `.flake8` config file.
 
 ## Testing
 
