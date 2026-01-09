@@ -2,126 +2,61 @@
 
 ## Repository Overview
 
-This repository contains **OpenAEV collectors** - Python-based integrations that interface with security tools (EDR, XDR, SIEM, etc.) to collect security data and alerts for the OpenAEV platform. The repository is a **monorepo** containing 15 individual collectors, each with its own Python package.
+**OpenAEV collectors** - Python integrations for security tools (EDR, XDR, SIEM, etc.) to collect data for OpenAEV platform. Monorepo with 15 collectors.
 
 **Key Facts:**
-- **Language**: Python 3.11+ (CI uses Python 3.13)
+- **Language**: Python 3.11+ (CI: Python 3.13)
 - **Package Manager**: Poetry 2.1.3+
-- **Size**: Medium-sized monorepo with 15 collectors
-- **CI/CD**: CircleCI (`.circleci/config.yml`)
-- **License**: Apache 2.0
-
-**Collectors in this repository:**
-- **Included in root pyproject.toml**: atomic-red-team, crowdstrike, microsoft-defender, microsoft-entra, microsoft-sentinel, mitre-attack, nvd-nist-cve, tanium-threat-response
-- **Standalone collectors**: aws-resources, google-workspace, microsoft-azure, microsoft-intune, openaev, sentinelone, splunk-es
-
-(Total: 15 collectors, but only 8 are installed when using `poetry install` at the repository root)
+- **CI/CD**: CircleCI
+- **Collectors**: 8 in root pyproject.toml (atomic-red-team, crowdstrike, microsoft-defender, microsoft-entra, microsoft-sentinel, mitre-attack, nvd-nist-cve, tanium-threat-response), 7 standalone (aws-resources, google-workspace, microsoft-azure, microsoft-intune, openaev, sentinelone, splunk-es)
 
 ## Critical Build Requirements
 
 ### Poetry and Dependency Management
 
-**IMPORTANT**: This repository uses **"mutually exclusive extra markers"** for the `pyoaev` dependency. This is a Poetry feature where different dependency sources are selected based on the extras specified. See the pyproject.toml files for the exact syntax.
+**IMPORTANT**: Uses **mutually exclusive extra markers** for `pyoaev` dependency. Different sources based on extras.
 
-**Two installation modes:**
-1. **Production mode**: Uses `pyoaev` from PyPI
-   ```bash
-   poetry install --extras prod
-   ```
+**Installation modes:**
+- **Production**: `poetry install --extras prod` (PyPI)
+- **Development**: `poetry install --extras dev` (local `../client-python`)
 
-2. **Development mode**: Uses local `pyoaev` from `../client-python` directory
-   ```bash
-   poetry install --extras dev
-   ```
-
-**Expected directory structure for development:**
+**Expected dev structure:**
 ```
 /home/runner/work/
-├── client-python/       # pyoaev library (must be cloned separately)
-└── collectors/          # This repository
-    ├── crowdstrike/
-    ├── mitre-attack/
-    └── ...
+├── client-python/       # pyoaev library
+└── collectors/          # This repo
 ```
 
-**NEVER** try to install both `dev` and `prod` extras simultaneously - they are mutually exclusive.
+**NEVER** use both `dev` and `prod` extras simultaneously.
 
-### Installing Dependencies
-
-**For the entire repository** (all collectors at once):
-```bash
-cd /path/to/collectors
-poetry install --extras dev  # For development with local pyoaev
-```
-
-**For a single collector**:
-```bash
-cd /path/to/collectors/crowdstrike
-poetry install --extras prod  # Uses PyPI version
-```
-
-**Common installation issue**: If you see `Path /home/runner/work/collectors/client-python for pyoaev does not exist`, you are in dev mode but `client-python` is not cloned at the expected location. Either:
-- Clone `client-python` to the correct location, OR
-- Use `--extras prod` instead
+**Common issue**: `Path for pyoaev does not exist` - clone `client-python` or use `--extras prod`.
 
 ## Code Quality and Linting
 
-### Pre-commit Checks
-
-The CI runs three quality checks that **MUST pass**:
-
+**CI requires three checks:**
 1. **isort** - Import sorting (with black profile)
 2. **black** - Code formatting  
-3. **flake8** - Linting (with specific ignore rules)
+3. **flake8** - Linting
 
-### Running Linters Locally
-
-**ALWAYS run these commands before committing:**
-
+**Run before committing:**
 ```bash
-# Install linting tools
 pip install black isort flake8
-
-# Run isort check
 isort --profile black --check .
-
-# Run black check  
 black --check .
-
-# Run flake8 (use CI's command to match CI behavior)
-flake8 --ignore=E,W .
+flake8 --ignore=E,W .  # Match CI behavior
 ```
 
-**To auto-fix formatting issues:**
-```bash
-isort --profile black .
-black .
-```
+**Auto-fix:** `isort --profile black .` and `black .`
 
-### Linter Configuration
-
-- **black**: No custom config, uses defaults
-- **isort**: Must use `--profile black` to match black's style
-- **flake8**: Has a `.flake8` config file BUT CircleCI overrides it:
-  - **`.flake8` config**: Ignores E203, E266, E501, W503, F403, F401; max line length 120; selects B,C,E,F,W,T4,B9
-  - **CircleCI command**: Uses `flake8 --ignore=E,W` which ignores ALL E and W error codes
-  - Note: The select statement enables categories, and individual codes in ignore take precedence
-  
-**IMPORTANT**: To match CI behavior locally, use `flake8 --ignore=E,W .` (same as CI) rather than relying on the `.flake8` config file.
+**Config notes:**
+- **isort**: Must use `--profile black`
+- **flake8**: CI uses `--ignore=E,W` (overrides `.flake8` file)
 
 ## Testing
 
-### Test Structure
+**Collectors with tests:** crowdstrike, sentinelone, splunk-es, nvd-nist-cve
 
-Not all collectors have tests. Collectors with tests:
-- **crowdstrike**: `test/` directory, uses unittest
-- **sentinelone**: `tests/` directory  
-- **splunk-es**: `tests/` directory
-- **nvd-nist-cve**: `tests/` directory
-
-### Running Tests
-
-**For crowdstrike collector (example from CI)**:
+**Run tests (crowdstrike example):**
 ```bash
 cd crowdstrike
 poetry install --extras prod
@@ -129,164 +64,108 @@ poetry run pip install --force-reinstall git+https://github.com/OpenAEV-Platform
 poetry run python -m unittest
 ```
 
-**Key points:**
-- Tests use Python's built-in `unittest` framework
-- CI overrides the pyoaev dependency with the latest from git after installation
-- Tests expect pyoaev to be available in the environment
-
 ## CI/CD Pipeline (CircleCI)
 
-### Workflow Jobs
+**Job order:**
+1. **ensure_formatting** - black and isort checks
+2. **linter** - flake8
+3. **test** - crowdstrike collector tests (unittest)
+4. **build_docker_images** - All collectors (python:3.13-alpine, Poetry 2.1.3)
+5. **publish_images** - Docker Hub (main/release/tags)
 
-The CI pipeline runs the following jobs **in order**:
-
-1. **ensure_formatting** - Checks code formatting with black and isort
-2. **linter** - Runs flake8 
-3. **test** - Runs tests for crowdstrike collector (only collector with CI tests currently)
-4. **build_docker_images** - Builds Docker images for all collectors
-5. **publish_images** - Publishes images to Docker Hub (on main/release/tags)
-
-**All three quality checks (formatting, isort, linter) MUST pass before builds run.**
-
-### Docker Builds
-
-Each collector has a `Dockerfile` that:
-- Uses `python:3.13-alpine` base image
-- Installs Poetry 2.1.3
-- Builds the collector as a wheel
-- Installs the wheel with `[prod]` extras
-- Optionally overrides pyoaev version with `PYOAEV_GIT_BRANCH_OVERRIDE` build arg
-
-**Build command pattern**:
-```bash
-cd <collector-directory>
-docker build -t openaev/collector-<name>:tag .
-```
-
-### Branch Strategy
-
-- **main**: Development branch, publishes "rolling" Docker tag
-- **release/current**: Pre-release branch, publishes "prerelease" Docker tag  
-- **tags (vX.Y.Z)**: Release tags, publishes version tag
+**Branch strategy:**
+- **main**: Rolling tag
+- **release/current**: Prerelease tag
+- **tags (vX.Y.Z)**: Version tag
 
 ## Collector Architecture
 
-### Standard Collector Structure
-
-Each collector directory contains:
+**Standard structure:**
 ```
 collector-name/
 ├── collector_name/          # Python package
-│   ├── __init__.py
-│   ├── openaev_<name>.py   # Main entry point
-│   └── ...
-├── test/ or tests/          # Tests (if present)
-├── Dockerfile              # Docker build
-├── docker-compose.yml      # Local deployment
-├── .env.sample            # Environment variable template
-├── pyproject.toml         # Poetry config
-└── README.md              # Collector documentation
+│   └── openaev_<name>.py   # Entry point
+├── test/ or tests/          # Tests (unittest)
+├── Dockerfile              # python:3.13-alpine, Poetry 2.1.3
+├── pyproject.toml         # Dependencies with mutually exclusive extras
+└── README.md
 ```
 
-### Running a Collector
+**Run collector:**
+- Poetry: `cd <collector> && poetry install --extras prod && poetry run python -m <collector_name>.openaev_<collector_name>`
+- Docker: `cd <collector> && docker build -t collector . && docker compose up -d`
 
-**Via Poetry**:
-```bash
-cd <collector-name>
-poetry install --extras prod
-poetry run python -m <collector_name>.openaev_<collector_name>
-```
-
-**Via Docker**:
-```bash
-cd <collector-name>
-docker build -t collector .
-docker compose up -d
-```
-
-## Common Configuration
-
-All collectors share these environment variables:
-- `OPENAEV_URL` - OpenAEV platform URL
-- `OPENAEV_TOKEN` - Platform authentication token
-- `COLLECTOR_ID` - Unique UUID for the collector instance
-- `COLLECTOR_NAME` - Human-readable name
-- `COLLECTOR_PERIOD` - Collection interval in seconds (default: 60)
-- `COLLECTOR_LOG_LEVEL` - Logging verbosity (debug/info/warn/error)
-- `COLLECTOR_PLATFORM` - Security platform type (EDR/XDR/SIEM/SOAR/NDR/ISPM)
-
-Each collector also has its own specific configuration variables (API keys, URLs, etc.).
+**Common env vars:** `OPENAEV_URL`, `OPENAEV_TOKEN`, `COLLECTOR_ID`, `COLLECTOR_NAME`, `COLLECTOR_PERIOD`, `COLLECTOR_LOG_LEVEL`, `COLLECTOR_PLATFORM`
 
 ## Making Changes
 
-### Modifying a Collector
+**Modify collector:**
+1. Make changes in collector's package directory
+2. **ALWAYS run linters:** `black .`, `isort --profile black .`, `flake8 --ignore=E,W .`
+3. Run tests if they exist: `poetry run python -m unittest`
+4. Test locally if possible
 
-1. Make code changes in the collector's package directory
-2. **ALWAYS run linters**: `black .`, `isort --profile black .`, `flake8 --ignore=E,W .`
-3. If tests exist, run them: `poetry run python -m unittest`
-4. Test the collector locally if possible
-5. Commit with clear messages
+**Add new collector:** Use `poetry new new_collector` then edit pyproject.toml for pyoaev with mutually exclusive markers (see README.md)
 
-### Adding a New Collector
-
-Use Poetry to create the skeleton:
-```bash
-poetry new new_collector
-cd new_collector
-# Edit pyproject.toml to add pyoaev dependency with mutually exclusive markers
-```
-
-See README.md "Creating a new collector" section for the exact `pyproject.toml` format.
-
-### Updating Dependencies
-
-**For security updates**: Use `renovate.json` configuration (automated via Renovate bot)
-
-**Manual updates**:
-```bash
-cd <collector-directory>
-poetry update <package-name>
-```
-
-**NEVER modify the pyoaev dependency structure** (the mutually exclusive extras) without consulting the team.
+**Update dependencies:** Use Renovate bot (automated) or `poetry update <package>`. **NEVER modify pyoaev structure** without team approval.
 
 ## Troubleshooting
 
-### "Path for pyoaev does not exist"
-- You're in dev mode but `client-python` is not at `../client-python`
-- Solution: Clone `client-python` or use `--extras prod`
+- **"Path for pyoaev does not exist"**: Clone `client-python` or use `--extras prod`
+- **Import errors**: Run `poetry install --extras prod`
+- **Black/isort conflicts**: Use `isort --profile black`
+- **Docker build fails**: Check Poetry 2.1.3 in Dockerfile
+- **CI formatting fails**: Run `black .` and `isort --profile black .` locally
 
-### Import errors when running tests
-- pyoaev is not installed
-- Solution: Run `poetry install --extras prod` first
+## Key Files
 
-### Black/isort conflicts
-- Solution: Always use `isort --profile black` to match black's style
+**Root:** `pyproject.toml`, `.circleci/config.yml`, `.pre-commit-config.yaml`, `.flake8`, `scripts/release.py`, `renovate.json`
 
-### Docker build fails on "pip3 install"
-- Check that Poetry 2.1.3 is used in the Dockerfile
-- Verify `poetry build` succeeds before pip install
+**Per-collector:** `pyproject.toml`, `Dockerfile`, `docker-compose.yml`, `.env.sample`, `README.md`
 
-### CI formatting check fails
-- Run `black --check .` and `isort --profile black --check .` locally
-- Fix with `black .` and `isort --profile black .`
+## Code Review Guidelines
 
-## Key Files Reference
+When reviewing code, focus on:
 
-### Repository Root
-- `pyproject.toml` - Root Poetry config, installs all collectors
-- `.circleci/config.yml` - CI/CD pipeline definition
-- `.pre-commit-config.yaml` - Pre-commit hooks (black, flake8, isort)
-- `.flake8` - Flake8 configuration
-- `scripts/release.py` - Release automation script
-- `renovate.json` - Automated dependency updates
+### Security Critical Issues
+- Check for hardcoded secrets, API keys, or credentials
+- Look for SQL injection and XSS vulnerabilities
+- Verify proper input validation and sanitization
+- Review authentication and authorization logic
 
-### Per-Collector Files
-- `pyproject.toml` - Collector dependencies and metadata
-- `Dockerfile` - Docker build instructions
-- `docker-compose.yml` - Local deployment config
-- `.env.sample` - Required environment variables
-- `README.md` - Collector-specific documentation
+### Performance Red Flags
+- Identify N+1 database query problems
+- Spot inefficient loops and algorithmic issues
+- Check for memory leaks and resource cleanup
+- Review caching opportunities for expensive operations
+
+### Code Quality Essentials
+- Functions should be focused and appropriately sized
+- Use clear, descriptive naming conventions
+- Ensure proper error handling throughout
+
+### Review Style
+- Be specific and actionable in feedback
+- Explain the "why" behind recommendations
+- Acknowledge good patterns when you see them
+- Ask clarifying questions when code intent is unclear
+
+**Always prioritize security vulnerabilities and performance issues that could impact users.**
+
+**Always suggest changes to improve readability.** For example:
+```python
+# Instead of:
+if (user.email and user.email.find('@') != -1 and len(user.email) > 5):
+    submit_button.enabled = True
+else:
+    submit_button.enabled = False
+
+# Consider:
+def is_valid_email(email):
+    return email and '@' in email and len(email) > 5
+
+submit_button.enabled = is_valid_email(user.email)
+```
 
 ## Best Practices
 
