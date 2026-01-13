@@ -1,20 +1,24 @@
 repos:
--   repo: https://github.com/psf/black
-    rev: 20.8b1
+-   repo: https://github.com/psf/black-pre-commit-mirror
+    rev: 25.9.0
     hooks:
-    -   id: black
+        -   id: black
 -   repo: https://github.com/PyCQA/flake8
-    rev: 3.8.4
+    rev: 7.3.0
     hooks:
     -   id: flake8
         args: ['--ignore=E,W']
 -   repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v3.4.0
+    rev: v6.0.0
     hooks:
     -   id: check-yaml
 -   repo: https://github.com/pycqa/isort
-    rev: 5.10.1
+    rev: 7.0.0
     hooks:
     - id: isort
       name: isort (python)
-      arts: ['--profile black']
+      args:
+        - '--profile'
+        - 'black'
+        - '--line-length'
+        - '88'
