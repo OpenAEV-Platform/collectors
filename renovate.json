@@ -1,47 +1,31 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "config:recommended"
+    "config:recommended",
+    "docker:enableMajor"
   ],
   "labels": [
     "dependencies",
     "filigran team"
   ],
-  "prConcurrentLimit": 2,
-  "baseBranchPatterns": [
-    "release/current",
-    "main"
+  "minimumReleaseAge": "3 days",
+  "prHourlyLimit": 2,
+  "prConcurrentLimit": 20,
+  "timezone": "Europe/Paris",
+  "schedule": [
+    "* 0-4,22-23 * * 1-5",
+    "* * * * 0,6"
   ],
+  "updateNotScheduled": false,
+  "rebaseWhen": "conflicted",
+  "commitMessageAction": "update",
+  "commitMessagePrefix": "[tool] chore(deps):",
   "packageRules": [
     {
-      "matchUpdateTypes": [
-        "minor"
+      "matchPaths": [
+        "*/**"
       ],
-      "prPriority": 5
-    },
-    {
-      "matchBaseBranches": [
-        "release/current"
-      ],
-      "commitMessageSuffix": null
-    },
-    {
-      "matchJsonata": [
-        "$exists(isVulnerabilityAlert)"
-      ],
-      "matchBaseBranches": [
-        "release/current"
-      ],
-      "enabled": false
-    },
-    {
-      "matchJsonata": [
-        "$not($exists(isVulnerabilityAlert))"
-      ],
-      "matchBaseBranches": [
-        "main"
-      ],
-      "enabled": false
+      "commitMessagePrefix": "[collectors] chore(deps):"
     }
   ]
 }
