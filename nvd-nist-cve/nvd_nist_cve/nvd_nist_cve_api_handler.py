@@ -1,8 +1,8 @@
 import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Dict, Generator, List, Optional
 from types import NoneType
+from typing import Dict, Generator, List, Optional
 
 import requests
 
