@@ -1,1 +1,4 @@
-from atomic_red_team.configuration.config_loader import ConfigLoader__all__ = ["ConfigLoader"]
+from atomic_red_team.configuration.config_loader import ConfigLoader
+
+
+__all__ = ["ConfigLoader"]
