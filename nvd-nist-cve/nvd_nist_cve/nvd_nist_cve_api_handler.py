@@ -2,6 +2,7 @@ import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Dict, Generator, List, Optional
+from types import NoneType
 
 import requests
 
@@ -78,7 +79,7 @@ class NvdNistCveApiHandler:
 
     def __fetch_cve_data_by_page(
         self, cve_params: dict, start_index=0
-    ) -> Generator[CVEFetchResult]:
+    ) -> Generator[CVEFetchResult, NoneType, NoneType]:
         """
         Fetch CVE data from the NIST API in pages.
         :param cve_params: Dictionary of parameters for the CVE API request.
@@ -134,7 +135,7 @@ class NvdNistCveApiHandler:
 
     def _get_vulnerabilities_by_date_range(
         self, start_date: datetime, end_date: datetime
-    ) -> Generator[CVEFetchResult]:
+    ) -> Generator[CVEFetchResult, NoneType, NoneType]:
         """
         Fetch CVE data from the NIST API within a specified date range.
         :param start_date: Start date for CVE data retrieval.
@@ -164,7 +165,9 @@ class NvdNistCveApiHandler:
 
             current_start_date = current_end_date + timedelta(days=1)
 
-    def _get_vulnerabilities_by_index(self, start_index=0) -> Generator[CVEFetchResult]:
+    def _get_vulnerabilities_by_index(
+        self, start_index=0
+    ) -> Generator[CVEFetchResult, NoneType, NoneType]:
         """
         Fetch CVE data from the NIST API starting from a specific index.
         :param start_index: Starting index for pagination.

@@ -3,7 +3,6 @@ from datetime import datetime, timezone
 from typing import Generator, Optional
 
 from nvd_nist_cve.nvd_nist_cve_api_handler import NvdNistCveApiHandler
-from nvd_nist_cve.nvd_nist_cve_configuration import NvdNistCveConfiguration
 from pyoaev.configuration import Configuration
 from pyoaev.daemons import CollectorDaemon
 
@@ -24,15 +23,12 @@ class NvdNistCveCollector(CollectorDaemon):
             If configuration is invalid
         """
         try:
-            self.cve_config = NvdNistCveConfiguration()
-
             super().__init__(
                 configuration=configuration,
                 callback=self._process_data,
                 collector_type="openaev_nvd_nist_cve",
             )
             self.cve_client = None
-            self.logger.info("Nvd Nist CVE Collector initialized successfully")
 
         except Exception as e:
             print(f"Collector failed to start: {e}")
