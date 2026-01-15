@@ -34,7 +34,9 @@ class OpenAEVAWSResources(CollectorDaemon):
 
         # Initialize AWS clients
         self.aws_clients = {}
-        self._init_aws_session()
+
+        self.base_session = None
+        self.session = None
 
     def _init_aws_session(self):
         """Initialize AWS session with credentials."""
@@ -217,8 +219,16 @@ class OpenAEVAWSResources(CollectorDaemon):
             self.logger.warning(f"Failed to upsert tag {tag_name}: {e}")
             return None
 
+    def __lazy_session_init(self):
+        if not self.base_session:
+            self._init_aws_session()
+
     def _process_message(self) -> None:
         """Process message to collect EC2 instances and upsert them as endpoints."""
+
+        # lazily init session
+        self.__lazy_session_init()
+
         try:
             self.logger.info("Starting AWS EC2 collection...")
 

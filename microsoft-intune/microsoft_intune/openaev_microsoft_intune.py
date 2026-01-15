@@ -24,9 +24,10 @@ class OpenAEVMicrosoftIntune(CollectorDaemon):
         self.device_groups = self._configuration.get("microsoft_intune_device_groups")
 
         # Parse device groups (comma-separated)
-        self.device_groups_list = [
-            g.strip() for g in self.device_groups.split(",") if g.strip()
-        ]
+        if self.device_groups:
+            self.device_groups_list = [
+                g.strip() for g in self.device_groups.split(",") if g.strip()
+            ]
 
         # Microsoft Graph endpoints
         self.authority = f"https://login.microsoftonline.com/{self.tenant_id}"

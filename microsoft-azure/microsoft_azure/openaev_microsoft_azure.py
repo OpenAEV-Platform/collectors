@@ -29,9 +29,10 @@ class OpenAEVMicrosoftAzure(CollectorDaemon):
         )
 
         # Parse resource groups (comma-separated)
-        self.resource_groups_list = [
-            rg.strip() for rg in self.resource_groups.split(",") if rg.strip()
-        ]
+        if self.resource_groups:
+            self.resource_groups_list = [
+                rg.strip() for rg in self.resource_groups.split(",") if rg.strip()
+            ]
 
         # Azure Resource Manager endpoints
         self.authority = f"https://login.microsoftonline.com/{self.tenant_id}"
