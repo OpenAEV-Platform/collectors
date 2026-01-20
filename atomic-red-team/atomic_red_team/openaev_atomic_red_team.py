@@ -6,6 +6,8 @@ import yaml
 from atomic_red_team.configuration.config_loader import ConfigLoader
 from pyoaev.configuration import Configuration
 from pyoaev.daemons import CollectorDaemon
+from atomic_red_team.openaev_security_domain import OpenAEVSecurityDomain
+from pyoaev.helpers import OpenAEVCollectorHelper, OpenAEVConfigHelper
 
 ATOMIC_RED_TEAM_INDEX = "https://raw.githubusercontent.com/redcanaryco/atomic-red-team/master/atomics/Indexes/index.yaml"
 
@@ -212,6 +214,7 @@ class OpenAEVAtomicRedTeam(CollectorDaemon):
             collector_type="openaev_atomic_red_team",
         )
         self.session = requests.Session()
+        self.securitydomain = OpenAEVSecurityDomain()
 
     def _create_or_get_tag(self, tag_name, tag_color="#6b7280"):
         """Create or get a tag and return its ID."""
@@ -379,6 +382,9 @@ class OpenAEVAtomicRedTeam(CollectorDaemon):
                                 "elevation_required", False
                             ),
                             "payload_prerequisites": prerequisites,
+                            "payload_domains": self.securitydomain.get_associated_security_domains(
+                                atomic_test["name"]
+                            ),
                         }
 
                         # Add tags if we have any
