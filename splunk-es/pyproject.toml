@@ -7,7 +7,7 @@ packages = [{ include = "src" }, { include = "tests" }]
 
 [project]
 name = "SplunkESCollector"
-version = "2.0.11"
+version = "2.0.13"
 description = "Collector for Splunk Enterprise Security."
 readme = "README.md"
 
