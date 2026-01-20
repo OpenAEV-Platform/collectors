@@ -1,0 +1,108 @@
+"""PaloAltoCortexXDR Alert Fetcher."""
+
+import logging
+from datetime import datetime
+
+from requests.exceptions import (  # type: ignore[import-untyped]
+    ConnectionError,
+    RequestException,
+    Timeout,
+)
+
+from ..models.alert import Alert
+from .client_api import PaloAltoCortexXDRClientAPI
+from .exception import (
+    PaloAltoCortexXDRAPIError,
+    PaloAltoCortexXDRNetworkError,
+    PaloAltoCortexXDRValidationError,
+)
+
+LOG_PREFIX = "[AlertFetcher]"
+
+
+class AlertFetcher:
+    """Fetcher for PaloAltoCortexXDR alert data using time-window based queries."""
+
+    def __init__(self, client_api: PaloAltoCortexXDRClientAPI) -> None:
+        """Initialize the Alert fetcher.
+
+        Args:
+            client_api: PaloAltoCortexXDR API client instance.
+
+        Raises:
+            PaloAltoCortexXDRValidationError: If client_api is None.
+
+        """
+        if client_api is None:
+            raise PaloAltoCortexXDRValidationError("client_api cannot be None")
+
+        self.logger = logging.getLogger(__name__)
+        self.client_api = client_api
+        self.logger.debug(f"{LOG_PREFIX} Alert fetcher initialized")
+
+    def fetch_alerts_for_time_window(
+        self,
+        start_time: datetime,
+        end_time: datetime,
+    ) -> list[Alert]:
+        """Fetch all alerts for a given time window.
+
+        Args:
+            start_time: Start time as datetime object.
+            end_time: End time as datetime object.
+
+        Returns:
+            List of PaloAltoCortexXDRAlert objects.
+
+        Raises:
+            PaloAltoCortexXDRAPIError: If API call fails.
+            PaloAltoCortexXDRValidationError: If parameters are invalid.
+
+        """
+        if not isinstance(start_time, datetime) or not isinstance(end_time, datetime):
+            raise PaloAltoCortexXDRValidationError(
+                "start_time and end_time must be datetime objects"
+            )
+
+        if start_time >= end_time:
+            raise PaloAltoCortexXDRValidationError("start_time must be before end_time")
+
+        try:
+            start_time = int(start_time.timestamp())
+            end_time = int(end_time.timestamp())
+
+            alerts = self.client_api.get_alerts(
+                start_time=start_time, end_time=end_time
+            )
+
+            self.logger.info(
+                f"{LOG_PREFIX} Fetched {len(alerts)} alerts for time window"
+            )
+            return alerts
+
+        except (ConnectionError, Timeout) as e:
+            raise PaloAltoCortexXDRNetworkError(
+                f"Network error fetching alerts for time window: {e}"
+            ) from e
+        except RequestException as e:
+            raise PaloAltoCortexXDRAPIError(
+                f"HTTP request failed fetching alerts for time window: {e}"
+            ) from e
+        except Exception as e:
+            raise PaloAltoCortexXDRAPIError(
+                f"Error fetching alerts for time window: {e}"
+            ) from e
+
+    def _format_timestamp_for_api(self, dt: datetime) -> int:
+        """Format datetime object for PaloAltoCortexXDR API.
+
+        PaloAltoCortexXDR API expects timestamp
+
+        Args:
+            dt: Datetime object to format (should be timezone-aware)
+
+        Returns:
+            Int formatted timestamp for PaloAltoCortexXDR API
+
+        """
+        return int(dt.timestamp())

@@ -10,3 +10,9 @@ dependencies = [
     "pyoaev>=2.0.11",
     "requests>=2.32.5",
 ]
+
+[dependency-groups]
+dev = [
+    "factory-boy>=3.3.3",
+    "pytest>=9.0.2",
+]

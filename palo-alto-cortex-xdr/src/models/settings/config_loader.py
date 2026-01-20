@@ -140,20 +140,23 @@ class ConfigLoader(ConfigBaseSettings):
                 },  # type: ignore[union-attr]
                 "collector_icon_filepath": {"data": self.collector.icon_filepath},
                 # PaloAltoCortexXDR configuration (flattened)
-                "palo_alto_cortex_xdr_base_url": {
-                    "data": str(self.palo_alto_cortex_xdr.base_url)
+                "palo_alto_cortex_xdr_fqdn": {
+                    "data": str(self.palo_alto_cortex_xdr.fqdn)
                 },
                 "palo_alto_cortex_xdr_api_key": {
                     "data": self.palo_alto_cortex_xdr.api_key.get_secret_value()
+                },
+                "palo_alto_cortex_xdr_api_key_id": {
+                    "data": self.palo_alto_cortex_xdr.api_key_id
+                },
+                "palo_alto_cortex_xdr_api_key_type": {
+                    "data": self.palo_alto_cortex_xdr.api_key_type
                 },
                 "palo_alto_cortex_xdr_time_window": {
                     "data": self.palo_alto_cortex_xdr.time_window
                 },
                 "palo_alto_cortex_xdr_expectation_batch_size": {
                     "data": self.palo_alto_cortex_xdr.expectation_batch_size
-                },
-                "palo_alto_cortex_xdr_enable_deep_visibility_search": {
-                    "data": self.palo_alto_cortex_xdr.enable_deep_visibility_search
                 },
             }
         )
