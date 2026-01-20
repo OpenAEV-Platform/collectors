@@ -1,74 +1,27 @@
 import boto3
+from aws_resources.configuration.config_loader import ConfigLoader
 from botocore.exceptions import ClientError, NoCredentialsError
-from pyoaev.helpers import OpenAEVCollectorHelper, OpenAEVConfigHelper
+from pyoaev.configuration import Configuration
+from pyoaev.daemons import CollectorDaemon
 
 
-class OpenAEVAWSResources:
-    def __init__(self):
-        self.config = OpenAEVConfigHelper(
-            __file__,
-            {
-                # API information
-                "openaev_url": {"env": "OPENAEV_URL", "file_path": ["openaev", "url"]},
-                "openaev_token": {
-                    "env": "OPENAEV_TOKEN",
-                    "file_path": ["openaev", "token"],
-                },
-                # Config information
-                "collector_id": {
-                    "env": "COLLECTOR_ID",
-                    "file_path": ["collector", "id"],
-                },
-                "collector_name": {
-                    "env": "COLLECTOR_NAME",
-                    "file_path": ["collector", "name"],
-                    "default": "Amazon Web Services",
-                },
-                "collector_log_level": {
-                    "env": "COLLECTOR_LOG_LEVEL",
-                    "file_path": ["collector", "log_level"],
-                    "default": "warn",
-                },
-                "collector_period": {
-                    "env": "COLLECTOR_PERIOD",
-                    "file_path": ["collector", "period"],
-                    "is_number": True,
-                    "default": 60,
-                },
-                "aws_access_key_id": {
-                    "env": "AWS_ACCESS_KEY_ID",
-                    "file_path": ["collector", "aws_access_key_id"],
-                },
-                "aws_secret_access_key": {
-                    "env": "AWS_SECRET_ACCESS_KEY",
-                    "file_path": ["collector", "aws_secret_access_key"],
-                },
-                "aws_session_token": {
-                    "env": "AWS_SESSION_TOKEN",
-                    "file_path": ["collector", "aws_session_token"],
-                },
-                "aws_regions": {
-                    "env": "AWS_REGIONS",
-                    "file_path": ["collector", "aws_regions"],
-                },
-                "aws_assume_role_arn": {
-                    "env": "AWS_ASSUME_ROLE_ARN",
-                    "file_path": ["collector", "aws_assume_role_arn"],
-                },
-            },
-        )
-        self.helper = OpenAEVCollectorHelper(
-            config=self.config,
-            icon="aws_resources/img/icon-aws-resources.png",
+class OpenAEVAWSResources(CollectorDaemon):
+    def __init__(
+        self,
+        configuration: Configuration,
+    ):
+        super().__init__(
+            configuration=configuration,
+            callback=self._process_message,
             collector_type="openaev_aws_resources",
         )
 
         # AWS settings
-        self.access_key_id = self.config.get_conf("aws_access_key_id")
-        self.secret_access_key = self.config.get_conf("aws_secret_access_key")
-        self.session_token = self.config.get_conf("aws_session_token", default=None)
-        self.assume_role_arn = self.config.get_conf("aws_assume_role_arn", default=None)
-        self.regions = self.config.get_conf("aws_regions", default="")
+        self.access_key_id = self._configuration.get("aws_access_key_id")
+        self.secret_access_key = self._configuration.get("aws_secret_access_key")
+        self.session_token = self._configuration.get("aws_session_token")
+        self.assume_role_arn = self._configuration.get("aws_assume_role_arn")
+        self.regions = self._configuration.get("aws_regions")
 
         # Parse regions (comma-separated)
         # If no regions specified, we'll discover them
@@ -81,7 +34,9 @@ class OpenAEVAWSResources:
 
         # Initialize AWS clients
         self.aws_clients = {}
-        self._init_aws_session()
+
+        self.base_session = None
+        self.session = None
 
     def _init_aws_session(self):
         """Initialize AWS session with credentials."""
@@ -114,24 +69,22 @@ class OpenAEVAWSResources:
             else:
                 self.session = self.base_session
 
-            self.helper.collector_logger.info("Successfully initialized AWS session")
+            self.logger.info("Successfully initialized AWS session")
 
             # Get list of regions if not specified
             if not self.regions_list:
                 self._discover_regions()
 
         except NoCredentialsError:
-            self.helper.collector_logger.error(
+            self.logger.error(
                 "No AWS credentials found. Please configure access keys or use instance role."
             )
             raise
         except ClientError as e:
-            self.helper.collector_logger.error(f"AWS client error: {str(e)}")
+            self.logger.error(f"AWS client error: {str(e)}")
             raise
         except Exception as e:
-            self.helper.collector_logger.error(
-                f"Failed to initialize AWS session: {str(e)}"
-            )
+            self.logger.error(f"Failed to initialize AWS session: {str(e)}")
             raise
 
     def _discover_regions(self):
@@ -142,11 +95,9 @@ class OpenAEVAWSResources:
             self.regions_list = [
                 region["RegionName"] for region in regions_response["Regions"]
             ]
-            self.helper.collector_logger.info(
-                f"Discovered {len(self.regions_list)} AWS regions"
-            )
+            self.logger.info(f"Discovered {len(self.regions_list)} AWS regions")
         except ClientError as e:
-            self.helper.collector_logger.error(f"Failed to discover regions: {str(e)}")
+            self.logger.error(f"Failed to discover regions: {str(e)}")
             # Fall back to common regions
             self.regions_list = [
                 "us-east-1",
@@ -156,7 +107,7 @@ class OpenAEVAWSResources:
                 "ap-southeast-1",
                 "ap-northeast-1",
             ]
-            self.helper.collector_logger.warning(
+            self.logger.warning(
                 f"Using fallback regions: {', '.join(self.regions_list)}"
             )
 
@@ -182,8 +133,10 @@ class OpenAEVAWSResources:
 
             return instances
         except ClientError as e:
-            self.helper.collector_logger.error(
-                f"Failed to get instances from region {region}: {str(e)}"
+            (
+                self.logger.error(
+                    f"Failed to get instances from region {region}: {str(e)}"
+                )
             )
             return []
 
@@ -260,26 +213,30 @@ class OpenAEVAWSResources:
         """Create or get a tag and return its ID."""
         try:
             tag_data = {"tag_name": tag_name, "tag_color": tag_color}
-            result = self.helper.api.tag.upsert(tag_data)
+            result = self.api.tag.upsert(tag_data)
             return result.get("tag_id")
         except Exception as e:
-            self.helper.collector_logger.warning(
-                f"Failed to upsert tag {tag_name}: {e}"
-            )
+            self.logger.warning(f"Failed to upsert tag {tag_name}: {e}")
             return None
+
+    def __lazy_session_init(self):
+        if not self.base_session:
+            self._init_aws_session()
 
     def _process_message(self) -> None:
         """Process message to collect EC2 instances and upsert them as endpoints."""
+
+        # lazily init session
+        self.__lazy_session_init()
+
         try:
-            self.helper.collector_logger.info("Starting AWS EC2 collection...")
+            self.logger.info("Starting AWS EC2 collection...")
 
             all_instances = []
 
             # Collect instances from all specified regions
             for region in self.regions_list:
-                self.helper.collector_logger.info(
-                    f"Collecting EC2 instances from region: {region}"
-                )
+                self.logger.info(f"Collecting EC2 instances from region: {region}")
                 instances = self._get_instances_from_region(region)
 
                 # Add region information to each instance
@@ -287,13 +244,9 @@ class OpenAEVAWSResources:
                     instance["_region"] = region
 
                 all_instances.extend(instances)
-                self.helper.collector_logger.info(
-                    f"Found {len(instances)} instances in region {region}"
-                )
+                self.logger.info(f"Found {len(instances)} instances in region {region}")
 
-            self.helper.collector_logger.info(
-                f"Total EC2 instances found: {len(all_instances)}"
-            )
+            self.logger.info(f"Total EC2 instances found: {len(all_instances)}")
 
             # Process each instance and upsert as endpoint
             for instance in all_instances:
@@ -320,9 +273,7 @@ class OpenAEVAWSResources:
 
                 # Skip terminated instances
                 if state == "terminated":
-                    self.helper.collector_logger.debug(
-                        f"Skipping terminated instance {instance_name}"
-                    )
+                    self.logger.debug(f"Skipping terminated instance {instance_name}")
                     continue
 
                 # Determine platform and architecture
@@ -334,7 +285,7 @@ class OpenAEVAWSResources:
 
                 # Skip instances without IPs (might be in weird state)
                 if not ips:
-                    self.helper.collector_logger.warning(
+                    self.logger.warning(
                         f"Skipping instance {instance_name} - no IP addresses found"
                     )
                     continue
@@ -422,26 +373,20 @@ class OpenAEVAWSResources:
 
                 # Upsert endpoint
                 try:
-                    self.helper.api.endpoint.upsert(endpoint)
-                    self.helper.collector_logger.info(
+                    self.api.endpoint.upsert(endpoint)
+                    self.logger.info(
                         f"Successfully upserted endpoint: {instance_name} ({instance_id})"
                     )
                 except Exception as e:
-                    self.helper.collector_logger.error(
+                    self.logger.error(
                         f"Failed to upsert endpoint {instance_name}: {str(e)}"
                     )
 
-            self.helper.collector_logger.info("AWS EC2 collection completed")
+            self.logger.info("AWS EC2 collection completed")
 
         except Exception as e:
-            self.helper.collector_logger.error(f"Error during EC2 collection: {str(e)}")
-
-    def start(self):
-        """Start the main loop."""
-        period = self.config.get_conf("collector_period", default=3600, is_number=True)
-        self.helper.schedule(message_callback=self._process_message, delay=period)
+            self.logger.error(f"Error during EC2 collection: {str(e)}")
 
 
 if __name__ == "__main__":
-    openAEVAWSResources = OpenAEVAWSResources()
-    openAEVAWSResources.start()
+    OpenAEVAWSResources(configuration=ConfigLoader().to_daemon_config()).start()

@@ -115,7 +115,7 @@ export SPLUNKES_ALERTS_INDEX="main"
    ```bash
    git clone <repository-url>
    cd splunk-es
-   poetry install -E current --with prod
+   poetry install --extras local
    ```
 
 2. **Configure the Collector**:

@@ -8,13 +8,13 @@ import requests
 class TaniumApiHandler:
     def __init__(
         self,
-        helper,
+        logger,
         url,
         token,
         ssl_verify=True,
     ):
         # Variables
-        self.helper = helper
+        self.logger = logger
         self.url = url
         self.token = token
         self.ssl_verify = ssl_verify
@@ -30,7 +30,7 @@ class TaniumApiHandler:
         content_type="application/json",
         type=None,
     ):
-        self.helper.collector_logger.info("Query " + method + " on " + uri)
+        self.logger.info("Query " + method + " on " + uri)
         headers = {"session": self.token}
         if method != "upload":
             headers["content-type"] = content_type
@@ -127,4 +127,4 @@ class TaniumApiHandler:
         elif r.status_code == 401:
             raise ValueError("Query failed, permission denied")
         else:
-            self.helper.collector_logger.info(r.text)
+            self.logger.info(r.text)

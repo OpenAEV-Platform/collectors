@@ -13,9 +13,7 @@ import pytest
 from src.collector import Collector
 from src.services.client_api import SentinelOneClientAPI
 from src.services.converter import SentinelOneConverter
-from src.services.exception import (
-    SentinelOneValidationError,
-)
+from src.services.exception import SentinelOneValidationError
 from src.services.expectation_service import SentinelOneExpectationService
 from src.services.model_threat import SentinelOneThreat
 from tests.conftest import mock_env_vars

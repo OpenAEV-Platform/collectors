@@ -3,82 +3,39 @@ import mimetypes
 import zipfile
 
 import requests
-from pyoaev.helpers import OpenAEVCollectorHelper, OpenAEVConfigHelper
+from pyoaev.configuration import Configuration
+from pyoaev.daemons import CollectorDaemon
+
+from openaev.configuration.config_loader import ConfigLoader
 
 
-class OpenAEVOpenAEV:
-    def __init__(self):
-        self.session = requests.Session()
-        self.config = OpenAEVConfigHelper(
-            __file__,
-            {
-                # API information
-                "openaev_url": {"env": "OPENAEV_URL", "file_path": ["openaev", "url"]},
-                "openaev_token": {
-                    "env": "OPENAEV_TOKEN",
-                    "file_path": ["openaev", "token"],
-                },
-                # Config information
-                "collector_id": {
-                    "env": "COLLECTOR_ID",
-                    "file_path": ["collector", "id"],
-                },
-                "collector_name": {
-                    "env": "COLLECTOR_NAME",
-                    "file_path": ["collector", "name"],
-                    "default": "OpenAEV Datasets",
-                },
-                "collector_log_level": {
-                    "env": "COLLECTOR_LOG_LEVEL",
-                    "file_path": ["collector", "log_level"],
-                    "default": "warn",
-                },
-                "collector_period": {
-                    "env": "COLLECTOR_PERIOD",
-                    "file_path": ["collector", "period"],
-                    "is_number": True,
-                    "default": 86400,
-                },
-                # OpenAEV Datasets
-                "openaev_generated_url_prefix": {
-                    "env": "OPENAEV_URL_PREFIX",
-                    "file_path": ["openaev", "url_prefix"],
-                    "default": "https://raw.githubusercontent.com/OpenAEV-Platform/payloads/refs/heads/main/",
-                },
-                "openaev_import_only_native": {
-                    "env": "OPENAEV_IMPORT_ONLY_NATIVE",
-                    "file_path": ["openaev", "import_only_native"],
-                    "default": "false",
-                },
-            },
-        )
-        self.helper = OpenAEVCollectorHelper(
-            config=self.config,
-            icon="openaev/img/icon-openaev.png",
+class OpenAEVOpenAEV(CollectorDaemon):
+    def __init__(
+        self,
+        configuration: Configuration,
+    ):
+        super().__init__(
+            configuration=configuration,
+            callback=self._process_message,
             collector_type="openaev_openaev",
         )
+        self.session = requests.Session()
 
     def _create_or_get_tag(self, tag_name, tag_color="#6b7280"):
         """Create or get a tag and return its ID."""
         try:
             tag_data = {"tag_name": tag_name, "tag_color": tag_color}
-            result = self.helper.api.tag.upsert(tag_data)
+            result = self.api.tag.upsert(tag_data)
             return result.get("tag_id")
         except Exception as e:
-            self.helper.collector_logger.warning(
-                f"Failed to upsert tag {tag_name}: {e}"
-            )
+            self.logger.warning(f"Failed to upsert tag {tag_name}: {e}")
             return None
 
     def _process_message(self) -> None:
-        openaev_import_only_native = self.config.get_conf(
-            "openaev_import_only_native",
-            default=True,
+        openaev_import_only_native = self._configuration.get(
+            "openaev_import_only_native"
         )
-        openaev_url_prefix = self.config.get_conf(
-            "openaev_url_prefix",
-            default="https://raw.githubusercontent.com/OpenAEV-Platform/payloads/refs/heads/main/",
-        )
+        openaev_url_prefix = self._configuration.get("openaev_url_prefix")
         response = self.session.get(url=openaev_url_prefix + "manifest.json")
         payloads = response.json()
         payload_external_ids = []
@@ -92,21 +49,19 @@ class OpenAEVOpenAEV:
                 continue
 
             payload_information = payload.get("payload_information")
-            self.helper.collector_logger.info(
-                "Importing payload " + payload_information["payload_name"]
-            )
+            self.logger.info("Importing payload " + payload_information["payload_name"])
 
             # Create tags
             tags_mapping = {}
             tags = payload.get("payload_tags", [])
             for tag in tags:
-                new_tag = self.helper.api.tag.upsert(tag)
+                new_tag = self.api.tag.upsert(tag)
                 tags_mapping[tag["tag_id"]] = new_tag["tag_id"]
 
             # Create attack patterns
             attack_patterns = payload.get("payload_attack_patterns", [])
             if len(attack_patterns) > 0:
-                self.helper.api.attack_pattern.upsert(attack_patterns, True)
+                self.api.attack_pattern.upsert(attack_patterns, True)
 
             # Create document
             new_document = None
@@ -137,12 +92,12 @@ class OpenAEVOpenAEV:
                                 mime_type = "application/octet-stream"
                             file_handle = io.BytesIO(file_content)
                             file = (document["document_name"], file_handle, mime_type)
-                            new_document = self.helper.api.document.upsert(
+                            new_document = self.api.document.upsert(
                                 document=document, file=file
                             )
 
             # Upsert payload
-            payload_information["payload_collector"] = self.helper.config.get(
+            payload_information["payload_collector"] = self._configuration.get(
                 "collector_id"
             )
 
@@ -180,27 +135,19 @@ class OpenAEVOpenAEV:
             elif "file_drop_file" in payload_information and new_document is not None:
                 payload_information["file_drop_file"] = new_document["document_id"]
 
-            self.helper.api.payload.upsert(payload_information)
+            self.api.payload.upsert(payload_information)
             payload_external_ids.append(payload_information["payload_external_id"])
-            self.helper.collector_logger.info(
+            self.logger.info(
                 "Payload " + payload_information["payload_name"] + " imported"
             )
 
-        self.helper.api.payload.deprecate(
+        self.api.payload.deprecate(
             {
-                "collector_id": self.helper.config.get("collector_id"),
+                "collector_id": self._configuration.get("collector_id"),
                 "payload_external_ids": payload_external_ids,
             }
         )
 
-    # Start the main loop
-    def start(self):
-        period = self.config.get_conf(
-            "collector_period", default=86400, is_number=True
-        )  # 7 days
-        self.helper.schedule(message_callback=self._process_message, delay=period)
-
 
 if __name__ == "__main__":
-    openAEVAtomicRedTeam = OpenAEVOpenAEV()
-    openAEVAtomicRedTeam.start()
+    OpenAEVOpenAEV(configuration=ConfigLoader().to_daemon_config()).start()

@@ -2,8 +2,8 @@
 
 from requests import Session
 from src.services.client_api import SentinelOneClientAPI
-from tests.gwt_shared import (  # Given methods
-    given_test_config,
+from tests.gwt_shared import given_test_config  # Given methods
+from tests.gwt_shared import (
     then_client_api_initialized_successfully,
 )
 

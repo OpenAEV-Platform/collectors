@@ -7,15 +7,14 @@ import requests
 from azure.identity.aio import ClientSecretCredential
 from dateutil.parser import parse
 from dateutil.relativedelta import relativedelta
+from microsoft_defender.configuration.config_loader import ConfigLoader
 from msgraph import GraphServiceClient
 from msgraph.generated.security.microsoft_graph_security_run_hunting_query.run_hunting_query_post_request_body import (
     RunHuntingQueryPostRequestBody,
 )
-from pyoaev.helpers import (
-    OpenAEVCollectorHelper,
-    OpenAEVConfigHelper,
-    OpenAEVDetectionHelper,
-)
+from pyoaev.configuration import Configuration
+from pyoaev.daemons import CollectorDaemon
+from pyoaev.helpers import OpenAEVDetectionHelper
 
 # This is the "god query" that aggregates a bunch of alert-related data
 # distributed in various tables within the Microsoft Defender saas.
@@ -105,64 +104,17 @@ fileEvidence
 """
 
 
-class OpenAEVMicrosoftDefender:
-    def __init__(self):
-        self.session = requests.Session()
-        self.config = OpenAEVConfigHelper(
-            __file__,
-            {
-                # API information
-                "openaev_url": {"env": "OPENAEV_URL", "file_path": ["openaev", "url"]},
-                "openaev_token": {
-                    "env": "OPENAEV_TOKEN",
-                    "file_path": ["openaev", "token"],
-                },
-                # Config information
-                "collector_id": {
-                    "env": "COLLECTOR_ID",
-                    "file_path": ["collector", "id"],
-                },
-                "collector_name": {
-                    "env": "COLLECTOR_NAME",
-                    "file_path": ["collector", "name"],
-                    "default": "Microsoft Defender",
-                },
-                "collector_log_level": {
-                    "env": "COLLECTOR_LOG_LEVEL",
-                    "file_path": ["collector", "log_level"],
-                    "default": "warn",
-                },
-                "collector_period": {
-                    "env": "COLLECTOR_PERIOD",
-                    "file_path": ["collector", "period"],
-                    "is_number": True,
-                    "default": 60,
-                },
-                "collector_platform": {
-                    "env": "COLLECTOR_PLATFORM",
-                    "file_path": ["collector", "platform"],
-                    "default": "EDR",
-                },
-                "microsoft_defender_tenant_id": {
-                    "env": "MICROSOFT_DEFENDER_TENANT_ID",
-                    "file_path": ["collector", "microsoft_defender_tenant_id"],
-                },
-                "microsoft_defender_client_id": {
-                    "env": "MICROSOFT_DEFENDER_CLIENT_ID",
-                    "file_path": ["collector", "microsoft_defender_client_id"],
-                },
-                "microsoft_defender_client_secret": {
-                    "env": "MICROSOFT_DEFENDER_CLIENT_SECRET",
-                    "file_path": ["collector", "microsoft_defender_client_secret"],
-                },
-            },
-        )
-        self.helper = OpenAEVCollectorHelper(
-            self.config,
-            icon="microsoft_defender/img/icon-microsoft-defender.png",
+class OpenAEVMicrosoftDefender(CollectorDaemon):
+    def __init__(
+        self,
+        configuration: Configuration,
+    ):
+        super().__init__(
+            configuration=configuration,
+            callback=self._process_message,
             collector_type="openaev_microsoft_defender",
-            security_platform_type="EDR",
         )
+        self.session = requests.Session()
 
         # Initialize signatures helper
         self.relevant_signatures_types = [
@@ -175,7 +127,7 @@ class OpenAEVMicrosoftDefender:
             "ipv6_address",
         ]
         self.openaev_detection_helper = OpenAEVDetectionHelper(
-            self.helper.collector_logger, self.relevant_signatures_types
+            self.logger, self.relevant_signatures_types
         )
 
         self.scanning_delta = 45
@@ -276,7 +228,7 @@ class OpenAEVMicrosoftDefender:
     # --- MATCHING ---
 
     def _match_alert(self, alert, evidences, expectation):
-        self.helper.collector_logger.info(
+        self.logger.info(
             "Trying to match alert "
             + str(alert.get("AlertId"))
             + " with expectation "
@@ -347,22 +299,18 @@ class OpenAEVMicrosoftDefender:
     # --- PROCESS ---
 
     async def _process_alerts(self, graph_client):
-        self.helper.collector_logger.info("Gathering expectations for executed injects")
+        self.logger.info("Gathering expectations for executed injects")
         # Get expectation that are NOT FILLED for this collector
-        expectations = (
-            self.helper.api.inject_expectation.expectations_assets_for_source(
-                self.config.get_conf("collector_id")
-            )
+        expectations = self.api.inject_expectation.expectations_assets_for_source(
+            self._configuration.get("collector_id")
         )
 
-        self.helper.collector_logger.info(
+        self.logger.info(
             "Found " + str(len(expectations)) + " expectations waiting to be matched"
         )
 
         if not any(expectations):
-            self.helper.collector_logger.info(
-                "No expectations found: skipping iteration."
-            )
+            self.logger.info("No expectations found: skipping iteration.")
             return
 
         limit_date = datetime.now().astimezone(pytz.UTC) - relativedelta(
@@ -377,7 +325,7 @@ class OpenAEVMicrosoftDefender:
                 )
             )
         )
-        self.helper.collector_logger.info(
+        self.logger.info(
             "Found " + str(len(alerts.results)) + " alerts with signatures"
         )
         # For each expectation, try to find the proper alert to assign a detection or prevention result
@@ -387,17 +335,17 @@ class OpenAEVMicrosoftDefender:
                 expectation["inject_expectation_created_at"]
             ).astimezone(pytz.UTC)
             if expectation_date < limit_date:
-                self.helper.collector_logger.info(
+                self.logger.info(
                     "Expectation expired, failing inject "
                     + expectation["inject_expectation_inject"]
                     + " ("
                     + expectation["inject_expectation_type"]
                     + ")"
                 )
-                self.helper.api.inject_expectation.update(
+                self.api.inject_expectation.update(
                     expectation["inject_expectation_id"],
                     {
-                        "collector_id": self.config.get_conf("collector_id"),
+                        "collector_id": self._configuration.get("collector_id"),
                         "result": (
                             "Not Detected"
                             if expectation["inject_expectation_type"] == "DETECTION"
@@ -414,7 +362,7 @@ class OpenAEVMicrosoftDefender:
                     json.loads(evidence) for evidence in alert_data.get("evidence")
                 ]
                 if result := self._match_alert(alert_data, evidences, expectation):
-                    self.helper.collector_logger.info(
+                    self.logger.info(
                         "Expectation matched, fulfilling expectation "
                         + expectation["inject_expectation_inject"]
                         + " ("
@@ -422,10 +370,10 @@ class OpenAEVMicrosoftDefender:
                         + ")"
                     )
                     if expectation["inject_expectation_type"] == "DETECTION":
-                        self.helper.api.inject_expectation.update(
+                        self.api.inject_expectation.update(
                             expectation["inject_expectation_id"],
                             {
-                                "collector_id": self.config.get_conf("collector_id"),
+                                "collector_id": self._configuration.get("collector_id"),
                                 "result": "Detected",
                                 "is_success": True,
                                 "metadata": {"alertId": alert_data.get("AlertId")},
@@ -435,10 +383,10 @@ class OpenAEVMicrosoftDefender:
                         expectation["inject_expectation_type"] == "PREVENTION"
                         and result == "PREVENTED"
                     ):
-                        self.helper.api.inject_expectation.update(
+                        self.api.inject_expectation.update(
                             expectation["inject_expectation_id"],
                             {
-                                "collector_id": self.config.get_conf("collector_id"),
+                                "collector_id": self._configuration.get("collector_id"),
                                 "result": "Prevented",
                                 "is_success": True,
                                 "metadata": {"alertId": alert_data.get("AlertId")},
@@ -446,7 +394,7 @@ class OpenAEVMicrosoftDefender:
                         )
 
                     # Send alert to openaev for current matched expectation. Duplicate alerts are handled by openaev itself
-                    self.helper.collector_logger.info(
+                    self.logger.info(
                         "Expectation matched, adding trace for expectation "
                         + expectation["inject_expectation_inject"]
                         + " ("
@@ -454,12 +402,12 @@ class OpenAEVMicrosoftDefender:
                         + ")"
                     )
                     for evidence in evidences:
-                        self.helper.api.inject_expectation_trace.create(
+                        self.api.inject_expectation_trace.create(
                             data={
                                 "inject_expectation_trace_expectation": expectation[
                                     "inject_expectation_id"
                                 ],
-                                "inject_expectation_trace_source_id": self.config.get_conf(
+                                "inject_expectation_trace_source_id": self._configuration.get(
                                     "collector_id"
                                 ),
                                 "inject_expectation_trace_alert_name": self._extract_alert_name(
@@ -477,9 +425,9 @@ class OpenAEVMicrosoftDefender:
     def _process_message(self) -> None:
         # Auth
         credential = ClientSecretCredential(
-            tenant_id=self.config.get_conf("microsoft_defender_tenant_id"),
-            client_id=self.config.get_conf("microsoft_defender_client_id"),
-            client_secret=self.config.get_conf("microsoft_defender_client_secret"),
+            tenant_id=self._configuration.get("microsoft_defender_tenant_id"),
+            client_id=self._configuration.get("microsoft_defender_client_id"),
+            client_secret=self._configuration.get("microsoft_defender_client_secret"),
         )
         graph_client = GraphServiceClient(credential, scopes=self.scopes)  # type: ignore
 
@@ -487,12 +435,6 @@ class OpenAEVMicrosoftDefender:
         loop = asyncio.get_event_loop()
         loop.run_until_complete(self._process_alerts(graph_client))
 
-    # Start the main loop
-    def start(self):
-        period = self.config.get_conf("collector_period", default=120, is_number=True)
-        self.helper.schedule(message_callback=self._process_message, delay=period)
-
 
 if __name__ == "__main__":
-    openAEVMicrosoftDefender = OpenAEVMicrosoftDefender()
-    openAEVMicrosoftDefender.start()
+    OpenAEVMicrosoftDefender(configuration=ConfigLoader().to_daemon_config()).start()

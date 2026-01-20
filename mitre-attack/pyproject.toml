@@ -23,3 +23,10 @@ dev = ["pyoaev"]
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.cmw]
+install-command = "poetry install --extras prod"
+config-dump-command = "poetry run python -m mitre_attack.openaev_mitre --dump-config-schema"
+icon-path = "mitre_attack/img/icon-mitre-attack.png"
+
+

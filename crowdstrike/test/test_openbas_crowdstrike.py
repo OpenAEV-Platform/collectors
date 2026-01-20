@@ -45,7 +45,7 @@ class TestOpenAEVCrowdstrike(unittest.TestCase):
         mock_expectation_update.assert_called_once_with(
             expected_expectation_id,
             {
-                "collector_id": collector.config.get_conf("collector_id"),
+                "collector_id": collector._configuration.get("collector_id"),
                 "result": "Prevented",
                 "is_success": True,
                 "metadata": {"alertId": expected_expectation_id},
@@ -56,11 +56,11 @@ class TestOpenAEVCrowdstrike(unittest.TestCase):
             traces[0],
             {
                 "inject_expectation_trace_expectation": expected_expectation_id,
-                "inject_expectation_trace_source_id": collector.config.get_conf(
+                "inject_expectation_trace_source_id": collector._configuration.get(
                     "collector_id"
                 ),
                 "inject_expectation_trace_alert_name": MOCKED_ALERT["display_name"],
-                "inject_expectation_trace_alert_link": collector.config.get_conf(
+                "inject_expectation_trace_alert_link": collector._configuration.get(
                     "crowdstrike_ui_base_url"
                 )
                 + "/unified-detections/"
@@ -107,7 +107,7 @@ class TestOpenAEVCrowdstrike(unittest.TestCase):
         mock_expectation_update.assert_called_once_with(
             expected_expectation_id,
             {
-                "collector_id": collector.config.get_conf("collector_id"),
+                "collector_id": collector._configuration.get("collector_id"),
                 "result": "Not Prevented",
                 "is_success": False,
                 "metadata": {"alertId": expected_expectation_id},
@@ -119,11 +119,11 @@ class TestOpenAEVCrowdstrike(unittest.TestCase):
             traces[0],
             {
                 "inject_expectation_trace_expectation": expected_expectation_id,
-                "inject_expectation_trace_source_id": collector.config.get_conf(
+                "inject_expectation_trace_source_id": collector._configuration.get(
                     "collector_id"
                 ),
                 "inject_expectation_trace_alert_name": MOCKED_ALERT["display_name"],
-                "inject_expectation_trace_alert_link": collector.config.get_conf(
+                "inject_expectation_trace_alert_link": collector._configuration.get(
                     "crowdstrike_ui_base_url"
                 )
                 + "/unified-detections/"
@@ -170,7 +170,7 @@ class TestOpenAEVCrowdstrike(unittest.TestCase):
         mock_expectation_update.assert_called_once_with(
             expected_expectation_id,
             {
-                "collector_id": collector.config.get_conf("collector_id"),
+                "collector_id": collector._configuration.get("collector_id"),
                 "result": "Detected",
                 "is_success": True,
                 "metadata": {"alertId": expected_expectation_id},
@@ -182,11 +182,11 @@ class TestOpenAEVCrowdstrike(unittest.TestCase):
             traces[0],
             {
                 "inject_expectation_trace_expectation": expected_expectation_id,
-                "inject_expectation_trace_source_id": collector.config.get_conf(
+                "inject_expectation_trace_source_id": collector._configuration.get(
                     "collector_id"
                 ),
                 "inject_expectation_trace_alert_name": MOCKED_ALERT["display_name"],
-                "inject_expectation_trace_alert_link": collector.config.get_conf(
+                "inject_expectation_trace_alert_link": collector._configuration.get(
                     "crowdstrike_ui_base_url"
                 )
                 + "/unified-detections/"
@@ -234,7 +234,7 @@ class TestOpenAEVCrowdstrike(unittest.TestCase):
         mock_expectation_update.assert_called_once_with(
             expected_expectation_id,
             {
-                "collector_id": collector.config.get_conf("collector_id"),
+                "collector_id": collector._configuration.get("collector_id"),
                 "result": "Detected",
                 "is_success": True,
                 "metadata": {"alertId": expected_expectation_id},
@@ -246,11 +246,11 @@ class TestOpenAEVCrowdstrike(unittest.TestCase):
             traces[0],
             {
                 "inject_expectation_trace_expectation": expected_expectation_id,
-                "inject_expectation_trace_source_id": collector.config.get_conf(
+                "inject_expectation_trace_source_id": collector._configuration.get(
                     "collector_id"
                 ),
                 "inject_expectation_trace_alert_name": MOCKED_ALERT["display_name"],
-                "inject_expectation_trace_alert_link": collector.config.get_conf(
+                "inject_expectation_trace_alert_link": collector._configuration.get(
                     "crowdstrike_ui_base_url"
                 )
                 + "/unified-detections/"

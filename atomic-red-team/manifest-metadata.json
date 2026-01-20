@@ -1,0 +1,18 @@
+{
+  "title": "Atomic Red Team",
+  "slug": "atomicredteam_injector",
+  "description": "Collect Atomic Red Team payload library",
+  "short_description": "Collect Atomic Red Team payload library",
+  "use_cases": ["Collector", "Payload collection"],
+  "verified": true,
+  "last_verified_date": "",
+  "playbook_supported": false,
+  "max_confidence_level": 80,
+  "support_version": "",
+  "subscription_link": "https://www.atomicredteam.io/](https://www.atomicredteam.io/",
+  "source_code": "",
+  "manager_supported": true,
+  "container_version": "rolling",
+  "container_image": "openaev/collector-atomic-red-team",
+  "container_type": "COLLECTOR"
+}
