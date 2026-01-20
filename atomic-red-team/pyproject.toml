@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "openaev-atomic-red-team-collector"
-version = "2.0.12"
+version = "2.0.13"
 description = "A Collector for fetching Atomic Red Team payloads; https://www.atomicredteam.io/"
 authors = ["Filigran <contact@filigran.io>"]
 license = "Apache-2.0"
@@ -12,7 +12,7 @@ packages = [
 [tool.poetry.dependencies]
 python = "^3.11"
 pyoaev = [
-    { markers = "extra == 'prod' and extra != 'dev'", version = "2.0.12", source = "pypi"  },
+    { markers = "extra == 'prod' and extra != 'dev'", version = "2.0.13", source = "pypi"  },
     { markers = "extra == 'dev' and extra != 'prod'", path = "../../client-python", develop = true },
 ]
 
