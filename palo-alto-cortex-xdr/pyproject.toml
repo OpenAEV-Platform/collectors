@@ -1,3 +1,10 @@
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+packages = [{ include = "src" }, { include = "tests" }]
+
 [project]
 name = "palo-alto-cortex-xdr"
 version = "0.1.0"
