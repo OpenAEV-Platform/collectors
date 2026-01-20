@@ -3,11 +3,12 @@ import re
 
 import requests
 import yaml
-from atomic_red_team.configuration.config_loader import ConfigLoader
 from pyoaev.configuration import Configuration
 from pyoaev.daemons import CollectorDaemon
-from atomic_red_team.openaev_security_domain import OpenAEVSecurityDomain
 from pyoaev.helpers import OpenAEVCollectorHelper, OpenAEVConfigHelper
+
+from atomic_red_team.configuration.config_loader import ConfigLoader
+from atomic_red_team.openaev_security_domain import OpenAEVSecurityDomain
 
 ATOMIC_RED_TEAM_INDEX = "https://raw.githubusercontent.com/redcanaryco/atomic-red-team/master/atomics/Indexes/index.yaml"
 

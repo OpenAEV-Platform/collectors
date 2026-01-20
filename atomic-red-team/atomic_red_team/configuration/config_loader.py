@@ -1,8 +1,9 @@
+from pydantic import Field
+from pyoaev.configuration import ConfigLoaderOAEV, Configuration, SettingsLoader
+
 from atomic_red_team.configuration.collector_config_override import (
     CollectorConfigOverride,
 )
-from pydantic import Field
-from pyoaev.configuration import ConfigLoaderOAEV, Configuration, SettingsLoader
 
 
 class ConfigLoader(SettingsLoader):
