@@ -37,7 +37,7 @@ class _ConfigLoaderPaloAltoCortexXDR(ConfigBaseSettings):
     time_window: timedelta = Field(
         alias="PALO_ALTO_CORTEX_XDR_TIME_WINDOW",
         default=timedelta(hours=1),
-        description="Time window for PaloAltoCortexXDR threat searches when no date signatures are provided (ISO 8601 format).",
+        description="Time window for PaloAltoCortexXDR alert searches when no date signatures are provided (ISO 8601 format).",
     )
     expectation_batch_size: int = Field(
         alias="PALO_ALTO_CORTEX_XDR_EXPECTATION_BATCH_SIZE",

@@ -1,17 +1,15 @@
-from typing import Optional
-
 import requests
-from src.models.alerts import GetAlertsResponse
+from src.models.alert import Alert, GetAlertsResponse
 from src.models.authentication import Authentication
 
 
-class AlertsAPI:
+class PaloAltoCortexXDRClientAPI:
     def __init__(self, auth: Authentication, fqdn: str) -> None:
         self._auth = auth
-        self._fqdn = fqdn
+        self.fqdn = fqdn
 
     def _get_url(self) -> str:
-        return f"https://api-{self._fqdn}/public_api/v1/alerts/get_alerts"
+        return f"https://api-{self.fqdn}/public_api/v1/alerts/get_alerts"
 
     def get_alerts(
         self,
@@ -19,7 +17,7 @@ class AlertsAPI:
         end_time: int = None,
         search_from: int = None,
         search_to: int = None,
-    ) -> Optional[GetAlertsResponse]:
+    ) -> list[Alert]:
         """
         Get a list of alerts with multiple events.
 
@@ -56,4 +54,5 @@ class AlertsAPI:
             url, headers=headers, json={"request_data": request_data}
         )
         response.raise_for_status()
-        return GetAlertsResponse.model_validate(response.json())
+        response = GetAlertsResponse.model_validate(response.json())
+        return response.reply.alerts if response.reply and response.reply.alerts else []
