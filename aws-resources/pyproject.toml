@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "openaev-aws-resources-collector"
-version = "2.0.13"
+version = "2.0.14"
 description = "A Collector for AWS Resources (EC2 Instances)"
 authors = ["Filigran <contact@filigran.io>"]
 license = "Apache-2.0"
@@ -12,7 +12,7 @@ packages = [
 [tool.poetry.dependencies]
 python = "^3.11"
 pyoaev = [
-    { markers = "extra == 'prod' and extra != 'dev'", version = "2.0.13", source = "pypi"  },
+    { markers = "extra == 'prod' and extra != 'dev'", version = "2.0.14", source = "pypi"  },
     { markers = "extra == 'dev' and extra != 'prod'", path = "../../client-python", develop = true },
 ]
 boto3 = "1.40.21"
