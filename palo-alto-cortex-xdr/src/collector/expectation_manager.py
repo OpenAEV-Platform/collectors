@@ -128,10 +128,8 @@ class GenericExpectationManager:
             self.logger.debug(
                 f"{LOG_PREFIX} Processing expectations through handler..."
             )
-            results, service_skipped_count = (
-                self.expectation_handler.handle_batch_expectations(
-                    supported_expectations, detection_helper
-                )
+            results = self.expectation_handler.handle_batch_expectations(
+                supported_expectations, detection_helper
             )
 
             self.logger.debug(f"{LOG_PREFIX} Updating expectations in OpenAEV...")
@@ -143,13 +141,11 @@ class GenericExpectationManager:
             valid_count = sum(1 for r in results if r.is_valid)
             invalid_count = len(results) - valid_count
 
-            total_skipped = skipped_count + service_skipped_count
-
             summary = ProcessingSummary(
                 processed=len(results),
                 valid=valid_count,
                 invalid=invalid_count,
-                skipped=total_skipped,
+                skipped=skipped_count,
                 total_processing_time=None,
             )
 
@@ -159,7 +155,7 @@ class GenericExpectationManager:
 
             self.logger.info(
                 f"{LOG_PREFIX} Processing cycle completed: {valid_count} valid, "
-                f"{invalid_count} invalid, {total_skipped} skipped ({skipped_count} unsupported types, {service_skipped_count} no end_date)"
+                f"{invalid_count} invalid, {skipped_count} skipped ({skipped_count} unsupported types)"
             )
 
             return summary
