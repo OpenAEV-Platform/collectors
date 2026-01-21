@@ -96,7 +96,7 @@ class ExpectationService:
         self,
         expectations: list[DetectionExpectation | PreventionExpectation],
         detection_helper: Any,
-    ) -> tuple[list[ExpectationResult], int]:
+    ) -> list[ExpectationResult]:
         """Handle a batch of expectations.
 
         Args:
@@ -106,7 +106,6 @@ class ExpectationService:
         Returns:
             Tuple of (results, skipped_count) where:
             - results: List of ExpectationResult objects for processed expectations
-            - skipped_count: Number of expectations skipped due to missing end_date
 
         Raises:
             PaloAltoCortexXDRExpectationError: If batch processing fails.
@@ -121,9 +120,9 @@ class ExpectationService:
                 f"{LOG_PREFIX} Starting new batch processing of {len(expectations)} expectations"
             )
 
-            batches, skipped_count = self._create_expectation_batches(expectations)
+            batches = self._create_expectation_batches(expectations)
             self.logger.info(
-                f"{LOG_PREFIX} Created {len(batches)} batches of size {self.batch_size} (skipped {skipped_count} expectations without end_date)"
+                f"{LOG_PREFIX} Created {len(batches)} batches of size {self.batch_size}"
             )
 
             all_results = []
@@ -161,10 +160,10 @@ class ExpectationService:
             invalid_count = len(all_results) - valid_count
 
             self.logger.info(
-                f"{LOG_PREFIX} New batch processing completed: {valid_count} valid, {invalid_count} invalid, {skipped_count} skipped (no end_date)"
+                f"{LOG_PREFIX} New batch processing completed: {valid_count} valid, {invalid_count} invalid"
             )
 
-            return all_results, skipped_count
+            return all_results
 
         except Exception as e:
             raise PaloAltoCortexXDRExpectationError(
@@ -173,7 +172,7 @@ class ExpectationService:
 
     def _create_expectation_batches(
         self, expectations: list[DetectionExpectation | PreventionExpectation]
-    ) -> tuple[list[list[DetectionExpectation | PreventionExpectation]], int]:
+    ) -> list[list[DetectionExpectation | PreventionExpectation]]:
         """Group expectations into batches, filtering out those without end_date.
 
         Args:
@@ -185,36 +184,15 @@ class ExpectationService:
             - skipped_count: Number of expectations skipped due to missing end_date
 
         """
-        valid_expectations = []
-        skipped_count = 0
-
-        for expectation in expectations:
-            has_end_date = (
-                SignatureExtractor.extract_end_date([expectation]) is not None
-            )
-
-            if has_end_date:
-                valid_expectations.append(expectation)
-            else:
-                skipped_count += 1
-                self.logger.debug(
-                    f"{LOG_PREFIX} Skipping expectation {expectation.inject_expectation_id} - no end_date signature found"
-                )
-
-        if skipped_count > 0:
-            self.logger.info(
-                f"{LOG_PREFIX} Filtered out {skipped_count} expectations without end_date signatures"
-            )
-
         batches = []
-        for i in range(0, len(valid_expectations), self.batch_size):
-            batch = valid_expectations[i : i + self.batch_size]
+        for i in range(0, len(expectations), self.batch_size):
+            batch = expectations[i : i + self.batch_size]
             batches.append(batch)
 
         self.logger.debug(
-            f"{LOG_PREFIX} Created {len(batches)} batches from {len(valid_expectations)} valid expectations (skipped {skipped_count})"
+            f"{LOG_PREFIX} Created {len(batches)} batches from {len(expectations)} expectations )"
         )
-        return batches, skipped_count
+        return batches
 
     def _process_expectation_batch(
         self,
