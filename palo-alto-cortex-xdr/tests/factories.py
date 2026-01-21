@@ -21,7 +21,7 @@ class ExpectationSignatureWithParentProcessNameFactory(Factory):
 
     type = SignatureTypes.SIG_TYPE_PARENT_PROCESS_NAME
     _uuid = Faker("uuid4")
-    value = LazyAttribute(lambda obj: f"execution-{obj._uuid}")
+    value = LazyAttribute(lambda obj: f"oaev-implant-{obj._uuid}")
 
 
 class DetectionExpectationFactory(Factory):
