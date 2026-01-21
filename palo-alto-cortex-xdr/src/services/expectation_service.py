@@ -451,12 +451,12 @@ class ExpectationService:
 
             parent_process_names = [alert.actor_process_command_line]
             oaev_implant_names = [
-                name for name in parent_process_names if "execution-" in name
+                name for name in parent_process_names if "oaev-implant-" in name
             ]
 
             self.logger.debug(
                 f"{LOG_PREFIX} Alert {alert.alert_id}: Found {len(parent_process_names)} "
-                f"process name, {len(oaev_implant_names)} with execution- prefix"
+                f"process name, {len(oaev_implant_names)} with oaev-implant- prefix"
             )
 
             if oaev_implant_names:

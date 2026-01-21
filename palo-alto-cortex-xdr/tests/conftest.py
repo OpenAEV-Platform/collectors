@@ -47,7 +47,7 @@ def expectations(execution_uuid):
     )
     expectations[0].inject_expectation_signatures[
         1
-    ].value = f"execution-{execution_uuid}"
+    ].value = f"oaev-implant-{execution_uuid}"
     with patch(
         "pyoaev.apis.inject_expectation.InjectExpectationManager.expectations_models_for_source",
         return_value=expectations,
@@ -59,7 +59,7 @@ def expectations(execution_uuid):
 def alerts(execution_uuid):
     alerts = AlertFactory.create_batch(3)
     alerts[0].actor_process_command_line = (
-        f"some command line with execution-{execution_uuid} inside"
+        f"some command line with oaev-implant-{execution_uuid} inside"
     )
     with patch(
         "src.services.client_api.PaloAltoCortexXDRClientAPI.get_alerts",
