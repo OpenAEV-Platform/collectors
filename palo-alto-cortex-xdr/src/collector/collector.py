@@ -25,12 +25,6 @@ class Collector(CollectorDaemon):
     """
 
     def __init__(self) -> None:
-        """Initialize the collector.
-
-        Raises:
-            CollectorConfigError: If collector initialization fails.
-
-        """
         try:
             self.config = ConfigLoader()
 

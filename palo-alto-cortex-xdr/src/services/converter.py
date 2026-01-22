@@ -16,7 +16,6 @@ class PaloAltoCortexXDRConverter:
     """Converter for PaloAltoCortexXDR alert data to OAEV format."""
 
     def __init__(self) -> None:
-        """Initialize the PaloAltoCortexXDR data converter."""
         self.logger = logging.getLogger(__name__)
         self.logger.debug(f"{LOG_PREFIX} PaloAltoCortexXDR converter initialized")
 
