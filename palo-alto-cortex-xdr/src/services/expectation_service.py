@@ -4,13 +4,13 @@ import logging
 from datetime import datetime, timezone
 from typing import Any
 
-from pydantic import BaseModel, Field
 from pyoaev.apis.inject_expectation.model.expectation import (
     DetectionExpectation,
     PreventionExpectation,
 )
 from pyoaev.signatures.types import SignatureTypes
 
+from ..collector.models import ExpectationResult
 from ..models.alert import Alert
 from ..models.authentication import Authentication
 from .alert_fetcher import AlertFetcher
@@ -23,21 +23,6 @@ from .exception import (
 from .utils import SignatureExtractor, TraceBuilder
 
 LOG_PREFIX = "[ExpectationService]"
-
-
-class ExpectationResult(BaseModel):
-    expectation_id: str = Field(..., description="ID of the processed expectation")
-    is_valid: bool = Field(..., description="Whether the expectation was validated")
-    expectation: Any | None = Field(None, description="The original expectation object")
-    matched_alerts: list[dict[str, Any]] | None = Field(
-        None, description="List of alerts that matched this expectation"
-    )
-    error_message: str | None = Field(
-        None, description="Error message if processing failed"
-    )
-    processing_time: float | None = Field(
-        None, description="Time taken to process this expectation in seconds"
-    )
 
 
 class ExpectationService:
