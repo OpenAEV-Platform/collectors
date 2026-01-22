@@ -2,7 +2,6 @@
 
 import logging
 from datetime import UTC, datetime
-from typing import Any
 
 from src.models.settings.config_loader import ConfigLoader
 
@@ -185,20 +184,3 @@ class TraceService:
             raise PaloAltoCortexXDRDataConversionError(
                 f"Error creating expectation trace: {e}"
             ) from e
-
-    def get_service_info(self) -> dict[str, Any]:
-        """Get information about this trace service.
-
-        Returns:
-            Dictionary containing service metadata and capabilities.
-
-        """
-        info = {
-            "service_type": "palo_alto_cortex_xdr_trace",
-            "supported_result_types": ["PaloAltoCortexXDR processing results"],
-            "creates_detection_traces": True,
-            "creates_prevention_traces": True,
-            "description": "Creates traces from PaloAltoCortexXDR expectation processing results using trace builder URLs",
-        }
-        self.logger.debug(f"{LOG_PREFIX} Trace service info: {info}")
-        return info

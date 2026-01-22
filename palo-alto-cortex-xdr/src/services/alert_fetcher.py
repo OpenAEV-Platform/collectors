@@ -92,17 +92,3 @@ class AlertFetcher:
             raise PaloAltoCortexXDRAPIError(
                 f"Error fetching alerts for time window: {e}"
             ) from e
-
-    def _format_timestamp_for_api(self, dt: datetime) -> int:
-        """Format datetime object for PaloAltoCortexXDR API.
-
-        PaloAltoCortexXDR API expects timestamp
-
-        Args:
-            dt: Datetime object to format (should be timezone-aware)
-
-        Returns:
-            Int formatted timestamp for PaloAltoCortexXDR API
-
-        """
-        return int(dt.timestamp())

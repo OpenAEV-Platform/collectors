@@ -31,12 +31,6 @@ class PaloAltoCortexXDRNetworkError(PaloAltoCortexXDRServiceError):
     pass
 
 
-class PaloAltoCortexXDRSessionError(PaloAltoCortexXDRServiceError):
-    """Raised when there's an error with session management."""
-
-    pass
-
-
 class PaloAltoCortexXDRValidationError(PaloAltoCortexXDRServiceError):
     """Raised when input validation fails."""
 

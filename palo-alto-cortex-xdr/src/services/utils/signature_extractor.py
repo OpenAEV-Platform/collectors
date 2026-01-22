@@ -16,46 +16,6 @@ class SignatureExtractor:
     """Utility class for extracting signatures from expectations."""
 
     @staticmethod
-    def extract_hostnames(
-        batch: list["DetectionExpectation | PreventionExpectation"],
-    ) -> list[str]:
-        """Extract unique hostnames from a batch of expectations.
-
-        Args:
-            batch: List of expectations to extract hostnames from.
-
-        Returns:
-            List of unique hostname values.
-
-        """
-        hostnames = set()
-        for expectation in batch:
-            for signature in expectation.inject_expectation_signatures:
-                if signature.type == SignatureTypes.SIG_TYPE_TARGET_HOSTNAME_ADDRESS:
-                    hostnames.add(signature.value)
-        return list(hostnames)
-
-    @staticmethod
-    def extract_process_names(
-        batch: list["DetectionExpectation | PreventionExpectation"],
-    ) -> list[str]:
-        """Extract unique parent process names from a batch of expectations.
-
-        Args:
-            batch: List of expectations to extract process names from.
-
-        Returns:
-            List of unique parent process name values.
-
-        """
-        process_names = set()
-        for expectation in batch:
-            for signature in expectation.inject_expectation_signatures:
-                if signature.type.value == "parent_process_name":
-                    process_names.add(signature.value)
-        return list(process_names)
-
-    @staticmethod
     def extract_end_date(
         batch: list["DetectionExpectation | PreventionExpectation"] | None = None,
     ) -> datetime | None:
