@@ -232,34 +232,6 @@ class ExpectationService:
                 f"Error processing batch {batch_idx}: {e}"
             ) from e
 
-    def _extract_hostnames_from_batch(
-        self, batch: list[DetectionExpectation | PreventionExpectation]
-    ) -> list[str]:
-        """Extract unique hostnames from a batch of expectations.
-
-        Args:
-            batch: Batch of expectations.
-
-        Returns:
-            List of unique hostnames.
-
-        """
-        return SignatureExtractor.extract_hostnames(batch)
-
-    def _extract_process_names_from_batch(
-        self, batch: list[DetectionExpectation | PreventionExpectation]
-    ) -> list[str]:
-        """Extract unique parent process names from a batch of expectations.
-
-        Args:
-            batch: Batch of expectations.
-
-        Returns:
-            List of unique parent process names.
-
-        """
-        return SignatureExtractor.extract_process_names(batch)
-
     def _extract_end_date_from_batch(
         self, batch: list[DetectionExpectation | PreventionExpectation] | None = None
     ) -> datetime | None:
