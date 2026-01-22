@@ -31,18 +31,6 @@ class ExpectationTrace(BaseModel):
     @field_validator("inject_expectation_trace_expectation")
     @classmethod
     def expectation_must_not_be_empty(cls, v: str) -> str:
-        """Validate that expectation ID is not empty.
-
-        Args:
-            v: The expectation ID value to validate.
-
-        Returns:
-            The trimmed expectation ID.
-
-        Raises:
-            ValueError: If the expectation ID is empty or whitespace only.
-
-        """
         if not v or not v.strip():
             raise ValueError("Expectation ID cannot be empty")
         return v.strip()
@@ -50,18 +38,6 @@ class ExpectationTrace(BaseModel):
     @field_validator("inject_expectation_trace_source_id")
     @classmethod
     def source_id_must_not_be_empty(cls, v: str) -> str:
-        """Validate that source ID is not empty.
-
-        Args:
-            v: The source ID value to validate.
-
-        Returns:
-            The trimmed source ID.
-
-        Raises:
-            ValueError: If the source ID is empty or whitespace only.
-
-        """
         if not v or not v.strip():
             raise ValueError("Source ID cannot be empty")
         return v.strip()
@@ -69,18 +45,6 @@ class ExpectationTrace(BaseModel):
     @field_validator("inject_expectation_trace_alert_name")
     @classmethod
     def alert_name_must_not_be_empty(cls, v: str) -> str:
-        """Validate that alert name is not empty.
-
-        Args:
-            v: The alert name value to validate.
-
-        Returns:
-            The trimmed alert name.
-
-        Raises:
-            ValueError: If the alert name is empty or whitespace only.
-
-        """
         if not v or not v.strip():
             raise ValueError("Alert name cannot be empty")
         return v.strip()
@@ -88,18 +52,6 @@ class ExpectationTrace(BaseModel):
     @field_validator("inject_expectation_trace_alert_link")
     @classmethod
     def alert_link_must_not_be_empty(cls, v: str) -> str:
-        """Validate that alert link is not empty.
-
-        Args:
-            v: The alert link value to validate.
-
-        Returns:
-            The trimmed alert link.
-
-        Raises:
-            ValueError: If the alert link is empty or whitespace only.
-
-        """
         if not v or not v.strip():
             raise ValueError("Alert link cannot be empty")
         return v.strip()
@@ -107,18 +59,6 @@ class ExpectationTrace(BaseModel):
     @field_validator("inject_expectation_trace_date")
     @classmethod
     def date_must_not_be_empty(cls, v: str) -> str:
-        """Validate that date is not empty.
-
-        Args:
-            v: The date value to validate.
-
-        Returns:
-            The trimmed date string.
-
-        Raises:
-            ValueError: If the date is empty or whitespace only.
-
-        """
         if not v or not v.strip():
             raise ValueError("Trace date cannot be empty")
         return v.strip()
@@ -140,8 +80,6 @@ class ExpectationTrace(BaseModel):
 
 
 class ExpectationResult(BaseModel):
-    """Model for expectation processing results."""
-
     expectation_id: str = Field(..., description="ID of the processed expectation")
     is_valid: bool = Field(..., description="Whether the expectation was validated")
     expectation: Any | None = Field(None, description="The original expectation object")
@@ -157,8 +95,6 @@ class ExpectationResult(BaseModel):
 
 
 class ProcessingSummary(BaseModel):
-    """Model for expectation processing summary."""
-
     processed: int = Field(..., description="Total number of expectations processed")
     valid: int = Field(..., description="Number of valid expectations")
     invalid: int = Field(..., description="Number of invalid expectations")

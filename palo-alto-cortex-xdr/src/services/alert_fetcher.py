@@ -24,15 +24,6 @@ class AlertFetcher:
     """Fetcher for PaloAltoCortexXDR alert data using time-window based queries."""
 
     def __init__(self, client_api: PaloAltoCortexXDRClientAPI) -> None:
-        """Initialize the Alert fetcher.
-
-        Args:
-            client_api: PaloAltoCortexXDR API client instance.
-
-        Raises:
-            PaloAltoCortexXDRValidationError: If client_api is None.
-
-        """
         if client_api is None:
             raise PaloAltoCortexXDRValidationError("client_api cannot be None")
 

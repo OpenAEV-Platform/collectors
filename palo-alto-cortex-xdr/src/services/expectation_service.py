@@ -26,8 +26,6 @@ LOG_PREFIX = "[ExpectationService]"
 
 
 class ExpectationResult(BaseModel):
-    """Model for expectation processing results."""
-
     expectation_id: str = Field(..., description="ID of the processed expectation")
     is_valid: bool = Field(..., description="Whether the expectation was validated")
     expectation: Any | None = Field(None, description="The original expectation object")
@@ -77,12 +75,6 @@ class ExpectationService:
         self.logger.info(f"{LOG_PREFIX} Service initialized")
 
     def get_supported_signatures(self) -> list[SignatureTypes]:
-        """Get list of supported signature types.
-
-        Returns:
-            List of supported SignatureTypes enum values.
-
-        """
         return [
             SignatureTypes.SIG_TYPE_PARENT_PROCESS_NAME,
             SignatureTypes.SIG_TYPE_TARGET_HOSTNAME_ADDRESS,

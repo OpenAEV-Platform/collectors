@@ -22,15 +22,6 @@ class TraceService:
     """
 
     def __init__(self, config: ConfigLoader | None = None) -> None:
-        """Initialize the PaloAltoCortexXDR trace service.
-
-        Args:
-            config: Configuration loader instance for trace service settings.
-
-        Raises:
-            PaloAltoCortexXDRValidationError: If config is None.
-
-        """
         if config is None:
             raise PaloAltoCortexXDRValidationError(
                 "Config is required for trace service"
