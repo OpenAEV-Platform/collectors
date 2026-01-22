@@ -1,3 +1,5 @@
+from typing import Optional
+
 import requests
 from src.models.alert import Alert, GetAlertsResponse
 from src.models.authentication import Authentication
@@ -13,10 +15,10 @@ class PaloAltoCortexXDRClientAPI:
 
     def get_alerts(
         self,
-        start_time: int = None,
-        end_time: int = None,
-        search_from: int = None,
-        search_to: int = None,
+        start_time: Optional[int] = None,
+        end_time: Optional[int] = None,
+        search_from: Optional[int] = None,
+        search_to: Optional[int] = None,
     ) -> list[Alert]:
         """
         Get a list of alerts with multiple events.
