@@ -9,9 +9,8 @@ from requests.exceptions import (
     Timeout,
 )
 from src.models.alert import Alert
-
-from .client_api import PaloAltoCortexXDRClientAPI
-from .exception import (
+from src.services.client_api import PaloAltoCortexXDRClientAPI
+from src.services.exception import (
     PaloAltoCortexXDRAPIError,
     PaloAltoCortexXDRNetworkError,
     PaloAltoCortexXDRValidationError,

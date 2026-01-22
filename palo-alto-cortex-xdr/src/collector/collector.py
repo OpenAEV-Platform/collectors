@@ -4,16 +4,15 @@ import os
 
 from pyoaev.daemons import CollectorDaemon
 from pyoaev.helpers import OpenAEVDetectionHelper
-from src.models.settings.config_loader import ConfigLoader
-from src.services.expectation_service import ExpectationService
-from src.services.trace_service import TraceService
-
-from .exception import (
+from src.collector.exception import (
     CollectorConfigError,
     CollectorProcessingError,
     CollectorSetupError,
 )
-from .expectation_manager import GenericExpectationManager
+from src.collector.expectation_manager import GenericExpectationManager
+from src.models.settings.config_loader import ConfigLoader
+from src.services.expectation_service import ExpectationService
+from src.services.trace_service import TraceService
 
 LOG_PREFIX = "[Collector]"
 
