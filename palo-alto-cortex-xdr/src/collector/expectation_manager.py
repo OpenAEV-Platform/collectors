@@ -53,12 +53,12 @@ class GenericExpectationManager:
             f"{LOG_PREFIX} Expectation manager initialized for collector: {collector_id}"
         )
 
-    def handle_batch_expectations(
+    def handle_expectations(
         self,
         expectations: list[Any],
         detection_helper: OpenAEVDetectionHelper,
     ) -> list[ExpectationResult]:
-        """Handle a batch of expectations by delegating to the service provider.
+        """Handle expectations by delegating to the service provider.
 
         Post-processes results to ensure completeness by filling in missing
         expectation IDs and expectation objects.
@@ -68,24 +68,23 @@ class GenericExpectationManager:
             detection_helper: OpenAEV detection helper instance.
 
         Returns:
-            Tuple of (results, skipped_count) where:
-            - results: List of ExpectationResult objects for processed expectations
+            List of ExpectationResult objects for processed expectations
 
         Raises:
-            ExpectationHandlerError: If batch processing fails.
+            ExpectationHandlerError: If processing fails.
 
         """
         try:
             self.logger.info(
-                f"{LOG_PREFIX} Starting batch processing of {len(expectations)} expectations"
+                f"{LOG_PREFIX} Starting processing of {len(expectations)} expectations"
             )
 
-            results = self.expectation_service.handle_batch_expectations(
+            results = self.expectation_service.handle_expectations(
                 expectations, detection_helper
             )
 
             # Post-process results to ensure completeness
-            self.logger.debug(f"{LOG_PREFIX} Post-processing batch results...")
+            self.logger.debug(f"{LOG_PREFIX} Post-processing results...")
             for i, result in enumerate(results):
                 if result.expectation is None and i < len(expectations):
                     result.expectation = expectations[i]
@@ -98,14 +97,14 @@ class GenericExpectationManager:
             invalid_count = len(results) - valid_count
 
             self.logger.info(
-                f"{LOG_PREFIX} Batch processing completed: {valid_count} valid, {invalid_count} invalid"
+                f"{LOG_PREFIX} Processing completed: {valid_count} valid, {invalid_count} invalid"
             )
 
             return results
 
         except Exception as e:
-            self.logger.error(f"{LOG_PREFIX} Batch processing failed: {e}")
-            raise ExpectationHandlerError(f"Error in batch processing: {e}") from e
+            self.logger.error(f"{LOG_PREFIX} Processing failed: {e}")
+            raise ExpectationHandlerError(f"Error in processing: {e}") from e
 
     def process_expectations(
         self, detection_helper: OpenAEVDetectionHelper
@@ -164,9 +163,7 @@ class GenericExpectationManager:
             self.logger.debug(
                 f"{LOG_PREFIX} Processing expectations through handler..."
             )
-            results = self.expectation_service.handle_batch_expectations(
-                supported_expectations, detection_helper
-            )
+            results = self.handle_expectations(supported_expectations, detection_helper)
 
             self.logger.debug(f"{LOG_PREFIX} Updating expectations in OpenAEV...")
             self._bulk_update_expectations(results)

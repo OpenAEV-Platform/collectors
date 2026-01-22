@@ -43,7 +43,7 @@ class ExpectationResult(BaseModel):
 
 
 class ExpectationService:
-    """Service for processing PaloAltoCortexXDR expectations in batches."""
+    """Service for processing PaloAltoCortexXDR expectations."""
 
     def __init__(
         self,
@@ -69,15 +69,12 @@ class ExpectationService:
             auth=auth, fqdn=config.palo_alto_cortex_xdr.fqdn
         )
         self.converter: PaloAltoCortexXDRConverter = PaloAltoCortexXDRConverter()
-        self.batch_size: int = config.palo_alto_cortex_xdr.expectation_batch_size
 
         self.time_window = config.palo_alto_cortex_xdr.time_window
 
         self.alert_fetcher: AlertFetcher = AlertFetcher(self.client_api)
 
-        self.logger.info(
-            f"{LOG_PREFIX} Service initialized with batch size: {self.batch_size}"
-        )
+        self.logger.info(f"{LOG_PREFIX} Service initialized")
 
     def get_supported_signatures(self) -> list[SignatureTypes]:
         """Get list of supported signature types.
@@ -92,23 +89,22 @@ class ExpectationService:
             SignatureTypes.SIG_TYPE_END_DATE,
         ]
 
-    def handle_batch_expectations(
+    def handle_expectations(
         self,
         expectations: list[DetectionExpectation | PreventionExpectation],
         detection_helper: Any,
     ) -> list[ExpectationResult]:
-        """Handle a batch of expectations.
+        """Handle expectations.
 
         Args:
             expectations: List of expectations to process.
             detection_helper: OpenAEV detection helper instance.
 
         Returns:
-            Tuple of (results, skipped_count) where:
-            - results: List of ExpectationResult objects for processed expectations
+            List of ExpectationResult objects for processed expectations
 
         Raises:
-            PaloAltoCortexXDRExpectationError: If batch processing fails.
+            PaloAltoCortexXDRExpectationError: If processing fails.
 
         """
         if not expectations:
@@ -117,134 +113,46 @@ class ExpectationService:
 
         try:
             self.logger.info(
-                f"{LOG_PREFIX} Starting new batch processing of {len(expectations)} expectations"
+                f"{LOG_PREFIX} Starting processing of {len(expectations)} expectations"
             )
 
-            batches = self._create_expectation_batches(expectations)
+            alerts = self._fetch_alerts_for_time_window(expectations)
             self.logger.info(
-                f"{LOG_PREFIX} Created {len(batches)} batches of size {self.batch_size}"
-            )
-
-            all_results = []
-
-            for batch_idx, batch in enumerate(batches, 1):
-                self.logger.info(
-                    f"{LOG_PREFIX} Processing batch {batch_idx}/{len(batches)} with {len(batch)} expectations"
-                )
-
-                try:
-                    batch_results = self._process_expectation_batch(
-                        batch, detection_helper, batch_idx
-                    )
-                    all_results.extend(batch_results)
-
-                    self.logger.info(
-                        f"{LOG_PREFIX} Batch {batch_idx} completed: {len(batch_results)} results"
-                    )
-                except Exception as e:
-                    self.logger.error(
-                        f"{LOG_PREFIX} Error processing batch {batch_idx}: {e}"
-                    )
-                    error_results = [
-                        self._create_error_result_object(
-                            PaloAltoCortexXDRExpectationError(
-                                f"Batch processing error: {e}"
-                            ),
-                            expectation,
-                        )
-                        for expectation in batch
-                    ]
-                    all_results.extend(error_results)
-
-            valid_count = sum(1 for r in all_results if r.is_valid)
-            invalid_count = len(all_results) - valid_count
-
-            self.logger.info(
-                f"{LOG_PREFIX} New batch processing completed: {valid_count} valid, {invalid_count} invalid"
-            )
-
-            return all_results
-
-        except Exception as e:
-            raise PaloAltoCortexXDRExpectationError(
-                f"Error in handle_batch_expectations: {e}"
-            ) from e
-
-    def _create_expectation_batches(
-        self, expectations: list[DetectionExpectation | PreventionExpectation]
-    ) -> list[list[DetectionExpectation | PreventionExpectation]]:
-        """Group expectations into batches, filtering out those without end_date.
-
-        Args:
-            expectations: List of expectations to batch.
-
-        Returns:
-            Tuple of (batches, skipped_count) where:
-            - batches: List of expectation batches that have end_date signatures
-            - skipped_count: Number of expectations skipped due to missing end_date
-
-        """
-        batches = []
-        for i in range(0, len(expectations), self.batch_size):
-            batch = expectations[i : i + self.batch_size]
-            batches.append(batch)
-
-        self.logger.debug(
-            f"{LOG_PREFIX} Created {len(batches)} batches from {len(expectations)} expectations )"
-        )
-        return batches
-
-    def _process_expectation_batch(
-        self,
-        batch: list[DetectionExpectation | PreventionExpectation],
-        detection_helper: Any,
-        batch_idx: int,
-    ) -> list[ExpectationResult]:
-        """Process a single batch of expectations.
-
-        Args:
-            batch: Batch of expectations to process.
-            detection_helper: OpenAEV detection helper.
-            batch_idx: Batch index for logging.
-
-        Returns:
-            List of ExpectationResult objects for this batch.
-
-        """
-        try:
-            alerts = self._fetch_alerts_for_time_window(batch)
-            self.logger.info(
-                f"{LOG_PREFIX} Batch {batch_idx}: Fetched {len(alerts)} alerts from time window"
-            )
-
-            self.logger.debug(
-                f"{LOG_PREFIX} Batch {batch_idx}: Processing {len(alerts)} alerts"
+                f"{LOG_PREFIX} Fetched {len(alerts)} alerts from time window"
             )
 
             results = self._match_alerts_to_expectations(
-                batch, alerts, detection_helper
+                expectations, alerts, detection_helper
+            )
+
+            valid_count = sum(1 for r in results if r.is_valid)
+            invalid_count = len(results) - valid_count
+
+            self.logger.info(
+                f"{LOG_PREFIX} Processing completed: {valid_count} valid, {invalid_count} invalid"
             )
 
             return results
 
         except Exception as e:
             raise PaloAltoCortexXDRExpectationError(
-                f"Error processing batch {batch_idx}: {e}"
+                f"Error in handle_expectations: {e}"
             ) from e
 
-    def _extract_end_date_from_batch(
-        self, batch: list[DetectionExpectation | PreventionExpectation] | None = None
+    def _extract_end_date_from_expectations(
+        self,
+        expectations: list[DetectionExpectation | PreventionExpectation] | None = None,
     ) -> datetime | None:
-        """Extract end_date from batch signatures.
+        """Extract end_date from expectation signatures.
 
         Args:
-            batch: Batch of expectations to extract end_date from.
+            expectations: List of expectations to extract end_date from.
 
         Returns:
             end_date as datetime or None if no end_date signature found.
 
         """
-        end_date = SignatureExtractor.extract_end_date(batch)
+        end_date = SignatureExtractor.extract_end_date(expectations)
         if end_date:
             self.logger.debug(
                 f"{LOG_PREFIX} Extracted end_date from signatures: {end_date}, start_date will be calculated from time_window"
@@ -252,12 +160,13 @@ class ExpectationService:
         return end_date
 
     def _fetch_alerts_for_time_window(
-        self, batch: list[DetectionExpectation | PreventionExpectation] | None = None
+        self,
+        expectations: list[DetectionExpectation | PreventionExpectation] | None = None,
     ) -> list[Alert]:
         """Fetch all alerts from the configured time window or date signatures.
 
         Args:
-            batch: Optional batch of expectations to extract date filters from.
+            expectations: Optional list of expectations to extract date filters from.
 
         Returns:
             List of Alert objects from the time window.
@@ -267,7 +176,7 @@ class ExpectationService:
 
         """
         try:
-            end_time = self._extract_end_date_from_batch(batch)
+            end_time = self._extract_end_date_from_expectations(expectations)
 
             if end_time is None:
                 end_time = datetime.now(timezone.utc)
@@ -543,7 +452,6 @@ class ExpectationService:
         """
         return {
             "service_name": "PaloAltoCortexXDRExpectationService",
-            "batch_size": self.batch_size,
             "supported_signatures": self.get_supported_signatures(),
-            "flow_type": "batch_based",
+            "flow_type": "all_at_once",
         }
