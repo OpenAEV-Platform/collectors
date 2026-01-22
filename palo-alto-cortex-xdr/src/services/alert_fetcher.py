@@ -8,8 +8,8 @@ from requests.exceptions import (
     RequestException,
     Timeout,
 )
+from src.models.alert import Alert
 
-from ..models.alert import Alert
 from .client_api import PaloAltoCortexXDRClientAPI
 from .exception import (
     PaloAltoCortexXDRAPIError,
@@ -59,11 +59,11 @@ class AlertFetcher:
             raise PaloAltoCortexXDRValidationError("start_time must be before end_time")
 
         try:
-            start_time = int(start_time.timestamp())
-            end_time = int(end_time.timestamp())
+            start_timestamp = int(start_time.timestamp())
+            end_timestamp = int(end_time.timestamp())
 
             alerts = self.client_api.get_alerts(
-                start_time=start_time, end_time=end_time
+                start_time=start_timestamp, end_time=end_timestamp
             )
 
             self.logger.info(

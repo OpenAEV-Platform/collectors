@@ -9,9 +9,9 @@ from pyoaev.apis.inject_expectation.model import (
 )
 from pyoaev.client import OpenAEV
 from pyoaev.helpers import OpenAEVDetectionHelper
+from src.services.expectation_service import ExpectationService
+from src.services.trace_service import TraceService
 
-from ..services.expectation_service import ExpectationService
-from ..services.trace_service import TraceService
 from .exception import (
     APIError,
     BulkUpdateError,

@@ -8,8 +8,8 @@ import logging
 from typing import Any
 
 from pyoaev.client import OpenAEV
+from src.services.trace_service import TraceService
 
-from ..services.trace_service import TraceService
 from .exception import TraceCreationError, TraceSubmissionError, TracingError
 from .models import ExpectationResult
 
@@ -161,11 +161,11 @@ class TraceManager:
             TraceCreationError: If all individual trace creations fail.
 
         """
+        success_count = 0
         try:
             self.logger.info(
                 f"{LOG_PREFIX} Creating {len(traces)} traces individually as fallback"
             )
-            success_count = 0
             error_count = 0
 
             for i, trace in enumerate(traces, 1):

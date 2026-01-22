@@ -13,7 +13,10 @@ def get_matching_items(
     for alert in alerts:
         for expectation in expectations:
             for signature in expectation.inject_expectation_signatures:
-                if signature.value in alert.actor_process_command_line:
+                if (
+                    alert.actor_process_command_line
+                    and signature.value in alert.actor_process_command_line
+                ):
                     return expectation, alert
     return None, None
 
@@ -45,7 +48,7 @@ def test_collector(expectations, alerts) -> None:
     matching_expectation, matching_alert = get_matching_items(expectations, alerts)
 
     assert (
-        matching_expectation is not None
+        matching_expectation is not None and matching_alert is not None
     ), "No matching expectation found for the alerts"
     assert str(matching_expectation.inject_expectation_id) in bulk_expectation
     assert (

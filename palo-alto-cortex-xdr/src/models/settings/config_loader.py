@@ -47,11 +47,11 @@ class ConfigLoader(ConfigBaseSettings):
     """
 
     openaev: _ConfigLoaderOAEV = Field(
-        default_factory=_ConfigLoaderOAEV,  # type: ignore[unused-ignore]
+        default_factory=_ConfigLoaderOAEV,
         description="OpenAEV configurations.",
     )
     collector: ConfigLoaderCollector = Field(
-        default_factory=ConfigLoaderCollector,  # type: ignore[unused-ignore]
+        default_factory=ConfigLoaderCollector,
         description="Collector configurations.",
     )
     palo_alto_cortex_xdr: _ConfigLoaderPaloAltoCortexXDR = Field(
@@ -136,8 +136,12 @@ class ConfigLoader(ConfigBaseSettings):
                 "collector_platform": {"data": self.collector.platform},
                 "collector_log_level": {"data": self.collector.log_level},
                 "collector_period": {
-                    "data": int(self.collector.period.total_seconds())
-                },  # type: ignore[union-attr]
+                    "data": (
+                        int(self.collector.period.total_seconds())
+                        if self.collector.period
+                        else 0
+                    )
+                },
                 "collector_icon_filepath": {"data": self.collector.icon_filepath},
                 # PaloAltoCortexXDR configuration (flattened)
                 "palo_alto_cortex_xdr_fqdn": {

@@ -9,16 +9,18 @@ from pyoaev.apis.inject_expectation.model.expectation import (
     PreventionExpectation,
 )
 from pyoaev.signatures.types import SignatureTypes
+from src.collector.models import ExpectationResult
+from src.models.alert import Alert
+from src.models.authentication import Authentication
+from src.models.settings.config_loader import ConfigLoader
 
-from ..collector.models import ExpectationResult
-from ..models.alert import Alert
-from ..models.authentication import Authentication
 from .alert_fetcher import AlertFetcher
 from .client_api import PaloAltoCortexXDRClientAPI
 from .converter import PaloAltoCortexXDRConverter
 from .exception import (
     PaloAltoCortexXDRAPIError,
     PaloAltoCortexXDRExpectationError,
+    PaloAltoCortexXDRValidationError,
 )
 from .utils import SignatureExtractor, TraceBuilder
 
@@ -30,7 +32,7 @@ class ExpectationService:
 
     def __init__(
         self,
-        config: Any | None = None,
+        config: ConfigLoader,
     ) -> None:
         """Initialize the PaloAltoCortexXDR expectation service.
 
@@ -42,6 +44,14 @@ class ExpectationService:
 
         """
         self.logger: logging.Logger = logging.getLogger(__name__)
+
+        if config is None:
+            raise PaloAltoCortexXDRValidationError("config cannot be None")
+
+        if config.palo_alto_cortex_xdr.fqdn is None:
+            raise PaloAltoCortexXDRValidationError(
+                "palo_alto_cortex_xdr.fqdn cannot be None"
+            )
 
         auth = Authentication(
             api_key=config.palo_alto_cortex_xdr.api_key.get_secret_value(),
@@ -287,7 +297,9 @@ class ExpectationService:
 
             parent_process_names = [alert.actor_process_command_line]
             oaev_implant_names = [
-                name for name in parent_process_names if "oaev-implant-" in name
+                name
+                for name in parent_process_names
+                if name and "oaev-implant-" in name
             ]
 
             self.logger.debug(

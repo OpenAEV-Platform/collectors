@@ -4,10 +4,10 @@ import os
 
 from pyoaev.daemons import CollectorDaemon
 from pyoaev.helpers import OpenAEVDetectionHelper
+from src.models.settings.config_loader import ConfigLoader
 from src.services.expectation_service import ExpectationService
 from src.services.trace_service import TraceService
 
-from .. import ConfigLoader
 from .exception import (
     CollectorConfigError,
     CollectorProcessingError,
@@ -34,7 +34,7 @@ class Collector(CollectorDaemon):
                 collector_type="openaev_palo_alto_cortex_xdr",
             )
 
-            self.logger.info(  # type: ignore[has-type]
+            self.logger.info(
                 f"{LOG_PREFIX} PaloAltoCortexXDR Collector initialized successfully"
             )
 
