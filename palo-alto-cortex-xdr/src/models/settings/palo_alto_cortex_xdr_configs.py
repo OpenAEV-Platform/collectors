@@ -39,8 +39,3 @@ class _ConfigLoaderPaloAltoCortexXDR(ConfigBaseSettings):
         default=timedelta(hours=1),
         description="Time window for PaloAltoCortexXDR alert searches when no date signatures are provided (ISO 8601 format).",
     )
-    expectation_batch_size: int = Field(
-        alias="PALO_ALTO_CORTEX_XDR_EXPECTATION_BATCH_SIZE",
-        default=50,
-        description="Number of expectations to process in each batch for batch-based processing.",
-    )

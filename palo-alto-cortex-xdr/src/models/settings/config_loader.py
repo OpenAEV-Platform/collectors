@@ -155,8 +155,5 @@ class ConfigLoader(ConfigBaseSettings):
                 "palo_alto_cortex_xdr_time_window": {
                     "data": self.palo_alto_cortex_xdr.time_window
                 },
-                "palo_alto_cortex_xdr_expectation_batch_size": {
-                    "data": self.palo_alto_cortex_xdr.expectation_batch_size
-                },
             }
         )
