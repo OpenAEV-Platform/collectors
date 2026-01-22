@@ -13,15 +13,15 @@ from src.collector.models import ExpectationResult
 from src.models.alert import Alert
 from src.models.authentication import Authentication
 from src.models.settings.config_loader import ConfigLoader
-
-from .alert_fetcher import AlertFetcher
-from .client_api import PaloAltoCortexXDRClientAPI
-from .converter import PaloAltoCortexXDRConverter
-from .exception import (
+from src.services.alert_fetcher import AlertFetcher
+from src.services.client_api import PaloAltoCortexXDRClientAPI
+from src.services.converter import PaloAltoCortexXDRConverter
+from src.services.exception import (
     PaloAltoCortexXDRAPIError,
     PaloAltoCortexXDRExpectationError,
     PaloAltoCortexXDRValidationError,
 )
+
 from .utils import SignatureExtractor, TraceBuilder
 
 LOG_PREFIX = "[ExpectationService]"

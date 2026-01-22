@@ -8,10 +8,13 @@ import logging
 from typing import Any
 
 from pyoaev.client import OpenAEV
+from src.collector.exception import (
+    TraceCreationError,
+    TraceSubmissionError,
+    TracingError,
+)
+from src.collector.models import ExpectationResult
 from src.services.trace_service import TraceService
-
-from .exception import TraceCreationError, TraceSubmissionError, TracingError
-from .models import ExpectationResult
 
 LOG_PREFIX = "[TraceManager]"
 

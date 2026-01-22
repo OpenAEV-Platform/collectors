@@ -5,8 +5,7 @@ from datetime import UTC, datetime
 
 from src.collector.models import ExpectationResult, ExpectationTrace
 from src.models.settings.config_loader import ConfigLoader
-
-from .exception import (
+from src.services.exception import (
     PaloAltoCortexXDRDataConversionError,
     PaloAltoCortexXDRValidationError,
 )

@@ -9,18 +9,17 @@ from pyoaev.apis.inject_expectation.model import (
 )
 from pyoaev.client import OpenAEV
 from pyoaev.helpers import OpenAEVDetectionHelper
-from src.services.expectation_service import ExpectationService
-from src.services.trace_service import TraceService
-
-from .exception import (
+from src.collector.exception import (
     APIError,
     BulkUpdateError,
     ExpectationHandlerError,
     ExpectationProcessingError,
     ExpectationUpdateError,
 )
-from .models import ExpectationResult, ProcessingSummary
-from .trace_manager import TraceManager
+from src.collector.models import ExpectationResult, ProcessingSummary
+from src.collector.trace_manager import TraceManager
+from src.services.expectation_service import ExpectationService
+from src.services.trace_service import TraceService
 
 LOG_PREFIX = "[ExpectationManager]"
 
