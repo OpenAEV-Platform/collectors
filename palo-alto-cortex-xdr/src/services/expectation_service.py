@@ -113,7 +113,7 @@ class ExpectationService:
         """
         if not expectations:
             self.logger.info(f"{LOG_PREFIX} No expectations to process")
-            return [], 0
+            return []
 
         try:
             self.logger.info(

@@ -7,11 +7,11 @@ for expectation processing. It separates trace concerns from the main expectatio
 import logging
 from typing import Any
 
-from pyoaev.client import OpenAEV  # type: ignore[import-untyped]
+from pyoaev.client import OpenAEV
 
+from ..services.trace_service import TraceService
 from .exception import TraceCreationError, TraceSubmissionError, TracingError
 from .models import ExpectationResult
-from .trace_service_provider import TraceServiceProvider
 
 LOG_PREFIX = "[TraceManager]"
 
@@ -27,7 +27,7 @@ class TraceManager:
         self,
         oaev_api: OpenAEV,
         collector_id: str,
-        trace_service: TraceServiceProvider | None = None,
+        trace_service: TraceService,
     ) -> None:
         """Initialize trace manager.
 
