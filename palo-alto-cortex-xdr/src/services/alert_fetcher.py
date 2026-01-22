@@ -3,7 +3,7 @@
 import logging
 from datetime import datetime
 
-from requests.exceptions import (  # type: ignore[import-untyped]
+from requests.exceptions import (
     ConnectionError,
     RequestException,
     Timeout,

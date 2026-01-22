@@ -3,23 +3,24 @@
 import logging
 from typing import Any
 
-from pyoaev.apis.inject_expectation.model import (  # type: ignore[import-untyped]
+from pyoaev.apis.inject_expectation.model import (
     DetectionExpectation,
     PreventionExpectation,
 )
-from pyoaev.client import OpenAEV  # type: ignore[import-untyped]
-from pyoaev.helpers import OpenAEVDetectionHelper  # type: ignore[import-untyped]
+from pyoaev.client import OpenAEV
+from pyoaev.helpers import OpenAEVDetectionHelper
 
+from ..services.expectation_service import ExpectationService
+from ..services.trace_service import TraceService
 from .exception import (
     APIError,
     BulkUpdateError,
+    ExpectationHandlerError,
     ExpectationProcessingError,
     ExpectationUpdateError,
 )
-from .expectation_handler import GenericExpectationHandler
 from .models import ExpectationResult, ProcessingSummary
 from .trace_manager import TraceManager
-from .trace_service_provider import TraceServiceProvider
 
 LOG_PREFIX = "[ExpectationManager]"
 
@@ -35,32 +36,13 @@ class GenericExpectationManager:
         self,
         oaev_api: OpenAEV,
         collector_id: str,
-        expectation_handler: GenericExpectationHandler,
-        trace_service: TraceServiceProvider | None = None,
+        expectation_service: ExpectationService,
+        trace_service: TraceService,
     ) -> None:
-        """Initialize generic expectation manager.
-
-        Args:
-            oaev_api: OpenAEV API client.
-            collector_id: ID of the collector.
-            expectation_handler: Handler for processing expectations.
-            trace_service: Optional service for creating traces.
-
-        Raises:
-            ValueError: If required parameters are None or empty.
-
-        """
-        if not oaev_api:
-            raise ValueError("oaev_api cannot be None")
-        if not collector_id:
-            raise ValueError("collector_id cannot be empty")
-        if not expectation_handler:
-            raise ValueError("expectation_handler cannot be None")
-
         self.logger = logging.getLogger(__name__)
         self.oaev_api = oaev_api
         self.collector_id = collector_id
-        self.expectation_handler = expectation_handler
+        self.expectation_service = expectation_service
         self.trace_manager = TraceManager(
             oaev_api=oaev_api,
             collector_id=collector_id,
@@ -70,6 +52,60 @@ class GenericExpectationManager:
         self.logger.info(
             f"{LOG_PREFIX} Expectation manager initialized for collector: {collector_id}"
         )
+
+    def handle_batch_expectations(
+        self,
+        expectations: list[Any],
+        detection_helper: OpenAEVDetectionHelper,
+    ) -> list[ExpectationResult]:
+        """Handle a batch of expectations by delegating to the service provider.
+
+        Post-processes results to ensure completeness by filling in missing
+        expectation IDs and expectation objects.
+
+        Args:
+            expectations: List of expectations to process.
+            detection_helper: OpenAEV detection helper instance.
+
+        Returns:
+            Tuple of (results, skipped_count) where:
+            - results: List of ExpectationResult objects for processed expectations
+
+        Raises:
+            ExpectationHandlerError: If batch processing fails.
+
+        """
+        try:
+            self.logger.info(
+                f"{LOG_PREFIX} Starting batch processing of {len(expectations)} expectations"
+            )
+
+            results = self.expectation_service.handle_batch_expectations(
+                expectations, detection_helper
+            )
+
+            # Post-process results to ensure completeness
+            self.logger.debug(f"{LOG_PREFIX} Post-processing batch results...")
+            for i, result in enumerate(results):
+                if result.expectation is None and i < len(expectations):
+                    result.expectation = expectations[i]
+                if not result.expectation_id and result.expectation:
+                    result.expectation_id = str(
+                        result.expectation.inject_expectation_id
+                    )
+
+            valid_count = sum(1 for r in results if r.is_valid)
+            invalid_count = len(results) - valid_count
+
+            self.logger.info(
+                f"{LOG_PREFIX} Batch processing completed: {valid_count} valid, {invalid_count} invalid"
+            )
+
+            return results
+
+        except Exception as e:
+            self.logger.error(f"{LOG_PREFIX} Batch processing failed: {e}")
+            raise ExpectationHandlerError(f"Error in batch processing: {e}") from e
 
     def process_expectations(
         self, detection_helper: OpenAEVDetectionHelper
@@ -128,7 +164,7 @@ class GenericExpectationManager:
             self.logger.debug(
                 f"{LOG_PREFIX} Processing expectations through handler..."
             )
-            results = self.expectation_handler.handle_batch_expectations(
+            results = self.expectation_service.handle_batch_expectations(
                 supported_expectations, detection_helper
             )
 

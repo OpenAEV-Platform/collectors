@@ -2,8 +2,8 @@
 
 import os
 
-from pyoaev.daemons import CollectorDaemon  # type: ignore[import-untyped]
-from pyoaev.helpers import OpenAEVDetectionHelper  # type: ignore[import-untyped]
+from pyoaev.daemons import CollectorDaemon
+from pyoaev.helpers import OpenAEVDetectionHelper
 from src.services.expectation_service import ExpectationService
 from src.services.trace_service import TraceService
 
@@ -13,13 +13,12 @@ from .exception import (
     CollectorProcessingError,
     CollectorSetupError,
 )
-from .expectation_handler import GenericExpectationHandler
 from .expectation_manager import GenericExpectationManager
 
 LOG_PREFIX = "[Collector]"
 
 
-class Collector(CollectorDaemon):  # type: ignore[misc]
+class Collector(CollectorDaemon):
     """Generic Collector using service provider pattern.
 
     This collector is use-case agnostic and works with any service provider.
@@ -77,14 +76,10 @@ class Collector(CollectorDaemon):  # type: ignore[misc]
 
             self.trace_service = TraceService(self.config)
 
-            self.expectation_handler = GenericExpectationHandler(
-                self.expectation_service
-            )
-
             self.expectation_manager = GenericExpectationManager(
                 oaev_api=self.api,
                 collector_id=self.get_id(),
-                expectation_handler=self.expectation_handler,
+                expectation_service=self.expectation_service,
                 trace_service=self.trace_service,
             )
 
