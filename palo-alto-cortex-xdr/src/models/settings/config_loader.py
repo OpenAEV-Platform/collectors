@@ -12,14 +12,14 @@ from pydantic_settings import (
 )
 from pyoaev.configuration import Configuration
 from src.models.settings import (
+    BaseConfigLoaderCollector,
     ConfigBaseSettings,
-    _ConfigLoaderCollector,
     _ConfigLoaderOAEV,
     _ConfigLoaderPaloAltoCortexXDR,
 )
 
 
-class ConfigLoaderCollector(_ConfigLoaderCollector):
+class ConfigLoaderCollector(BaseConfigLoaderCollector):
     """Basic collector configurations.
 
     Extends the base collector configuration with specific default values

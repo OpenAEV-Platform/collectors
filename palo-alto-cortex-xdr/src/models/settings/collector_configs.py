@@ -33,7 +33,7 @@ class _ConfigLoaderOAEV(ConfigBaseSettings):
     )
 
 
-class _ConfigLoaderCollector(ConfigBaseSettings):
+class BaseConfigLoaderCollector(ConfigBaseSettings):
     """Base collector configuration settings.
 
     Contains common collector settings including identification, logging,

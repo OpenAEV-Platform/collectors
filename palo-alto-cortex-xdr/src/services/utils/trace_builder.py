@@ -32,7 +32,7 @@ class TraceBuilder:
         alert_link = ""
         if fqdn and alert.alert_id:
             try:
-                web_base = "https://" + fqdn.rstrip("/")
+                web_base = f"https://{fqdn.rstrip('/')}"
                 alert_link = f"{web_base}/alerts/{alert.alert_id}/{alert.case_id}"
                 logger.debug(f"{LOG_PREFIX} Generated alert URL: {alert_link}")
             except Exception as e:

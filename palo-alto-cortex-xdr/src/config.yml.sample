@@ -6,7 +6,7 @@ collector:
   id: "Palo Alto Cortex XDR"
 
 palo_alto_cortex_xdr:
-  fqdn: "change.me"
+  fqdn: "ChangeMe"
   api_key: "ChangeMe"
   api_key_id: 1
   #api_key_type: "standard"

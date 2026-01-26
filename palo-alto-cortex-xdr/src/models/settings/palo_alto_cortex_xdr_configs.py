@@ -15,7 +15,7 @@ class _ConfigLoaderPaloAltoCortexXDR(ConfigBaseSettings):
     for PaloAltoCortexXDR API integration.
     """
 
-    fqdn: str | None = Field(
+    fqdn: str = Field(
         alias="PALO_ALTO_CORTEX_XDR_FQDN",
         description="The FQDN is a unique host and domain name associated with each tenant.",
     )
