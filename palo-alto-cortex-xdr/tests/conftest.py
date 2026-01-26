@@ -36,7 +36,20 @@ def execution_uuid():
 
 
 @pytest.fixture
-def expectations(execution_uuid):
+def mock_oaev_api():
+    with patch("pyoaev.daemons.CollectorDaemon", autospec=True):
+        with patch(
+            "src.collector.expectation_manager.OpenAEV"
+        ) as mock_api_class_em, patch(
+            "src.collector.trace_manager.OpenAEV"
+        ) as mock_api_class_tm:
+            mock_api_instance = mock_api_class_em.return_value
+            mock_api_class_tm.return_value = mock_api_instance
+            yield mock_api_instance
+
+
+@pytest.fixture
+def expectations(execution_uuid, mock_oaev_api):
     class FakeAPIClient:
         @staticmethod
         def update(self, *args, **kwargs):
@@ -48,11 +61,12 @@ def expectations(execution_uuid):
     expectations[0].inject_expectation_signatures[
         1
     ].value = f"oaev-implant-{execution_uuid}"
-    with patch(
-        "pyoaev.apis.inject_expectation.InjectExpectationManager.expectations_models_for_source",
-        return_value=expectations,
-    ):
-        yield expectations
+
+    mock_oaev_api.inject_expectation.expectations_models_for_source.return_value = (
+        expectations
+    )
+
+    return expectations
 
 
 @pytest.fixture
