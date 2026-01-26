@@ -2,6 +2,7 @@
 
 import logging
 from datetime import UTC, datetime
+from typing import Any
 
 from src.collector.models import ExpectationResult, ExpectationTrace
 from src.models.settings.config_loader import ConfigLoader
@@ -67,7 +68,6 @@ class TraceService:
             )
 
             traces = []
-
             for i, result in enumerate(valid_results, 1):
                 expectation_id = result.expectation_id
                 if not expectation_id:
@@ -76,28 +76,17 @@ class TraceService:
                     )
                     continue
 
-                self.logger.debug(
-                    f"{LOG_PREFIX} Creating trace {i}/{len(valid_results)} for expectation {expectation_id}"
-                )
-
-                try:
-                    trace = self._create_expectation_trace(
-                        result, expectation_id, collector_id
-                    )
-
-                    if trace:
-                        traces.append(trace)
-                        self.logger.debug(
-                            f"{LOG_PREFIX} Created trace for expectation {expectation_id}: {trace.inject_expectation_trace_alert_name}"
+                for alert_data in result.matched_alerts:
+                    try:
+                        trace = self._create_expectation_trace(
+                            alert_data, expectation_id, collector_id
                         )
-                    else:
-                        self.logger.warning(
-                            f"{LOG_PREFIX} Trace creation returned None for expectation {expectation_id}"
+                        if trace:
+                            traces.append(trace)
+                    except Exception as e:
+                        self.logger.error(
+                            f"{LOG_PREFIX} Error creating trace for expectation {expectation_id}: {e}"
                         )
-                except Exception as e:
-                    raise PaloAltoCortexXDRDataConversionError(
-                        f"Error creating trace for expectation {expectation_id}: {e}"
-                    ) from e
 
             self.logger.info(
                 f"{LOG_PREFIX} Successfully created {len(traces)} traces from {len(valid_results)} valid results"
@@ -112,12 +101,12 @@ class TraceService:
             ) from e
 
     def _create_expectation_trace(
-        self, result: ExpectationResult, expectation_id: str, collector_id: str
+        self, matching_data: dict[str, Any], expectation_id: str, collector_id: str
     ) -> ExpectationTrace:
         """Create ExpectationTrace model from a single result.
 
         Args:
-            result: Processing result dictionary.
+            matching_data: Single alert matching data.
             expectation_id: ID of the expectation.
             collector_id: ID of the collector.
 
@@ -135,13 +124,12 @@ class TraceService:
         if not collector_id:
             raise PaloAltoCortexXDRValidationError("collector_id cannot be empty")
 
-        if not result.matched_alerts:
+        if not matching_data:
             raise PaloAltoCortexXDRValidationError(
-                "result must have matched_alerts for trace creation"
+                "matching_data cannot be empty for trace creation"
             )
 
         try:
-            matching_data = result.matched_alerts[0] or {}
             self.logger.debug(
                 f"{LOG_PREFIX} Processing matching data with {len(matching_data)} fields"
             )
