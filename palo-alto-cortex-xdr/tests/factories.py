@@ -2,6 +2,7 @@ from factory import Factory, Faker, LazyAttribute, List, SubFactory
 from pyoaev.apis.inject_expectation.model.expectation import (
     DetectionExpectation,
     ExpectationSignature,
+    PreventionExpectation,
 )
 from pyoaev.signatures.types import SignatureTypes
 from src.models.alert import Alert
@@ -27,6 +28,19 @@ class ExpectationSignatureWithParentProcessNameFactory(Factory):
 class DetectionExpectationFactory(Factory):
     class Meta:
         model = DetectionExpectation
+
+    inject_expectation_id = Faker("uuid4")
+    inject_expectation_signatures = List(
+        [
+            SubFactory(ExpectationSignatureWithEndDateFactory),
+            SubFactory(ExpectationSignatureWithParentProcessNameFactory),
+        ]
+    )
+
+
+class PreventionExpectationFactory(Factory):
+    class Meta:
+        model = PreventionExpectation
 
     inject_expectation_id = Faker("uuid4")
     inject_expectation_signatures = List(
