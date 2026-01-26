@@ -69,7 +69,7 @@ def test_collector(expectations, alerts) -> None:
 
 
 def test_collector_no_alerts(expectations) -> None:
-    """Scenario: Start the collector when there is no alerts."""
+    """Scenario: Start the collector when there are no alerts."""
     collector = Collector()
     collector._setup()
 
@@ -98,7 +98,7 @@ def test_collector_no_alerts(expectations) -> None:
 
 
 def test_collector_no_expectations(alerts) -> None:
-    """Scenario: Start the collector when there is no expectations."""
+    """Scenario: Start the collector when there are no expectations."""
     collector = Collector()
     collector._setup()
 

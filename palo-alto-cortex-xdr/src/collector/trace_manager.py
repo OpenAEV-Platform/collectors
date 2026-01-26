@@ -183,7 +183,7 @@ class TraceManager:
                     self.logger.debug(
                         f"{LOG_PREFIX} Individual trace {i} created successfully"
                     )
-                    self.logger.debug(f"{LOG_PREFIX} single Response: {r}")
+                    self.logger.debug(f"{LOG_PREFIX} Single response: {r}")
                 except Exception as individual_error:
                     error_count += 1
                     self.logger.error(

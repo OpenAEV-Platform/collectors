@@ -304,7 +304,7 @@ class ExpectationService:
 
             self.logger.debug(
                 f"{LOG_PREFIX} Alert {alert.alert_id}: Found {len(parent_process_names)} "
-                f"process name, {len(oaev_implant_names)} with oaev-implant- prefix"
+                f"process names, {len(oaev_implant_names)} with oaev-implant- prefix"
             )
 
             if oaev_implant_names:
