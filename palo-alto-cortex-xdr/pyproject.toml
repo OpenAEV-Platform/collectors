@@ -1,0 +1,27 @@
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+packages = [{ include = "src" }, { include = "tests" }]
+
+[project]
+name = "palo-alto-cortex-xdr"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "pydantic>=2.11.3,<=2.12.0",
+    "pydantic-settings>=2.12.0",
+    "pyoaev>=2.0.11",
+    "requests>=2.32.5",
+]
+
+[dependency-groups]
+dev = [
+    "factory-boy>=3.3.3",
+    "pytest>=9.0.2",
+    "ruff>=0.14.13",
+    "ty>=0.0.13",
+]
