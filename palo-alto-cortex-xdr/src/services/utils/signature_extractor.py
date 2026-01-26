@@ -1,5 +1,6 @@
 """Signature extraction utilities for PaloAltoCortexXDR expectation processing."""
 
+from collections import defaultdict
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
@@ -71,7 +72,7 @@ class SignatureExtractor:
                 for sig_type in supported_signatures
             }
 
-        signature_groups = {}
+        signature_groups = defaultdict(list)
         for sig in expectation.inject_expectation_signatures:
             sig_type = sig.type.value if hasattr(sig.type, "value") else str(sig.type)
 
@@ -81,7 +82,5 @@ class SignatureExtractor:
             if sig_type == "end_date":
                 continue
 
-            if sig_type not in signature_groups:
-                signature_groups[sig_type] = []
             signature_groups[sig_type].append({"type": sig_type, "value": sig.value})
         return signature_groups
