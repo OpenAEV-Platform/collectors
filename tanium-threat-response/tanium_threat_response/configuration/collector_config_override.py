@@ -11,6 +11,10 @@ class CollectorConfigOverride(ConfigLoaderCollector):
         default="Tanium Threat Response",
         description="Collector display name",
     )
+    platform: str | None = Field(
+        default="EDR",
+        description="Platform type for the collector (e.g., EDR, SIEM, etc.).",
+    )
     icon_filepath: str | None = Field(
         default="tanium_threat_response/img/icon-tanium.png",
         description="Path to the icon file",

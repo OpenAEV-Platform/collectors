@@ -11,6 +11,10 @@ class CollectorConfigOverride(ConfigLoaderCollector):
         default="Microsoft Defender",
         description="Collector display name",
     )
+    platform: str | None = Field(
+        default="EDR",
+        description="Platform type for the collector (e.g., EDR, SIEM, etc.).",
+    )
     icon_filepath: str | None = Field(
         default="microsoft_defender/img/icon-microsoft-defender.png",
         description="Path to the icon file",
