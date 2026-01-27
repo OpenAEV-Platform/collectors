@@ -1,9 +1,9 @@
 {
   "title": "Microsoft Defender",
-  "slug": "microsoft_defender_collector",
+  "slug": "openaev_microsoft_defender",
   "description": "Collect responses from Microsoft Defender",
   "short_description": "Collect responses from Microsoft Defender",
-  "use_cases": ["Collector", "Security response"],
+  "use_cases": ["Security response"],
   "verified": true,
   "last_verified_date": "",
   "playbook_supported": false,

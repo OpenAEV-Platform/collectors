@@ -1,9 +1,9 @@
 {
   "title": "Microsoft Intune",
-  "slug": "microsoft_intune_collector",
+  "slug": "openaev_microsoft_intune",
   "description": "Allow registration of agentless endpoints coming from Microsoft Intune endpoints",
   "short_description": "Allow registration of agentless endpoints coming from Microsoft Intune endpoints",
-  "use_cases": ["Collector", "Endpoint collection"],
+  "use_cases": ["Endpoint collection"],
   "verified": true,
   "last_verified_date": "",
   "playbook_supported": false,

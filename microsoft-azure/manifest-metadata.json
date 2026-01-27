@@ -1,9 +1,9 @@
 {
   "title": "Microsoft azure",
-  "slug": "microsoft_azure_collector",
+  "slug": "openaev_microsoft_azure",
   "description": "Allow registration of agentless endpoints coming from Microsoft Azure",
   "short_description": "Allow registration of agentless endpoints coming from Microsoft Azure",
-  "use_cases": ["Collector"],
+  "use_cases": [],
   "verified": true,
   "last_verified_date": "",
   "playbook_supported": false,

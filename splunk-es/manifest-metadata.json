@@ -1,9 +1,9 @@
 {
   "title": "Splunk Enterprise Security",
-  "slug": "splunk_collector",
+  "slug": "openaev_splunk_es",
   "description": "Collect responses from Splunk Enterprise Security",
   "short_description": "Collect responses from Splunk Enterprise Security",
-  "use_cases": ["Collector", "Security response"],
+  "use_cases": ["Security response"],
   "verified": true,
   "last_verified_date": "",
   "playbook_supported": false,
