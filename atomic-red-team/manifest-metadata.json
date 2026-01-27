@@ -1,9 +1,9 @@
 {
   "title": "Atomic Red Team",
-  "slug": "atomicredteam_injector",
+  "slug": "openaev_atomic_red_team",
   "description": "Collect Atomic Red Team payload library",
   "short_description": "Collect Atomic Red Team payload library",
-  "use_cases": ["Collector", "Payload collection"],
+  "use_cases": ["Payload collection"],
   "verified": true,
   "last_verified_date": "",
   "playbook_supported": false,

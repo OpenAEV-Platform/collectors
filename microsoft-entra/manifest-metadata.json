@@ -1,9 +1,9 @@
 {
   "title": "Microsoft Entra",
-  "slug": "microsoft_entra_collector",
+  "slug": "openaev_microsoft_entra",
   "description": "Collect users information from Microsoft Entra to create players",
   "short_description": "Collect users information from Microsoft Entra to create players",
-  "use_cases": ["Collector", "Player collection"],
+  "use_cases": ["Player collection"],
   "verified": true,
   "last_verified_date": "",
   "playbook_supported": false,

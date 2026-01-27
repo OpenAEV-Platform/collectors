@@ -5,7 +5,7 @@ openaev:
 collector:
   id: 'changeme'
   name: 'Microsoft Sentinel'
-  period: 60
+  period: 'PT1M'
   log_level: 'info'
   microsoft_sentinel_tenant_id: ''
   microsoft_sentinel_client_id: ''

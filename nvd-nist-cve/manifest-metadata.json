@@ -1,9 +1,9 @@
 {
   "title": "NVD NIST",
-  "slug": "nist_cve_collector",
+  "slug": "openaev_nvd_nist_cve",
   "description": "Collect NVD NIST database",
   "short_description": "Collect NVD NIST database",
-  "use_cases": ["Collector", "Data collection"],
+  "use_cases": ["Data collection"],
   "verified": true,
   "last_verified_date": "",
   "playbook_supported": false,

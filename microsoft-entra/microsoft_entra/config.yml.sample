@@ -5,7 +5,7 @@ openaev:
 collector:
   id: 'changeme'
   name: 'Microsoft Entra'
-  period: 3600
+  period: 'PT1H'
   log_level: 'info'
   microsoft_entra_tenant_id: ''
   microsoft_entra_client_id: ''

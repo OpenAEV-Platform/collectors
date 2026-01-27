@@ -1,9 +1,9 @@
 {
   "title": "Google workspace",
-  "slug": "google_workspace_collector",
+  "slug": "openaev_google_workspace",
   "description": "Collect users information from Google Workspace to create players",
   "short_description": "Collect users information from Google Workspace to create players",
-  "use_cases": ["Collector", "Player collection"],
+  "use_cases": ["Player collection"],
   "verified": true,
   "last_verified_date": "",
   "playbook_supported": false,

@@ -61,7 +61,7 @@ openaev:
 collector:
   id: 'unique-collector-id'
   name: 'Microsoft Azure'
-  period: 3600  # Collection period in seconds
+  period: 'PT1H'  # Collection period in ISO 8601
   log_level: 'info'
   microsoft_azure_tenant_id: 'your-tenant-id'
   microsoft_azure_client_id: 'your-client-id'
@@ -107,7 +107,7 @@ All configuration can be provided via environment variables:
 - `OPENAEV_TOKEN`: OpenAEV API token
 - `COLLECTOR_ID`: Unique collector identifier
 - `COLLECTOR_NAME`: Display name for the collector
-- `COLLECTOR_PERIOD`: Collection interval in seconds
+- `COLLECTOR_PERIOD`: Collection interval as ISO 8601 period expression, e.g. PT1M: 1 minute
 - `COLLECTOR_LOG_LEVEL`: Logging level (debug, info, warn, error)
 - `MICROSOFT_AZURE_TENANT_ID`: Azure AD tenant ID
 - `MICROSOFT_AZURE_CLIENT_ID`: Azure application client ID

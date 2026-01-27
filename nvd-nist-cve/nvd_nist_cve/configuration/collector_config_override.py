@@ -1,1 +1,23 @@
-from pydantic import Fieldfrom pyoaev.configuration import ConfigLoaderCollectorclass CollectorConfigOverride(ConfigLoaderCollector):    id: str = Field(        default="openaev_nvd_nist_cve",        description="Collector unique identifier",    )    name: str = Field(        default="CVE by NVD NIST",        description="Collector display name",    )    icon_filepath: str | None = Field(        default="nvd_nist_cve/img/icon-nist.png",        description="Path to the icon file",    )
+from datetime import timedelta
+
+from pydantic import Field
+from pyoaev.configuration import ConfigLoaderCollector
+
+
+class CollectorConfigOverride(ConfigLoaderCollector):
+    id: str = Field(
+        default="openaev_nvd_nist_cve",
+        description="Collector unique identifier",
+    )
+    name: str = Field(
+        default="CVE by NVD NIST",
+        description="Collector display name",
+    )
+    icon_filepath: str | None = Field(
+        default="nvd_nist_cve/img/icon-nist.png",
+        description="Path to the icon file",
+    )
+    period: timedelta | None = Field(
+        default=timedelta(hours=2),
+        description="Duration between two scheduled runs of the collector (ISO 8601 format).",
+    )

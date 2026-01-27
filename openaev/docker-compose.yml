@@ -7,7 +7,7 @@ services:
       - COLLECTOR_ID=${COLLECTOR_ID}
       - COLLECTOR_NAME=${COLLECTOR_NAME:-"OpenAEV Datasets"}
       - COLLECTOR_LOG_LEVEL=${COLLECTOR_LOG_LEVEL:-warn}
-      - COLLECTOR_PERIOD=${COLLECTOR_PERIOD:-604800}
+      - COLLECTOR_PERIOD=${COLLECTOR_PERIOD:-P7D}
       - OPENAEV_URL_PREFIX=${OPENAEV_URL_PREFIX:-https://raw.githubusercontent.com/OpenAEV-Platform/payloads/refs/heads/main/}
       - OPENAEV_IMPORT_ONLY_NATIVE=${OPENAEV_IMPORT_ONLY_NATIVE:-false}
     restart: unless-stopped

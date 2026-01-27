@@ -5,6 +5,6 @@ openaev:
 collector:
   id: 'changeme'
   name: 'Atomic Red Team'
-  period: 604800
+  period: 'P7D'
   log_level: 'info'
 

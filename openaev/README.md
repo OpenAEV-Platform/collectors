@@ -26,7 +26,7 @@ Below are the parameters you'll need to set for running the collector properly:
 |------------------|----------------------|-----------------------------|------------------|-----------|----------------------------------------------------------------------------------------|
 | Collector ID     | collector.id         | `COLLECTOR_ID`              |                  | Yes       | A unique `UUIDv4` identifier for this collector instance.                              |
 | Collector Name   | collector.name       | `COLLECTOR_NAME`            | OpenAEV Datasets | No        | Name of the collector.                                                                 |
-| Collector Period | collector.period     | `COLLECTOR_PERIOD`          | 604800           | No        | The time interval at which your collector will run (int, seconds).                     |
+| Collector Period | collector.period     | `COLLECTOR_PERIOD`          | P7D              | No        | The time interval at which your collector will run (ISO 8601 period expression, e.g. 'PT1M': 1 minute).                     |
 | Log Level        | collector.log_level  | `COLLECTOR_LOG_LEVEL`       | warn             | no        | Determines the verbosity of the logs. Options are `debug`, `info`, `warn`, or `error`. |
 
 ## Deployment
