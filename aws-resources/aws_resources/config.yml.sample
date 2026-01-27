@@ -5,7 +5,7 @@ openaev:
 collector:
   id: 'changeme'
   name: 'Amazon Web Services'
-  period: 3600
+  period: 'PT1H'
   log_level: 'info'
   aws_access_key_id: ''  # AWS Access Key ID (optional if using instance role)
   aws_secret_access_key: ''  # AWS Secret Access Key (optional if using instance role)

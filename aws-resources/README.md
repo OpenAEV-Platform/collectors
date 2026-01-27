@@ -100,7 +100,7 @@ openaev:
 collector:
   id: 'unique-collector-id'
   name: 'AWS Resources'
-  period: 3600  # Collection period in seconds
+  period: 'PT1H'  # Collection period in ISO 8601
   log_level: 'info'
   aws_access_key_id: 'your-access-key-id'  # Optional if using instance role
   aws_secret_access_key: 'your-secret-access-key'  # Optional if using instance role

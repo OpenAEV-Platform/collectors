@@ -5,7 +5,7 @@ openaev:
 collector:
   id: "ChangeMe"
   name: "Splunk ES"
-  period: 60
+  period: 'PT1M'
   log_level: "info"
 
 splunk_es:

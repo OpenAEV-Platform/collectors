@@ -61,7 +61,7 @@ openaev:
 collector:
   id: 'unique-collector-id'
   name: 'Microsoft Azure'
-  period: 3600  # Collection period in seconds
+  period: 'PT1H'  # Collection period in ISO 8601
   log_level: 'info'
   microsoft_azure_tenant_id: 'your-tenant-id'
   microsoft_azure_client_id: 'your-client-id'

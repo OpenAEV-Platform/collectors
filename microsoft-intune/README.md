@@ -62,7 +62,7 @@ openaev:
 collector:
   id: 'unique-collector-id'
   name: 'Microsoft Intune'
-  period: 3600  # Collection period in seconds
+  period: 'PT1H'  # Collection period in ISO 8601
   log_level: 'info'
   microsoft_intune_tenant_id: 'your-tenant-id'
   microsoft_intune_client_id: 'your-client-id'

@@ -5,7 +5,7 @@ openaev:
 collector:
   id: 'ChangeMe' # Required
   name: 'CVE by NVD NIST'
-  period: 7200
+  period: 'PT2H'
   log_level: 'info'
 
 nvd_nist_cve:
