@@ -1,1 +1,18 @@
-{  "title": "Microsoft Sentinel",  "slug": "openaev_microsoft_sentinel",  "description": "Collect responses from Microsoft Sentinel",  "short_description": "Collect responses from Microsoft Sentinel",  "use_cases": ["Security response"],  "verified": true,  "last_verified_date": "",  "playbook_supported": false,  "max_confidence_level": 80,  "support_version": "",  "subscription_link": "https://www.microsoft.com/en-us/security/business/siem-and-xdr/microsoft-sentinel](https://www.microsoft.com/en-us/security/business/siem-and-xdr/microsoft-sentinel",  "source_code": "",  "manager_supported": true,  "container_version": "rolling",  "container_image": "openaev/collector-microsoft-sentinel",  "container_type": "COLLECTOR"}
+{
+  "title": "Microsoft Sentinel",
+  "slug": "openaev_microsoft_sentinel",
+  "description": "Collect responses from Microsoft Sentinel",
+  "short_description": "Collect responses from Microsoft Sentinel",
+  "use_cases": ["Security response"],
+  "verified": true,
+  "last_verified_date": "",
+  "playbook_supported": false,
+  "max_confidence_level": 80,
+  "support_version": "",
+  "subscription_link": "https://www.microsoft.com/en-us/security/business/siem-and-xdr/microsoft-sentinel](https://www.microsoft.com/en-us/security/business/siem-and-xdr/microsoft-sentinel",
+  "source_code": "",
+  "manager_supported": true,
+  "container_version": "rolling",
+  "container_image": "openaev/collector-microsoft-sentinel",
+  "container_type": "COLLECTOR"
+}
