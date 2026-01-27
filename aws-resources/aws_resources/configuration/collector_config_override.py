@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from pydantic import Field
 from pyoaev.configuration import ConfigLoaderCollector
 
@@ -10,6 +12,10 @@ class CollectorConfigOverride(ConfigLoaderCollector):
     name: str = Field(
         default="AWS Resources",
         description="Collector display name",
+    )
+    period: timedelta | None = Field(
+        default=timedelta(hours=1),
+        description="Duration between two scheduled runs of the collector (ISO 8601 format).",
     )
     icon_filepath: str | None = Field(
         default="aws_resources/img/icon-aws-resources.png",

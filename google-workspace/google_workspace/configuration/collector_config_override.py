@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from pydantic import Field
 from pyoaev.configuration import ConfigLoaderCollector
 
@@ -13,6 +15,10 @@ class CollectorConfigOverride(ConfigLoaderCollector):
     icon_filepath: str | None = Field(
         default="google_workspace/img/icon-google-workspace.png",
         description="Path to the icon file",
+    )
+    period: timedelta | None = Field(
+        default=timedelta(hours=1),
+        description="Duration between two scheduled runs of the collector (ISO 8601 format).",
     )
     google_workspace_service_account_json: str = Field(
         description="JSON string containing service account credentials",

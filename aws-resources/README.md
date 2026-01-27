@@ -146,7 +146,7 @@ All configuration can be provided via environment variables:
 - `OPENAEV_TOKEN`: OpenAEV API token
 - `COLLECTOR_ID`: Unique collector identifier
 - `COLLECTOR_NAME`: Display name for the collector
-- `COLLECTOR_PERIOD`: Collection interval in seconds
+- `COLLECTOR_PERIOD`: Collection interval as ISO 8601 period expression, e.g. PT1M: 1 minute
 - `COLLECTOR_LOG_LEVEL`: Logging level (debug, info, warn, error)
 - `AWS_ACCESS_KEY_ID`: AWS Access Key ID
 - `AWS_SECRET_ACCESS_KEY`: AWS Secret Access Key

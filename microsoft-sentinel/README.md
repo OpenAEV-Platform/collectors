@@ -40,13 +40,13 @@ Below are the parameters you'll need to set for OpenAEV:
 
 Below are the parameters you'll need to set for running the collector properly:
 
-| Parameter        | config.yml          | Docker environment variable   | Default                    | Mandatory | Description                                                                                   |
-|------------------|---------------------|-------------------------------|----------------------------|-----------|-----------------------------------------------------------------------------------------------|
-| Collector ID     | collector.id        | `COLLECTOR_ID`                |                            | Yes       | A unique `UUIDv4` identifier for this collector instance.                                     |
-| Collector Name   | collector.name      | `COLLECTOR_NAME`              | Microsoft Sentinel         | No        | Name of the collector.                                                                        |
-| Collector Period | collector.period    | `COLLECTOR_PERIOD`            | 60                         | No        | The time interval at which your collector will run (int, seconds).                            |
-| Log Level        | collector.log_level | `COLLECTOR_LOG_LEVEL`         | warn                       | No        | Determines the verbosity of the logs. Options are `debug`, `info`, `warn`, or `error`.        |
-| Platform         | collector.platform  | `COLLECTOR_PLATFORM`          | SIEM                       | No        | Type of security platform this collector works for. One of: `EDR, XDR, SIEM, SOAR, NDR, ISPM` |
+| Parameter        | config.yml          | Docker environment variable   | Default            | Mandatory | Description                                                                                   |
+|------------------|---------------------|-------------------------------|--------------------|-----------|-----------------------------------------------------------------------------------------------|
+| Collector ID     | collector.id        | `COLLECTOR_ID`                |                    | Yes       | A unique `UUIDv4` identifier for this collector instance.                                     |
+| Collector Name   | collector.name      | `COLLECTOR_NAME`              | Microsoft Sentinel | No        | Name of the collector.                                                                        |
+| Collector Period | collector.period    | `COLLECTOR_PERIOD`            | PT1M               | No        | The time interval at which your collector will run (ISO 8601 period expression, e.g. 'PT1M': 1 minute).                            |
+| Log Level        | collector.log_level | `COLLECTOR_LOG_LEVEL`         | warn               | No        | Determines the verbosity of the logs. Options are `debug`, `info`, `warn`, or `error`.        |
+| Platform         | collector.platform  | `COLLECTOR_PLATFORM`          | SIEM               | No        | Type of security platform this collector works for. One of: `EDR, XDR, SIEM, SOAR, NDR, ISPM` |
 
 ### Collector extra parameters environment variables
 
