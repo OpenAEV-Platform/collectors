@@ -1,6 +1,6 @@
 {
   "title": "SentinelOne",
-  "slug": "openaev_sentinelone_collector",
+  "slug": "openaev_sentinelone",
   "description": "Collect responses from SentinelOne",
   "short_description": "Collect responses from SentinelOne",
   "use_cases": ["Security response"],

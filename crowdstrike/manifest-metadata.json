@@ -1,6 +1,6 @@
 {
   "title": "Crowdstrike",
-  "slug": "openaev_crowdstrike_collector",
+  "slug": "openaev_crowdstrike",
   "description": "Collect responses from Crowdstrike EDR",
   "short_description": "Collect responses from Crowdstrike EDR",
   "use_cases": ["Security response"],
