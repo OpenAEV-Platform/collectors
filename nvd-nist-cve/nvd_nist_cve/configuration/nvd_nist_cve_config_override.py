@@ -9,13 +9,13 @@ class NvdNistCveConfigOverride(BaseSettings):
 
     api_key: SecretStr = Field(
         default=SecretStr(""),
-        description="The nvd nst cve API key.",
+        description="The NVD API key.",
     )
     api_base_url: str = Field(
-        description="The base URL for the nvd nst cve APIs. ",
+        description="The base URL for the NVD APIs. ",
         default="https://services.nvd.nist.gov/rest/json",
     )
     start_year: str = Field(
-        description="The nvd nst cve start year.",
+        description="The earliest year from which to start fetching CVEs.",
         default="2019",
     )
