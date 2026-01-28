@@ -9,7 +9,7 @@
   "playbook_supported": false,
   "max_confidence_level": 80,
   "support_version": "",
-  "subscription_link": "https://github.com/OpenAEV-Platform/collectors/blob/main/README.md#simultaneous-development-on-pyoaev-and-a-collector](https://github.com/OpenAEV-Platform/collectors/blob/main/README.md#simultaneous-development-on-pyoaev-and-a-collector",
+  "subscription_link": "https://github.com/OpenAEV-Platform/collectors/blob/main/README.md#simultaneous-development-on-pyoaev-and-a-collector",
   "source_code": "",
   "manager_supported": true,
   "container_version": "rolling",
