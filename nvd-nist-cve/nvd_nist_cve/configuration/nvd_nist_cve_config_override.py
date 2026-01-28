@@ -8,6 +8,7 @@ class NvdNistCveConfigOverride(BaseSettings):
     model_config = {"frozen": False}
 
     api_key: SecretStr = Field(
+        default=SecretStr(""),
         description="The nvd nst cve API key.",
     )
     api_base_url: str = Field(
