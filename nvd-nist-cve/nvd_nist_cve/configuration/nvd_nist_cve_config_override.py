@@ -15,6 +15,6 @@ class NvdNistCveConfigOverride(BaseSettings):
         default="https://services.nvd.nist.gov/rest/json",
     )
     start_year: str = Field(
-        description="The nvd nst cve start year. ",
+        description="The nvd nst cve start year.",
         default="2019",
     )
