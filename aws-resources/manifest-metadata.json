@@ -1,9 +1,9 @@
 {
   "title": "Amazon Web Service Resources",
-  "slug": "aws_resources_collector",
+  "slug": "openaev_aws_resources",
   "description": "Allow registration of agentless endpoints coming from Amazon Web Service",
   "short_description": "Allow registration of agentless endpoints coming from Amazon Web Service",
-  "use_cases": ["Collector", "Endpoint collection"],
+  "use_cases": ["Endpoint collection"],
   "verified": true,
   "last_verified_date": "",
   "playbook_supported": false,

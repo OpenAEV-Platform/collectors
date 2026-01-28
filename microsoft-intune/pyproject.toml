@@ -27,6 +27,6 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.cmw]
-install-command = "poetry install --extras prod"
+install-command = "poetry install --extras dev"
 config-dump-command = "poetry run python -m microsoft_intune.openaev_microsoft_intune --dump-config-schema"
 icon-path = "microsoft_intune/img/icon-microsoft-intune.png"

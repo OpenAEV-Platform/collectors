@@ -28,6 +28,6 @@ build-backend = "poetry.core.masonry.api"
 
 
 [tool.cmw]
-install-command = "poetry install --extras prod"
+install-command = "poetry install --extras dev"
 config-dump-command = "poetry run python -m aws_resources.openaev_aws_resources --dump-config-schema"
 icon-path = "aws_resources/img/icon-aws-resources.png"
