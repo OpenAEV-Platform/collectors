@@ -73,7 +73,7 @@ class OpenAEVMicrosoftSentinel(CollectorDaemon):
         alert_id_expectation = None
         for item in expectation["inject_expectation_results"]:
             self.logger.info(item["sourceName"])
-            attached_collectors = self.config.get_conf(
+            attached_collectors = self._configuration.get(
                 "microsoft_sentinel_edr_collectors"
             )
             if item["sourceId"] in attached_collectors:
@@ -129,7 +129,7 @@ class OpenAEVMicrosoftSentinel(CollectorDaemon):
         url = (
             self.log_analytics_url
             + "/workspaces/"
-            + self.config.get_conf("microsoft_sentinel_workspace_id")
+            + self._configuration.get("microsoft_sentinel_workspace_id")
             + "/query"
         )
         body = {"query": "SecurityAlert | sort by TimeGenerated desc | take 200"}
@@ -166,7 +166,7 @@ class OpenAEVMicrosoftSentinel(CollectorDaemon):
                 self.api.inject_expectation.update(
                     expectation["inject_expectation_id"],
                     {
-                        "collector_id": self.config.get_conf("collector_id"),
+                        "collector_id": self._configuration.get("collector_id"),
                         "result": (
                             "Not Detected"
                             if expectation["inject_expectation_type"] == "DETECTION"
@@ -200,7 +200,7 @@ class OpenAEVMicrosoftSentinel(CollectorDaemon):
                             self.api.inject_expectation.update(
                                 expectation["inject_expectation_id"],
                                 {
-                                    "collector_id": self.config.get_conf(
+                                    "collector_id": self._configuration.get(
                                         "collector_id"
                                     ),
                                     "result": "Detected",
@@ -214,7 +214,7 @@ class OpenAEVMicrosoftSentinel(CollectorDaemon):
                             self.api.inject_expectation.update(
                                 expectation["inject_expectation_id"],
                                 {
-                                    "collector_id": self.config.get_conf(
+                                    "collector_id": self._configuration.get(
                                         "collector_id"
                                     ),
                                     "result": "Prevented",
@@ -235,7 +235,7 @@ class OpenAEVMicrosoftSentinel(CollectorDaemon):
                                 "inject_expectation_trace_expectation": expectation[
                                     "inject_expectation_id"
                                 ],
-                                "inject_expectation_trace_source_id": self.config.get_conf(
+                                "inject_expectation_trace_source_id": self._configuration.get(
                                     "collector_id"
                                 ),
                                 "inject_expectation_trace_alert_name": self._extract_alert_name(

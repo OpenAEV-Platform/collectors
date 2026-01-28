@@ -231,7 +231,7 @@ class NvdNistCveCollector(CollectorDaemon):
         :return: Dictionary containing the message, data generator, and state updater function.
         """
         start_date = (
-            datetime(2019, 1, 1)
+            datetime(self._configuration.get("nvd_nist_cve_start_year"), 1, 1)
             if collector_state.get("last_modified_date_fetched") is None
             else datetime.fromisoformat(
                 collector_state.get("last_modified_date_fetched")

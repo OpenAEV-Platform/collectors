@@ -137,7 +137,7 @@ class OpenAEVTaniumThreatResponse(CollectorDaemon):
         alert_name = alert["guid"]
         if "intel_id" in alert_details:
             intel_id = alert_details["intel_id"]
-            intel = self._query(
+            intel = self.tanium_api_handler._query(
                 "get",
                 "/plugin/products/threat-response/api/v1/intels/" + str(intel_id),
                 {"sort": "-createdAt"},

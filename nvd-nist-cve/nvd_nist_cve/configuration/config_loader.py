@@ -9,7 +9,7 @@ from pyoaev.configuration import ConfigLoaderOAEV, Configuration, SettingsLoader
 class ConfigLoader(SettingsLoader):
     openaev: ConfigLoaderOAEV = Field(default_factory=ConfigLoaderOAEV)
     collector: CollectorConfigOverride = Field(default_factory=CollectorConfigOverride)
-    nvd_nist_cve: NvdNistCveConfigOverride = Field(
+    nvdnistcve: NvdNistCveConfigOverride = Field(
         default_factory=NvdNistCveConfigOverride
     )
 
@@ -29,10 +29,11 @@ class ConfigLoader(SettingsLoader):
                 },
                 "collector_icon_filepath": {"data": self.collector.icon_filepath},
                 # NVD NIST CVE
-                "nvd_nist_cve_api_base_url": {"data": self.nvd_nist_cve.api_base_url},
+                "nvd_nist_cve_api_base_url": {"data": self.nvdnistcve.api_base_url},
                 "nvd_nist_cve_api_key": {
-                    "data": self.nvd_nist_cve.api_key.get_secret_value()
+                    "data": self.nvdnistcve.api_key.get_secret_value()
                 },
+                "nvd_nist_cve_start_year": {"data": self.nvdnistcve.start_year},
             },
             config_base_model=self,
         )

@@ -8,6 +8,6 @@ collector:
   period: 'PT2H'
   log_level: 'info'
 
-nvd_nist_cve:
+nvdnistcve:
   api_base_url: 'https://services.nvd.nist.gov/rest/json'
   api_key: 'ChangeMe' # Optional but recommended
