@@ -27,6 +27,6 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.cmw]
-install-command = "poetry install --extras dev"
+install-command = "poetry install --extras prod"
 config-dump-command = "poetry run python -m crowdstrike.openaev_crowdstrike --dump-config-schema"
 icon-path = "crowdstrike/img/icon-crowdstrike.png"
