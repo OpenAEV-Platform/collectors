@@ -131,11 +131,11 @@ All configuration can be provided via environment variables:
 - `COLLECTOR_NAME`: Display name for the collector
 - `COLLECTOR_PERIOD`: Collection interval as ISO 8601 period expression, e.g. PT1M: 1 minute
 - `COLLECTOR_LOG_LEVEL`: Logging level (debug, info, warn, error)
-- `MICROSOFT_INTUNE_TENANT_ID`: Azure AD tenant ID
-- `MICROSOFT_INTUNE_CLIENT_ID`: Azure application client ID
-- `MICROSOFT_INTUNE_CLIENT_SECRET`: Azure application client secret
-- `MICROSOFT_INTUNE_DEVICE_FILTER`: OData filter for device selection (optional)
-- `MICROSOFT_INTUNE_DEVICE_GROUPS`: Comma-separated list of device group names or IDs (optional)
+- `COLLECTOR_MICROSOFT_INTUNE_TENANT_ID`: Azure AD tenant ID
+- `COLLECTOR_MICROSOFT_INTUNE_CLIENT_ID`: Azure application client ID
+- `COLLECTOR_MICROSOFT_INTUNE_CLIENT_SECRET`: Azure application client secret
+- `COLLECTOR_MICROSOFT_INTUNE_DEVICE_FILTER`: OData filter for device selection (optional)
+- `COLLECTOR_MICROSOFT_INTUNE_DEVICE_GROUPS`: Comma-separated list of device group names or IDs (optional)
 
 ## Data Collected
 

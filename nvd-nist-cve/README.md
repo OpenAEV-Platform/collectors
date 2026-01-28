@@ -60,17 +60,17 @@ poetry run python -m nvd_nist_cve.openaev_nvd_nist_cve
 
 Below are the parameters you'll need to set for OpenAEV:
 
-| Config Parameter       | `config.yml`                | Docker Env Var              | Default                                   | Description                                                                                                            |
-|------------------------|-----------------------------|-----------------------------|-------------------------------------------|------------------------------------------------------------------------------------------------------------------------|
-| OpenAEV URL            | `openaev.url`               | `OPENAEV_URL`               | *required*                                | URL to the OpenAEV instance                                                                                            |
-| OpenAEV token          | `openaev.token`             | `OPENAEV_TOKEN`             | *required*                                | Authentication token to connect to OpenAEV                                                                             |
-| Collector ID           | `collector.id`              | `COLLECTOR_ID`              | *required*                                | Unique UUIDv4 identifier for this collector instance                                                                   |
-| Collector name         | `collector.name`            | `COLLECTOR_NAME`            | `CVE by NVD NIST`                         | Name of the collector                                                                                                  |
-| Run interval           | `collector.period`          | `COLLECTOR_PERIOD`          | `PT1H`                                    | Time interval at which the collector will run                                                                          |
-| Log level              | `collector.log_level`       | `COLLECTOR_LOG_LEVEL`       | `warn`                                    | Log verbosity: `debug`, `info`, `warn`, or `error`                                                                     |
-| NVD API base URL       | `nvd_nist_cve.api_base_url` | `NVD_NIST_CVE_API_BASE_URL` | `https://services.nvd.nist.gov/rest/json` | Base URL for the NVD CVE API                                                                                           |
-| NVD API key            | `nvd_nist_cve.api_key`      | `NVD_NIST_CVE_API_KEY`      | *(optional but recommended)*              | Your NVD API Key ([request it here](https://nvd.nist.gov/developers/request-an-api-key))                               |
-| CVE History Start Year | `nvd_nist_cve.start_year`   | `NVD_NIST_CVE_START_YEAR`   | `2019`                                    | Year in number to start CVE data collect. Thus most CVE published before 2019 do not include the cvssMetricV31 object. |
+| Config Parameter       | `config.yml`                | Docker Env Var            | Default                                   | Description                                                                                                            |
+|------------------------|-----------------------------|---------------------------|-------------------------------------------|------------------------------------------------------------------------------------------------------------------------|
+| OpenAEV URL            | `openaev.url`               | `OPENAEV_URL`             | *required*                                | URL to the OpenAEV instance                                                                                            |
+| OpenAEV token          | `openaev.token`             | `OPENAEV_TOKEN`           | *required*                                | Authentication token to connect to OpenAEV                                                                             |
+| Collector ID           | `collector.id`              | `COLLECTOR_ID`            | *required*                                | Unique UUIDv4 identifier for this collector instance                                                                   |
+| Collector name         | `collector.name`            | `COLLECTOR_NAME`          | `CVE by NVD NIST`                         | Name of the collector                                                                                                  |
+| Run interval           | `collector.period`          | `COLLECTOR_PERIOD`        | `PT1H`                                    | Time interval at which the collector will run                                                                          |
+| Log level              | `collector.log_level`       | `COLLECTOR_LOG_LEVEL`     | `warn`                                    | Log verbosity: `debug`, `info`, `warn`, or `error`                                                                     |
+| NVD API base URL       | `nvd_nist_cve.api_base_url` | `NVDNISTCVE_API_BASE_URL` | `https://services.nvd.nist.gov/rest/json` | Base URL for the NVD CVE API                                                                                           |
+| NVD API key            | `nvd_nist_cve.api_key`      | `NVDNISTCVE_API_KEY`      | *(optional but recommended)*              | Your NVD API Key ([request it here](https://nvd.nist.gov/developers/request-an-api-key))                               |
+| CVE History Start Year | `nvd_nist_cve.start_year`   | `NVDNISTCVE_START_YEAR`   | `2019`                                    | Year in number to start CVE data collect. Thus most CVE published before 2019 do not include the cvssMetricV31 object. |
 
 ℹ️ **Note:**
 If you do not provide an API key, the collector will still work, but may be heavily rate-limited.

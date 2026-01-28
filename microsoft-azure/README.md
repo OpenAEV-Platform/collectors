@@ -109,11 +109,11 @@ All configuration can be provided via environment variables:
 - `COLLECTOR_NAME`: Display name for the collector
 - `COLLECTOR_PERIOD`: Collection interval as ISO 8601 period expression, e.g. PT1M: 1 minute
 - `COLLECTOR_LOG_LEVEL`: Logging level (debug, info, warn, error)
-- `MICROSOFT_AZURE_TENANT_ID`: Azure AD tenant ID
-- `MICROSOFT_AZURE_CLIENT_ID`: Azure application client ID
-- `MICROSOFT_AZURE_CLIENT_SECRET`: Azure application client secret
-- `MICROSOFT_AZURE_SUBSCRIPTION_ID`: Azure subscription ID
-- `MICROSOFT_AZURE_RESOURCE_GROUPS`: Comma-separated list of resource groups
+- `COLLECTOR_MICROSOFT_AZURE_TENANT_ID`: Azure AD tenant ID
+- `COLLECTOR_MICROSOFT_AZURE_CLIENT_ID`: Azure application client ID
+- `COLLECTOR_MICROSOFT_AZURE_CLIENT_SECRET`: Azure application client secret
+- `COLLECTOR_MICROSOFT_AZURE_SUBSCRIPTION_ID`: Azure subscription ID
+- `COLLECTOR_MICROSOFT_AZURE_RESOURCE_GROUPS`: Comma-separated list of resource groups
 
 ## Data Collected
 

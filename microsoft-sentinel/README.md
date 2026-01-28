@@ -52,15 +52,15 @@ Below are the parameters you'll need to set for running the collector properly:
 
 Below are the parameters you'll need to set for the collector:
 
-| Parameter                 | config.yml                                   | Docker environment variable          | Default | Mandatory | Description                                                                  |
-|---------------------------|----------------------------------------------|--------------------------------------|---------|-----------|------------------------------------------------------------------------------|
-| Application Tenant ID     | collector.microsoft_sentinel_tenant_id       | `MICROSOFT_SENTINEL_TENANT_ID`       |         | Yes       |                                                                              |
-| Application Client ID     | collector.microsoft_sentinel_client_id       | `MICROSOFT_SENTINEL_CLIENT_ID`       |         | Yes       |                                                                              |
-| Application Client Secret | collector.microsoft_sentinel_client_secret   | `MICROSOFT_SENTINEL_CLIENT_SECRET`   |         | Yes       |                                                                              |
-| Subscription ID           | collector.microsoft_sentinel_subscription_id | `MICROSOFT_SENTINEL_SUBSCRIPTION_ID` |         | Yes       |                                                                              |
-| Workspace ID              | collector.microsoft_sentinel_workspace_id    | `MICROSOFT_SENTINEL_WORKSPACE_ID`    |         | Yes       |                                                                              |
-| Resource group            | collector.microsoft_sentinel_resource_group  | `MICROSOFT_SENTINEL_RESOURCE_GROUP`  |         | Yes       |                                                                              |
-| UUID linked collectors    | collector.microsoft_sentinel_edr_collectors  | `MICROSOFT_SENTINEL_EDR_COLLECTORS`  |         | Yes       | The list of collector UUIDs is sourced from the EDR collectors' deployments. |
+| Parameter                 | config.yml                                   | Docker environment variable                    | Default | Mandatory | Description                                                                  |
+|---------------------------|----------------------------------------------|------------------------------------------------|---------|-----------|------------------------------------------------------------------------------|
+| Application Tenant ID     | collector.microsoft_sentinel_tenant_id       | `COLLECTOR_MICROSOFT_SENTINEL_TENANT_ID`       |         | Yes       |                                                                              |
+| Application Client ID     | collector.microsoft_sentinel_client_id       | `COLLECTOR_MICROSOFT_SENTINEL_CLIENT_ID`       |         | Yes       |                                                                              |
+| Application Client Secret | collector.microsoft_sentinel_client_secret   | `COLLECTOR_MICROSOFT_SENTINEL_CLIENT_SECRET`   |         | Yes       |                                                                              |
+| Subscription ID           | collector.microsoft_sentinel_subscription_id | `COLLECTOR_MICROSOFT_SENTINEL_SUBSCRIPTION_ID` |         | Yes       |                                                                              |
+| Workspace ID              | collector.microsoft_sentinel_workspace_id    | `COLLECTOR_MICROSOFT_SENTINEL_WORKSPACE_ID`    |         | Yes       |                                                                              |
+| Resource group            | collector.microsoft_sentinel_resource_group  | `COLLECTOR_MICROSOFT_SENTINEL_RESOURCE_GROUP`  |         | Yes       |                                                                              |
+| UUID linked collectors    | collector.microsoft_sentinel_edr_collectors  | `COLLECTOR_MICROSOFT_SENTINEL_EDR_COLLECTORS`  |         | Yes       | The list of collector UUIDs is sourced from the EDR collectors' deployments. |
 
 ## Deployment
 

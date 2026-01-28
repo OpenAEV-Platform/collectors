@@ -41,12 +41,12 @@ Below are the parameters you'll need to set for running the collector properly:
 
 Below are the parameters you'll need to set for the collector:
 
-| Parameter                 | config.yml                              | Docker environment variable     | Default | Mandatory | Description                               |
-|---------------------------|-----------------------------------------|---------------------------------|---------|-----------|-------------------------------------------|
-| Application Tenant ID     | collector.microsoft_entra_tenant_id     | `MICROSOFT_ENTRA_TENANT_ID`     |         | Yes       |                                           |
-| Application Client ID     | collector.microsoft_entra_client_id     | `MICROSOFT_ENTRA_CLIENT_ID`     |         | Yes       |                                           |
-| Application Client Secret | collector.microsoft_entra_client_secret | `MICROSOFT_ENTRA_CLIENT_SECRET` |         | Yes       |                                           |
-| Include external user     | collector.include_external              | `INCLUDE_EXTERNAL`              | False   | No        | Include user with #EXT# in principal name |
+| Parameter                 | config.yml                              | Docker environment variable               | Default | Mandatory | Description                               |
+|---------------------------|-----------------------------------------|-------------------------------------------|---------|-----------|-------------------------------------------|
+| Application Tenant ID     | collector.microsoft_entra_tenant_id     | `COLLECTOR_MICROSOFT_ENTRA_TENANT_ID`     |         | Yes       |                                           |
+| Application Client ID     | collector.microsoft_entra_client_id     | `COLLECTOR_MICROSOFT_ENTRA_CLIENT_ID`     |         | Yes       |                                           |
+| Application Client Secret | collector.microsoft_entra_client_secret | `COLLECTOR_MICROSOFT_ENTRA_CLIENT_SECRET` |         | Yes       |                                           |
+| Include external user     | collector.include_external              | `COLLECTOR_INCLUDE_EXTERNAL`              | False   | No        | Include user with #EXT# in principal name |
 
 ## Deployment
 

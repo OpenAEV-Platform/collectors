@@ -47,12 +47,12 @@ Below are the parameters you'll need to set for running the collector properly:
 
 Below are the parameters you'll need to set for the collector:
 
-| Parameter          | config.yml                   | Docker environment variable | Default | Mandatory | Description                              |
-|--------------------|------------------------------|-----------------------------|---------|-----------|------------------------------------------|
-| Tanium URL         | collector.tanium_url         | `TANIUM_URL`                |         | Yes       | URL of your Tanium instance.             |
-| Tanium URL Console | collector.tanium_url_console | `TANIUM_URL_CONSOLE`        |         | Yes       | URL of your Tanium console instance.     |
-| Tanium API Token   | collector.tanium_token       | `TANIUM_TOKEN`              |         | Yes       | API Token.                               |
-| Tanium API Token   | collector.tanium_ssl_verify  | `TANIUM_SSL_VERIFY`         | true    | No        | Verify the Tnaium server TLS certificate |
+| Parameter          | config.yml                   | Docker environment variable    | Default | Mandatory | Description                              |
+|--------------------|------------------------------|--------------------------------|---------|-----------|------------------------------------------|
+| Tanium URL         | collector.tanium_url         | `COLLECTOR_TANIUM_URL`         |         | Yes       | URL of your Tanium instance.             |
+| Tanium URL Console | collector.tanium_url_console | `COLLECTOR_TANIUM_URL_CONSOLE` |         | Yes       | URL of your Tanium console instance.     |
+| Tanium API Token   | collector.tanium_token       | `COLLECTOR_TANIUM_TOKEN`       |         | Yes       | API Token.                               |
+| Tanium API Token   | collector.tanium_ssl_verify  | `COLLECTOR_TANIUM_SSL_VERIFY`  | true    | No        | Verify the Tnaium server TLS certificate |
 
 ## Deployment
 
