@@ -33,7 +33,7 @@ class ConfigLoader(SettingsLoader):
                 "nvd_nist_cve_api_key": {
                     "data": self.nvdnistcve.api_key.get_secret_value()
                 },
-                "nvd_nist_cve_start_year": {"data": self.nvdnistcve.start_year}
+                "nvd_nist_cve_start_year": {"data": self.nvdnistcve.start_year},
             },
             config_base_model=self,
         )
