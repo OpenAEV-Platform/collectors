@@ -9,7 +9,7 @@
   "playbook_supported": false,
   "max_confidence_level": 80,
   "support_version": "",
-  "subscription_link": "https://nvd.nist.gov/vuln](https://nvd.nist.gov/vuln",
+  "subscription_link": "https://nvd.nist.gov/vuln",
   "source_code": "",
   "manager_supported": true,
   "container_version": "rolling",

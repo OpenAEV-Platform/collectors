@@ -9,7 +9,7 @@
   "playbook_supported": false,
   "max_confidence_level": 80,
   "support_version": "",
-  "subscription_link": "https://www.microsoft.com/en-us/security/business/siem-and-xdr/microsoft-sentinel](https://www.microsoft.com/en-us/security/business/siem-and-xdr/microsoft-sentinel",
+  "subscription_link": "https://www.microsoft.com/en-us/security/business/siem-and-xdr/microsoft-sentinel",
   "source_code": "",
   "manager_supported": true,
   "container_version": "rolling",
