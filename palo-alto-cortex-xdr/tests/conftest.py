@@ -2,7 +2,7 @@ import uuid
 from unittest.mock import patch
 
 import pytest
-from tests.factories import AlertFactory, DetectionExpectationFactory
+from tests.factories import DetectionExpectationFactory, IncidentFactory
 
 
 @pytest.fixture(autouse=True)
@@ -71,12 +71,19 @@ def expectations(execution_uuid, mock_oaev_api):
 
 @pytest.fixture
 def alerts(execution_uuid):
-    alerts = AlertFactory.create_batch(3)
-    alerts[0].actor_process_command_line = (
-        f"some command line with oaev-implant-{execution_uuid} inside"
-    )
+    incident = IncidentFactory()
+    incident.file_artifacts.data[0].file_name = f"oaev-implant-{execution_uuid}.exe"
     with patch(
-        "src.services.client_api.PaloAltoCortexXDRClientAPI.get_alerts",
-        return_value=alerts,
+        "src.services.client_api.PaloAltoCortexXDRClientAPI.get_incident_extra_data",
+        return_value=incident,
     ):
-        yield alerts
+        yield incident
+
+
+@pytest.fixture(autouse=True)
+def incident_ids():
+    with patch(
+        "src.services.client_api.PaloAltoCortexXDRClientAPI.get_incident_ids",
+        return_value=[12345, 67890],
+    ):
+        yield

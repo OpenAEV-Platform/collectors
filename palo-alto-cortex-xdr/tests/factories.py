@@ -5,7 +5,14 @@ from pyoaev.apis.inject_expectation.model.expectation import (
     PreventionExpectation,
 )
 from pyoaev.signatures.types import SignatureTypes
-from src.models.alert import Alert
+from src.models.alert import (
+    Alert,
+    Alerts,
+    FileArtifact,
+    FileArtifacts,
+    Incident,
+    IncidentItem,
+)
 
 
 class ExpectationSignatureWithEndDateFactory(Factory):
@@ -67,3 +74,42 @@ class AlertFactory(Factory):
     action_pretty = "Detected (Reported)"
     _detection_timestamp = Faker("unix_time")
     detection_timestamp = LazyAttribute(lambda obj: int(obj._detection_timestamp))
+
+
+class IncidentItemFactory(Factory):
+    class Meta:
+        model = IncidentItem
+
+    incident_id = Faker("random_int", min=1, max=100)
+
+
+class AlertsFactory(Factory):
+    class Meta:
+        model = Alerts
+
+    total_count = 3
+    data = List([SubFactory(AlertFactory) for _ in range(3)])
+
+
+class FileArtifactFactory(Factory):
+    class Meta:
+        model = FileArtifact
+
+    file_name = Faker("file_name")
+
+
+class FileArtifactsFactory(Factory):
+    class Meta:
+        model = FileArtifacts
+
+    total_count = 3
+    data = List([SubFactory(FileArtifactFactory) for _ in range(3)])
+
+
+class IncidentFactory(Factory):
+    class Meta:
+        model = Incident
+
+    incident = SubFactory(IncidentItemFactory)
+    alerts = SubFactory(AlertsFactory)
+    file_artifacts = SubFactory(FileArtifactsFactory)

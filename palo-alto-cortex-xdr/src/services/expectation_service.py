@@ -1,5 +1,3 @@
-"""PaloAltoCortexXDR Expectation Service with batch-based processing."""
-
 import logging
 from datetime import datetime, timezone
 from typing import Any
@@ -10,7 +8,7 @@ from pyoaev.apis.inject_expectation.model.expectation import (
 )
 from pyoaev.signatures.types import SignatureTypes
 from src.collector.models import ExpectationResult
-from src.models.alert import Alert
+from src.models.alert import Incident
 from src.models.authentication import Authentication
 from src.models.settings.config_loader import ConfigLoader
 from src.services.alert_fetcher import AlertFetcher
@@ -149,7 +147,7 @@ class ExpectationService:
     def _fetch_alerts_for_time_window(
         self,
         expectations: list[DetectionExpectation | PreventionExpectation] | None = None,
-    ) -> list[Alert]:
+    ) -> list[Incident]:
         """Fetch all alerts from the configured time window or date signatures.
 
         Args:
@@ -187,7 +185,7 @@ class ExpectationService:
     def _match_alerts_to_expectations(
         self,
         batch: list[DetectionExpectation | PreventionExpectation],
-        alerts: list[Alert],
+        alerts: list[Incident],
         detection_helper: Any,
     ) -> list[ExpectationResult]:
         """Match alerts and events to expectations and create results.
@@ -208,52 +206,53 @@ class ExpectationService:
                 matched = False
                 traces = []
 
-                for alert in alerts:
-                    if self._expectation_matches_alert_data(
-                        expectation, alert, detection_helper
-                    ):
-                        fqdn = self.client_api.fqdn
-                        trace = TraceBuilder.create_alert_trace(alert, fqdn)
-                        traces.append(trace)
+                for incident in alerts:
+                    for alert in incident.alerts.data:
+                        if self._expectation_matches_alert_data(
+                            expectation, incident, detection_helper
+                        ):
+                            fqdn = self.client_api.fqdn
+                            trace = TraceBuilder.create_alert_trace(alert, fqdn)
+                            traces.append(trace)
 
-                        if isinstance(expectation, PreventionExpectation):
-                            if "Prevented" in alert.action_pretty:
-                                matched = True
+                            if isinstance(expectation, PreventionExpectation):
+                                if "Prevented" in alert.action_pretty:
+                                    matched = True
+                                    self.logger.debug(
+                                        f"{LOG_PREFIX} Prevention expectation {expectation.inject_expectation_id}: "
+                                        f"alert {alert.alert_id} matched signature and action is prevented -> expectation satisfied"
+                                    )
+                                    break
                                 self.logger.debug(
                                     f"{LOG_PREFIX} Prevention expectation {expectation.inject_expectation_id}: "
-                                    f"alert {alert.alert_id} matched signature and action is prevented -> expectation satisfied"
+                                    f"alert {alert.alert_id} matched signature but not prevented -> continuing search"
                                 )
-                                break
-                            self.logger.debug(
-                                f"{LOG_PREFIX} Prevention expectation {expectation.inject_expectation_id}: "
-                                f"alert {alert.alert_id} matched signature but not prevented -> continuing search"
-                            )
-                        else:
-                            if "Detected" in alert.action_pretty:
-                                matched = True
-                                self.logger.debug(
-                                    f"{LOG_PREFIX} Detection expectation {expectation.inject_expectation_id}: "
-                                    f"alert {alert.alert_id} matched signature -> expectation satisfied"
-                                )
-                                break
+                            else:
+                                if "Detected" in alert.action_pretty:
+                                    matched = True
+                                    self.logger.debug(
+                                        f"{LOG_PREFIX} Detection expectation {expectation.inject_expectation_id}: "
+                                        f"alert {alert.alert_id} matched signature -> expectation satisfied"
+                                    )
+                                    break
 
-                result_dict = {
-                    "is_valid": matched,
-                    "traces": traces,
-                    "expectation_type": (
-                        "detection"
-                        if isinstance(expectation, DetectionExpectation)
-                        else "prevention"
-                    ),
-                }
+                    result_dict = {
+                        "is_valid": matched,
+                        "traces": traces,
+                        "expectation_type": (
+                            "detection"
+                            if isinstance(expectation, DetectionExpectation)
+                            else "prevention"
+                        ),
+                    }
 
-                result = self._convert_dict_to_result(result_dict, expectation)
-                results.append(result)
+                    result = self._convert_dict_to_result(result_dict, expectation)
+                    results.append(result)
 
-                self.logger.debug(
-                    f"{LOG_PREFIX} Expectation {expectation.inject_expectation_id}: "
-                    f"matched={matched}, traces={len(traces)}"
-                )
+                    self.logger.debug(
+                        f"{LOG_PREFIX} Expectation {expectation.inject_expectation_id}: "
+                        f"matched={matched}, traces={len(traces)}"
+                    )
 
             except Exception as e:
                 self.logger.error(
@@ -270,7 +269,7 @@ class ExpectationService:
     def _expectation_matches_alert_data(
         self,
         expectation: DetectionExpectation | PreventionExpectation,
-        alert: Alert,
+        alert: Incident,
         detection_helper: Any,
     ) -> bool:
         """Check if an expectation matches the given alert and events using converter and detection helper.
@@ -289,33 +288,19 @@ class ExpectationService:
 
             if not oaev_data_list:
                 self.logger.debug(
-                    f"{LOG_PREFIX} No OAEV data generated for alert {alert.alert_id}"
+                    f"{LOG_PREFIX} No OAEV data generated for alert {alert.incident.incident_id}"
                 )
                 return False
 
             oaev_data = oaev_data_list[0]
 
-            parent_process_names = [alert.actor_process_command_line]
-            oaev_implant_names = [
-                name
-                for name in parent_process_names
-                if name and "oaev-implant-" in name
-            ]
+            file_names = [fa.file_name for fa in alert.file_artifacts.data]
 
-            self.logger.debug(
-                f"{LOG_PREFIX} Alert {alert.alert_id}: Found {len(parent_process_names)} "
-                f"process names, {len(oaev_implant_names)} with oaev-implant- prefix"
-            )
-
-            if oaev_implant_names:
-                oaev_data["parent_process_name"] = {
-                    "type": "simple",
-                    "data": oaev_implant_names,
-                    "score": 95,
-                }
-                self.logger.debug(
-                    f"{LOG_PREFIX} Added execution parent processes to OAEV for {alert.alert_id}: {oaev_implant_names}"
-                )
+            oaev_data["parent_process_name"] = {
+                "type": "simple",
+                "data": file_names,
+                "score": 95,
+            }
 
             supported_signatures = self.get_supported_signatures()
             self.logger.debug(
@@ -371,12 +356,12 @@ class ExpectationService:
 
                 if not match_result:
                     self.logger.debug(
-                        f"{LOG_PREFIX} {sig_type} signature failed for alert {alert.alert_id}"
+                        f"{LOG_PREFIX} {sig_type} signature failed for alert {alert.incident.incident_id}"
                     )
                     return False
 
             self.logger.debug(
-                f"{LOG_PREFIX} All signatures matched for expectation {expectation.inject_expectation_id} vs alert {alert.alert_id}"
+                f"{LOG_PREFIX} All signatures matched for expectation {expectation.inject_expectation_id} vs alert {alert.incident.incident_id}"
             )
             return True
 

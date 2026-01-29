@@ -3,7 +3,7 @@
 import logging
 from typing import Any
 
-from src.models.alert import Alert
+from src.models.alert import Incident
 from src.services.exception import (
     PaloAltoCortexXDRDataConversionError,
     PaloAltoCortexXDRValidationError,
@@ -19,7 +19,7 @@ class PaloAltoCortexXDRConverter:
         self.logger = logging.getLogger(__name__)
         self.logger.debug(f"{LOG_PREFIX} PaloAltoCortexXDR converter initialized")
 
-    def convert_alerts_to_oaev(self, alerts: list[Alert]) -> list[dict[str, Any]]:
+    def convert_alerts_to_oaev(self, alerts: list[Incident]) -> list[dict[str, Any]]:
         """Convert PaloAltoCortexXDR alert data to OAEV format.
 
         Args:
@@ -49,7 +49,7 @@ class PaloAltoCortexXDRConverter:
             converted_count = 0
 
             for i, alert in enumerate(alerts, 1):
-                if not isinstance(alert, Alert):
+                if not isinstance(alert, Incident):
                     self.logger.warning(
                         f"{LOG_PREFIX} Item {i} is not an Alert: {type(alert)}"
                     )
@@ -61,7 +61,7 @@ class PaloAltoCortexXDRConverter:
                         oaev_data_list.append(oaev_data)
                         converted_count += 1
                         self.logger.debug(
-                            f"{LOG_PREFIX} Converted alert {i}/{len(alerts)}: {alert.alert_id}"
+                            f"{LOG_PREFIX} Converted alert {i}/{len(alerts)}: {alert.incident.incident_id}"
                         )
                 except Exception as e:
                     self.logger.warning(
@@ -78,7 +78,7 @@ class PaloAltoCortexXDRConverter:
                 f"Failed to convert alerts to OAEV format: {e}"
             ) from e
 
-    def _convert_alert_to_oaev(self, alert: Alert) -> dict[str, Any]:
+    def _convert_alert_to_oaev(self, alert: Incident) -> dict[str, Any]:
         """Convert a single alert to OAEV format.
 
         Args:
@@ -91,16 +91,17 @@ class PaloAltoCortexXDRConverter:
             PaloAltoCortexXDRValidationError: If alert data is invalid.
 
         """
-        if not alert.alert_id:
-            raise PaloAltoCortexXDRValidationError("Alert must have a alert_id")
-
         try:
             oaev_data = {
-                "alert_id": {"type": "simple", "data": [alert.alert_id], "score": 95}
+                "alert_id": {
+                    "type": "simple",
+                    "data": [alert.incident.incident_id],
+                    "score": 95,
+                }
             }
 
             self.logger.debug(
-                f"{LOG_PREFIX} Successfully converted alert {alert.alert_id} to OAEV format"
+                f"{LOG_PREFIX} Successfully converted alert {alert.incident.incident_id} to OAEV format"
             )
             return oaev_data
 
