@@ -9,12 +9,14 @@ import requests
 class SentinelApiHandler:
     def __init__(
         self,
+        logger,
         tenant_id,
         client_id,
         client_secret,
         ssl_verify=True,
     ):
         # Variables
+        self.logger = logger
         self.tenant_id = tenant_id
         self.client_id = client_id
         self.client_secret = client_secret
