@@ -3,6 +3,7 @@ from datetime import datetime
 import pytz
 from dateutil.parser import parse
 from dateutil.relativedelta import relativedelta
+from microsoft_sentinel.api_handler import SentinelApiHandler
 from microsoft_sentinel.configuration.config_loader import ConfigLoader
 from pyoaev.configuration import Configuration
 from pyoaev.daemons import CollectorDaemon
@@ -29,6 +30,14 @@ class OpenAEVMicrosoftSentinel(CollectorDaemon):
 
         self.openaev_detection_helper = OpenAEVDetectionHelper(
             self.logger, self.relevant_signatures_types
+        )
+
+        # Initialize Sentinel API
+        self.sentinel_api_handler = SentinelApiHandler(
+            self.logger,
+            self._configuration.get("microsoft_sentinel_tenant_id"),
+            self._configuration.get("microsoft_sentinel_client_id"),
+            self._configuration.get("microsoft_sentinel_client_secret"),
         )
 
         self.scanning_delta = 45

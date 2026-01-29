@@ -11,6 +11,10 @@ class CollectorConfigOverride(ConfigLoaderCollector):
         default="Microsoft Sentinel Collector",
         description="Collector display name",
     )
+    platform: str | None = Field(
+        default="SIEM",
+        description="Platform type for the collector (e.g., EDR, SIEM, etc.).",
+    )
     icon_filepath: str | None = Field(
         default="microsoft_sentinel/img/icon-microsoft-sentinel.png",
         description="Path to the icon file",
