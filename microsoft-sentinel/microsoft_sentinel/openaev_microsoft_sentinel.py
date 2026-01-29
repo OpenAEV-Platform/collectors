@@ -3,8 +3,8 @@ from datetime import datetime
 import pytz
 from dateutil.parser import parse
 from dateutil.relativedelta import relativedelta
-from microsoft_sentinel.configuration.config_loader import ConfigLoader
 from microsoft_sentinel.api_handler import SentinelApiHandler
+from microsoft_sentinel.configuration.config_loader import ConfigLoader
 from pyoaev.configuration import Configuration
 from pyoaev.daemons import CollectorDaemon
 from pyoaev.helpers import OpenAEVDetectionHelper
