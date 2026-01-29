@@ -210,6 +210,7 @@ class OpenAEVTaniumThreatResponse(CollectorDaemon):
     def _is_expectation_filled(self, expectation) -> bool:
         return any(
             er.get("sourceId", "") == self._configuration.get("collector_id")
+            and er.get("result", None) is not None
             for er in expectation["inject_expectation_results"]
         )
 
