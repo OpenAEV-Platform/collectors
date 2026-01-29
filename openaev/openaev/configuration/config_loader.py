@@ -18,7 +18,6 @@ class ConfigLoader(SettingsLoader):
                 # Collector configuration (flattened)
                 "collector_id": {"data": self.collector.id},
                 "collector_name": {"data": self.collector.name},
-                "collector_platform": {"data": self.collector.platform},
                 "collector_log_level": {"data": self.collector.log_level},
                 "collector_period": {
                     "data": int(self.collector.period.total_seconds()),  # type: ignore[union-attr]
