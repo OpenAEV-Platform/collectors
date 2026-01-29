@@ -1,5 +1,3 @@
-"""PaloAltoCortexXDR Alert Fetcher."""
-
 import logging
 from datetime import datetime
 
@@ -8,7 +6,7 @@ from requests.exceptions import (
     RequestException,
     Timeout,
 )
-from src.models.alert import Alert
+from src.models.alert import FileArtifact, Incident
 from src.services.client_api import PaloAltoCortexXDRClientAPI
 from src.services.exception import (
     PaloAltoCortexXDRAPIError,
@@ -34,7 +32,7 @@ class AlertFetcher:
         self,
         start_time: datetime,
         end_time: datetime,
-    ) -> list[Alert]:
+    ) -> list[Incident]:
         """Fetch all alerts for a given time window.
 
         Args:
@@ -61,14 +59,25 @@ class AlertFetcher:
             start_timestamp = int(start_time.timestamp())
             end_timestamp = int(end_time.timestamp())
 
-            alerts = self.client_api.get_alerts(
-                start_time=start_timestamp, end_time=end_timestamp
+            incident_ids = self.client_api.get_incident_ids(
+                start_timestamp * 1000, end_timestamp * 1000
             )
 
+            if not incident_ids:
+                self.logger.info(f"{LOG_PREFIX} No incidents found for time window")
+                return []
+
+            incidents = []
+
+            for incident_id in incident_ids:
+                incident = self.client_api.get_incident_extra_data(incident_id)
+                if file_artifacts_has_implant(incident.file_artifacts.data):
+                    incidents.append(incident)
+
             self.logger.info(
-                f"{LOG_PREFIX} Fetched {len(alerts)} alerts for time window"
+                f"{LOG_PREFIX} Fetched {len(incidents)} alerts for time window"
             )
-            return alerts
+            return incidents
 
         except (ConnectionError, Timeout) as e:
             raise PaloAltoCortexXDRNetworkError(
@@ -82,3 +91,10 @@ class AlertFetcher:
             raise PaloAltoCortexXDRAPIError(
                 f"Error fetching alerts for time window: {e}"
             ) from e
+
+
+def file_artifacts_has_implant(file_artifacts: list[FileArtifact]) -> bool:
+    for artifact in file_artifacts:
+        if "oaev-implant-" in artifact.file_name.lower():
+            return True
+    return False
