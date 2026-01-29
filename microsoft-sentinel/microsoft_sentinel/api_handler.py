@@ -25,22 +25,25 @@ class SentinelApiHandler:
 
     def _auth(self):
         # Authentication
-        try:
-            app = msal.ConfidentialClientApplication(
-                self.client_id,
-                authority="https://login.microsoftonline.com/" + self.tenant_id,
-                client_credential=self.client_secret,
+        app = msal.ConfidentialClientApplication(
+            self.client_id,
+            authority="https://login.microsoftonline.com/" + self.tenant_id,
+            client_credential=self.client_secret,
+        )
+        result = app.acquire_token_silent(
+            "https://api.loganalytics.io/.default", account=None
+        )
+        if not result:
+            result = app.acquire_token_for_client(
+                scopes=["https://api.loganalytics.io/.default"]
             )
-            result = app.acquire_token_silent(
-                "https://api.loganalytics.io/.default", account=None
+        if result.get("error"):
+            raise RuntimeError(
+                f"[ERROR] A problem occurred while authenticating with response: {result}"
             )
-            if not result:
-                result = app.acquire_token_for_client(
-                    scopes=["https://api.loganalytics.io/.default"]
-                )
-            self.token = result["access_token"]
-        except Exception as e:
-            raise ValueError("[ERROR] Failed generating oauth token {" + str(e) + "}")
+        if not result.get("access_token"):
+            raise RuntimeError("[ERROR] The response did not include an access token.")
+        self.token = result.get("access_token")
 
     def _query(
         self,
