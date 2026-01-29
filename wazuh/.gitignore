@@ -1,0 +1,192 @@
+# ===================================
+# Python
+# ===================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Distribution / packaging
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# ===================================
+# Virtual Environments
+# ===================================
+venv/
+env/
+ENV/
+.venv/
+.env.python/
+
+# ===================================
+# Poetry
+# ===================================
+poetry.lock
+.poetry/
+
+# ===================================
+# IDEs and Editors
+# ===================================
+# VSCode
+.vscode/
+*.code-workspace
+
+# PyCharm
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+.vim/
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+
+# ===================================
+# Environment Variables & Secrets
+# ===================================
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+config.yml
+config.yaml
+secrets/
+*.key
+*.pem
+*.crt
+*.p12
+
+# ===================================
+# Testing & Coverage
+# ===================================
+.pytest_cache/
+.tox/
+.nox/
+.coverage
+.coverage.*
+htmlcov/
+*.cover
+.hypothesis/
+.cache/
+nosetests.xml
+coverage.xml
+*.coveragerc
+junit.xml
+test-results/
+
+# ===================================
+# Logs & Databases
+# ===================================
+*.log
+*.log.*
+logs/
+*.sqlite
+*.sqlite3
+*.db
+
+# ===================================
+# Docker
+# ===================================
+docker-compose.override.yml
+.dockerignore.local
+
+# ===================================
+# OS Files
+# ===================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+.directory
+.Trash-*
+
+# ===================================
+# Temporary Files
+# ===================================
+*.tmp
+*.temp
+*.bak
+*.backup
+*.old
+*.orig
+*.rej
+*.diff
+*.patch
+
+# ===================================
+# Development & Debug Files
+# ===================================
+*.pid
+*.seed
+*.pid.lock
+.pyre/
+.pytype/
+.dmypy.json
+dmypy.json
+.mypy_cache/
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+*.ipynb
+
+# ===================================
+# Project Specific
+# ===================================
+# Test scripts
+test_*.py
+*_test_local.py
+
+# Sample data
+sample_data/
+test_data/
+
+# Documentation builds
+docs/_build/
+site/
