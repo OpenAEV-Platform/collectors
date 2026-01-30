@@ -19,7 +19,7 @@ class PaloAltoCortexXDRConverter:
         self.logger = logging.getLogger(__name__)
         self.logger.debug(f"{LOG_PREFIX} PaloAltoCortexXDR converter initialized")
 
-    def convert_alerts_to_oaev(self, alerts: list[Incident]) -> list[dict[str, Any]]:
+    def convert_incidents_to_oaev(self, alerts: list[Incident]) -> list[dict[str, Any]]:
         """Convert PaloAltoCortexXDR alert data to OAEV format.
 
         Args:
@@ -67,10 +67,6 @@ class PaloAltoCortexXDRConverter:
                     self.logger.warning(
                         f"{LOG_PREFIX} Failed to convert alert {i}: {e}"
                     )
-
-            self.logger.info(
-                f"{LOG_PREFIX} Conversion completed: {converted_count} alerts -> {len(oaev_data_list)} OAEV items"
-            )
             return oaev_data_list
 
         except Exception as e:

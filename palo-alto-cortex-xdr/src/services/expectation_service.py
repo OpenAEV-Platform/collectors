@@ -101,13 +101,13 @@ class ExpectationService:
                 f"{LOG_PREFIX} Starting processing of {len(expectations)} expectations"
             )
 
-            alerts = self._fetch_alerts_for_time_window(expectations)
+            incidents = self._fetch_incidents_for_time_window(expectations)
             self.logger.info(
-                f"{LOG_PREFIX} Fetched {len(alerts)} alerts from time window"
+                f"{LOG_PREFIX} Fetched {len(incidents)} incidents from time window"
             )
 
-            results = self._match_alerts_to_expectations(
-                expectations, alerts, detection_helper
+            results = self._match_incidents_to_expectations(
+                expectations, incidents, detection_helper
             )
 
             valid_count = sum(1 for r in results if r.is_valid)
@@ -144,7 +144,7 @@ class ExpectationService:
             )
         return end_date
 
-    def _fetch_alerts_for_time_window(
+    def _fetch_incidents_for_time_window(
         self,
         expectations: list[DetectionExpectation | PreventionExpectation] | None = None,
     ) -> list[Incident]:
@@ -182,17 +182,17 @@ class ExpectationService:
                 f"Error fetching alerts for time window: {e}"
             ) from e
 
-    def _match_alerts_to_expectations(
+    def _match_incidents_to_expectations(
         self,
         batch: list[DetectionExpectation | PreventionExpectation],
-        alerts: list[Incident],
+        incidents: list[Incident],
         detection_helper: Any,
     ) -> list[ExpectationResult]:
         """Match alerts and events to expectations and create results.
 
         Args:
             batch: Batch of expectations.
-            alerts: List of filtered alerts.
+            incidents: List of filtered alerts.
             detection_helper: OpenAEV detection helper.
 
         Returns:
@@ -206,7 +206,7 @@ class ExpectationService:
                 matched = False
                 traces = []
 
-                for incident in alerts:
+                for incident in incidents:
                     for alert in incident.alerts.data:
                         if self._expectation_matches_alert_data(
                             expectation, incident, detection_helper
@@ -269,14 +269,14 @@ class ExpectationService:
     def _expectation_matches_alert_data(
         self,
         expectation: DetectionExpectation | PreventionExpectation,
-        alert: Incident,
+        incident: Incident,
         detection_helper: Any,
     ) -> bool:
         """Check if an expectation matches the given alert and events using converter and detection helper.
 
         Args:
             expectation: The expectation to match.
-            alert: The alert data.
+            incident: The alert data.
             detection_helper: OpenAEV detection helper for matching.
 
         Returns:
@@ -284,17 +284,17 @@ class ExpectationService:
 
         """
         try:
-            oaev_data_list = self.converter.convert_alerts_to_oaev([alert])
+            oaev_data_list = self.converter.convert_incidents_to_oaev([incident])
 
             if not oaev_data_list:
                 self.logger.debug(
-                    f"{LOG_PREFIX} No OAEV data generated for alert {alert.incident.incident_id}"
+                    f"{LOG_PREFIX} No OAEV data generated for incident {incident.incident.incident_id}"
                 )
                 return False
 
             oaev_data = oaev_data_list[0]
 
-            file_names = [fa.file_name for fa in alert.file_artifacts.data]
+            file_names = [fa.file_name for fa in incident.file_artifacts.data]
 
             oaev_data["parent_process_name"] = {
                 "type": "simple",
@@ -356,12 +356,12 @@ class ExpectationService:
 
                 if not match_result:
                     self.logger.debug(
-                        f"{LOG_PREFIX} {sig_type} signature failed for alert {alert.incident.incident_id}"
+                        f"{LOG_PREFIX} {sig_type} signature failed for alert {incident.incident.incident_id}"
                     )
                     return False
 
             self.logger.debug(
-                f"{LOG_PREFIX} All signatures matched for expectation {expectation.inject_expectation_id} vs alert {alert.incident.incident_id}"
+                f"{LOG_PREFIX} All signatures matched for expectation {expectation.inject_expectation_id} vs alert {incident.incident.incident_id}"
             )
             return True
 
