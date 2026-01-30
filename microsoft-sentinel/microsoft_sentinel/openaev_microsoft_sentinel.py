@@ -86,8 +86,10 @@ class OpenAEVMicrosoftSentinel(CollectorDaemon):
                 "microsoft_sentinel_edr_collectors"
             )
             if item["sourceId"] in attached_collectors:
-                alert_id_expectation = item["metadata"]["alertId"]
-                break
+                metadata = item.get("metadata")
+                if metadata and "alertId" in metadata:
+                    alert_id_expectation = metadata["alertId"]
+                    break
 
         if alert_id_expectation:
             for alert_link_data in alert_link_datas:
