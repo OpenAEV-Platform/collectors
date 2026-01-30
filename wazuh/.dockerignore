@@ -1,0 +1,86 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Testing
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+
+# Documentation
+*.md
+!README.md
+docs/
+
+# Configuration (secrets)
+.env
+.env.local
+config.yml
+*.local.yml
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+
+# Samples (not needed in production image)
+samples/
+
+# Development files
+tests/
+*.test.py
+conftest.py
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
