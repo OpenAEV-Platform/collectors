@@ -1,81 +1,38 @@
 import requests
-from pyoaev.helpers import OpenAEVCollectorHelper, OpenAEVConfigHelper
+from microsoft_azure.configuration.config_loader import ConfigLoader
+from pyoaev.configuration import Configuration
+from pyoaev.daemons import CollectorDaemon
 
 
-class OpenAEVMicrosoftAzure:
-    def __init__(self):
-        self.session = requests.Session()
-        self.config = OpenAEVConfigHelper(
-            __file__,
-            {
-                # API information
-                "openaev_url": {"env": "OPENAEV_URL", "file_path": ["openaev", "url"]},
-                "openaev_token": {
-                    "env": "OPENAEV_TOKEN",
-                    "file_path": ["openaev", "token"],
-                },
-                # Config information
-                "collector_id": {
-                    "env": "COLLECTOR_ID",
-                    "file_path": ["collector", "id"],
-                },
-                "collector_name": {
-                    "env": "COLLECTOR_NAME",
-                    "file_path": ["collector", "name"],
-                    "default": "Microsoft Azure",
-                },
-                "collector_log_level": {
-                    "env": "COLLECTOR_LOG_LEVEL",
-                    "file_path": ["collector", "log_level"],
-                    "default": "warn",
-                },
-                "collector_period": {
-                    "env": "COLLECTOR_PERIOD",
-                    "file_path": ["collector", "period"],
-                    "is_number": True,
-                    "default": 60,
-                },
-                "microsoft_azure_tenant_id": {
-                    "env": "MICROSOFT_AZURE_TENANT_ID",
-                    "file_path": ["collector", "microsoft_azure_tenant_id"],
-                },
-                "microsoft_azure_client_id": {
-                    "env": "MICROSOFT_AZURE_CLIENT_ID",
-                    "file_path": ["collector", "microsoft_azure_client_id"],
-                },
-                "microsoft_azure_client_secret": {
-                    "env": "MICROSOFT_AZURE_CLIENT_SECRET",
-                    "file_path": ["collector", "microsoft_azure_client_secret"],
-                },
-                "microsoft_azure_subscription_id": {
-                    "env": "MICROSOFT_AZURE_SUBSCRIPTION_ID",
-                    "file_path": ["collector", "microsoft_azure_subscription_id"],
-                },
-                "microsoft_azure_resource_groups": {
-                    "env": "MICROSOFT_AZURE_RESOURCE_GROUPS",
-                    "file_path": ["collector", "microsoft_azure_resource_groups"],
-                },
-            },
-        )
-        self.helper = OpenAEVCollectorHelper(
-            config=self.config,
-            icon="microsoft_azure/img/icon-microsoft-azure.png",
+class OpenAEVMicrosoftAzure(CollectorDaemon):
+    def __init__(
+        self,
+        configuration: Configuration,
+    ):
+        super().__init__(
+            configuration=configuration,
+            callback=self._process_message,
             collector_type="openaev_microsoft_azure",
         )
 
+        self.session = requests.Session()
+
         # Azure settings
-        self.tenant_id = self.config.get_conf("microsoft_azure_tenant_id")
-        self.client_id = self.config.get_conf("microsoft_azure_client_id")
-        self.client_secret = self.config.get_conf("microsoft_azure_client_secret")
-        self.subscription_id = self.config.get_conf("microsoft_azure_subscription_id")
-        self.resource_groups = self.config.get_conf(
-            "microsoft_azure_resource_groups", default=""
+        self.tenant_id = self._configuration.get("microsoft_azure_tenant_id")
+        self.client_id = self._configuration.get("microsoft_azure_client_id")
+        self.client_secret = self._configuration.get("microsoft_azure_client_secret")
+        self.subscription_id = self._configuration.get(
+            "microsoft_azure_subscription_id"
+        )
+        self.resource_groups = self._configuration.get(
+            "microsoft_azure_resource_groups"
         )
 
         # Parse resource groups (comma-separated)
-        self.resource_groups_list = [
-            rg.strip() for rg in self.resource_groups.split(",") if rg.strip()
-        ]
+        if self.resource_groups:
+            self.resource_groups_list = [
+                rg.strip() for rg in self.resource_groups.split(",") if rg.strip()
+            ]
 
         # Azure Resource Manager endpoints
         self.authority = f"https://login.microsoftonline.com/{self.tenant_id}"
@@ -105,17 +62,15 @@ class OpenAEVMicrosoftAzure:
 
             if "access_token" in result:
                 self.access_token = result["access_token"]
-                self.helper.collector_logger.info(
-                    "Successfully authenticated with Azure"
-                )
+                self.logger.info("Successfully authenticated with Azure")
                 return True
             else:
-                self.helper.collector_logger.error(
+                self.logger.error(
                     f"Failed to get access token: {result.get('error_description', 'Unknown error')}"
                 )
                 return False
         except Exception as e:
-            self.helper.collector_logger.error(f"Authentication error: {str(e)}")
+            self.logger.error(f"Authentication error: {str(e)}")
             return False
 
     def _azure_api_call(self, endpoint):
@@ -142,7 +97,7 @@ class OpenAEVMicrosoftAzure:
         try:
             response = requests.get(url, headers=headers)
             if response.status_code == 401:  # Token expired
-                self.helper.collector_logger.info("Token expired, refreshing...")
+                self.logger.info("Token expired, refreshing...")
                 if self._get_access_token():
                     headers["Authorization"] = f"Bearer {self.access_token}"
                     response = requests.get(url, headers=headers)
@@ -150,12 +105,12 @@ class OpenAEVMicrosoftAzure:
             if response.status_code == 200:
                 return response.json()
             else:
-                self.helper.collector_logger.error(
+                self.logger.error(
                     f"API call failed: {response.status_code} - {response.text}"
                 )
                 return None
         except Exception as e:
-            self.helper.collector_logger.error(f"API call error: {str(e)}")
+            self.logger.error(f"API call error: {str(e)}")
             return None
 
     def _get_vms_from_resource_group(self, resource_group):
@@ -232,17 +187,15 @@ class OpenAEVMicrosoftAzure:
                                                                         public_ip
                                                                     )
                                                     except Exception as e:
-                                                        self.helper.collector_logger.debug(
+                                                        self.logger.debug(
                                                             f"Could not get public IP for {nic_name}: {str(e)}"
                                                         )
                         except Exception as e:
-                            self.helper.collector_logger.debug(
+                            self.logger.debug(
                                 f"Could not process network interface {nic_id}: {str(e)}"
                             )
         except Exception as e:
-            self.helper.collector_logger.warning(
-                f"Error extracting network profile for VM: {str(e)}"
-            )
+            self.logger.warning(f"Error extracting network profile for VM: {str(e)}")
 
         return ips
 
@@ -266,22 +219,20 @@ class OpenAEVMicrosoftAzure:
         """Create or get a tag and return its ID."""
         try:
             tag_data = {"tag_name": tag_name, "tag_color": tag_color}
-            result = self.helper.api.tag.upsert(tag_data)
+            result = self.api.tag.upsert(tag_data)
             return result.get("tag_id")
         except Exception as e:
-            self.helper.collector_logger.warning(
-                f"Failed to upsert tag {tag_name}: {e}"
-            )
+            self.logger.warning(f"Failed to upsert tag {tag_name}: {e}")
             return None
 
     def _process_message(self) -> None:
         """Process message to collect VMs and upsert them as endpoints."""
         try:
-            self.helper.collector_logger.info("Starting Azure VM collection...")
+            self.logger.info("Starting Azure VM collection...")
 
             # If no specific resource groups are provided, get all VMs in subscription
             if not self.resource_groups_list:
-                self.helper.collector_logger.info(
+                self.logger.info(
                     "No specific resource groups provided, collecting all VMs in subscription"
                 )
                 endpoint = "/providers/Microsoft.Compute/virtualMachines"
@@ -291,16 +242,16 @@ class OpenAEVMicrosoftAzure:
                 # Collect VMs from specified resource groups
                 all_vms = []
                 for resource_group in self.resource_groups_list:
-                    self.helper.collector_logger.info(
+                    self.logger.info(
                         f"Collecting VMs from resource group: {resource_group}"
                     )
                     vms = self._get_vms_from_resource_group(resource_group)
                     all_vms.extend(vms)
-                    self.helper.collector_logger.info(
+                    self.logger.info(
                         f"Found {len(vms)} VMs in resource group {resource_group}"
                     )
 
-            self.helper.collector_logger.info(f"Total VMs found: {len(all_vms)}")
+            self.logger.info(f"Total VMs found: {len(all_vms)}")
 
             # Process each VM and upsert as endpoint
             for vm in all_vms:
@@ -315,7 +266,7 @@ class OpenAEVMicrosoftAzure:
 
                 # Skip VMs that are not successfully provisioned
                 if provisioning_state.lower() != "succeeded":
-                    self.helper.collector_logger.warning(
+                    self.logger.warning(
                         f"Skipping VM {vm_name} - provisioning state: {provisioning_state}"
                     )
                     continue
@@ -415,26 +366,16 @@ class OpenAEVMicrosoftAzure:
 
                 # Upsert endpoint
                 try:
-                    self.helper.api.endpoint.upsert(endpoint)
-                    self.helper.collector_logger.info(
-                        f"Successfully upserted endpoint: {vm_name}"
-                    )
+                    self.api.endpoint.upsert(endpoint)
+                    self.logger.info(f"Successfully upserted endpoint: {vm_name}")
                 except Exception as e:
-                    self.helper.collector_logger.error(
-                        f"Failed to upsert endpoint {vm_name}: {str(e)}"
-                    )
+                    self.logger.error(f"Failed to upsert endpoint {vm_name}: {str(e)}")
 
-            self.helper.collector_logger.info("Azure VM collection completed")
+            self.logger.info("Azure VM collection completed")
 
         except Exception as e:
-            self.helper.collector_logger.error(f"Error during VM collection: {str(e)}")
-
-    def start(self):
-        """Start the main loop."""
-        period = self.config.get_conf("collector_period", default=3600, is_number=True)
-        self.helper.schedule(message_callback=self._process_message, delay=period)
+            self.logger.error(f"Error during VM collection: {str(e)}")
 
 
 if __name__ == "__main__":
-    openAEVMicrosoftAzure = OpenAEVMicrosoftAzure()
-    openAEVMicrosoftAzure.start()
+    OpenAEVMicrosoftAzure(configuration=ConfigLoader().to_daemon_config()).start()

@@ -1,0 +1,18 @@
+{
+  "title": "SentinelOne",
+  "slug": "openaev_sentinelone",
+  "description": "Collect responses from SentinelOne",
+  "short_description": "Collect responses from SentinelOne",
+  "use_cases": ["Security response"],
+  "verified": true,
+  "last_verified_date": "",
+  "playbook_supported": false,
+  "max_confidence_level": 80,
+  "support_version": "",
+  "subscription_link": "https://www.sentinelone.com/",
+  "source_code": "",
+  "manager_supported": true,
+  "container_version": "rolling",
+  "container_image": "openaev/collector-sentinelone",
+  "container_type": "COLLECTOR"
+}

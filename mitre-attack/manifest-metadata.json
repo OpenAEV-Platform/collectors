@@ -1,0 +1,18 @@
+{
+  "title": "MITRE Att&ck",
+  "slug": "openaev_mitre_attack",
+  "description": "Collect MITRE Att&ck tactics and techniques library",
+  "short_description": "Collect MITRE Att&ck tactics and techniques library",
+  "use_cases": ["Data collection"],
+  "verified": true,
+  "last_verified_date": "",
+  "playbook_supported": false,
+  "max_confidence_level": 80,
+  "support_version": "",
+  "subscription_link": "https://attack.mitre.org/",
+  "source_code": "",
+  "manager_supported": true,
+  "container_version": "rolling",
+  "container_image": "openaev/collector-mitre-attack",
+  "container_type": "COLLECTOR"
+}

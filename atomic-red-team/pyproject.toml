@@ -23,3 +23,8 @@ dev = ["pyoaev"]
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.cmw]
+install-command = "poetry install --extras prod"
+config-dump-command = "poetry run python -m atomic_red_team.openaev_atomic_red_team --dump-config-schema"
+icon-path = "atomic_red_team/img/icon-atomic-red-team.png"

@@ -5,7 +5,7 @@ openaev:
 collector:
   id: 'changeme'
   name: 'Microsoft Defender'
-  period: 60
+  period: 'PT1M'
   log_level: 'info'
   microsoft_defender_tenant_id: ''
   microsoft_defender_client_id: ''

@@ -1,0 +1,18 @@
+{
+  "title": "Microsoft Defender",
+  "slug": "openaev_microsoft_defender",
+  "description": "Collect responses from Microsoft Defender",
+  "short_description": "Collect responses from Microsoft Defender",
+  "use_cases": ["Security response"],
+  "verified": true,
+  "last_verified_date": "",
+  "playbook_supported": false,
+  "max_confidence_level": 80,
+  "support_version": "",
+  "subscription_link": "https://www.microsoft.com/en-us/microsoft-365/microsoft-defender-for-individuals",
+  "source_code": "",
+  "manager_supported": true,
+  "container_version": "rolling",
+  "container_image": "openaev/collector-microsoft-defender",
+  "container_type": "COLLECTOR"
+}

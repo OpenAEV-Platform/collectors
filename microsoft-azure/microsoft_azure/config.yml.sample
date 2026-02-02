@@ -5,7 +5,7 @@ openaev:
 collector:
   id: 'changeme'
   name: 'Microsoft Azure'
-  period: 3600
+  period: 'PT1H'
   log_level: 'info'
   microsoft_azure_tenant_id: ''
   microsoft_azure_client_id: ''

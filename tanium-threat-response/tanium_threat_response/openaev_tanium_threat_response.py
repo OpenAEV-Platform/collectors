@@ -6,83 +6,35 @@ import pytz
 import requests
 from dateutil.parser import parse
 from dateutil.relativedelta import relativedelta
-from pyoaev.helpers import (
-    OpenAEVCollectorHelper,
-    OpenAEVConfigHelper,
-    OpenAEVDetectionHelper,
-)
+from pyoaev.configuration import Configuration
+from pyoaev.daemons import CollectorDaemon
+from pyoaev.helpers import OpenAEVDetectionHelper
 from tanium_threat_response.api_handler import TaniumApiHandler
+from tanium_threat_response.configuration.config_loader import ConfigLoader
 
 
 def _is_unix_absolute_path(path):
     return path.startswith("/")
 
 
-class OpenAEVTaniumThreatResponse:
-    def __init__(self):
-        self.session = requests.Session()
-        self.config = OpenAEVConfigHelper(
-            __file__,
-            {
-                # API information
-                "openaev_url": {"env": "OPENAEV_URL", "file_path": ["openaev", "url"]},
-                "openaev_token": {
-                    "env": "OPENAEV_TOKEN",
-                    "file_path": ["openaev", "token"],
-                },
-                # Config information
-                "collector_id": {
-                    "env": "COLLECTOR_ID",
-                    "file_path": ["collector", "id"],
-                },
-                "collector_name": {
-                    "env": "COLLECTOR_NAME",
-                    "file_path": ["collector", "name"],
-                    "default": "Tanium Threat Response ",
-                },
-                "collector_log_level": {
-                    "env": "COLLECTOR_LOG_LEVEL",
-                    "file_path": ["collector", "log_level"],
-                    "default": "warn",
-                },
-                "collector_period": {
-                    "env": "COLLECTOR_PERIOD",
-                    "file_path": ["collector", "period"],
-                    "is_number": True,
-                    "default": 60,
-                },
-                "tanium_url": {
-                    "env": "TANIUM_URL",
-                    "file_path": ["collector", "tanium_url"],
-                },
-                "tanium_url_console": {
-                    "env": "TANIUM_URL_CONSOLE",
-                    "file_path": ["collector", "tanium_url_console"],
-                },
-                "tanium_ssl_verify": {
-                    "env": "TANIUM_SSL_VERIFY",
-                    "file_path": ["collector", "tanium_ssl_verify"],
-                },
-                "tanium_token": {
-                    "env": "TANIUM_TOKEN",
-                    "file_path": ["collector", "tanium_token"],
-                },
-            },
-        )
-        self.helper = OpenAEVCollectorHelper(
-            config=self.config,
-            icon="tanium_threat_response/img/icon-tanium.png",
+class OpenAEVTaniumThreatResponse(CollectorDaemon):
+    def __init__(
+        self,
+        configuration: Configuration,
+    ):
+        super().__init__(
+            configuration=configuration,
+            callback=self._process_message,
             collector_type="openaev_tanium_threat_response",
-            security_platform_type="EDR",
         )
-
         # Initialize Tanium API
         self.tanium_api_handler = TaniumApiHandler(
-            self.helper,
-            self.config.get_conf("tanium_url"),
-            self.config.get_conf("tanium_token"),
-            self.config.get_conf("tanium_ssl_verify"),
+            self.logger,
+            self._configuration.get("tanium_url"),
+            self._configuration.get("tanium_token"),
+            self._configuration.get("tanium_ssl_verify"),
         )
+        self.session = requests.Session()
 
         # Initialize signatures helper
         self.relevant_signatures_types = [
@@ -94,8 +46,9 @@ class OpenAEVTaniumThreatResponse:
             "ipv4_address",
             "ipv6_address",
         ]
+
         self.openaev_detection_helper = OpenAEVDetectionHelper(
-            self.helper.collector_logger, self.relevant_signatures_types
+            self.logger, self.relevant_signatures_types
         )
 
         self.scanning_delta = 45
@@ -174,7 +127,7 @@ class OpenAEVTaniumThreatResponse:
 
     def _extract_alert_link(self, alert) -> str:
         return (
-            self.config.get_conf("tanium_url_console")
+            self._configuration.get("tanium_url_console")
             + "/ui/threatresponse/alerts?guid="
             + str(alert["guid"])
         )
@@ -200,7 +153,7 @@ class OpenAEVTaniumThreatResponse:
     # --- MATCHING ---
 
     def _match_alert(self, alert, alert_details, expectation):
-        self.helper.collector_logger.info(
+        self.logger.info(
             "Trying to match alert "
             + str(alert["guid"])
             + " with expectation "
@@ -256,27 +209,24 @@ class OpenAEVTaniumThreatResponse:
 
     def _is_expectation_filled(self, expectation) -> bool:
         return any(
-            er.get("sourceId", "") == self.config.get_conf("collector_id")
+            er.get("sourceId", "") == self._configuration.get("collector_id")
+            and er.get("result", None) is not None
             for er in expectation["inject_expectation_results"]
         )
 
     def _process_message(self) -> None:
-        self.helper.collector_logger.info("Gathering expectations for executed injects")
-        expectations = (
-            self.helper.api.inject_expectation.detection_expectations_for_source(
-                self.config.get_conf("collector_id"), self.scanning_delta
-            )
+        self.logger.info("Gathering expectations for executed injects")
+        expectations = self.api.inject_expectation.detection_expectations_for_source(
+            self._configuration.get("collector_id"), self.scanning_delta
         )
-        self.helper.collector_logger.debug(
-            "Total expectations returned: " + str(len(expectations))
-        )
+        self.logger.debug("Total expectations returned: " + str(len(expectations)))
         expectations_not_filled = list(
             filter(
                 lambda expectation: not self._is_expectation_filled(expectation),
                 expectations,
             )
         )
-        self.helper.collector_logger.info(
+        self.logger.info(
             "Found "
             + str(len(expectations_not_filled))
             + " expectations waiting to be matched"
@@ -291,9 +241,7 @@ class OpenAEVTaniumThreatResponse:
             "/plugin/products/threat-response/api/v1/alerts",
             {"sort": "-createdAt"},
         )
-        self.helper.collector_logger.info(
-            "Found " + str(len(alerts)) + " alerts (taking first 200)"
-        )
+        self.logger.info("Found " + str(len(alerts)) + " alerts (taking first 200)")
 
         # For each expectation, try to find the proper alert to assign a detection or prevention result
         for expectation in expectations:
@@ -303,17 +251,17 @@ class OpenAEVTaniumThreatResponse:
                     expectation["inject_expectation_created_at"]
                 ).astimezone(pytz.UTC)
                 if expectation_date < limit_date:
-                    self.helper.collector_logger.info(
+                    self.logger.info(
                         "Expectation expired, failing inject "
                         + expectation["inject_expectation_inject"]
                         + " ("
                         + expectation["inject_expectation_type"]
                         + ")"
                     )
-                    self.helper.api.inject_expectation.update(
+                    self.api.inject_expectation.update(
                         expectation["inject_expectation_id"],
                         {
-                            "collector_id": self.config.get_conf("collector_id"),
+                            "collector_id": self._configuration.get("collector_id"),
                             "result": "Not Detected",
                             "is_success": False,
                         },
@@ -327,17 +275,17 @@ class OpenAEVTaniumThreatResponse:
                     alert_details = json.loads(alert["details"])
                     if self._match_alert(alert, alert_details, expectation):
                         if expectation in expectations_not_filled:
-                            self.helper.collector_logger.info(
+                            self.logger.info(
                                 "Expectation matched, fulfilling expectation "
                                 + expectation["inject_expectation_inject"]
                                 + " ("
                                 + expectation["inject_expectation_type"]
                                 + ")"
                             )
-                            self.helper.api.inject_expectation.update(
+                            self.api.inject_expectation.update(
                                 expectation["inject_expectation_id"],
                                 {
-                                    "collector_id": self.config.get_conf(
+                                    "collector_id": self._configuration.get(
                                         "collector_id"
                                     ),
                                     "result": "Detected",
@@ -347,19 +295,19 @@ class OpenAEVTaniumThreatResponse:
                             expectations_not_filled.remove(expectation)
 
                         # Send alert to openaev for current matched expectation. Duplicate alerts are handled by openaev itself
-                        self.helper.collector_logger.info(
+                        self.logger.info(
                             "Expectation matched, adding trace for expectation "
                             + expectation["inject_expectation_inject"]
                             + " ("
                             + expectation["inject_expectation_type"]
                             + ")"
                         )
-                        self.helper.api.inject_expectation_trace.create(
+                        self.api.inject_expectation_trace.create(
                             data={
                                 "inject_expectation_trace_expectation": expectation[
                                     "inject_expectation_id"
                                 ],
-                                "inject_expectation_trace_source_id": self.config.get_conf(
+                                "inject_expectation_trace_source_id": self._configuration.get(
                                     "collector_id"
                                 ),
                                 "inject_expectation_trace_alert_name": self._extract_alert_name(
@@ -374,12 +322,6 @@ class OpenAEVTaniumThreatResponse:
                             }
                         )
 
-    # Start the main loop
-    def start(self):
-        period = self.config.get_conf("collector_period", default=120, is_number=True)
-        self.helper.schedule(message_callback=self._process_message, delay=period)
-
 
 if __name__ == "__main__":
-    openAEVTaniumThreatResponse = OpenAEVTaniumThreatResponse()
-    openAEVTaniumThreatResponse.start()
+    OpenAEVTaniumThreatResponse(configuration=ConfigLoader().to_daemon_config()).start()

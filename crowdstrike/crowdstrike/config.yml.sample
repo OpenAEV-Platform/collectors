@@ -5,7 +5,7 @@ openaev:
 collector:
   id: 'ChangeMe'
   name: 'CrowdStrike Endpoint Security'
-  period: 60
+  period: 'PT1M'
   log_level: 'info'
   platform: 'ChangeMe'
 

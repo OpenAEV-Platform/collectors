@@ -9,38 +9,41 @@ import requests
 class SentinelApiHandler:
     def __init__(
         self,
-        helper,
+        logger,
         tenant_id,
         client_id,
         client_secret,
         ssl_verify=True,
     ):
         # Variables
+        self.logger = logger
         self.tenant_id = tenant_id
         self.client_id = client_id
         self.client_secret = client_secret
-        self.helper = helper
         self.ssl_verify = ssl_verify
         self._auth()
 
     def _auth(self):
         # Authentication
-        try:
-            app = msal.ConfidentialClientApplication(
-                self.client_id,
-                authority="https://login.microsoftonline.com/" + self.tenant_id,
-                client_credential=self.client_secret,
+        app = msal.ConfidentialClientApplication(
+            self.client_id,
+            authority="https://login.microsoftonline.com/" + self.tenant_id,
+            client_credential=self.client_secret,
+        )
+        result = app.acquire_token_silent(
+            "https://api.loganalytics.io/.default", account=None
+        )
+        if not result:
+            result = app.acquire_token_for_client(
+                scopes=["https://api.loganalytics.io/.default"]
             )
-            result = app.acquire_token_silent(
-                "https://api.loganalytics.io/.default", account=None
+        if result.get("error"):
+            raise RuntimeError(
+                f"[ERROR] A problem occurred while authenticating with response: {result}"
             )
-            if not result:
-                result = app.acquire_token_for_client(
-                    scopes=["https://api.loganalytics.io/.default"]
-                )
-            self.token = result["access_token"]
-        except Exception as e:
-            raise ValueError("[ERROR] Failed generating oauth token {" + str(e) + "}")
+        if not result.get("access_token"):
+            raise RuntimeError("[ERROR] The response did not include an access token.")
+        self.token = result.get("access_token")
 
     def _query(
         self,
@@ -51,7 +54,7 @@ class SentinelApiHandler:
         type=None,
     ):
         self._auth()
-        self.helper.collector_logger.info("Query " + method + " on " + url)
+        self.logger.info("Query " + method + " on " + url)
         headers = {"Authorization": "Bearer " + self.token}
         if method != "upload":
             headers["content-type"] = content_type
@@ -148,4 +151,4 @@ class SentinelApiHandler:
         elif r.status_code == 401:
             raise ValueError("Query failed, permission denied")
         else:
-            self.helper.collector_logger.info(r.text)
+            self.logger.info(r.text)

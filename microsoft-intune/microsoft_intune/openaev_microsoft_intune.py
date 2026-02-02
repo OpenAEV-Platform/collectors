@@ -1,85 +1,33 @@
 import requests
-from pyoaev.helpers import OpenAEVCollectorHelper, OpenAEVConfigHelper
+from microsoft_intune.configuration.config_loader import ConfigLoader
+from pyoaev.configuration import Configuration
+from pyoaev.daemons import CollectorDaemon
 
 
-class OpenAEVMicrosoftIntune:
-    def __init__(self):
-        self.session = requests.Session()
-        self.config = OpenAEVConfigHelper(
-            __file__,
-            {
-                # API information
-                "openaev_url": {"env": "OPENAEV_URL", "file_path": ["openaev", "url"]},
-                "openaev_token": {
-                    "env": "OPENAEV_TOKEN",
-                    "file_path": ["openaev", "token"],
-                },
-                # Config information
-                "collector_id": {
-                    "env": "COLLECTOR_ID",
-                    "file_path": ["collector", "id"],
-                },
-                "collector_name": {
-                    "env": "COLLECTOR_NAME",
-                    "file_path": ["collector", "name"],
-                    "default": "Microsoft Intune",
-                },
-                "collector_log_level": {
-                    "env": "COLLECTOR_LOG_LEVEL",
-                    "file_path": ["collector", "log_level"],
-                    "default": "warn",
-                },
-                "collector_period": {
-                    "env": "COLLECTOR_PERIOD",
-                    "file_path": ["collector", "period"],
-                    "is_number": True,
-                    "default": 60,
-                },
-                "microsoft_intune_tenant_id": {
-                    "env": "MICROSOFT_INTUNE_TENANT_ID",
-                    "file_path": ["collector", "microsoft_intune_tenant_id"],
-                },
-                "microsoft_intune_client_id": {
-                    "env": "MICROSOFT_INTUNE_CLIENT_ID",
-                    "file_path": ["collector", "microsoft_intune_client_id"],
-                },
-                "microsoft_intune_client_secret": {
-                    "env": "MICROSOFT_INTUNE_CLIENT_SECRET",
-                    "file_path": ["collector", "microsoft_intune_client_secret"],
-                },
-                "microsoft_intune_device_filter": {
-                    "env": "MICROSOFT_INTUNE_DEVICE_FILTER",
-                    "file_path": ["collector", "microsoft_intune_device_filter"],
-                    "default": "",  # Empty means all devices
-                },
-                "microsoft_intune_device_groups": {
-                    "env": "MICROSOFT_INTUNE_DEVICE_GROUPS",
-                    "file_path": ["collector", "microsoft_intune_device_groups"],
-                    "default": "",  # Comma-separated list of device group names or IDs
-                },
-            },
-        )
-        self.helper = OpenAEVCollectorHelper(
-            config=self.config,
-            icon="microsoft_intune/img/icon-microsoft-intune.png",
+class OpenAEVMicrosoftIntune(CollectorDaemon):
+    def __init__(
+        self,
+        configuration: Configuration,
+    ):
+        super().__init__(
+            configuration=configuration,
+            callback=self._process_message,
             collector_type="openaev_microsoft_intune",
         )
+        self.session = requests.Session()
 
         # Intune settings
-        self.tenant_id = self.config.get_conf("microsoft_intune_tenant_id")
-        self.client_id = self.config.get_conf("microsoft_intune_client_id")
-        self.client_secret = self.config.get_conf("microsoft_intune_client_secret")
-        self.device_filter = self.config.get_conf(
-            "microsoft_intune_device_filter", default=""
-        )
-        self.device_groups = self.config.get_conf(
-            "microsoft_intune_device_groups", default=""
-        )
+        self.tenant_id = self._configuration.get("microsoft_intune_tenant_id")
+        self.client_id = self._configuration.get("microsoft_intune_client_id")
+        self.client_secret = self._configuration.get("microsoft_intune_client_secret")
+        self.device_filter = self._configuration.get("microsoft_intune_device_filter")
+        self.device_groups = self._configuration.get("microsoft_intune_device_groups")
 
         # Parse device groups (comma-separated)
-        self.device_groups_list = [
-            g.strip() for g in self.device_groups.split(",") if g.strip()
-        ]
+        if self.device_groups:
+            self.device_groups_list = [
+                g.strip() for g in self.device_groups.split(",") if g.strip()
+            ]
 
         # Microsoft Graph endpoints
         self.authority = f"https://login.microsoftonline.com/{self.tenant_id}"
@@ -108,17 +56,15 @@ class OpenAEVMicrosoftIntune:
 
             if "access_token" in result:
                 self.access_token = result["access_token"]
-                self.helper.collector_logger.info(
-                    "Successfully authenticated with Microsoft Graph"
-                )
+                self.logger.info("Successfully authenticated with Microsoft Graph")
                 return True
             else:
-                self.helper.collector_logger.error(
+                self.logger.error(
                     f"Failed to get access token: {result.get('error_description', 'Unknown error')}"
                 )
                 return False
         except Exception as e:
-            self.helper.collector_logger.error(f"Authentication error: {str(e)}")
+            self.logger.error(f"Authentication error: {str(e)}")
             return False
 
     def _graph_api_call(self, endpoint, params=None):
@@ -137,7 +83,7 @@ class OpenAEVMicrosoftIntune:
         try:
             response = requests.get(url, headers=headers, params=params)
             if response.status_code == 401:  # Token expired
-                self.helper.collector_logger.info("Token expired, refreshing...")
+                self.logger.info("Token expired, refreshing...")
                 if self._get_access_token():
                     headers["Authorization"] = f"Bearer {self.access_token}"
                     response = requests.get(url, headers=headers, params=params)
@@ -145,12 +91,12 @@ class OpenAEVMicrosoftIntune:
             if response.status_code == 200:
                 return response.json()
             else:
-                self.helper.collector_logger.error(
+                self.logger.error(
                     f"API call failed: {response.status_code} - {response.text}"
                 )
                 return None
         except Exception as e:
-            self.helper.collector_logger.error(f"API call error: {str(e)}")
+            self.logger.error(f"API call error: {str(e)}")
             return None
 
     def _get_device_groups(self):
@@ -219,7 +165,7 @@ class OpenAEVMicrosoftIntune:
 
         # If device groups are specified, get their members first
         if self.device_groups_list:
-            self.helper.collector_logger.info(
+            self.logger.info(
                 f"Filtering by device groups: {', '.join(self.device_groups_list)}"
             )
 
@@ -236,26 +182,22 @@ class OpenAEVMicrosoftIntune:
                         group.get("id", "").lower(),
                     ]:
                         group_found = True
-                        self.helper.collector_logger.info(
+                        self.logger.info(
                             f"Processing group: {group.get('displayName')} ({group.get('id')})"
                         )
 
                         # Get devices from this group
                         device_ids = self._get_devices_from_group(group.get("id"))
                         allowed_device_ids.update(device_ids)
-                        self.helper.collector_logger.info(
+                        self.logger.info(
                             f"Found {len(device_ids)} devices in group {group.get('displayName')}"
                         )
 
                 if not group_found:
-                    self.helper.collector_logger.warning(
-                        f"Device group '{group_filter}' not found"
-                    )
+                    self.logger.warning(f"Device group '{group_filter}' not found")
 
             if not allowed_device_ids:
-                self.helper.collector_logger.warning(
-                    "No devices found in specified groups"
-                )
+                self.logger.warning("No devices found in specified groups")
                 return []
 
         # Build filter if provided
@@ -366,26 +308,20 @@ class OpenAEVMicrosoftIntune:
         """Create or get a tag and return its ID."""
         try:
             tag_data = {"tag_name": tag_name, "tag_color": tag_color}
-            result = self.helper.api.tag.upsert(tag_data)
+            result = self.api.tag.upsert(tag_data)
             return result.get("tag_id")
         except Exception as e:
-            self.helper.collector_logger.warning(
-                f"Failed to upsert tag {tag_name}: {e}"
-            )
+            self.logger.warning(f"Failed to upsert tag {tag_name}: {e}")
             return None
 
     def _process_message(self) -> None:
         """Process message to collect devices and upsert them as endpoints."""
         try:
-            self.helper.collector_logger.info(
-                "Starting Microsoft Intune device collection..."
-            )
+            self.logger.info("Starting Microsoft Intune device collection...")
 
             # Get all managed devices
             devices = self._get_managed_devices()
-            self.helper.collector_logger.info(
-                f"Found {len(devices)} managed devices in Intune"
-            )
+            self.logger.info(f"Found {len(devices)} managed devices in Intune")
 
             # Process each device and upsert as endpoint
             for device in devices:
@@ -554,30 +490,18 @@ class OpenAEVMicrosoftIntune:
 
                 # Upsert endpoint
                 try:
-                    self.helper.api.endpoint.upsert(endpoint)
-                    self.helper.collector_logger.info(
-                        f"Successfully upserted endpoint: {device_name}"
-                    )
+                    self.api.endpoint.upsert(endpoint)
+                    self.logger.info(f"Successfully upserted endpoint: {device_name}")
                 except Exception as e:
-                    self.helper.collector_logger.error(
+                    self.logger.error(
                         f"Failed to upsert endpoint {device_name}: {str(e)}"
                     )
 
-            self.helper.collector_logger.info(
-                "Microsoft Intune device collection completed"
-            )
+            self.logger.info("Microsoft Intune device collection completed")
 
         except Exception as e:
-            self.helper.collector_logger.error(
-                f"Error during device collection: {str(e)}"
-            )
-
-    def start(self):
-        """Start the main loop."""
-        period = self.config.get_conf("collector_period", default=3600, is_number=True)
-        self.helper.schedule(message_callback=self._process_message, delay=period)
+            self.logger.error(f"Error during device collection: {str(e)}")
 
 
 if __name__ == "__main__":
-    openAEVMicrosoftIntune = OpenAEVMicrosoftIntune()
-    openAEVMicrosoftIntune.start()
+    OpenAEVMicrosoftIntune(configuration=ConfigLoader().to_daemon_config()).start()

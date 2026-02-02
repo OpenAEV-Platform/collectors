@@ -3,9 +3,7 @@
 import pytest
 from src.services.exception import SentinelOneValidationError
 from src.services.trace_service import SentinelOneTraceService
-from tests.gwt_shared import (
-    given_test_config,
-)
+from tests.gwt_shared import given_test_config
 
 # --------
 # Scenarios

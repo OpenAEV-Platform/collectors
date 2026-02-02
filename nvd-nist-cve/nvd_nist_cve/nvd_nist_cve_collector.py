@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from typing import Generator, Optional
 
 from nvd_nist_cve.nvd_nist_cve_api_handler import NvdNistCveApiHandler
-from nvd_nist_cve.nvd_nist_cve_configuration import NvdNistCveConfiguration
+from pyoaev.configuration import Configuration
 from pyoaev.daemons import CollectorDaemon
 
 
@@ -15,7 +15,7 @@ class CVEProcessor:
 
 
 class NvdNistCveCollector(CollectorDaemon):
-    def __init__(self):
+    def __init__(self, configuration: Configuration):
         """
         Initialize NVD NIST CVE collector.
 
@@ -23,15 +23,12 @@ class NvdNistCveCollector(CollectorDaemon):
             If configuration is invalid
         """
         try:
-            self.cve_config = NvdNistCveConfiguration()
-
             super().__init__(
-                configuration=self.cve_config,
+                configuration=configuration,
                 callback=self._process_data,
                 collector_type="openaev_nvd_nist_cve",
             )
             self.cve_client = None
-            self.logger.info("Nvd Nist CVE Collector initialized successfully")
 
         except Exception as e:
             print(f"Collector failed to start: {e}")
@@ -46,8 +43,8 @@ class NvdNistCveCollector(CollectorDaemon):
         super()._setup()
 
         self.cve_client = NvdNistCveApiHandler(
-            api_key=self.cve_config.get("nvd_nist_cve_api_key"),
-            base_url=self.cve_config.get("nvd_nist_cve_api_base_url"),
+            api_key=self._configuration.get("nvd_nist_cve_api_key"),
+            base_url=self._configuration.get("nvd_nist_cve_api_base_url"),
             logger=self.logger,
         )
 
@@ -234,7 +231,7 @@ class NvdNistCveCollector(CollectorDaemon):
         :return: Dictionary containing the message, data generator, and state updater function.
         """
         start_date = (
-            datetime(2019, 1, 1)
+            datetime(self._configuration.get("nvd_nist_cve_start_year"), 1, 1)
             if collector_state.get("last_modified_date_fetched") is None
             else datetime.fromisoformat(
                 collector_state.get("last_modified_date_fetched")

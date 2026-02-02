@@ -4,13 +4,9 @@ from datetime import datetime, timedelta, timezone
 from unittest.mock import Mock, patch
 
 import pytest
-from src.services.exception import (
-    SentinelOneValidationError,
-)
+from src.services.exception import SentinelOneValidationError
 from src.services.fetcher_deep_visibility import FetcherDeepVisibility
-from tests.gwt_shared import (
-    given_initialized_client_api,
-)
+from tests.gwt_shared import given_initialized_client_api
 
 # --------
 # Scenarios

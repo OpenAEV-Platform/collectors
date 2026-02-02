@@ -3,85 +3,28 @@ from typing import Any, Dict, List, Optional
 
 import requests
 from google.oauth2 import service_account
+from google_workspace.configuration.config_loader import ConfigLoader
 from googleapiclient.discovery import build
-from pyoaev.helpers import OpenAEVCollectorHelper, OpenAEVConfigHelper
+from pyoaev.configuration import Configuration
+from pyoaev.daemons import CollectorDaemon
 
 
-class OpenAEVGoogleWorkspace:
-    def __init__(self):
-        self.session = requests.Session()
-        self.config = OpenAEVConfigHelper(
-            __file__,
-            {
-                # API information
-                "openaev_url": {"env": "OPENAEV_URL", "file_path": ["openaev", "url"]},
-                "openaev_token": {
-                    "env": "OPENAEV_TOKEN",
-                    "file_path": ["openaev", "token"],
-                },
-                # Config information
-                "collector_id": {
-                    "env": "COLLECTOR_ID",
-                    "file_path": ["collector", "id"],
-                },
-                "collector_name": {
-                    "env": "COLLECTOR_NAME",
-                    "file_path": ["collector", "name"],
-                    "default": "Google Workspace",
-                },
-                "collector_log_level": {
-                    "env": "COLLECTOR_LOG_LEVEL",
-                    "file_path": ["collector", "log_level"],
-                    "default": "warn",
-                },
-                "collector_period": {
-                    "env": "COLLECTOR_PERIOD",
-                    "file_path": ["collector", "period"],
-                    "is_number": True,
-                    "default": 60,
-                },
-                "google_workspace_service_account_json": {
-                    "env": "GOOGLE_WORKSPACE_SERVICE_ACCOUNT_JSON",
-                    "file_path": ["collector", "google_workspace_service_account_json"],
-                },
-                "google_workspace_delegated_admin_email": {
-                    "env": "GOOGLE_WORKSPACE_DELEGATED_ADMIN_EMAIL",
-                    "file_path": [
-                        "collector",
-                        "google_workspace_delegated_admin_email",
-                    ],
-                },
-                "google_workspace_customer_id": {
-                    "env": "GOOGLE_WORKSPACE_CUSTOMER_ID",
-                    "file_path": ["collector", "google_workspace_customer_id"],
-                    "default": "my_customer",  # Default value that works for most cases
-                },
-                "include_suspended": {
-                    "env": "INCLUDE_SUSPENDED",
-                    "file_path": ["collector", "include_suspended"],
-                    "default": False,
-                },
-                "sync_all_users": {
-                    "env": "SYNC_ALL_USERS",
-                    "file_path": ["collector", "sync_all_users"],
-                    "default": False,
-                },
-            },
-        )
-        self.helper = OpenAEVCollectorHelper(
-            config=self.config,
-            icon="google_workspace/img/icon-google-workspace.png",
+class OpenAEVGoogleWorkspace(CollectorDaemon):
+    def __init__(
+        self,
+        configuration: Configuration,
+    ):
+        super().__init__(
+            configuration=configuration,
+            callback=self._process_message,
             collector_type="openaev_google_workspace",
         )
+        self.session = requests.Session()
 
         # Configuration
-        self.include_suspended = self.config.get_conf(
-            "include_suspended", default=False
-        )
-        self.sync_all_users = self.config.get_conf("sync_all_users", default=False)
-        self.customer_id = self.config.get_conf(
-            "google_workspace_customer_id", default="my_customer"
-        )
+        self.include_suspended = self._configuration.get("include_suspended")
+        self.sync_all_users = self._configuration.get("sync_all_users")
+        self.customer_id = self._configuration.get("google_workspace_customer_id")
 
     def _create_or_get_tag(
         self, tag_name: str, tag_color: str = "#6b7280"
@@ -89,18 +32,16 @@ class OpenAEVGoogleWorkspace:
         """Create or get a tag and return its ID."""
         try:
             tag_data = {"tag_name": tag_name, "tag_color": tag_color}
-            result = self.helper.api.tag.upsert(tag_data)
+            result = self.api.tag.upsert(tag_data)
             return result.get("tag_id")
         except Exception as e:
-            self.helper.collector_logger.warning(
-                f"Failed to upsert tag {tag_name}: {e}"
-            )
+            self.logger.warning(f"Failed to upsert tag {tag_name}: {e}")
             return None
 
     def _get_service(self) -> Any:
         """Initialize and return Google Admin SDK service."""
         # Parse service account JSON from environment or file
-        service_account_json_str = self.config.get_conf(
+        service_account_json_str = self._configuration.get(
             "google_workspace_service_account_json"
         )
         if not service_account_json_str:
@@ -113,7 +54,7 @@ class OpenAEVGoogleWorkspace:
             service_account_info = service_account_json_str
 
         # Create credentials with domain-wide delegation
-        delegated_admin_email = self.config.get_conf(
+        delegated_admin_email = self._configuration.get(
             "google_workspace_delegated_admin_email"
         )
         if not delegated_admin_email:
@@ -163,7 +104,7 @@ class OpenAEVGoogleWorkspace:
                     break
 
         except Exception as e:
-            self.helper.collector_logger.error(f"Error fetching users: {e}")
+            self.logger.error(f"Error fetching users: {e}")
 
         return users
 
@@ -190,7 +131,7 @@ class OpenAEVGoogleWorkspace:
                     break
 
         except Exception as e:
-            self.helper.collector_logger.error(f"Error fetching groups: {e}")
+            self.logger.error(f"Error fetching groups: {e}")
 
         return groups
 
@@ -219,9 +160,7 @@ class OpenAEVGoogleWorkspace:
                     break
 
         except Exception as e:
-            self.helper.collector_logger.warning(
-                f"Error fetching members for group {group_id}: {e}"
-            )
+            self.logger.warning(f"Error fetching members for group {group_id}: {e}")
 
         return members
 
@@ -320,20 +259,16 @@ class OpenAEVGoogleWorkspace:
 
         # Upsert user to OpenAEV
         try:
-            self.helper.api.user.upsert(user_data)
-            self.helper.collector_logger.debug(f"Created/updated user: {primary_email}")
+            self.api.user.upsert(user_data)
+            self.logger.debug(f"Created/updated user: {primary_email}")
         except Exception as e:
-            self.helper.collector_logger.error(
-                f"Failed to upsert user {primary_email}: {e}"
-            )
+            self.logger.error(f"Failed to upsert user {primary_email}: {e}")
 
     def _sync_groups_and_members(self, service: Any) -> None:
         """Sync Google Workspace groups as teams and their members as users."""
         # Get all groups
         groups = self._get_all_groups(service)
-        self.helper.collector_logger.info(
-            f"Found {len(groups)} groups in Google Workspace"
-        )
+        self.logger.info(f"Found {len(groups)} groups in Google Workspace")
 
         # Process each group
         for group in groups:
@@ -346,17 +281,13 @@ class OpenAEVGoogleWorkspace:
             # Create or update team in OpenAEV
             team_data = {"team_name": group_name}
             try:
-                openaev_team = self.helper.api.team.upsert(team_data)
+                openaev_team = self.api.team.upsert(team_data)
                 team_id = openaev_team.get("team_id")
-                self.helper.collector_logger.debug(
-                    f"Created/updated team: {group_name}"
-                )
+                self.logger.debug(f"Created/updated team: {group_name}")
 
                 # Get group members
                 members = self._get_group_members(service, group_email)
-                self.helper.collector_logger.debug(
-                    f"Found {len(members)} members in group {group_name}"
-                )
+                self.logger.debug(f"Found {len(members)} members in group {group_name}")
 
                 # Process each member
                 for member in members:
@@ -367,21 +298,17 @@ class OpenAEVGoogleWorkspace:
                             user = service.users().get(userKey=member_email).execute()
                             self._create_user_with_tags(user, [team_id])
                         except Exception as e:
-                            self.helper.collector_logger.warning(
+                            self.logger.warning(
                                 f"Failed to get user details for {member_email}: {e}"
                             )
 
             except Exception as e:
-                self.helper.collector_logger.error(
-                    f"Failed to process group {group_name}: {e}"
-                )
+                self.logger.error(f"Failed to process group {group_name}: {e}")
 
     def _sync_all_users(self, service: Any) -> None:
         """Sync all Google Workspace users without group associations."""
         users = self._get_all_users(service)
-        self.helper.collector_logger.info(
-            f"Found {len(users)} users in Google Workspace"
-        )
+        self.logger.info(f"Found {len(users)} users in Google Workspace")
 
         for user in users:
             self._create_user_with_tags(user)
@@ -394,29 +321,19 @@ class OpenAEVGoogleWorkspace:
 
             if self.sync_all_users:
                 # Sync all users without group associations
-                self.helper.collector_logger.info(
-                    "Syncing all users from Google Workspace"
-                )
+                self.logger.info("Syncing all users from Google Workspace")
                 self._sync_all_users(service)
             else:
                 # Sync groups and their members
-                self.helper.collector_logger.info(
-                    "Syncing groups and members from Google Workspace"
-                )
+                self.logger.info("Syncing groups and members from Google Workspace")
                 self._sync_groups_and_members(service)
 
-            self.helper.collector_logger.info("Synchronization completed successfully")
+            self.logger.info("Synchronization completed successfully")
 
         except Exception as e:
-            self.helper.collector_logger.error(f"Error during synchronization: {e}")
+            self.logger.error(f"Error during synchronization: {e}")
             raise
-
-    def start(self):
-        """Start the collector daemon."""
-        period = self.config.get_conf("collector_period", default=3600, is_number=True)
-        self.helper.schedule(message_callback=self._process_message, delay=period)
 
 
 if __name__ == "__main__":
-    openAEVGoogleWorkspace = OpenAEVGoogleWorkspace()
-    openAEVGoogleWorkspace.start()
+    OpenAEVGoogleWorkspace(configuration=ConfigLoader().to_daemon_config()).start()

@@ -67,10 +67,10 @@ jobs:
           working_directory: ~/openaev/crowdstrike
           name: Overwrite pyoaev with correct version from CI
           command: |
-            if [ "${CIRCLE_BRANCH}" = "release/current" ]; then
-              poetry run pip install --force-reinstall git+https://github.com/OpenAEV-Platform/client-python.git@release/current
-            else
+            if [ "${CIRCLE_BRANCH}" = "main" ]; then
               poetry run pip install --force-reinstall git+https://github.com/OpenAEV-Platform/client-python.git@main
+            else
+              poetry run pip install --force-reinstall git+https://github.com/OpenAEV-Platform/client-python.git@release/current
             fi
       - run:
           working_directory: ~/openaev/crowdstrike

@@ -40,27 +40,27 @@ Below are the parameters you'll need to set for OpenAEV:
 
 Below are the parameters you'll need to set for running the collector properly:
 
-| Parameter        | config.yml          | Docker environment variable   | Default                    | Mandatory | Description                                                                                   |
-|------------------|---------------------|-------------------------------|----------------------------|-----------|-----------------------------------------------------------------------------------------------|
-| Collector ID     | collector.id        | `COLLECTOR_ID`                |                            | Yes       | A unique `UUIDv4` identifier for this collector instance.                                     |
-| Collector Name   | collector.name      | `COLLECTOR_NAME`              | Microsoft Sentinel         | No        | Name of the collector.                                                                        |
-| Collector Period | collector.period    | `COLLECTOR_PERIOD`            | 60                         | No        | The time interval at which your collector will run (int, seconds).                            |
-| Log Level        | collector.log_level | `COLLECTOR_LOG_LEVEL`         | warn                       | No        | Determines the verbosity of the logs. Options are `debug`, `info`, `warn`, or `error`.        |
-| Platform         | collector.platform  | `COLLECTOR_PLATFORM`          | SIEM                       | No        | Type of security platform this collector works for. One of: `EDR, XDR, SIEM, SOAR, NDR, ISPM` |
+| Parameter        | config.yml          | Docker environment variable   | Default            | Mandatory | Description                                                                                   |
+|------------------|---------------------|-------------------------------|--------------------|-----------|-----------------------------------------------------------------------------------------------|
+| Collector ID     | collector.id        | `COLLECTOR_ID`                |                    | Yes       | A unique `UUIDv4` identifier for this collector instance.                                     |
+| Collector Name   | collector.name      | `COLLECTOR_NAME`              | Microsoft Sentinel | No        | Name of the collector.                                                                        |
+| Collector Period | collector.period    | `COLLECTOR_PERIOD`            | PT1M               | No        | The time interval at which your collector will run (ISO 8601 period expression, e.g. 'PT1M': 1 minute).                            |
+| Log Level        | collector.log_level | `COLLECTOR_LOG_LEVEL`         | warn               | No        | Determines the verbosity of the logs. Options are `debug`, `info`, `warn`, or `error`.        |
+| Platform         | collector.platform  | `COLLECTOR_PLATFORM`          | SIEM               | No        | Type of security platform this collector works for. One of: `EDR, XDR, SIEM, SOAR, NDR, ISPM` |
 
 ### Collector extra parameters environment variables
 
 Below are the parameters you'll need to set for the collector:
 
-| Parameter                 | config.yml                                   | Docker environment variable          | Default | Mandatory | Description                                                                  |
-|---------------------------|----------------------------------------------|--------------------------------------|---------|-----------|------------------------------------------------------------------------------|
-| Application Tenant ID     | collector.microsoft_sentinel_tenant_id       | `MICROSOFT_SENTINEL_TENANT_ID`       |         | Yes       |                                                                              |
-| Application Client ID     | collector.microsoft_sentinel_client_id       | `MICROSOFT_SENTINEL_CLIENT_ID`       |         | Yes       |                                                                              |
-| Application Client Secret | collector.microsoft_sentinel_client_secret   | `MICROSOFT_SENTINEL_CLIENT_SECRET`   |         | Yes       |                                                                              |
-| Subscription ID           | collector.microsoft_sentinel_subscription_id | `MICROSOFT_SENTINEL_SUBSCRIPTION_ID` |         | Yes       |                                                                              |
-| Workspace ID              | collector.microsoft_sentinel_workspace_id    | `MICROSOFT_SENTINEL_WORKSPACE_ID`    |         | Yes       |                                                                              |
-| Resource group            | collector.microsoft_sentinel_resource_group  | `MICROSOFT_SENTINEL_RESOURCE_GROUP`  |         | Yes       |                                                                              |
-| UUID linked collectors    | collector.microsoft_sentinel_edr_collectors  | `MICROSOFT_SENTINEL_EDR_COLLECTORS`  |         | Yes       | The list of collector UUIDs is sourced from the EDR collectors' deployments. |
+| Parameter                 | config.yml                                   | Docker environment variable                    | Default | Mandatory | Description                                                                  |
+|---------------------------|----------------------------------------------|------------------------------------------------|---------|-----------|------------------------------------------------------------------------------|
+| Application Tenant ID     | collector.microsoft_sentinel_tenant_id       | `COLLECTOR_MICROSOFT_SENTINEL_TENANT_ID`       |         | Yes       |                                                                              |
+| Application Client ID     | collector.microsoft_sentinel_client_id       | `COLLECTOR_MICROSOFT_SENTINEL_CLIENT_ID`       |         | Yes       |                                                                              |
+| Application Client Secret | collector.microsoft_sentinel_client_secret   | `COLLECTOR_MICROSOFT_SENTINEL_CLIENT_SECRET`   |         | Yes       |                                                                              |
+| Subscription ID           | collector.microsoft_sentinel_subscription_id | `COLLECTOR_MICROSOFT_SENTINEL_SUBSCRIPTION_ID` |         | Yes       |                                                                              |
+| Workspace ID              | collector.microsoft_sentinel_workspace_id    | `COLLECTOR_MICROSOFT_SENTINEL_WORKSPACE_ID`    |         | Yes       |                                                                              |
+| Resource group            | collector.microsoft_sentinel_resource_group  | `COLLECTOR_MICROSOFT_SENTINEL_RESOURCE_GROUP`  |         | Yes       |                                                                              |
+| UUID linked collectors    | collector.microsoft_sentinel_edr_collectors  | `COLLECTOR_MICROSOFT_SENTINEL_EDR_COLLECTORS`  |         | Yes       | The list of collector UUIDs is sourced from the EDR collectors' deployments. |
 
 ## Deployment
 

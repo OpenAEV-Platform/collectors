@@ -36,24 +36,24 @@ Below are the parameters you'll need to set for OpenAEV:
 
 Below are the parameters you'll need to set for running the collector properly:
 
-| Parameter        | config.yml          | Docker environment variable | Default           | Mandatory | Description                                                                            |
-|------------------|---------------------|----------------------------|-------------------|-----------|----------------------------------------------------------------------------------------|
-| Collector ID     | collector.id        | `COLLECTOR_ID`             |                   | Yes       | A unique `UUIDv4` identifier for this collector instance.                              |
-| Collector Name   | collector.name      | `COLLECTOR_NAME`           | Google Workspace  | No        | Name of the collector.                                                                 |
-| Collector Period | collector.period    | `COLLECTOR_PERIOD`         | 60                | No        | The time interval at which your collector will run (int, seconds).                     |
-| Log Level        | collector.log_level | `COLLECTOR_LOG_LEVEL`      | warn              | No        | Determines the verbosity of the logs. Options are `debug`, `info`, `warn`, or `error`. |
+| Parameter        | config.yml          | Docker environment variable | Default          | Mandatory | Description                                                                                             |
+|------------------|---------------------|----------------------------|------------------|-----------|---------------------------------------------------------------------------------------------------------|
+| Collector ID     | collector.id        | `COLLECTOR_ID`             |                  | Yes       | A unique `UUIDv4` identifier for this collector instance.                                               |
+| Collector Name   | collector.name      | `COLLECTOR_NAME`           | Google Workspace | No        | Name of the collector.                                                                                  |
+| Collector Period | collector.period    | `COLLECTOR_PERIOD`         | PT1H             | No        | The time interval at which your collector will run (ISO 8601 period expression, e.g. 'PT1M': 1 minute). |
+| Log Level        | collector.log_level | `COLLECTOR_LOG_LEVEL`      | warn             | No        | Determines the verbosity of the logs. Options are `debug`, `info`, `warn`, or `error`.                  |
 
 ### Collector extra parameters environment variables
 
 Below are the parameters you'll need to set for the collector:
 
-| Parameter                   | config.yml                                       | Docker environment variable              | Default      | Mandatory | Description                                                              |
-|-----------------------------|--------------------------------------------------|------------------------------------------|--------------|-----------|--------------------------------------------------------------------------|
-| Service Account JSON        | collector.google_workspace_service_account_json | `GOOGLE_WORKSPACE_SERVICE_ACCOUNT_JSON` |              | Yes       | JSON string containing service account credentials                       |
-| Delegated Admin Email       | collector.google_workspace_delegated_admin_email| `GOOGLE_WORKSPACE_DELEGATED_ADMIN_EMAIL`|              | Yes       | Email of the admin user for domain-wide delegation                       |
-| Customer ID                 | collector.google_workspace_customer_id          | `GOOGLE_WORKSPACE_CUSTOMER_ID`          | my_customer  | No        | Google Workspace customer ID or 'my_customer' for your own domain        |
-| Include Suspended Users     | collector.include_suspended                     | `INCLUDE_SUSPENDED`                     | false        | No        | Whether to include suspended users in synchronization                    |
-| Sync All Users              | collector.sync_all_users                        | `SYNC_ALL_USERS`                        | false        | No        | If true, sync all users; if false, only sync users who are group members |
+| Parameter                   | config.yml                                       | Docker environment variable                        | Default      | Mandatory | Description                                                              |
+|-----------------------------|--------------------------------------------------|----------------------------------------------------|--------------|-----------|--------------------------------------------------------------------------|
+| Service Account JSON        | collector.google_workspace_service_account_json | `COLLECTOR_GOOGLE_WORKSPACE_SERVICE_ACCOUNT_JSON`  |              | Yes       | JSON string containing service account credentials                       |
+| Delegated Admin Email       | collector.google_workspace_delegated_admin_email| `COLLECTOR_GOOGLE_WORKSPACE_DELEGATED_ADMIN_EMAIL` |              | Yes       | Email of the admin user for domain-wide delegation                       |
+| Customer ID                 | collector.google_workspace_customer_id          | `COLLECTOR_GOOGLE_WORKSPACE_CUSTOMER_ID`           | my_customer  | No        | Google Workspace customer ID or 'my_customer' for your own domain        |
+| Include Suspended Users     | collector.include_suspended                     | `COLLECTOR_INCLUDE_SUSPENDED`                      | false        | No        | Whether to include suspended users in synchronization                    |
+| Sync All Users              | collector.sync_all_users                        | `COLLECTOR_SYNC_ALL_USERS`                         | false        | No        | If true, sync all users; if false, only sync users who are group members |
 
 ## Google Workspace Setup
 

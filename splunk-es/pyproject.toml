@@ -16,17 +16,15 @@ dynamic = ["dependencies"]
 
 [tool.poetry.dependencies]
 pyoaev = [
-    {markers = "extra == 'prod' and extra != 'local' and extra != 'current'",version = "^1.18.20"},
+    {markers = "extra == 'prod' and extra != 'local' and extra != 'current'",version = "2.0.14"},
     {markers = "extra == 'local' and extra != 'current' and extra != 'prod'",path = "../../client-python", develop = true},
-    {markers = "extra == 'current' and extra != 'prod' and extra != 'local'",git = "https://github.com/OpenAEV-Platform/client-python.git", branch = "release/current"},
 ]
 pydantic = "^2.11.7"
-pydantic-settings = "^2.10.1"
+pydantic-settings = "^2.11.0"
 requests = "^2.32.5"
 
 [tool.poetry.extras]
 prod = ["pyoaev"]
-current = ["pyoaev"]
 local = ["pyoaev"]
 
 [tool.poetry.group.dev.dependencies]
@@ -121,3 +119,9 @@ exclude = [
     '^.venv',
 ]
 plugins = ["pydantic.mypy"]
+
+[tool.cmw]
+install-command = "poetry install --extras local"
+config-dump-command = "poetry run python src --dump-config-schema"
+icon-path = "src/img/splunk-logo.png"
+

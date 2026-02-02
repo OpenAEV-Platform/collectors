@@ -100,7 +100,7 @@ openaev:
 collector:
   id: 'unique-collector-id'
   name: 'AWS Resources'
-  period: 3600  # Collection period in seconds
+  period: 'PT1H'  # Collection period in ISO 8601
   log_level: 'info'
   aws_access_key_id: 'your-access-key-id'  # Optional if using instance role
   aws_secret_access_key: 'your-secret-access-key'  # Optional if using instance role
@@ -146,13 +146,13 @@ All configuration can be provided via environment variables:
 - `OPENAEV_TOKEN`: OpenAEV API token
 - `COLLECTOR_ID`: Unique collector identifier
 - `COLLECTOR_NAME`: Display name for the collector
-- `COLLECTOR_PERIOD`: Collection interval in seconds
+- `COLLECTOR_PERIOD`: Collection interval as ISO 8601 period expression, e.g. PT1M: 1 minute
 - `COLLECTOR_LOG_LEVEL`: Logging level (debug, info, warn, error)
-- `AWS_ACCESS_KEY_ID`: AWS Access Key ID
-- `AWS_SECRET_ACCESS_KEY`: AWS Secret Access Key
-- `AWS_SESSION_TOKEN`: AWS Session Token (for temporary credentials)
-- `AWS_ASSUME_ROLE_ARN`: ARN of IAM role to assume
-- `AWS_REGIONS`: Comma-separated list of AWS regions
+- `COLLECTOR_AWS_ACCESS_KEY_ID`: AWS Access Key ID
+- `COLLECTOR_AWS_SECRET_ACCESS_KEY`: AWS Secret Access Key
+- `COLLECTOR_AWS_SESSION_TOKEN`: AWS Session Token (for temporary credentials)
+- `COLLECTOR_AWS_ASSUME_ROLE_ARN`: ARN of IAM role to assume
+- `COLLECTOR_AWS_REGIONS`: Comma-separated list of AWS regions
 
 ## Data Collected
 

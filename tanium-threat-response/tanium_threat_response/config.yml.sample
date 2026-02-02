@@ -5,7 +5,7 @@ openaev:
 collector:
   id: 'changeme'
   name: 'Tanium Threat Response'
-  period: 60
+  period: 'PT1M'
   log_level: 'info'
   tanium_url: ''
   tanium_url_console: ''

@@ -1,51 +1,24 @@
 import requests
-from pyoaev.helpers import OpenAEVCollectorHelper, OpenAEVConfigHelper
+from mitre_attack.configuration.config_loader import ConfigLoader
+from pyoaev.configuration import Configuration
+from pyoaev.daemons import CollectorDaemon
 
 ENTERPRISE_ATTACK_URI = (
     "https://github.com/mitre/cti/raw/master/enterprise-attack/enterprise-attack.json"
 )
 
 
-class OpenAEVMitre:
-    def __init__(self):
-        self.session = requests.Session()
-        self.config = OpenAEVConfigHelper(
-            __file__,
-            {
-                # API information
-                "openaev_url": {"env": "OPENAEV_URL", "file_path": ["openaev", "url"]},
-                "openaev_token": {
-                    "env": "OPENAEV_TOKEN",
-                    "file_path": ["openaev", "token"],
-                },
-                # Config information
-                "collector_id": {
-                    "env": "COLLECTOR_ID",
-                    "file_path": ["collector", "id"],
-                },
-                "collector_name": {
-                    "env": "COLLECTOR_NAME",
-                    "file_path": ["collector", "name"],
-                    "default": "MITRE ATT&CK",
-                },
-                "collector_log_level": {
-                    "env": "COLLECTOR_LOG_LEVEL",
-                    "file_path": ["collector", "log_level"],
-                    "default": "warn",
-                },
-                "collector_period": {
-                    "env": "COLLECTOR_PERIOD",
-                    "file_path": ["collector", "period"],
-                    "is_number": True,
-                    "default": 604800,
-                },
-            },
-        )
-        self.helper = OpenAEVCollectorHelper(
-            config=self.config,
-            icon="mitre_attack/img/icon-mitre-attack.png",
+class OpenAEVMitre(CollectorDaemon):
+    def __init__(
+        self,
+        configuration: Configuration,
+    ):
+        super().__init__(
+            configuration=configuration,
+            callback=self._process_message,
             collector_type="openaev_mitre_attack",
         )
+        self.session = requests.Session()
 
     def _kill_chain_phases(self, tactics):
         kill_chain_name = "mitre-attack"
@@ -69,7 +42,7 @@ class OpenAEVMitre:
                 "phase_description": phase_description,
             }
             kill_chain_phases.append(kill_chain_phase)
-        result = self.helper.api.kill_chain_phase.upsert(kill_chain_phases)
+        result = self.api.kill_chain_phase.upsert(kill_chain_phases)
         return result
 
     def _attack_patterns(self, attacks, kill_chain_phases, relationships):
@@ -117,17 +90,13 @@ class OpenAEVMitre:
             }
             attack_patterns.append(attack_pattern)
         # print(attack_patterns)
-        self.helper.api.attack_pattern.upsert(attack_patterns)
+        self.api.attack_pattern.upsert(attack_patterns)
 
     def _process_message(self) -> None:
         response = self.session.get(url=ENTERPRISE_ATTACK_URI)
 
-        self.helper.collector_logger.debug(
-            str.format("Response headers: {}", response.headers)
-        )
-        self.helper.collector_logger.debug(
-            str.format("Response raw: {}", response.text[:200])
-        )
+        self.logger.debug(str.format("Response headers: {}", response.headers))
+        self.logger.debug(str.format("Response raw: {}", response.text[:200]))
 
         enterprise_attack = response.json()
         objects = enterprise_attack.get("objects")
@@ -151,14 +120,6 @@ class OpenAEVMitre:
         # Sync attack patterns
         self._attack_patterns(attack_patterns, kill_chain_phases, relationships)
 
-    # Start the main loop
-    def start(self):
-        period = self.config.get_conf(
-            "collector_period", default=604800, is_number=True
-        )  # 7 days
-        self.helper.schedule(message_callback=self._process_message, delay=period)
-
 
 if __name__ == "__main__":
-    openAEVMitre = OpenAEVMitre()
-    openAEVMitre.start()
+    OpenAEVMitre(configuration=ConfigLoader().to_daemon_config()).start()

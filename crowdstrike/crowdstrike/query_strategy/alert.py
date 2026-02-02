@@ -52,7 +52,7 @@ class Alert(Base):
             try:
                 items.append(Item(**dataframe))
             except ValidationError as ve:
-                self.api.helper.collector_logger.warning(
+                self.api.logger.warning(
                     f"Skipping alert entry because of unexpected data layout: {ve}"
                 )
                 continue
