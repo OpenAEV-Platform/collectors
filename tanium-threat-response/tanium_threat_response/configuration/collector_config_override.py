@@ -20,14 +20,18 @@ class CollectorConfigOverride(ConfigLoaderCollector):
         description="Path to the icon file",
     )
     tanium_url: str = Field(
+        alias="TANIUM_URL",
         description="URL of your Tanium instance.",
     )
     tanium_url_console: str = Field(
+        alias="TANIUM_URL_CONSOLE",
         description="URL of your Tanium console instance.",
     )
     tanium_token: str = Field(
+        alias="TANIUM_TOKEN",
         description="API Token.",
     )
     tanium_ssl_verify: str = Field(
+        alias="TANIUM_SSL_VERIFY",
         description="Verify the Tanium server TLS certificate",
     )

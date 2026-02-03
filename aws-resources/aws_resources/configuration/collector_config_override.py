@@ -22,17 +22,22 @@ class CollectorConfigOverride(ConfigLoaderCollector):
         description="Path to the icon file",
     )
     aws_access_key_id: str = Field(
+        alias="AWS_ACCESS_KEY",
         description="AWS Access Key ID",
     )
     aws_secret_access_key: str = Field(
+        alias="AWS_SECRET_ACCESS_KEY",
         description="AWS Secret Access Key",
     )
     aws_session_token: str = Field(
+        alias="AWS_SESSION_TOKEN",
         description="AWS Session Token (for temporary credentials)",
     )
     aws_assume_role_arn: str = Field(
+        alias="AWS_ASSUME_ROLE_ARN",
         description="ARN of IAM role to assume",
     )
     aws_regions: str = Field(
+        alias="AWS_REGIONS",
         description="Comma-separated list of AWS regions",
     )

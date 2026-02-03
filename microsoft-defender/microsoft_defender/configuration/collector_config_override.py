@@ -20,11 +20,14 @@ class CollectorConfigOverride(ConfigLoaderCollector):
         description="Path to the icon file",
     )
     microsoft_defender_tenant_id: str = Field(
+        alias="MICROSOFT_DEFENDER_TENANT_ID",
         description="Azure Active Directory tenant ID for Microsoft Defender.",
     )
     microsoft_defender_client_id: str = Field(
+        alias="MICROSOFT_DEFENDER_CLIENT_ID",
         description="Azure AD application (client) ID for Microsoft Defender.",
     )
     microsoft_defender_client_secret: SecretStr = Field(
+        alias="MICROSOFT_DEFENDER_CLIENT_SECRET",
         description="Azure AD application client secret for Microsoft Defender.",
     )

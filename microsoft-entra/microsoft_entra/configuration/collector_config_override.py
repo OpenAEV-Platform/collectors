@@ -22,14 +22,18 @@ class CollectorConfigOverride(ConfigLoaderCollector):
         description="Duration between two scheduled runs of the collector (ISO 8601 format).",
     )
     microsoft_entra_tenant_id: str = Field(
+        alias="MICROSOFT_ENTRA_TENANT_ID",
         description="Azure Active Directory tenant ID for Microsoft Entra.",
     )
     microsoft_entra_client_id: str = Field(
+        alias="MICROSOFT_ENTRA_CLIENT_ID",
         description="Azure AD application (client) ID for Microsoft Entra.",
     )
     microsoft_entra_client_secret: SecretStr = Field(
+        alias="MICROSOFT_ENTRA_CLIENT_SECRET",
         description="Azure AD application client secret for Microsoft Entra.",
     )
     include_external: bool = Field(
+        alias="INCLUDE_EXTERNAL",
         description="Include user with #EXT# in principal name.",
     )
