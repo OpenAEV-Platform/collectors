@@ -29,5 +29,6 @@ class CollectorConfigOverride(ConfigLoaderCollector):
         description="API Token.",
     )
     tanium_ssl_verify: str = Field(
+        default="true",
         description="Verify the Tanium server TLS certificate",
     )

@@ -31,5 +31,6 @@ class CollectorConfigOverride(ConfigLoaderCollector):
         description="Azure AD application client secret for Microsoft Entra.",
     )
     include_external: bool = Field(
+        default=False,
         description="Include user with #EXT# in principal name.",
     )
