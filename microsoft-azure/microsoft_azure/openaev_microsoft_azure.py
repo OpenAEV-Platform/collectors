@@ -1,3 +1,5 @@
+import os
+
 import requests
 from microsoft_azure.configuration.config_loader import ConfigLoader
 from pyoaev.configuration import Configuration
@@ -378,4 +380,14 @@ class OpenAEVMicrosoftAzure(CollectorDaemon):
 
 
 if __name__ == "__main__":
+    for key in [
+        "MICROSOFT_AZURE_TENANT_ID",
+        "MICROSOFT_AZURE_CLIENT_ID",
+        "MICROSOFT_AZURE_CLIENT_SECRET",
+        "MICROSOFT_AZURE_SUBSCRIPTION_ID",
+        "MICROSOFT_AZURE_RESOURCE_GROUPS",
+    ]:
+        if not os.environ.get(f"COLLECTOR_{key}") and os.environ.get(key):
+            os.environ[f"COLLECTOR_{key}"] = os.environ.get(key)
+
     OpenAEVMicrosoftAzure(configuration=ConfigLoader().to_daemon_config()).start()

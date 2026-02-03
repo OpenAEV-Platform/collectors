@@ -1,4 +1,5 @@
 import json
+import os
 from typing import Any, Dict, List, Optional
 
 import requests
@@ -336,4 +337,13 @@ class OpenAEVGoogleWorkspace(CollectorDaemon):
 
 
 if __name__ == "__main__":
+    for key in [
+        "GOOGLE_WORKSPACE_SERVICE_ACCOUNT_JSON",
+        "GOOGLE_WORKSPACE_DELEGATED_ADMIN_EMAIL",
+        "GOOGLE_WORKSPACE_CUSTOMER_ID",
+        "INCLUDE_SUSPENDED",
+    ]:
+        if not os.environ.get(f"COLLECTOR_{key}") and os.environ.get(key):
+            os.environ[f"COLLECTOR_{key}"] = os.environ.get(key)
+
     OpenAEVGoogleWorkspace(configuration=ConfigLoader().to_daemon_config()).start()

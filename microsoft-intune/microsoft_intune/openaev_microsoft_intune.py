@@ -1,3 +1,5 @@
+import os
+
 import requests
 from microsoft_intune.configuration.config_loader import ConfigLoader
 from pyoaev.configuration import Configuration
@@ -504,4 +506,14 @@ class OpenAEVMicrosoftIntune(CollectorDaemon):
 
 
 if __name__ == "__main__":
+    for key in [
+        "MICROSOFT_INTUNE_TENANT_ID",
+        "MICROSOFT_INTUNE_CLIENT_ID",
+        "MICROSOFT_INTUNE_CLIENT_SECRET",
+        "MICROSOFT_INTUNE_DEVICE_FILTER",
+        "MICROSOFT_INTUNE_DEVICE_GROUPS",
+    ]:
+        if not os.environ.get(f"COLLECTOR_{key}") and os.environ.get(key):
+            os.environ[f"COLLECTOR_{key}"] = os.environ.get(key)
+
     OpenAEVMicrosoftIntune(configuration=ConfigLoader().to_daemon_config()).start()

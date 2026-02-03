@@ -1,4 +1,5 @@
 import asyncio
+import os
 
 import requests
 from azure.identity.aio import ClientSecretCredential
@@ -234,4 +235,13 @@ class OpenAEVMicrosoftEntra(CollectorDaemon):
 
 
 if __name__ == "__main__":
+    for key in [
+        "MICROSOFT_ENTRA_TENANT_ID",
+        "MICROSOFT_ENTRA_CLIENT_ID",
+        "MICROSOFT_ENTRA_CLIENT_SECRET",
+        "INCLUDE_EXTERNAL",
+    ]:
+        if not os.environ.get(f"COLLECTOR_{key}") and os.environ.get(key):
+            os.environ[f"COLLECTOR_{key}"] = os.environ.get(key)
+
     OpenAEVMicrosoftEntra(configuration=ConfigLoader().to_daemon_config()).start()
