@@ -1,4 +1,5 @@
 import json
+import os
 from datetime import datetime
 from pathlib import PurePosixPath, PureWindowsPath
 
@@ -324,4 +325,13 @@ class OpenAEVTaniumThreatResponse(CollectorDaemon):
 
 
 if __name__ == "__main__":
+    for key in [
+        "TANIUM_URL",
+        "TANIUM_URL_CONSOLE",
+        "TANIUM_TOKEN",
+        "TANIUM_SSL_VERIFY",
+    ]:
+        if not os.environ.get(f"COLLECTOR_{key}") and os.environ.get(key):
+            os.environ[f"COLLECTOR_{key}"] = os.environ.get(key)
+
     OpenAEVTaniumThreatResponse(configuration=ConfigLoader().to_daemon_config()).start()

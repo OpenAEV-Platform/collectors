@@ -1,3 +1,4 @@
+import os
 from datetime import datetime
 
 import pytz
@@ -272,6 +273,18 @@ class OpenAEVMicrosoftSentinel(CollectorDaemon):
 
 
 if __name__ == "__main__":
+    for key in [
+        "MICROSOFT_SENTINEL_TENANT_ID",
+        "MICROSOFT_SENTINEL_CLIENT_ID",
+        "MICROSOFT_SENTINEL_CLIENT_SECRET",
+        "MICROSOFT_SENTINEL_SUBSCRIPTION_ID",
+        "MICROSOFT_SENTINEL_WORKSPACE_ID",
+        "MICROSOFT_SENTINEL_RESOURCE_GROUP",
+        "MICROSOFT_SENTINEL_EDR_COLLECTORS",
+    ]:
+        if not os.environ.get(f"COLLECTOR_{key}") and os.environ.get(key):
+            os.environ[f"COLLECTOR_{key}"] = os.environ.get(key)
+
     OpenAEVMicrosoftSentinel(configuration=ConfigLoader().to_daemon_config()).start()
 
 

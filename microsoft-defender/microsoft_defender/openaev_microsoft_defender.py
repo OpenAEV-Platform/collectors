@@ -1,5 +1,6 @@
 import asyncio
 import json
+import os
 from datetime import datetime
 
 import pytz
@@ -437,4 +438,12 @@ class OpenAEVMicrosoftDefender(CollectorDaemon):
 
 
 if __name__ == "__main__":
+    for key in [
+        "MICROSOFT_DEFENDER_TENANT_ID",
+        "MICROSOFT_DEFENDER_CLIENT_ID",
+        "MICROSOFT_DEFENDER_CLIENT_SECRET",
+    ]:
+        if not os.environ.get(f"COLLECTOR_{key}") and os.environ.get(key):
+            os.environ[f"COLLECTOR_{key}"] = os.environ.get(key)
+
     OpenAEVMicrosoftDefender(configuration=ConfigLoader().to_daemon_config()).start()
