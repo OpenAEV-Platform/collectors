@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "openaev-tanium-threat-response-collector"
-version = "2.0.14"
+version = "2.1.0"
 description = "A Collector for Tanium Threat Response security suite"
 authors = ["Filigran <contact@filigran.io>"]
 license = "Apache-2.0"
@@ -12,7 +12,7 @@ packages = [
 [tool.poetry.dependencies]
 python = "^3.11"
 pyoaev = [
-    { markers = "extra == 'prod' and extra != 'dev'", version = "2.0.14", source = "pypi"  },
+    { markers = "extra == 'prod' and extra != 'dev'", version = "2.1.0", source = "pypi"  },
     { markers = "extra == 'dev' and extra != 'prod'", path = "../../client-python", develop = true },
 ]
 thefuzz = "0.22.1"
