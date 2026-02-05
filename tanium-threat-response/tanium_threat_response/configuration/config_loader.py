@@ -28,7 +28,9 @@ class ConfigLoader(SettingsLoader):
                 # Tanium threat response
                 "tanium_url": {"data": self.collector.tanium_url},
                 "tanium_url_console": {"data": self.collector.tanium_url_console},
-                "tanium_token": {"data": self.collector.tanium_token},
+                "tanium_token": {
+                    "data": self.collector.tanium_token.get_secret_value()
+                },
                 "tanium_ssl_verify": {"data": self.collector.tanium_ssl_verify},
             },
             config_base_model=self,
