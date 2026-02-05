@@ -1,4 +1,4 @@
-from pydantic import Field
+from pydantic import Field, SecretStr
 from pyoaev.configuration import ConfigLoaderCollector
 
 
@@ -25,7 +25,7 @@ class CollectorConfigOverride(ConfigLoaderCollector):
     tanium_url_console: str = Field(
         description="URL of your Tanium console instance.",
     )
-    tanium_token: str = Field(
+    tanium_token: SecretStr = Field(
         description="API Token.",
     )
     tanium_ssl_verify: str = Field(
