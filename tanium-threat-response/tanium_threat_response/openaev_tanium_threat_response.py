@@ -324,9 +324,10 @@ class OpenAEVTaniumThreatResponse(CollectorDaemon):
                             }
                         )
 
-        self.helper.api.inject_expectation_trace.bulk_create(
+        self.api.inject_expectation_trace.bulk_create(
             payload={"expectation_traces": traces_to_create}
         )
+
 
 if __name__ == "__main__":
     for key in [

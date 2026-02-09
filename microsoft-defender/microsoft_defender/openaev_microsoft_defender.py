@@ -423,7 +423,6 @@ class OpenAEVMicrosoftDefender(CollectorDaemon):
                                 ),
                             }
                         )
-
         self.api.inject_expectation_trace.bulk_create(
             payload={"expectation_traces": traces_to_create}
         )
