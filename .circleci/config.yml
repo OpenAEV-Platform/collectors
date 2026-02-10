@@ -76,6 +76,10 @@ jobs:
           working_directory: ~/openaev/crowdstrike
           name: Tests for crowdstrike collector
           command: poetry run python -m unittest
+      - run:
+          working_directory: ~/openaev/palo-alto-cortex-xdr
+          name: Tests for palo-alto-cortex-xdr collector
+          command: poetry run pytest
   build_docker_images:
     working_directory: ~/openaev
     docker:
