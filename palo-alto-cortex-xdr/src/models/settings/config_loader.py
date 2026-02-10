@@ -14,8 +14,8 @@ from pyoaev.configuration import Configuration
 from src.models.settings import (
     BaseConfigLoaderCollector,
     ConfigBaseSettings,
-    _ConfigLoaderOAEV,
-    _ConfigLoaderPaloAltoCortexXDR,
+    ConfigLoaderOAEV,
+    ConfigLoaderPaloAltoCortexXDR,
 )
 
 
@@ -46,16 +46,16 @@ class ConfigLoader(ConfigBaseSettings):
     provides methods for converting to daemon-compatible format.
     """
 
-    openaev: _ConfigLoaderOAEV = Field(
-        default_factory=_ConfigLoaderOAEV,
+    openaev: ConfigLoaderOAEV = Field(
+        default_factory=ConfigLoaderOAEV,
         description="OpenAEV configurations.",
     )
     collector: ConfigLoaderCollector = Field(
         default_factory=ConfigLoaderCollector,
         description="Collector configurations.",
     )
-    palo_alto_cortex_xdr: _ConfigLoaderPaloAltoCortexXDR = Field(
-        default_factory=_ConfigLoaderPaloAltoCortexXDR,
+    palo_alto_cortex_xdr: ConfigLoaderPaloAltoCortexXDR = Field(
+        default_factory=ConfigLoaderPaloAltoCortexXDR,
         description="PaloAltoCortexXDR configurations.",
     )
 

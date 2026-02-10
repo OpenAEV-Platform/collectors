@@ -5,7 +5,7 @@ services:
       - OPENAEV_URL=http://localhost
       - OPENAEV_TOKEN=ChangeMe
       - COLLECTOR_ID=ChangeMe
-      - PALO_ALTO_CORTEX_XDR_FQDN=changeme
+      - PALO_ALTO_CORTEX_XDR_FQDN=ChangeMe
       - PALO_ALTO_CORTEX_XDR_API_KEY=ChangeMe
       - PALO_ALTO_CORTEX_XDR_API_KEY_ID=ChangeMe
       #- PALO_ALTO_CORTEX_XDR_API_KEY_TYPE=standard

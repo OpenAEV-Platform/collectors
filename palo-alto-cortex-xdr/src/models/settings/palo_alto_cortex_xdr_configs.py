@@ -8,7 +8,7 @@ from src.models.authentication import AuthenticationType
 from src.models.settings import ConfigBaseSettings
 
 
-class _ConfigLoaderPaloAltoCortexXDR(ConfigBaseSettings):
+class ConfigLoaderPaloAltoCortexXDR(ConfigBaseSettings):
     """PaloAltoCortexXDR API configuration settings.
 
     Contains connection details, timing parameters, and retry settings

@@ -17,7 +17,7 @@ TimedeltaInSeconds = Annotated[
 ]
 
 
-class _ConfigLoaderOAEV(ConfigBaseSettings):
+class ConfigLoaderOAEV(ConfigBaseSettings):
     """OpenAEV/OpenAEV platform configuration settings.
 
     Contains URL and authentication token for connecting to the OpenAEV platform.
