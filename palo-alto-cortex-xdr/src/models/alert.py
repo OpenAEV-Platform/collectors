@@ -3,6 +3,10 @@ from typing import List, Optional
 from pydantic import BaseModel
 
 
+class AlertEvent(BaseModel):
+    actor_process_image_name: Optional[str] = None
+
+
 class Alert(BaseModel):
     external_id: str
     severity: str
@@ -15,6 +19,17 @@ class Alert(BaseModel):
     action: str
     action_pretty: str
     detection_timestamp: int
+    events: Optional[List[AlertEvent]] = None
+
+    def get_process_image_names(self) -> list[str]:
+        """Extract actor_process_image_name from all events."""
+        if not self.events:
+            return []
+        return [
+            e.actor_process_image_name
+            for e in self.events
+            if e.actor_process_image_name
+        ]
 
 
 class Alerts(BaseModel):

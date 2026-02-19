@@ -3,7 +3,7 @@
 from datetime import timedelta
 from typing import Literal
 
-from pydantic import Field, SecretStr
+from pydantic import Field, SecretStr, field_validator
 from src.models.authentication import AuthenticationType
 from src.models.settings import ConfigBaseSettings
 
@@ -19,6 +19,16 @@ class ConfigLoaderPaloAltoCortexXDR(ConfigBaseSettings):
         alias="PALO_ALTO_CORTEX_XDR_FQDN",
         description="The FQDN is a unique host and domain name associated with each tenant.",
     )
+
+    @field_validator("fqdn")
+    @classmethod
+    def strip_scheme(cls, v: str) -> str:
+        """Strip any URL scheme from the FQDN to keep only the hostname."""
+        for scheme in ("https://", "http://"):
+            if v.startswith(scheme):
+                v = v[len(scheme) :]
+        return v.rstrip("/")
+
     api_key: SecretStr = Field(
         alias="PALO_ALTO_CORTEX_XDR_API_KEY",
         description="The API Key is your unique identifier used as the Authorization:{key} header required for authenticating API calls.",

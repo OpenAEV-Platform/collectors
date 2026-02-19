@@ -7,6 +7,7 @@ from pyoaev.apis.inject_expectation.model.expectation import (
 from pyoaev.signatures.types import SignatureTypes
 from src.models.alert import (
     Alert,
+    AlertEvent,
     Alerts,
     FileArtifact,
     FileArtifacts,
@@ -58,6 +59,13 @@ class PreventionExpectationFactory(Factory):
     )
 
 
+class AlertEventFactory(Factory):
+    class Meta:
+        model = AlertEvent
+
+    actor_process_image_name = Faker("file_name", extension="exe")
+
+
 class AlertFactory(Factory):
     class Meta:
         model = Alert
@@ -74,6 +82,7 @@ class AlertFactory(Factory):
     action_pretty = "Detected (Reported)"
     _detection_timestamp = Faker("unix_time")
     detection_timestamp = LazyAttribute(lambda obj: int(obj._detection_timestamp))
+    events = List([SubFactory(AlertEventFactory)])
 
 
 class IncidentItemFactory(Factory):
