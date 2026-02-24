@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "openaev-google-workspace-collector"
-version = "2.1.8"
+version = "2.2.0"
 description = "A Collector for Google Workspace user and group management"
 authors = ["Filigran <contact@filigran.io>"]
 license = "Apache-2.0"
@@ -12,7 +12,7 @@ packages = [
 [tool.poetry.dependencies]
 python = "^3.11"
 pyoaev = [
-    { markers = "extra == 'prod' and extra != 'dev'", version = "2.1.8", source = "pypi"  },
+    { markers = "extra == 'prod' and extra != 'dev'", version = "2.2.0", source = "pypi"  },
     { markers = "extra == 'dev' and extra != 'prod'", path = "../../client-python", develop = true },
 ]
 google-api-python-client = "^2.149.0"
