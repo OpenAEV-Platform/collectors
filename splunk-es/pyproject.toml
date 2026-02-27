@@ -7,7 +7,7 @@ packages = [{ include = "src" }, { include = "tests" }]
 
 [project]
 name = "SplunkESCollector"
-version = "2.1.5"
+version = "2.2.0"
 description = "Collector for Splunk Enterprise Security."
 readme = "README.md"
 
@@ -16,7 +16,7 @@ dynamic = ["dependencies"]
 
 [tool.poetry.dependencies]
 pyoaev = [
-    {markers = "extra == 'prod' and extra != 'local' and extra != 'current'",version = "2.1.5"},
+    {markers = "extra == 'prod' and extra != 'local' and extra != 'current'",version = "2.2.0"},
     {markers = "extra == 'local' and extra != 'current' and extra != 'prod'",path = "../../client-python", develop = true},
 ]
 pydantic = "^2.11.7"
