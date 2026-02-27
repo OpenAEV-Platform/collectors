@@ -352,9 +352,9 @@ jobs:
             docker image load < collector-google-workspace
             docker tag openaev/collector-google-workspace:${CIRCLE_SHA1} openaev/collector-google-workspace:${IMAGETAG}
             docker tag openaev/collector-google-workspace:${CIRCLE_SHA1} openbas/collector-google-workspace:${IMAGETAG}
+            docker image load < collector-palo-alto-cortex-xdr
             docker tag openaev/collector-palo-alto-cortex-xdr:${CIRCLE_SHA1} openaev/collector-palo-alto-cortex-xdr:${IMAGETAG}
             docker tag openaev/collector-palo-alto-cortex-xdr:${CIRCLE_SHA1} openbas/collector-palo-alto-cortex-xdr:${IMAGETAG}
-            docker image load < collector-palo-alto-cortex-xdr
             
             echo "$DOCKERHUB_PASS" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
             docker push openaev/collector-mitre-attack:${IMAGETAG}
