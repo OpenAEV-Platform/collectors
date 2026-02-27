@@ -76,6 +76,14 @@ jobs:
           working_directory: ~/openaev/crowdstrike
           name: Tests for crowdstrike collector
           command: poetry run python -m unittest
+      - run:
+          working_directory: ~/openaev/palo-alto-cortex-xdr
+          name: Install dependencies for palo-alto-cortex-xdx
+          command: poetry run pip install pytest factory-boy pyoaev
+      - run:
+          working_directory: ~/openaev/palo-alto-cortex-xdr
+          name: Tests for palo-alto-cortex-xdr collector
+          command: poetry run pytest
   build_docker_images:
     working_directory: ~/openaev
     docker:
@@ -247,6 +255,16 @@ jobs:
               docker build --progress=plain -t openaev/collector-google-workspace:${CIRCLE_SHA1} .
             fi
             docker save -o ~/openaev/images/collector-google-workspace openaev/collector-google-workspace:${CIRCLE_SHA1}
+      - run:
+          working_directory: ~/openaev/palo-alto-cortex-xdr
+          name: Build Docker image openaev/collector-palo-alto-cortex-xdr
+          command: |
+            if [ "${CIRCLE_BRANCH}" = "release/current" ]; then
+              docker build --progress=plain -t openaev/collector-palo-alto-cortex-xdr:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
+            else 
+              docker build --progress=plain -t openaev/collector-palo-alto-cortex-xdr:${CIRCLE_SHA1} .
+            fi
+            docker save -o ~/openaev/images/collector-palo-alto-cortex-xdr openaev/collector-palo-alto-cortex-xdr:${CIRCLE_SHA1}
       - persist_to_workspace:
           root: ~/openaev
           paths:
@@ -334,6 +352,9 @@ jobs:
             docker image load < collector-google-workspace
             docker tag openaev/collector-google-workspace:${CIRCLE_SHA1} openaev/collector-google-workspace:${IMAGETAG}
             docker tag openaev/collector-google-workspace:${CIRCLE_SHA1} openbas/collector-google-workspace:${IMAGETAG}
+            docker tag openaev/collector-palo-alto-cortex-xdr:${CIRCLE_SHA1} openaev/collector-palo-alto-cortex-xdr:${IMAGETAG}
+            docker tag openaev/collector-palo-alto-cortex-xdr:${CIRCLE_SHA1} openbas/collector-palo-alto-cortex-xdr:${IMAGETAG}
+            docker image load < collector-palo-alto-cortex-xdr
             
             echo "$DOCKERHUB_PASS" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
             docker push openaev/collector-mitre-attack:${IMAGETAG}
@@ -366,6 +387,8 @@ jobs:
             docker push openbas/collector-aws-resources:${IMAGETAG}
             docker push openaev/collector-google-workspace:${IMAGETAG}
             docker push openbas/collector-google-workspace:${IMAGETAG}
+            docker push openaev/collector-palo-alto-cortex-xdr:${IMAGETAG}
+            docker push openbas/collector-palo-alto-cortex-xdr:${IMAGETAG}
 
             if [ "${IS_LATEST}" == "true" ]
             then
@@ -399,6 +422,8 @@ jobs:
               docker tag openaev/collector-aws-resources:${IMAGETAG} openbas/collector-aws-resources:latest
               docker tag openaev/collector-google-workspace:${IMAGETAG} openaev/collector-google-workspace:latest
               docker tag openaev/collector-google-workspace:${IMAGETAG} openbas/collector-google-workspace:latest
+              docker tag openaev/collector-palo-alto-cortex-xdr:${IMAGETAG} openaev/collector-palo-alto-cortex-xdr:latest
+              docker tag openaev/collector-palo-alto-cortex-xdr:${IMAGETAG} openbas/collector-palo-alto-cortex-xdr:latest
 
               docker push openaev/collector-mitre-attack:latest
               docker push openbas/collector-mitre-attack:latest
@@ -430,6 +455,8 @@ jobs:
               docker push openbas/collector-aws-resources:latest
               docker push openaev/collector-google-workspace:latest
               docker push openbas/collector-google-workspace:latest
+              docker push openaev/collector-palo-alto-cortex-xdr:latest
+              docker push openbas/collector-palo-alto-cortex-xdr:latest
             fi
       - slack/notify:
           event: fail
