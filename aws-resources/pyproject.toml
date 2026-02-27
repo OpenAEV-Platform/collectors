@@ -15,7 +15,7 @@ pyoaev = [
     { markers = "extra == 'prod' and extra != 'dev'", version = "2.2.0", source = "pypi"  },
     { markers = "extra == 'dev' and extra != 'prod'", path = "../../client-python", develop = true },
 ]
-boto3 = "1.40.21"
+boto3 = "1.42.59"
 botocore = "1.40.21"
 
 [tool.poetry.extras]
