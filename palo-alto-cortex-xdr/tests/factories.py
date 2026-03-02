@@ -1,0 +1,124 @@
+from factory import Factory, Faker, LazyAttribute, List, SubFactory
+from pyoaev.apis.inject_expectation.model.expectation import (
+    DetectionExpectation,
+    ExpectationSignature,
+    PreventionExpectation,
+)
+from pyoaev.signatures.types import SignatureTypes
+from src.models.alert import (
+    Alert,
+    AlertEvent,
+    Alerts,
+    FileArtifact,
+    FileArtifacts,
+    Incident,
+    IncidentItem,
+)
+
+
+class ExpectationSignatureWithEndDateFactory(Factory):
+    class Meta:
+        model = ExpectationSignature
+
+    type = SignatureTypes.SIG_TYPE_END_DATE
+    value = Faker("iso8601")
+
+
+class ExpectationSignatureWithParentProcessNameFactory(Factory):
+    class Meta:
+        model = ExpectationSignature
+
+    type = SignatureTypes.SIG_TYPE_PARENT_PROCESS_NAME
+    _uuid = Faker("uuid4")
+    value = LazyAttribute(lambda obj: f"oaev-implant-{obj._uuid}")
+
+
+class DetectionExpectationFactory(Factory):
+    class Meta:
+        model = DetectionExpectation
+
+    inject_expectation_id = Faker("uuid4")
+    inject_expectation_signatures = List(
+        [
+            SubFactory(ExpectationSignatureWithEndDateFactory),
+            SubFactory(ExpectationSignatureWithParentProcessNameFactory),
+        ]
+    )
+
+
+class PreventionExpectationFactory(Factory):
+    class Meta:
+        model = PreventionExpectation
+
+    inject_expectation_id = Faker("uuid4")
+    inject_expectation_signatures = List(
+        [
+            SubFactory(ExpectationSignatureWithEndDateFactory),
+            SubFactory(ExpectationSignatureWithParentProcessNameFactory),
+        ]
+    )
+
+
+class AlertEventFactory(Factory):
+    class Meta:
+        model = AlertEvent
+
+    actor_process_image_name = Faker("file_name", extension="exe")
+
+
+class AlertFactory(Factory):
+    class Meta:
+        model = Alert
+
+    external_id = Faker("uuid4")
+    actor_process_command_line = Faker("sentence")
+    severity = Faker("random_element", elements=["low", "medium", "high"])
+    matching_status = "UNMATCHABLE"
+    case_id = Faker("random_int", min=1, max=1000)
+    alert_id = Faker("random_int", min=1, max=10000)
+    category = "Malware"
+    description = Faker("sentence")
+    action = "Reported"
+    action_pretty = "Detected (Reported)"
+    _detection_timestamp = Faker("unix_time")
+    detection_timestamp = LazyAttribute(lambda obj: int(obj._detection_timestamp))
+    events = List([SubFactory(AlertEventFactory)])
+
+
+class IncidentItemFactory(Factory):
+    class Meta:
+        model = IncidentItem
+
+    incident_id = Faker("random_int", min=1, max=100)
+
+
+class AlertsFactory(Factory):
+    class Meta:
+        model = Alerts
+
+    total_count = 3
+    data = List([SubFactory(AlertFactory) for _ in range(3)])
+
+
+class FileArtifactFactory(Factory):
+    class Meta:
+        model = FileArtifact
+
+    file_name = Faker("file_name")
+
+
+class FileArtifactsFactory(Factory):
+    class Meta:
+        model = FileArtifacts
+
+    total_count = 3
+    data = List([SubFactory(FileArtifactFactory) for _ in range(3)])
+
+
+class IncidentFactory(Factory):
+    class Meta:
+        model = Incident
+
+    incident = SubFactory(IncidentItemFactory)
+    alerts = SubFactory(AlertsFactory)
+    file_artifacts = SubFactory(FileArtifactsFactory)
