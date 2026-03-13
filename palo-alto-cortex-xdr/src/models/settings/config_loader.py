@@ -159,5 +159,6 @@ class ConfigLoader(ConfigBaseSettings):
                 "palo_alto_cortex_xdr_time_window": {
                     "data": self.palo_alto_cortex_xdr.time_window
                 },
-            }
+            },
+            config_base_model=self,
         )

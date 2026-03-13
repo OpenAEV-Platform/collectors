@@ -7,7 +7,7 @@ packages = [{ include = "src" }, { include = "tests" }]
 
 [project]
 name = "palo-alto-cortex-xdr"
-version = "2.2.1"
+version = "2.3.0"
 description = "Collector for Palo Alto Cortex XDR EDR."
 readme = "README.md"
 
@@ -16,7 +16,7 @@ Repository = "https://github.com/OpenAEV-Platform/collectors/tree/main/palo-alto
 Documentation = "https://github.com/OpenAEV-Platform/collectors/blob/main/palo-alto-cortex-xdr/README.md"
 Issues = "https://github.com/OpenAEV-Platform/collectors/issues"
 
-requires-python = ">=3.12"
+requires-python = ">=3.12,<4.0"
 
 [tool.poetry.dependencies]
 pyoaev = [
@@ -44,3 +44,8 @@ PaloAltoCortexXDRCollector = "src.__main__:main"
 
 [tool.pytest.ini_options]
 testpaths = ["./tests"]
+
+[tool.cmw]
+install-command = "poetry install --extras local"
+config-dump-command = "poetry run python -m src --dump-config-schema"
+icon-path = "src/img/palo-alto-cortex-xdr-logo.png"
