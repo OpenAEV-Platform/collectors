@@ -18,6 +18,9 @@ pyoaev = [
 msgraph-sdk = "1.40.0"
 msal = "1.33.0"
 
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.5"
+
 [tool.poetry.extras]
 prod = ["pyoaev"]
 dev = ["pyoaev"]
@@ -30,4 +33,3 @@ build-backend = "poetry.core.masonry.api"
 install-command = "poetry install --extras prod"
 config-dump-command = "poetry run python -m microsoft_defender.openaev_microsoft_defender --dump-config-schema"
 icon-path = "microsoft_defender/img/icon-microsoft-defender.png"
-
