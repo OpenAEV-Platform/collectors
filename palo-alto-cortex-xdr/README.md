@@ -44,7 +44,7 @@ The collector receives **expectations** from OpenAEV, which are:
 #### API Calls to Cortex XDR
 The collector makes the following API calls:
 
-**Endpoint:** `POST https://api-{FQDN}/public_api/v1/alerts/get_alerts`
+**Endpoint:** `POST https://{FQDN}/public_api/v1/alerts/get_alerts`
 
 **Request Body:**
 ```json

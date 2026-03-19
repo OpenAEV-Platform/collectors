@@ -34,7 +34,7 @@ class PaloAltoCortexXDRClientAPI:
         if filters:
             request_data["filters"] = filters
 
-        url = f"https://api-{self.fqdn}/public_api/v1/alerts/get_alerts_multi_events"
+        url = f"https://{self.fqdn}/public_api/v1/alerts/get_alerts_multi_events"
         headers = self._auth.get_headers()
 
         response = requests.post(
@@ -49,7 +49,7 @@ class PaloAltoCortexXDRClientAPI:
     ) -> list[dict[str, Any]]:
         request_data = {"alert_id_list": alert_ids}
 
-        url = f"https://api-{self.fqdn}/public_api/v1/alerts/get_original_alerts"
+        url = f"https://{self.fqdn}/public_api/v1/alerts/get_original_alerts"
         headers = self._auth.get_headers()
 
         response = requests.post(
@@ -64,7 +64,7 @@ class PaloAltoCortexXDRClientAPI:
     ) -> Incident:
         request_data = {"incident_id": str(incident_id)}
 
-        url = f"https://api-{self.fqdn}/public_api/v1/incidents/get_incident_extra_data"
+        url = f"https://{self.fqdn}/public_api/v1/incidents/get_incident_extra_data"
         headers = self._auth.get_headers()
 
         response = requests.post(
