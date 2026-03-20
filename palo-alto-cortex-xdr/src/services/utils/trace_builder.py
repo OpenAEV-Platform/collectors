@@ -33,9 +33,10 @@ class TraceBuilder:
         if fqdn and alert.alert_id:
             try:
                 web_base = f"https://{fqdn.rstrip('/')}"
-                alert_link = (
-                    f"{web_base}/card/alert/{alert.alert_id}?incidentId={alert.case_id}"
-                )
+                if alert.case_id is not None:
+                    alert_link = f"{web_base}/card/alert/{alert.alert_id}?incidentId={alert.case_id}"
+                else:
+                    alert_link = f"{web_base}/card/alert/{alert.alert_id}"
                 logger.debug(f"{LOG_PREFIX} Generated alert URL: {alert_link}")
             except Exception as e:
                 logger.error(f"{LOG_PREFIX} Error generating URL: {e}")

@@ -11,7 +11,7 @@ class Alert(BaseModel):
     external_id: str
     severity: str
     matching_status: str
-    case_id: int
+    case_id: Optional[int] = None  # Allow case_id to be null
     alert_id: int
     actor_process_command_line: Optional[str] = ""
     category: str
