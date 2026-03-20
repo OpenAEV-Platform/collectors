@@ -74,7 +74,9 @@ class AlertFactory(Factory):
     actor_process_command_line = Faker("sentence")
     severity = Faker("random_element", elements=["low", "medium", "high"])
     matching_status = "UNMATCHABLE"
-    case_id = Faker("random_int", min=1, max=1000)
+    case_id = Faker(
+        "random_element", elements=[None, Faker("random_int", min=1, max=1000)]
+    )
     alert_id = Faker("random_int", min=1, max=10000)
     category = "Malware"
     description = Faker("sentence")

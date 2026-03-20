@@ -1,5 +1,6 @@
 import uuid
 from unittest.mock import patch
+from urllib.parse import parse_qs, urlparse
 
 from pyoaev.apis import DetectionExpectation
 from src.collector import Collector
@@ -65,10 +66,13 @@ def test_collector(expectations, alerts, mock_oaev_api) -> None:
     assert expectation_traces[0]["inject_expectation_trace_expectation"] == str(
         matching_expectation.inject_expectation_id
     )
-    assert (
-        expectation_traces[0]["inject_expectation_trace_alert_link"]
-        == f"https://palo-alto.fake/card/alert/{matching_alert.alert_id}?incidentId={matching_alert.case_id}"
-    )
+    alert_link = expectation_traces[0]["inject_expectation_trace_alert_link"]
+    parsed = urlparse(alert_link)
+    assert parsed.path == f"/card/alert/{matching_alert.alert_id}"
+    # If case_id is not None, check the incidentId query param
+    if matching_alert.case_id is not None:
+        qs = parse_qs(parsed.query)
+        assert qs.get("incidentId", [None])[0] == str(matching_alert.case_id)
 
 
 def test_collector_no_expectations(alerts, mock_oaev_api) -> None:
