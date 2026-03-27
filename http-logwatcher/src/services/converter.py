@@ -35,7 +35,9 @@ class HTTPLogwatcherConverter:
 
         """
         try:
-            oaev_data = {}
+            oaev_data = {
+                "source_ipv4_address": logline.ip_source,
+            }
 
             self.logger.debug(
                 f"{LOG_PREFIX} Successfully converted logline to OAEV format"

@@ -1,8 +1,8 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import re
 import unittest
-from unittest.mock import MagicMock, patch, sentinel
+from unittest.mock import ANY, MagicMock, patch, sentinel
 
 import src.services.fetcher_logline as module
 
@@ -145,15 +145,17 @@ class LogLineFetcherTest(unittest.TestCase):
     @patch.object(module, "datetime")
     def test_parse_log(self, m_datetime, m_LogLine):
         """ testing the various calls made to inputs during the parse_log """
-        start_time = 1
-        end_time = 3
+        start_time = datetime.now(timezone.utc) - timedelta(500)
+        mid_time = datetime.now(timezone.utc) - timedelta(250)
+        end_time = datetime.now(timezone.utc)
         logline = MagicMock()
         logpath = MagicMock()
         logpath.open.return_value = [logline]
         regex = MagicMock()
         pattern = MagicMock()
         source = "access"
-        m_datetime.strptime.return_value = 2
+        ip_regex = MagicMock()
+        m_datetime.strptime.return_value = mid_time
 
         logs_folder_path = MagicMock()
         fetcher = module.LogLineFetcher(
@@ -161,7 +163,7 @@ class LogLineFetcherTest(unittest.TestCase):
         )
 
         results = fetcher.parse_log(
-            start_time, end_time, logpath, regex, pattern, source
+            start_time, end_time, logpath, regex, pattern, ip_regex, source
         )
 
         logpath.open.assert_called_once()
@@ -170,8 +172,9 @@ class LogLineFetcherTest(unittest.TestCase):
             regex.search.return_value.group.return_value,
             pattern,
         )
+        ip_regex.search.assert_called_with(logline)
         m_LogLine.assert_called_with(
-            _raw=logline,
+            ip_source=ANY,
             source="access",
         )
         self.assertEqual(
@@ -201,6 +204,7 @@ class LogLineFetcherTest(unittest.TestCase):
             fetcher.access_log,
             fetcher.access_timestamp_regex,
             module.CLF_LOCAL_TIME_PATTERN,
+            fetcher.access_ip_regex,
             "access",
         )
 
@@ -226,6 +230,7 @@ class LogLineFetcherTest(unittest.TestCase):
             fetcher.error_log,
             fetcher.error_timestamp_regex,
             module.DATETIME_STAMP_PATTERN,
+            fetcher.error_ip_regex,
             "error",
         )
 
@@ -233,14 +238,14 @@ class LogLineFetcherTest(unittest.TestCase):
     @patch.object(module.LogLineFetcher, "parse_access_log")
     @patch.object(module.LogLineFetcher, "check_logfiles_exist")
     @patch.object(module.LogLineFetcher, "check_valid_datetimes")
-    def test_fetch_loglines_for_time_windows(
+    def test_fetch_loglines_for_time_window(
         self,
         m_check_valid_datetimes,
         m_check_logfiles_exist,
         m_parse_access_log,
         m_parse_error_log,
     ):
-        """ test the calls made by the fetch_loglines_for_time_windows function """
+        """ test the calls made by the fetch_loglines_for_time_window function """
         start_time = MagicMock()
         end_time = MagicMock()
 
@@ -249,7 +254,7 @@ class LogLineFetcherTest(unittest.TestCase):
             logs_folder_path=logs_folder_path
         )
 
-        fetcher.fetch_loglines_for_time_windows(
+        fetcher.fetch_loglines_for_time_window(
             start_time,
             end_time,
         )
