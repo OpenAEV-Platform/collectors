@@ -62,10 +62,7 @@ class ExpectationService:
     def get_supported_signatures(self) -> list[SignatureTypes]:
         return [
             SignatureTypes.SIG_TYPE_SOURCE_IPV4_ADDRESS,
-            SignatureTypes.SIG_TYPE_SOURCE_IPV6_ADDRESS,
             SignatureTypes.SIG_TYPE_TARGET_IPV4_ADDRESS,
-            SignatureTypes.SIG_TYPE_TARGET_IPV6_ADDRESS,
-            SignatureTypes.SIG_TYPE_TARGET_HOSTNAME_ADDRESS,
             SignatureTypes.SIG_TYPE_END_DATE,
         ]
 
@@ -198,8 +195,54 @@ class ExpectationService:
 
         for expectation in batch:
             try:
+                matched = False
+                traces = []
+
                 for logline in fetch_result.loglines:
-                    pass
+                    if self._expectation_matches_logline(
+                        expectation, logline, detection_helper
+                    ):
+                        trace = TraceBuilder.create_logline_trace(logline)
+                        traces.append(trace)
+
+                        if isinstance(expectation, PreventionExpectation):
+                            if logline.source == "error":
+                                matched = True
+                                self.logger.debug(
+                                    f"{LOG_PREFIX} Prevention expectation {expectation.inject_expectation.id}: "
+                                    f"logline matched signature and action is prevented -> expectation satisfied"
+                                )
+                                break
+                            self.logger.debug(
+                                f"{LOG_ALERT} Prevention expectation {expectation.inject_expectation.id}: "
+                                f"logline matched signature but not prevented -> continuing search"
+                            )
+                        else:
+                            matched = True
+                            self.logger.debug(
+                                f"{LOG_PREFIX} Detection expectation {expectation.inject_expectation.id}: "
+                                f"logline matched signature -> expectation satisfied"
+                            )
+                            break
+
+                if matched:
+                    result_dict = {
+                        "is_valid": True,
+                        "traces": traces,
+                        "expectation_type": (
+                            "detection"
+                            if isinstance(expectation, DetectionExpectation)
+                            else "prevention"
+                        ),
+                    }
+
+                    result = self._convert_dict_to_result(result_dict, expectation)
+                    results.append(result)
+
+                self.logger.debug(
+                    f"{LOG_PREFIX} Expectation {expectation.inject_expectation_id}: "
+                    f"matched={matched}, traces={len(traces)}"
+                )
 
             except Exception as e:
                 self.logger.error(
@@ -235,7 +278,7 @@ class ExpectationService:
 
             if not oaev_data:
                 self.logger.debug(
-                    f"{LOG_PREFIX} No OAEV data generated for logline {logline._raw}"
+                    f"{LOG_PREFIX} No OAEV data generated for logline {logline}"
                 )
                 return False
 
@@ -283,7 +326,7 @@ class ExpectationService:
                     f"{LOG_PREFIX} Detection helper input - filtered_data: {filtered_data}"
                 )
 
-                match_result = detection_helper.match_logline_elements(
+                match_result = detection_helper.match_alert_elements(
                     signatures, filtered_data
                 )
 
