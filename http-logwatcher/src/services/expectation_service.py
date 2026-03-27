@@ -53,7 +53,9 @@ class ExpectationService:
 
         self.time_window = config.http_logwatcher.time_window
 
-        self.logline_fetcher: LogLineFetcher = LogLineFetcher()
+        self.logline_fetcher: LogLineFetcher = LogLineFetcher(
+            config.http_logwatcher.logs_folder_path
+        )
 
         self.logger.info(f"{LOG_PREFIX} Service initialized")
 
