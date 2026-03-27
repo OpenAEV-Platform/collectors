@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 import re
 
@@ -11,8 +11,11 @@ from src.services.exception import (
 
 CLF_LOCAL_TIME_REGEX = r"\[([0-9]{2}/[a-zA-Z]{3}/[0-9]{4}:[0-9]{2}:[0-9]{2}:[0-9]{2}(?: [+-]{1}[0-9]{4})?)\]"
 CLF_LOCAL_TIME_PATTERN = "%d/%b/%Y:%H:%M:%S %z"
+CLF_IP_REGEX = r"^(.*?) -"
+
 DATETIME_STAMP_REGEX = r"([0-9]{4}/[0-9]{2}/[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2})"
 DATETIME_STAMP_PATTERN = "%Y/%m/%d %H:%M:%S"
+VERBOSE_LOG_IP_REGEX = r", client: (.*?),"
 
 
 @dataclass
@@ -29,6 +32,9 @@ class LogLineFetcher:
 
         self.access_timestamp_regex = re.compile(CLF_LOCAL_TIME_REGEX)
         self.error_timestamp_regex = re.compile(DATETIME_STAMP_REGEX)
+
+        self.access_ip_regex = re.compile(CLF_IP_REGEX)
+        self.error_ip_regex = re.compile(VERBOSE_LOG_IP_REGEX)
 
     def check_valid_datetimes(
         self,
@@ -59,6 +65,7 @@ class LogLineFetcher:
         logpath: Path,
         regex: re.Pattern,
         pattern: str,
+        ip_regex: re.Pattern,
         source: str,
     ) -> list[LogLine]:
         """
@@ -73,14 +80,16 @@ class LogLineFetcher:
                 datetimestamp_obj = datetime.strptime(
                     datetimestamp_str,
                     pattern,
-                )
+                #)
+                ).replace(tzinfo=timezone.utc)
             except Exception as _:
                 pass
             else:
                 if datetimestamp_obj < end_time and datetimestamp_obj > start_time:
+                    ip_source = ip_regex.search(line).group(1)
                     lines.append(
                         LogLine(
-                            _raw=line,
+                            ip_source=ip_source,
                             source=source,
                         )
                     )
@@ -98,6 +107,7 @@ class LogLineFetcher:
             self.access_log,
             self.access_timestamp_regex,
             CLF_LOCAL_TIME_PATTERN,
+            self.access_ip_regex,
             "access",
         )
 
@@ -113,10 +123,11 @@ class LogLineFetcher:
             self.error_log,
             self.error_timestamp_regex,
             DATETIME_STAMP_PATTERN,
+            self.error_ip_regex,
             "error",
         )
 
-    def fetch_loglines_for_time_windows(
+    def fetch_loglines_for_time_window(
         self,
         start_time: datetime,
         end_time: datetime,

@@ -1,4 +1,6 @@
 from enum import Enum
+import re
+
 from pydantic import BaseModel
 
 
@@ -7,7 +9,7 @@ class SourceEnum(Enum):
     ERROR = 'error'
 
 class LogLine(BaseModel):
-    _raw: str
+    ip_source: str
     source: SourceEnum
 
     class Config:

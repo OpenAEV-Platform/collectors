@@ -33,6 +33,7 @@ class TraceBuilder:
             "alert_date": datetime.now(timezone.utc).isoformat(),
             "additional_data": {
                 "data_source": "http_logwatcher",
+                "log_source": logline.source,
             },
         }
 
