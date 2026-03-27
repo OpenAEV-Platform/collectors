@@ -8,17 +8,23 @@ class LogLineTest(unittest.TestCase):
     def test_logline_minimal_init(self):
         """ testing the minimal init of the LogLine object (only the required elements) """
         raw = sentinel.raw
+        source = "access"
 
-        module.LogLine(
-            _raw=raw
+        logline = module.LogLine(
+            _raw=raw,
+            source=source,
         )
+
+        assert logline.source == "access"
 
     def test_logline_private_attribute(self):
         """ testing the proper lack of access to the private attribute _raw """
         raw = sentinel.raw
+        source = "error"
 
         logline = module.LogLine(
-            _raw=raw
+            _raw=raw,
+            source=source,
         )
 
         with self.assertRaises(AttributeError):
