@@ -1,0 +1,9 @@
+openaev:
+  url: "http://change.me"
+  token: "ChangeMe"
+
+collector:
+  id: "ChangeMe"
+
+http_logwatcher:
+  logs_folder_path: "ChangeMe"
