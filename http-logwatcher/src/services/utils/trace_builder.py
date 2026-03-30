@@ -34,7 +34,8 @@ class TraceBuilder:
             "alert_link": f"file:///{logline.filepath.as_posix()}",
             "additional_data": {
                 "data_source": "http_logwatcher",
-                "log_source": logline.source,
+                "datetimestamp": f"{logline.datetimestamp}",
+                "request": f"{logline.request}",
             },
         }
 

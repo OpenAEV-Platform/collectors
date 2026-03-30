@@ -1,18 +1,23 @@
+from datetime import datetime
 from enum import Enum
+import hashlib
 from pathlib import Path
 import re
 
 from pydantic import BaseModel
 
 
-class SourceEnum(Enum):
-    ACCESS = 'access'
-    ERROR = 'error'
-
 class LogLine(BaseModel):
-    ip_source: str
-    source: SourceEnum
+    datetimestamp: datetime
     filepath : Path
+    ip_source: str
+    request: str
 
     class Config:
         use_enum_values = True
+
+class AccessLogLine(LogLine):
+    pass
+
+class ErrorLogLine(LogLine):
+    pass

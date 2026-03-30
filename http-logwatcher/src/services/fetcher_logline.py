@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 import re
 
-from src.models.logline import LogLine
+from src.models.logline import AccessLogLine, ErrorLogLine, LogLine
 from src.services.exception import (
     HTTPLogwatcherFileError,
     HTTPLogwatcherValidationError,
@@ -12,10 +12,12 @@ from src.services.exception import (
 CLF_LOCAL_TIME_REGEX = r"\[([0-9]{2}/[a-zA-Z]{3}/[0-9]{4}:[0-9]{2}:[0-9]{2}:[0-9]{2}(?: [+-]{1}[0-9]{4})?)\]"
 CLF_LOCAL_TIME_PATTERN = "%d/%b/%Y:%H:%M:%S %z"
 CLF_IP_REGEX = r"^(.*?) -"
+CLF_REQUEST_REGEX = r"\] \"(.*?)\" [0-9]{3} "
 
 DATETIME_STAMP_REGEX = r"([0-9]{4}/[0-9]{2}/[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2})"
 DATETIME_STAMP_PATTERN = "%Y/%m/%d %H:%M:%S"
 VERBOSE_LOG_IP_REGEX = r", client: (.*?),"
+VERBOSE_LOG_REQUEST_REGEX = r"request: \"(.*?)\", host"
 
 
 @dataclass
@@ -23,19 +25,6 @@ class FetchResult:
     loglines: list[LogLine] = field(default_factory=list)
 
 class LogLineFetcher:
-    def __init__(
-        self,
-        logs_folder_path: Path,
-    ) -> None:
-        self.access_log = logs_folder_path / "access.log"
-        self.error_log = logs_folder_path / "error.log"
-
-        self.access_timestamp_regex = re.compile(CLF_LOCAL_TIME_REGEX)
-        self.error_timestamp_regex = re.compile(DATETIME_STAMP_REGEX)
-
-        self.access_ip_regex = re.compile(CLF_IP_REGEX)
-        self.error_ip_regex = re.compile(VERBOSE_LOG_IP_REGEX)
-
     def check_valid_datetimes(
         self,
         start_time: datetime,
@@ -50,23 +39,15 @@ class LogLineFetcher:
         if start_time >= end_time:
             raise HTTPLogwatcherValidationError("start_time must be before end_time")
 
-    def check_logfiles_exist(self) -> None:
+    def check_logfile_exists(self) -> None:
         """ Check if the logfiles are available for parsing """
-        if not self.access_log.exists():
-            raise HTTPLogwatcherFileError("missing access.log file")
-
-        if not self.error_log.exists():
-            raise HTTPLogwatcherFileError("missing error.log file")
+        if not self.logpath.exists():
+            raise HTTPLogwatcherFileError("missing logfile")
 
     def parse_log(
         self,
         start_time: datetime,
         end_time: datetime,
-        logpath: Path,
-        regex: re.Pattern,
-        pattern: str,
-        ip_regex: re.Pattern,
-        source: str,
     ) -> list[LogLine]:
         """
         For a specific logfile (at $logpath), search for datetime according to
@@ -74,64 +55,39 @@ class LogLineFetcher:
         according to a specific strptime pattern ($pattern)
         """
         lines = []
-        for line in logpath.open():
+        for line in self.logpath.open():
             try:
-                datetimestamp_str = regex.search(line).group(1)
+                datetimestamp_str = self.timestamp_regex.search(line).group(1)
             except AttributeError as _:
                 # if the regex didn't match, the group(1) will raise an AttributeError
                 continue
 
             datetimestamp_obj = datetime.strptime(
                 datetimestamp_str,
-                pattern,
+                self.strptime_pattern,
             ).replace(tzinfo=timezone.utc)
             if datetimestamp_obj < end_time and datetimestamp_obj > start_time:
                 try:
                     # if the regex didn't match, the group(1) will raise an AttributeError
-                    ip_source = ip_regex.search(line).group(1)
+                    ip_source = self.ip_regex.search(line).group(1)
+                except AttributeError as _:
+                    continue
+
+                try:
+                    # if the regex didn't match, the group(1) will raise an AttributeError
+                    request = self.request_regex.search(line).group(1)
                 except AttributeError as _:
                     continue
 
                 lines.append(
-                    LogLine(
+                    self.logline_type(
+                        datetimestamp=datetimestamp_obj,
+                        filepath=self.logpath,
                         ip_source=ip_source,
-                        source=source,
-                        filepath=logpath,
+                        request=request,
                     )
                 )
         return lines
-
-    def parse_access_log(
-        self,
-        start_time: datetime,
-        end_time: datetime,
-    ) -> list[LogLine]:
-        """ Search for loglines in access.log using CLF local time format """
-        return self.parse_log(
-            start_time,
-            end_time,
-            self.access_log,
-            self.access_timestamp_regex,
-            CLF_LOCAL_TIME_PATTERN,
-            self.access_ip_regex,
-            "access",
-        )
-
-    def parse_error_log(
-        self,
-        start_time: datetime,
-        end_time: datetime,
-    ) -> list[LogLine]:
-        """ Search for loglines in error.log using Y/M/D h:m:s time format """
-        return self.parse_log(
-            start_time,
-            end_time,
-            self.error_log,
-            self.error_timestamp_regex,
-            DATETIME_STAMP_PATTERN,
-            self.error_ip_regex,
-            "error",
-        )
 
     def fetch_loglines_for_time_window(
         self,
@@ -144,22 +100,13 @@ class LogLineFetcher:
             FetchResult with loglines.
         """
         self.check_valid_datetimes(start_time, end_time)
-        self.check_logfiles_exist()
+        self.check_logfile_exists()
 
-        loglines = []
         try:
-
-            access_loglines = self.parse_access_log(
+            loglines = self.parse_log(
                 start_time,
                 end_time,
             )
-            loglines.extend(access_loglines)
-
-            error_loglines = self.parse_error_log(
-                start_time,
-                end_time,
-            )
-            loglines.extend(error_loglines)
 
             return FetchResult(
                 loglines=loglines,
@@ -169,3 +116,27 @@ class LogLineFetcher:
             raise HTTPLogwatcherFileError(
                 f"Error fetching alerts for time window: {e}"
             ) from e
+
+class AccessLogLineFetcher(LogLineFetcher):
+    def __init__(
+        self,
+        logs_folder_path: Path,
+    ) -> None:
+        self.logline_type = AccessLogLine
+        self.logpath = logs_folder_path / "access.log"
+        self.timestamp_regex = re.compile(CLF_LOCAL_TIME_REGEX)
+        self.ip_regex = re.compile(CLF_IP_REGEX)
+        self.request_regex = re.compile(CLF_REQUEST_REGEX)
+        self.strptime_pattern = CLF_LOCAL_TIME_PATTERN
+
+class ErrorLogLineFetcher(LogLineFetcher):
+    def __init__(
+        self,
+        logs_folder_path: Path,
+    ) -> None:
+        self.logline_type = ErrorLogLine
+        self.logpath = logs_folder_path / "error.log"
+        self.timestamp_regex = re.compile(DATETIME_STAMP_REGEX)
+        self.ip_regex = re.compile(VERBOSE_LOG_IP_REGEX)
+        self.request_regex = re.compile(VERBOSE_LOG_REQUEST_REGEX)
+        self.strptime_pattern = DATETIME_STAMP_PATTERN

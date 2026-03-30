@@ -9,7 +9,7 @@ from pyoaev.apis.inject_expectation.model.expectation import (
 from pyoaev.signatures.types import SignatureTypes
 
 from src.models.expectation import ExpectationResult
-from src.models.logline import LogLine
+from src.models.logline import LogLine, AccessLogLine, ErrorLogLine
 from src.models.settings.config_loader import ConfigLoader
 from src.services.converter import HTTPLogwatcherConverter
 from src.services.exception import (
@@ -17,7 +17,11 @@ from src.services.exception import (
     HTTPLogwatcherFileError,
     HTTPLogwatcherValidationError,
 )
-from src.services.fetcher_logline import FetchResult, LogLineFetcher
+from src.services.fetcher_logline import (
+    AccessLogLineFetcher,
+    ErrorLogLineFetcher,
+    FetchResult,
+)
 from src.services.utils import SignatureExtractor, TraceBuilder
 
 LOG_PREFIX = "[ExpectationService]"
@@ -53,7 +57,11 @@ class ExpectationService:
 
         self.time_window = config.http_logwatcher.time_window
 
-        self.logline_fetcher: LogLineFetcher = LogLineFetcher(
+        self.access_logline_fetcher: AccessLogLineFetcher = AccessLogLineFetcher(
+            config.http_logwatcher.logs_folder_path
+        )
+
+        self.error_logline_fetcher: ErrorLogLineFetcher = ErrorLogLineFetcher(
             config.http_logwatcher.logs_folder_path
         )
 
@@ -164,10 +172,23 @@ class ExpectationService:
                 f"{LOG_PREFIX} Delegating logline fetching to LogLineFetcher for time window: {start_time} to {end_time}"
             )
 
-            return self.logline_fetcher.fetch_loglines_for_time_window(
+            access_results = self.access_logline_fetcher.fetch_loglines_for_time_window(
                 start_time=start_time,
                 end_time=end_time,
             )
+            access_loglines = access_results.loglines
+
+            error_results = self.error_logline_fetcher.fetch_loglines_for_time_window(
+                start_time=start_time,
+                end_time=end_time,
+            )
+            error_loglines = error_results.loglines
+
+            merged_loglines = FetchResult(
+                loglines=access_loglines+error_loglines,
+            )
+
+            return merged_loglines
 
         except Exception as e:
             raise HTTPLogwatcherFileError(
@@ -206,7 +227,7 @@ class ExpectationService:
                         traces.append(trace)
 
                         if isinstance(expectation, PreventionExpectation):
-                            if logline.source == "error":
+                            if isinstance(logline, ErrorLogLine):
                                 matched = True
                                 self.logger.debug(
                                     f"{LOG_PREFIX} Prevention expectation {expectation.inject_expectation_id}: "
