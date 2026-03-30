@@ -18,7 +18,7 @@ from src.services.exception import (
     HTTPLogwatcherValidationError,
 )
 from src.services.fetcher_logline import FetchResult, LogLineFetcher
-from src.services.utils import SignatureExtractor
+from src.services.utils import SignatureExtractor, TraceBuilder
 
 LOG_PREFIX = "[ExpectationService]"
 
@@ -209,18 +209,18 @@ class ExpectationService:
                             if logline.source == "error":
                                 matched = True
                                 self.logger.debug(
-                                    f"{LOG_PREFIX} Prevention expectation {expectation.inject_expectation.id}: "
+                                    f"{LOG_PREFIX} Prevention expectation {expectation.inject_expectation_id}: "
                                     f"logline matched signature and action is prevented -> expectation satisfied"
                                 )
                                 break
                             self.logger.debug(
-                                f"{LOG_ALERT} Prevention expectation {expectation.inject_expectation.id}: "
+                                f"{LOG_PREFIX} Prevention expectation {expectation.inject_expectation_id}: "
                                 f"logline matched signature but not prevented -> continuing search"
                             )
                         else:
                             matched = True
                             self.logger.debug(
-                                f"{LOG_PREFIX} Detection expectation {expectation.inject_expectation.id}: "
+                                f"{LOG_PREFIX} Detection expectation {expectation.inject_expectation_id}: "
                                 f"logline matched signature -> expectation satisfied"
                             )
                             break
@@ -326,9 +326,14 @@ class ExpectationService:
                     f"{LOG_PREFIX} Detection helper input - filtered_data: {filtered_data}"
                 )
 
-                match_result = detection_helper.match_alert_elements(
-                    signatures, filtered_data
-                )
+                # looking for an ANY result rather than ALL (hackish solution)
+                match_flags = []
+                for signature in signatures:
+                    match_single_flag = detection_helper.match_alert_elements(
+                        [signature,], filtered_data
+                    )
+                    match_flags.append(match_single_flag)
+                match_result = any(match_flags)
 
                 self.logger.debug(
                     f"{LOG_PREFIX} Detection helper result for {sig_type}: {match_result}"
