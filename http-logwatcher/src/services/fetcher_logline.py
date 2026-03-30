@@ -77,22 +77,28 @@ class LogLineFetcher:
         for line in logpath.open():
             try:
                 datetimestamp_str = regex.search(line).group(1)
-                datetimestamp_obj = datetime.strptime(
-                    datetimestamp_str,
-                    pattern,
-                #)
-                ).replace(tzinfo=timezone.utc)
-            except Exception as _:
-                pass
-            else:
-                if datetimestamp_obj < end_time and datetimestamp_obj > start_time:
+            except AttributeError as _:
+                # if the regex didn't match, the group(1) will raise an AttributeError
+                continue
+
+            datetimestamp_obj = datetime.strptime(
+                datetimestamp_str,
+                pattern,
+            ).replace(tzinfo=timezone.utc)
+            if datetimestamp_obj < end_time and datetimestamp_obj > start_time:
+                try:
+                    # if the regex didn't match, the group(1) will raise an AttributeError
                     ip_source = ip_regex.search(line).group(1)
-                    lines.append(
-                        LogLine(
-                            ip_source=ip_source,
-                            source=source,
-                        )
+                except AttributeError as _:
+                    continue
+
+                lines.append(
+                    LogLine(
+                        ip_source=ip_source,
+                        source=source,
+                        filepath=logpath,
                     )
+                )
         return lines
 
     def parse_access_log(

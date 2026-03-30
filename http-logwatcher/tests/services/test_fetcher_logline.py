@@ -174,8 +174,9 @@ class LogLineFetcherTest(unittest.TestCase):
         )
         ip_regex.search.assert_called_with(logline)
         m_LogLine.assert_called_with(
-            ip_source=ANY,
+            ip_source=ip_regex.search.return_value.group.return_value,
             source="access",
+            filepath=logpath,
         )
         self.assertEqual(
             results,

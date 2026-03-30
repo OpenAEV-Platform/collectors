@@ -31,6 +31,7 @@ class TraceBuilder:
         trace_data = {
             "alert_name": "HTTPLogwatcher LogLine",
             "alert_date": datetime.now(timezone.utc).isoformat(),
+            "alert_link": f"file:///{logline.filepath.as_posix()}",
             "additional_data": {
                 "data_source": "http_logwatcher",
                 "log_source": logline.source,

@@ -1,3 +1,4 @@
+from pathlib import Path
 import unittest
 from unittest.mock import sentinel
 
@@ -9,11 +10,14 @@ class LogLineTest(unittest.TestCase):
         """ testing the minimal init of the LogLine object (only the required elements) """
         ip_source = "1.2.3.4"
         source = "access"
+        filepath = Path("/foo/bar/access.log")
 
         logline = module.LogLine(
             ip_source=ip_source,
             source=source,
+            filepath=filepath,
         )
 
         self.assertIs(logline.ip_source, ip_source)
         self.assertIs(logline.source, source)
+        self.assertIs(logline.filepath, filepath)
