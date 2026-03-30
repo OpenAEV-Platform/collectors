@@ -9,4 +9,4 @@ def test_convert_logline_to_oaev():
 
     oaev_data = converter.convert_logline_to_oaev(logline)
 
-    assert oaev_data["source_ipv4_address"] == logline.ip_source
+    assert logline.ip_source in oaev_data["source_ipv4_address"]["data"]

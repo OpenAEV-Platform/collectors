@@ -36,7 +36,11 @@ class HTTPLogwatcherConverter:
         """
         try:
             oaev_data = {
-                "source_ipv4_address": logline.ip_source,
+                "source_ipv4_address": {
+                    "type": "fuzzy",
+                    "data": [logline.ip_source],
+                    "score": 95,
+                }
             }
 
             self.logger.debug(
