@@ -1,10 +1,21 @@
 # HTTP Logwatcher Collector
 
-A collector monitoring the access and error logs of an HTTP server for respectively specific successful or failed connections.
+A collector monitoring the access and error logfiles of a nginx-like HTTP server for respectively specific successful or failed connections.
 
 ## Overview
 
-This collector validates OpenAEV expectations by searching the `access.log` and `error.log` of an HTTP server for a specific connection (according to its IP). A match in `access.log` is considered as *detected* while a match in `error.log` is considered as *prevented*.
+This collector validates OpenAEV expectations by searching the `access.log` and `error.log` of a nginx-like HTTP server for a specific connection (according to its IP). A match in `access.log` is considered as *detected* while a match in `error.log` is considered as *prevented*.
+
+## Limitations
+
+Due to relying only on the source IP to match expectations, and thus the lack of an explicit discriminatory factor between successive requests from a single source, prevention expectation can be false-positive. To illustrate this, please refer to the table below describing the status of the expectations for two consecutive tests, with `test A` supposed to be detected-only and `test B` supposed to be detected and prevented.
+
+| Step |  test A, detection expectation | test A, prevention expectation | test B, detection expectation | test B, prevention expectation |
+|------|--------------------------------|--------------------------------|-------------------------------|--------------------------------|
+| (starting point) | N/A | N/A | N/A | N/A |
+| running test A in OAEV | X | N/A | N/A | N/A |
+| running test B in OAEV | X | N/A | X | X |
+| checking test A previous results in OAEV | X | X | X | X |
 
 ## Requirements
 
@@ -90,7 +101,7 @@ export HTTP_LOGWATCHER_LOGS_FOLDER_PATH="/var/log/nginx/"
    ```bash
    git clone <repository-url>
    cd http-logwatcher
-   poetry install --extras local
+   poetry install --extra local
    ```
 
 2. **Configure the Collector**:
@@ -126,7 +137,7 @@ docker run -d \
   openaev-http_logwatcher-collector
 ```
 
-**Nota bene**: using the container deployment, you may have to also bind the local logs folder to the docker in order to give access to the files to the collector.
+**Nota bene**: using the container deployment, you may have to also bind the local logs folder to the container in order to give access to the files to the collector.
 
 
 ## Contributing
