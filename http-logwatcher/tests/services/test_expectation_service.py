@@ -6,14 +6,14 @@ import src.services.expectation_service as module
 
 class ExpectationServiceTest(unittest.TestCase):
     def test_init_failure_config_missing(self):
-        """ testing the init failure of ExpectationService due to missing conf """
+        """testing the init failure of ExpectationService due to missing conf"""
         with self.assertRaises(module.HTTPLogwatcherValidationError):
             module.ExpectationService(
                 config=None,
             )
 
     def test_init_failure_logs_folder_path_missing(self):
-        """ testing the init failure of ExpectationService due to missing logs_folder_path value in conf """
+        """testing the init failure of ExpectationService due to missing logs_folder_path value in conf"""
         subconfig_http_logwatcher = MagicMock(
             logs_folder_path=None,
         )
@@ -31,10 +31,8 @@ class ExpectationServiceTest(unittest.TestCase):
             )
 
     def test_expectationservice_minimal_init(self):
-        """ testing the proper init of the ExpectationService object """
-        subconfig_http_logwatcher = MagicMock(
-            time_window=sentinel.time_window
-        )
+        """testing the proper init of the ExpectationService object"""
+        subconfig_http_logwatcher = MagicMock(time_window=sentinel.time_window)
         config = MagicMock(
             http_logwatcher=subconfig_http_logwatcher,
         )

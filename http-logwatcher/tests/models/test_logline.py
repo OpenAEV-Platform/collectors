@@ -7,7 +7,7 @@ import src.models.logline as module
 
 class LogLineTest(unittest.TestCase):
     def test_logline_minimal_init(self):
-        """ testing the minimal init of the LogLine object (only the required elements) """
+        """testing the minimal init of the LogLine object (only the required elements)"""
         datetimestamp = datetime.now(timezone.utc) - timedelta(250)
         filepath = Path("/foo/bar/access.log")
         ip_source = "1.2.3.4"
@@ -25,9 +25,10 @@ class LogLineTest(unittest.TestCase):
         self.assertIs(logline.ip_source, ip_source)
         self.assertIs(logline.request, request)
 
+
 class AccessLogLineTest(unittest.TestCase):
     def test_accesslogline_minimal_init(self):
-        """ testing the minimal init of the AccessLogLine object (only the required elements) """
+        """testing the minimal init of the AccessLogLine object (only the required elements)"""
         datetimestamp = datetime.now(timezone.utc) - timedelta(250)
         filepath = Path("/foo/bar/access.log")
         ip_source = "1.2.3.4"
@@ -46,9 +47,10 @@ class AccessLogLineTest(unittest.TestCase):
         self.assertIs(logline.request, request)
         self.assertTrue(isinstance(logline, module.LogLine))
 
+
 class ErrorLogLineTest(unittest.TestCase):
     def test_logline_minimal_init(self):
-        """ testing the minimal init of the ErrorLogLine object (only the required elements) """
+        """testing the minimal init of the ErrorLogLine object (only the required elements)"""
         datetimestamp = datetime.now(timezone.utc) - timedelta(250)
         filepath = Path("/foo/bar/error.log")
         ip_source = "1.2.3.4"

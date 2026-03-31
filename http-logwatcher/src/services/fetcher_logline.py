@@ -24,13 +24,14 @@ VERBOSE_LOG_REQUEST_REGEX = r"request: \"(.*?)\", host"
 class FetchResult:
     loglines: list[LogLine] = field(default_factory=list)
 
+
 class LogLineFetcher:
     def check_valid_datetimes(
         self,
         start_time: datetime,
         end_time: datetime,
     ) -> None:
-        """ Check if the datetimes are valid """
+        """Check if the datetimes are valid"""
         if not isinstance(start_time, datetime) or not isinstance(end_time, datetime):
             raise HTTPLogwatcherValidationError(
                 "start_time and end_time must be datetime objects"
@@ -40,7 +41,7 @@ class LogLineFetcher:
             raise HTTPLogwatcherValidationError("start_time must be before end_time")
 
     def check_logfile_exists(self) -> None:
-        """ Check if the logfiles are available for parsing """
+        """Check if the logfiles are available for parsing"""
         if not self.logpath.exists():
             raise HTTPLogwatcherFileError("missing logfile")
 
@@ -117,6 +118,7 @@ class LogLineFetcher:
                 f"Error fetching alerts for time window: {e}"
             ) from e
 
+
 class AccessLogLineFetcher(LogLineFetcher):
     def __init__(
         self,
@@ -128,6 +130,7 @@ class AccessLogLineFetcher(LogLineFetcher):
         self.ip_regex = re.compile(CLF_IP_REGEX)
         self.request_regex = re.compile(CLF_REQUEST_REGEX)
         self.strptime_pattern = CLF_LOCAL_TIME_PATTERN
+
 
 class ErrorLogLineFetcher(LogLineFetcher):
     def __init__(

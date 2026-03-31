@@ -18,10 +18,7 @@ class HTTPLogwatcherConverter:
         self.logger = logging.getLogger(__name__)
         self.logger.debug(f"{LOG_PREFIX} HTTPLogwatcher converter initialized")
 
-    def convert_logline_to_oaev(
-        self,
-        logline: LogLine
-    ) -> dict[str, Any]:
+    def convert_logline_to_oaev(self, logline: LogLine) -> dict[str, Any]:
         """Convert a single HTTPLogwatcher LogLine to OAEV format.
 
         Args:

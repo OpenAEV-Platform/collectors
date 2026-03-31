@@ -16,7 +16,7 @@ class ConfigLoaderHTTPLogwatcher(ConfigBaseSettings):
 
     logs_folder_path: Path = Field(
         alias="HTTP_LOGWATCHER_LOGS_FOLDER_PATH",
-        description="The folderpath leading to the folder used to store access.log and errors.log"
+        description="The folderpath leading to the folder used to store access.log and errors.log",
     )
     time_window: timedelta = Field(
         alias="HTTP_LOGWATCHER_TIME_WINDOW",

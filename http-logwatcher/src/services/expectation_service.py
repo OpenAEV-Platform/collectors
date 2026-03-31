@@ -184,7 +184,7 @@ class ExpectationService:
             error_loglines = error_results.loglines
 
             merged_loglines = FetchResult(
-                loglines=access_loglines+error_loglines,
+                loglines=access_loglines + error_loglines,
             )
 
             return merged_loglines
@@ -350,7 +350,10 @@ class ExpectationService:
                 match_flags = []
                 for signature in signatures:
                     match_single_flag = detection_helper.match_alert_elements(
-                        [signature,], filtered_data
+                        [
+                            signature,
+                        ],
+                        filtered_data,
                     )
                     match_flags.append(match_single_flag)
                 match_result = any(match_flags)

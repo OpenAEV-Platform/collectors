@@ -39,8 +39,10 @@ class GenericExpectationManagerTest(unittest.TestCase):
         )
 
     @patch.object(module.GenericExpectationManager, "_fetch_expectations")
-    def test_generic_expectation_manager_process_expectations_empty(self, m_fetch_expectations):
-        """ testing process_exepectations behavior against empty expectation """
+    def test_generic_expectation_manager_process_expectations_empty(
+        self, m_fetch_expectations
+    ):
+        """testing process_exepectations behavior against empty expectation"""
         oaev_api = MagicMock()
         collector_id = sentinel.collector_id
         expectation_service = MagicMock()

@@ -23,9 +23,7 @@ class TraceService:
 
     def __init__(self, config: ConfigLoader | None = None) -> None:
         if config is None:
-            raise HTTPLogwatcherValidationError(
-                "Config is required for trace service"
-            )
+            raise HTTPLogwatcherValidationError("Config is required for trace service")
 
         self.logger = logging.getLogger(__name__)
         self.config = config

@@ -8,7 +8,8 @@ daemon_config_data = {
     "openaev_token": "my_awesome_token",
 }
 
-@patch.object(module.ConfigLoader, 'to_daemon_config', return_value=daemon_config_data)
+
+@patch.object(module.ConfigLoader, "to_daemon_config", return_value=daemon_config_data)
 class CollectorTest(unittest.TestCase):
 
     def test_collector_init(self, m_to_daemon_config):

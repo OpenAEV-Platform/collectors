@@ -13,7 +13,7 @@ class TraceManagerTest(unittest.TestCase):
         oaev_api = MagicMock()
         collector_id = sentinel.collector_id
 
-        with self.assertLogs(level='DEBUG') as log:
+        with self.assertLogs(level="DEBUG") as log:
             trace_manager = module.TraceManager(
                 oaev_api=oaev_api,
                 collector_id=collector_id,
@@ -43,7 +43,7 @@ class TraceManagerTest(unittest.TestCase):
         collector_id = sentinel.collector_id
         trace_service = MagicMock()
 
-        with self.assertLogs(level='DEBUG') as log:
+        with self.assertLogs(level="DEBUG") as log:
             trace_manager = module.TraceManager(
                 oaev_api=oaev_api,
                 collector_id=collector_id,
@@ -93,6 +93,4 @@ class TraceManagerTest(unittest.TestCase):
             results,
             collector_id,
         )
-        m_submit_traces.assert_called_with(
-            traces
-        )
+        m_submit_traces.assert_called_with(traces)

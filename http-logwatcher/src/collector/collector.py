@@ -61,9 +61,7 @@ class Collector(CollectorDaemon):
 
             super()._setup()
 
-            self.logger.debug(
-                f"{LOG_PREFIX} Initializing HTTP Logwatcher services..."
-            )
+            self.logger.debug(f"{LOG_PREFIX} Initializing HTTP Logwatcher services...")
 
             self.expectation_service = ExpectationService(config=self.config)
 

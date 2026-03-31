@@ -8,7 +8,7 @@ import src.services.fetcher_logline as module
 
 
 def test_fetchresult_minimal_init():
-    """ testing the minimal init of the FetchResult object (only the required elements) """
+    """testing the minimal init of the FetchResult object (only the required elements)"""
     loglines = sentinel.loglines
 
     fetchresult = module.FetchResult(
@@ -17,9 +17,10 @@ def test_fetchresult_minimal_init():
 
     assert fetchresult.loglines == sentinel.loglines
 
+
 class LineFetcherTest(unittest.TestCase):
     def test_check_valid_datetimes_valid(self):
-        """ test valid parameters for check_valid_datetimes """
+        """test valid parameters for check_valid_datetimes"""
         fetcher = module.LogLineFetcher()
         start = datetime.now() - timedelta(100)
         end = datetime.now()
@@ -30,7 +31,7 @@ class LineFetcherTest(unittest.TestCase):
         )
 
     def test_check_valid_datetimes_invalid_types(self):
-        """ test erronous parameters (wrong types) for check_valid_datetimes """
+        """test erronous parameters (wrong types) for check_valid_datetimes"""
         fetcher = module.LogLineFetcher()
 
         with self.assertRaises(module.HTTPLogwatcherValidationError) as error:
@@ -45,7 +46,7 @@ class LineFetcherTest(unittest.TestCase):
             )
 
     def test_check_valid_datetimes_invalid_times(self):
-        """ test erronous parameters (wrong values) for check_valid_datetimes """
+        """test erronous parameters (wrong values) for check_valid_datetimes"""
         fetcher = module.LogLineFetcher()
         start = datetime.now() + timedelta(500)
         end = datetime.now()
@@ -62,7 +63,7 @@ class LineFetcherTest(unittest.TestCase):
             )
 
     def test_check_logfile_exists_valid(self):
-        """ test check_logfile_exists valid case """
+        """test check_logfile_exists valid case"""
         fetcher = module.LogLineFetcher()
         logpath = MagicMock()
         fetcher.logpath = logpath
@@ -72,7 +73,7 @@ class LineFetcherTest(unittest.TestCase):
         logpath.exists.assert_any_call()
 
     def test_check_logfile_exists_missing_access(self):
-        """ test check_logfile_exists invalid case (missing access file) """
+        """test check_logfile_exists invalid case (missing access file)"""
         fetcher = module.LogLineFetcher()
         logpath = MagicMock()
         logpath.exists.return_value = False
@@ -89,7 +90,7 @@ class LineFetcherTest(unittest.TestCase):
 
     @patch.object(module, "datetime")
     def test_parse_log(self, m_datetime):
-        """ testing the various calls made to inputs during the parse_log """
+        """testing the various calls made to inputs during the parse_log"""
         start_time = datetime.now(timezone.utc) - timedelta(500)
         mid_time = datetime.now(timezone.utc) - timedelta(250)
         end_time = datetime.now(timezone.utc)
@@ -112,7 +113,8 @@ class LineFetcherTest(unittest.TestCase):
         fetcher.logline_type = logline_type
 
         results = fetcher.parse_log(
-            start_time, end_time,
+            start_time,
+            end_time,
         )
 
         logpath.open.assert_called_once()
@@ -128,10 +130,7 @@ class LineFetcherTest(unittest.TestCase):
             ip_source=ip_regex.search.return_value.group.return_value,
             request=request_regex.search.return_value.group.return_value,
         )
-        self.assertEqual(
-            results,
-            [logline_type.return_value]
-        )
+        self.assertEqual(results, [logline_type.return_value])
 
     @patch.object(module.LogLineFetcher, "parse_log")
     @patch.object(module.LogLineFetcher, "check_logfile_exists")
@@ -142,7 +141,7 @@ class LineFetcherTest(unittest.TestCase):
         m_check_logfile_exists,
         m_parse_log,
     ):
-        """ test the calls made by the fetch_loglines_for_time_window function """
+        """test the calls made by the fetch_loglines_for_time_window function"""
         start_time = MagicMock()
         end_time = MagicMock()
 
@@ -159,14 +158,13 @@ class LineFetcherTest(unittest.TestCase):
         m_check_logfile_exists.assert_called_once()
         m_parse_log.assert_called_with(start_time, end_time)
 
+
 class AccessLogLineFetcherTest(unittest.TestCase):
     def test_access_logline_fetcher_init(self):
-        """ testing the proper init of the AccessLogLineFetcher object """
+        """testing the proper init of the AccessLogLineFetcher object"""
         logs_folder_path = Path("/foo/bar/")
 
-        fetcher = module.AccessLogLineFetcher(
-            logs_folder_path=logs_folder_path
-        )
+        fetcher = module.AccessLogLineFetcher(logs_folder_path=logs_folder_path)
 
         self.assertEqual(
             fetcher.logline_type,
@@ -189,14 +187,13 @@ class AccessLogLineFetcherTest(unittest.TestCase):
             re.Pattern,
         )
 
+
 class ErrorLogLineFetcherTest(unittest.TestCase):
     def test_error_logline_fetcher_init(self):
-        """ testing the proper init of the ErrorLogLineFetcher object """
+        """testing the proper init of the ErrorLogLineFetcher object"""
         logs_folder_path = Path("/foo/bar/")
 
-        fetcher = module.ErrorLogLineFetcher(
-            logs_folder_path=logs_folder_path
-        )
+        fetcher = module.ErrorLogLineFetcher(logs_folder_path=logs_folder_path)
 
         self.assertEqual(
             fetcher.logline_type,
