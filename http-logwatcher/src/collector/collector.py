@@ -4,7 +4,6 @@ import os
 
 from pyoaev.daemons import CollectorDaemon
 from pyoaev.helpers import OpenAEVDetectionHelper
-
 from src.collector.exception import (
     CollectorConfigError,
     CollectorProcessingError,

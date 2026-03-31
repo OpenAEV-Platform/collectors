@@ -4,7 +4,6 @@ from datetime import timedelta
 from pathlib import Path
 
 from pydantic import Field
-
 from src.models.settings import ConfigBaseSettings
 
 

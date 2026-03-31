@@ -1,7 +1,7 @@
+import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-import re
 
 from src.models.logline import AccessLogLine, ErrorLogLine, LogLine
 from src.services.exception import (
@@ -58,7 +58,7 @@ class LogLineFetcher:
         for line in self.logpath.open():
             try:
                 datetimestamp_str = self.timestamp_regex.search(line).group(1)
-            except AttributeError as _:
+            except AttributeError:
                 # if the regex didn't match, the group(1) will raise an AttributeError
                 continue
 
@@ -70,13 +70,13 @@ class LogLineFetcher:
                 try:
                     # if the regex didn't match, the group(1) will raise an AttributeError
                     ip_source = self.ip_regex.search(line).group(1)
-                except AttributeError as _:
+                except AttributeError:
                     continue
 
                 try:
                     # if the regex didn't match, the group(1) will raise an AttributeError
                     request = self.request_regex.search(line).group(1)
-                except AttributeError as _:
+                except AttributeError:
                     continue
 
                 lines.append(

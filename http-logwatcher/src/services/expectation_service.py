@@ -7,9 +7,8 @@ from pyoaev.apis.inject_expectation.model.expectation import (
     PreventionExpectation,
 )
 from pyoaev.signatures.types import SignatureTypes
-
 from src.models.expectation import ExpectationResult
-from src.models.logline import LogLine, AccessLogLine, ErrorLogLine
+from src.models.logline import ErrorLogLine, LogLine
 from src.models.settings.config_loader import ConfigLoader
 from src.services.converter import HTTPLogwatcherConverter
 from src.services.exception import (

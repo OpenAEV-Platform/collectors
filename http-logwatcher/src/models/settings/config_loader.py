@@ -11,7 +11,6 @@ from pydantic_settings import (
     YamlConfigSettingsSource,
 )
 from pyoaev.configuration import Configuration
-
 from src.models.settings import (
     BaseConfigLoaderCollector,
     ConfigBaseSettings,

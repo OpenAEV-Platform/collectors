@@ -8,7 +8,6 @@ import logging
 from typing import Any
 
 from pyoaev.client import OpenAEV  # type: ignore[import-untyped]
-
 from src.collector.exception import (
     TraceCreationError,
     TraceSubmissionError,

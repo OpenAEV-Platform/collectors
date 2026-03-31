@@ -1,7 +1,6 @@
+import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-import unittest
-from unittest.mock import sentinel
 
 import src.models.logline as module
 

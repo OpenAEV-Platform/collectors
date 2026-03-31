@@ -4,7 +4,6 @@ from datetime import timedelta
 from typing import Annotated, Literal
 
 from pydantic import Field, HttpUrl, PlainSerializer
-
 from src.models.settings import ConfigBaseSettings
 
 LogLevelToLower = Annotated[

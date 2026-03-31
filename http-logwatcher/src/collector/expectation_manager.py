@@ -9,7 +9,6 @@ from pyoaev.apis.inject_expectation.model import (
 )
 from pyoaev.client import OpenAEV
 from pyoaev.helpers import OpenAEVDetectionHelper
-
 from src.collector.exception import (
     APIError,
     BulkUpdateError,

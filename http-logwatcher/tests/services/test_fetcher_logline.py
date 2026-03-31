@@ -1,8 +1,8 @@
-from datetime import datetime, timedelta, timezone
-from pathlib import Path
 import re
 import unittest
-from unittest.mock import ANY, MagicMock, patch, sentinel
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+from unittest.mock import MagicMock, patch, sentinel
 
 import src.services.fetcher_logline as module
 
@@ -20,7 +20,6 @@ def test_fetchresult_minimal_init():
 class LineFetcherTest(unittest.TestCase):
     def test_check_valid_datetimes_valid(self):
         """ test valid parameters for check_valid_datetimes """
-        logs_folder_path = Path("/foo/bar/")
         fetcher = module.LogLineFetcher()
         start = datetime.now() - timedelta(100)
         end = datetime.now()
@@ -32,7 +31,6 @@ class LineFetcherTest(unittest.TestCase):
 
     def test_check_valid_datetimes_invalid_types(self):
         """ test erronous parameters (wrong types) for check_valid_datetimes """
-        logs_folder_path = Path("/foo/bar/")
         fetcher = module.LogLineFetcher()
 
         with self.assertRaises(module.HTTPLogwatcherValidationError) as error:
@@ -48,7 +46,6 @@ class LineFetcherTest(unittest.TestCase):
 
     def test_check_valid_datetimes_invalid_times(self):
         """ test erronous parameters (wrong values) for check_valid_datetimes """
-        logs_folder_path = Path("/foo/bar/")
         fetcher = module.LogLineFetcher()
         start = datetime.now() + timedelta(500)
         end = datetime.now()
