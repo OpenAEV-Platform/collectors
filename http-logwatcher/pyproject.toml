@@ -28,16 +28,17 @@ prod = ["pyoaev"]
 local = ["pyoaev"]
 
 [tool.poetry.group.dev.dependencies]
-isort = "^6.0.1"
+isort = "^8.0.1"
 ruff = "^0.12.11"
 mypy = "^1.17.1"
-black = "^25.1.0"
+black = "^26.3.1"
 flake8 = "^7.3.0"
 pip-audit = "^2.9.0"
 pre-commit = "^4.3.0"
 
 [tool.poetry.group.test.dependencies]
 pytest = "^8.4.1"
+pytest-cov = "^7.1.0"
 polyfactory = "^2.22.2"
 
 [project.scripts]
