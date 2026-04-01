@@ -219,9 +219,17 @@ class ExpectationService:
                 traces = []
 
                 for logline in fetch_result.loglines:
-                    if self._expectation_matches_logline(
-                        expectation, logline, detection_helper
-                    ):
+                    flag = False
+                    try:
+                        flag = self._expectation_matches_logline(
+                            expectation, logline, detection_helper
+                        )
+                    except Exception as e:
+                        self.logger.warning(
+                            f"{LOG_PREFIX} Error in expectation matching: {e}"
+                        )
+
+                    if flag:
                         trace = TraceBuilder.create_logline_trace(logline)
                         traces.append(trace)
 
@@ -293,89 +301,80 @@ class ExpectationService:
             True if the expectation matches, False otherwise.
 
         """
-        try:
-            oaev_data = self.converter.convert_logline_to_oaev(logline)
+        oaev_data = self.converter.convert_logline_to_oaev(logline)
 
-            if not oaev_data:
+        if not oaev_data:
+            self.logger.debug(
+                f"{LOG_PREFIX} No OAEV data generated for logline {logline}"
+            )
+            return False
+
+        supported_signatures = self.get_supported_signatures()
+        self.logger.debug(
+            f"{LOG_PREFIX} Supported signature types: {[s.value for s in supported_signatures]}"
+        )
+
+        signature_groups = SignatureExtractor.group_signatures_by_type(
+            expectation, supported_signatures
+        )
+        self.logger.debug(
+            f"{LOG_PREFIX} Filtered signature groups: {list(signature_groups.keys())}"
+        )
+
+        supported_sig_names = {
+            sig_type.value if hasattr(sig_type, "value") else str(sig_type)
+            for sig_type in supported_signatures
+        }
+        filtered_oaev_data = {
+            key: value for key, value in oaev_data.items() if key in supported_sig_names
+        }
+        self.logger.debug(f"{LOG_PREFIX} Available OAEV data: {list(oaev_data.keys())}")
+        self.logger.debug(
+            f"{LOG_PREFIX} Filtered OAEV data: {list(filtered_oaev_data.keys())}"
+        )
+
+        for sig_type, signatures in signature_groups.items():
+            filtered_data = (
+                {sig_type: filtered_oaev_data[sig_type]}
+                if sig_type in filtered_oaev_data
+                else {}
+            )
+            self.logger.debug(
+                f"{LOG_PREFIX} Detection helper input - sig_type: {sig_type}"
+            )
+            self.logger.debug(
+                f"{LOG_PREFIX} Detection helper input - signatures: {signatures}"
+            )
+            self.logger.debug(
+                f"{LOG_PREFIX} Detection helper input - filtered_data: {filtered_data}"
+            )
+
+            # looking for an ANY result rather than ALL (hackish solution)
+            match_flags = []
+            for signature in signatures:
+                match_single_flag = detection_helper.match_alert_elements(
+                    [
+                        signature,
+                    ],
+                    filtered_data,
+                )
+                match_flags.append(match_single_flag)
+            match_result = any(match_flags)
+
+            self.logger.debug(
+                f"{LOG_PREFIX} Detection helper result for {sig_type}: {match_result}"
+            )
+
+            if not match_result:
                 self.logger.debug(
-                    f"{LOG_PREFIX} No OAEV data generated for logline {logline}"
+                    f"{LOG_PREFIX} {sig_type} signature failed for logline {logline}"
                 )
                 return False
 
-            supported_signatures = self.get_supported_signatures()
-            self.logger.debug(
-                f"{LOG_PREFIX} Supported signature types: {[s.value for s in supported_signatures]}"
-            )
-
-            signature_groups = SignatureExtractor.group_signatures_by_type(
-                expectation, supported_signatures
-            )
-            self.logger.debug(
-                f"{LOG_PREFIX} Filtered signature groups: {list(signature_groups.keys())}"
-            )
-
-            supported_sig_names = {
-                sig_type.value if hasattr(sig_type, "value") else str(sig_type)
-                for sig_type in supported_signatures
-            }
-            filtered_oaev_data = {
-                key: value
-                for key, value in oaev_data.items()
-                if key in supported_sig_names
-            }
-            self.logger.debug(
-                f"{LOG_PREFIX} Available OAEV data: {list(oaev_data.keys())}"
-            )
-            self.logger.debug(
-                f"{LOG_PREFIX} Filtered OAEV data: {list(filtered_oaev_data.keys())}"
-            )
-
-            for sig_type, signatures in signature_groups.items():
-                filtered_data = (
-                    {sig_type: filtered_oaev_data[sig_type]}
-                    if sig_type in filtered_oaev_data
-                    else {}
-                )
-                self.logger.debug(
-                    f"{LOG_PREFIX} Detection helper input - sig_type: {sig_type}"
-                )
-                self.logger.debug(
-                    f"{LOG_PREFIX} Detection helper input - signatures: {signatures}"
-                )
-                self.logger.debug(
-                    f"{LOG_PREFIX} Detection helper input - filtered_data: {filtered_data}"
-                )
-
-                # looking for an ANY result rather than ALL (hackish solution)
-                match_flags = []
-                for signature in signatures:
-                    match_single_flag = detection_helper.match_alert_elements(
-                        [
-                            signature,
-                        ],
-                        filtered_data,
-                    )
-                    match_flags.append(match_single_flag)
-                match_result = any(match_flags)
-
-                self.logger.debug(
-                    f"{LOG_PREFIX} Detection helper result for {sig_type}: {match_result}"
-                )
-
-                if not match_result:
-                    self.logger.debug(
-                        f"{LOG_PREFIX} {sig_type} signature failed for logline {logline}"
-                    )
-                    return False
-
-            self.logger.debug(
-                f"{LOG_PREFIX} All signatures matched for expectation {expectation.inject_expectation_id} vs logline {logline}"
-            )
-            return True
-
-        except Exception as e:
-            self.logger.warning(f"{LOG_PREFIX} Error in expectation matching: {e}")
-            return False
+        self.logger.debug(
+            f"{LOG_PREFIX} All signatures matched for expectation {expectation.inject_expectation_id} vs logline {logline}"
+        )
+        return True
 
     def _create_error_result_object(
         self,
