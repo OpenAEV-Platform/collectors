@@ -1,9 +1,10 @@
 import re
 import unittest
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from pathlib import Path
 from unittest.mock import MagicMock, patch, sentinel
 
+import pytz
 import src.services.fetcher_logline as module
 
 
@@ -91,9 +92,10 @@ class LineFetcherTest(unittest.TestCase):
     @patch.object(module, "datetime")
     def test_parse_log(self, m_datetime):
         """testing the various calls made to inputs during the parse_log"""
-        start_time = datetime.now(timezone.utc) - timedelta(500)
-        mid_time = datetime.now(timezone.utc) - timedelta(250)
-        end_time = datetime.now(timezone.utc)
+        now = datetime.now(pytz.timezone("US/Central"))
+        end_time = now
+        mid_time = now - timedelta(250)
+        start_time = now - timedelta(500)
         m_datetime.strptime.return_value = mid_time
 
         fetcher = module.LogLineFetcher()

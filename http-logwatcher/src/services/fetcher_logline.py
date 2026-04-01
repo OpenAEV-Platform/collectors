@@ -1,6 +1,6 @@
 import re
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 
 from src.models.logline import AccessLogLine, ErrorLogLine, LogLine
@@ -66,7 +66,7 @@ class LogLineFetcher:
             datetimestamp_obj = datetime.strptime(
                 datetimestamp_str,
                 self.strptime_pattern,
-            ).replace(tzinfo=timezone.utc)
+            ).astimezone()
             if datetimestamp_obj < end_time and datetimestamp_obj > start_time:
                 try:
                     # if the regex didn't match, the group(1) will raise an AttributeError
