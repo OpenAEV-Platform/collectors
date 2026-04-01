@@ -9,24 +9,26 @@ daemon_config_data = {
 }
 
 
-@patch.object(module.ConfigLoader, "to_daemon_config", return_value=daemon_config_data)
+@patch.object(module, "ConfigLoader")
 class CollectorTest(unittest.TestCase):
 
-    def test_collector_init(self, m_to_daemon_config):
+    def test_collector_init(self, m_configloader):
         """
         testing the proper init of the Collector object
         and its reliance on ConfigLoader.m_to_daemon_config
         """
+        m_configloader.return_value.to_daemon_config.return_value = daemon_config_data
         collector = module.Collector()
 
-        m_to_daemon_config.assert_called_once()
+        m_configloader.return_value.to_daemon_config.assert_called_once()
         self.assertEqual(collector.collector_type, "openaev_http_logwatcher")
 
-    def test_collector_process_callback(self, _):
+    def test_collector_process_callback(self, m_configloader):
         """
         testing the link between process callback, expectation manager
         and detection helper in Collector
         """
+        m_configloader.return_value.to_daemon_config.return_value = daemon_config_data
         expectation_manager = MagicMock()
         oaev_detection_helper = MagicMock()
         collector = module.Collector()
