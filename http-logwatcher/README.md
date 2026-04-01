@@ -64,7 +64,7 @@ Below are the parameters you'll need to set for the collector:
 | Parameter                | config.yml                           | Docker environment variable            | Default                     | Mandatory | Description                                                                                        |
 |--------------------------|--------------------------------------|----------------------------------------|-----------------------------|-----------|----------------------------------------------------------------------------------------------------|
 | Logs folder path         | http_logwatcher.logs_folder_path         | `HTTP_LOGWATCHER_LOGS_FOLDER_PATH`     | /var/log/nginx/ | Yes     | Log folder full path                                                                 |
-| Time Window              | http_logwatcher.time_window              | `SENTINELONE_TIME_WINDOW`              | PT1H                        | No        | Default search time window when no date signatures are provided (ISO 8601 format)                |
+| Time Window              | http_logwatcher.time_window              | `HTTP_LOGWATCHER_TIME_WINDOW`              | PT1H                        | No        | Default search time window when no date signatures are provided (ISO 8601 format)                |
 
 ### Example Configuration Files
 
