@@ -1,0 +1,78 @@
+name: Tests Collectors
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Clone pyoaev (satisfies Poetry path dependency)
+        working-directory: ..
+        run: |
+          BRANCH="${{ github.head_ref || github.ref_name }}"
+          if [ "$BRANCH" = "main" ]; then
+            git clone -b main https://github.com/OpenAEV-Platform/client-python
+          else
+            git clone -b release/current https://github.com/OpenAEV-Platform/client-python
+          fi
+
+      - name: Install Poetry
+        working-directory: crowdstrike
+        run: pip install poetry==2.1.3 && poetry config installer.re-resolve false
+
+      - name: Install crowdstrike dependencies
+        working-directory: crowdstrike
+        run: poetry install --extras prod
+
+      - name: Overwrite pyoaev with correct version from CI
+        working-directory: crowdstrike
+        run: |
+          BRANCH="${{ github.head_ref || github.ref_name }}"
+          if [ "$BRANCH" = "main" ]; then
+            poetry run pip install --force-reinstall git+https://github.com/OpenAEV-Platform/client-python.git@main
+          else
+            poetry run pip install --force-reinstall git+https://github.com/OpenAEV-Platform/client-python.git@release/current
+          fi
+
+      - name: Install Coverage
+        working-directory: crowdstrike
+        run: poetry run pip install coverage
+
+      - name: Tests for crowdstrike collector
+        working-directory: crowdstrike
+        run: poetry run python -m coverage run -m unittest
+      
+      - name: Generate coverage XML
+        working-directory: crowdstrike
+        run: poetry run python -m coverage xml -o coverage.xml
+      
+      - name: Install dependencies for palo-alto-cortex-xdr
+        working-directory: palo-alto-cortex-xdr
+        run: poetry run pip install pytest factory-boy pyoaev coverage
+
+      - name: Tests for palo-alto-cortex-xdr collector
+        working-directory: palo-alto-cortex-xdr
+        run: poetry run python -m coverage run -m pytest
+      
+      - name: Generate coverage XML
+        working-directory: palo-alto-cortex-xdr
+        run: poetry run python -m coverage xml -o coverage.xml
+
+      - name: Upload coverage to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          flags: connectors
+          fail_ci_if_error: false
+          verbose: true
