@@ -1,0 +1,9 @@
+version: "3"
+services:
+  collector-http-logwatcher:
+    image: openaev/collector-http-logwatcher:rolling
+    environment:
+      - OPENAEV_URL=http://localhost
+      - OPENAEV_TOKEN=ChangeMe
+      - COLLECTOR_ID=ChangeMe
+    restart: always
