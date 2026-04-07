@@ -1,26 +1,34 @@
 from datetime import datetime
 from unittest import TestCase
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from nvd_nist_cve.nvd_nist_cve_api_handler import CVEFetchResult
 from nvd_nist_cve.nvd_nist_cve_collector import NvdNistCveCollector
+from pyoaev.configuration import Configuration
 
 
 class NvdNistCveCollectorTest(TestCase):
 
-    @patch.dict(
-        "os.environ",
-        {
-            "OPENAEV_URL": "http://localhost:8080",
-            "OPENAEV_TOKEN": "super-token",
-            "COLLECTOR_ID": "collector-42",
-            "NVD_NIST_CVE_API_KEY": "nist-api-key",
-        },
-    )
     def test_end_to_end_initial_dataset(self):
         # -- PREPARE --
         api_client = MagicMock()
-        collector = NvdNistCveCollector()
+        configuration = Configuration(
+            config_hints={
+                "openaev_url": {"data": "http://localhost:8080"},
+                "openaev_token": {"data": "super-token"},
+                "collector_id": {"data": "collector-42"},
+                "collector_name": {"data": "CVE by NVD NIST"},
+                "collector_period": {"data": 7200, "is_number": True},
+                "collector_log_level": {"data": "info"},
+                "collector_icon_filepath": {"data": "nvd_nist_cve/img/icon-nist.png"},
+                "nvd_nist_cve_api_key": {"data": "nist-api-key"},
+                "nvd_nist_cve_api_base_url": {
+                    "data": "https://services.nvd.nist.gov/rest/json"
+                },
+                "nvd_nist_cve_start_year": {"data": "2019"},
+            }
+        )
+        collector = NvdNistCveCollector(configuration=configuration)
         collector.cve_client = MagicMock()
         collector.api = api_client
         api_client.collector.get.return_value.collector_state = {

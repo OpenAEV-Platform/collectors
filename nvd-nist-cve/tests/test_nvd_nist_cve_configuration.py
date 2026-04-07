@@ -1,7 +1,7 @@
 from unittest import TestCase
 from unittest.mock import patch
 
-from nvd_nist_cve import NvdNistCveConfiguration
+from nvd_nist_cve.configuration.config_loader import ConfigLoader
 
 
 class NvdNistCveConfigurationTest(TestCase):
@@ -12,17 +12,17 @@ class NvdNistCveConfigurationTest(TestCase):
             "OPENAEV_URL": "http://localhost:8080",
             "OPENAEV_TOKEN": "super-token",
             "COLLECTOR_ID": "collector-42",
-            "NVD_NIST_CVE_API_KEY": "nist-api-key",
+            "NVDNISTCVE_API_KEY": "nist-api-key",
         },
     )
     def test_configuration_loads_with_env_variables(self):
-        config = NvdNistCveConfiguration()
+        config = ConfigLoader().to_daemon_config()
 
         # Check a few known config keys
-        assert config.get("openaev_url") == "http://localhost:8080"
+        assert config.get("openaev_url") == "http://localhost:8080/"
         assert config.get("openaev_token") == "super-token"
         assert config.get("collector_id") == "collector-42"
-        assert config.get("collector_name") == "NVD NIST CVE Collector"  # default
+        assert config.get("collector_name") == "CVE by NVD NIST"  # default
         assert config.get("collector_period") == 7200  # default
         assert (
             config.get("collector_icon_filepath") == "nvd_nist_cve/img/icon-nist.png"
