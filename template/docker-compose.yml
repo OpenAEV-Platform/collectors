@@ -1,11 +1,10 @@
 version: "3"
 services:
-  collector-sentinelone:
-    image: openaev/collector-sentinelone:rolling
+  collector-template:
+    image: openaev/collector-template:rolling
     environment:
       - OPENAEV_URL=http://localhost
       - OPENAEV_TOKEN=ChangeMe
       - COLLECTOR_ID=ChangeMe
-      - SENTINELONE_BASE_URL=https://change.me
-      - SENTINELONE_API_KEY=ChangeMe
+      - TEMPLATE_KEY=ChangeMe
     restart: always

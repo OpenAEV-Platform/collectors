@@ -15,7 +15,7 @@ def main() -> None:
     logger = logging.getLogger(__name__)
 
     try:
-        logger.info(f"{LOG_PREFIX} Starting SentinelOne collector...")
+        logger.info(f"{LOG_PREFIX} Starting Template collector...")
         collector = Collector()
         collector.start()
     except KeyboardInterrupt:

@@ -4,9 +4,9 @@ import os
 
 from pyoaev.daemons import CollectorDaemon  # type: ignore[import-untyped]
 from pyoaev.helpers import OpenAEVDetectionHelper  # type: ignore[import-untyped]
-from src.services.expectation_service import SentinelOneExpectationService
-from src.services.trace_service import SentinelOneTraceService
-from src.services.utils import SentinelOneConfig
+from src.services.expectation_service import TemplateExpectationService
+from src.services.trace_service import TemplateTraceService
+from src.services.utils import TemplateConfig
 
 from .exception import (
     CollectorConfigError,
@@ -33,17 +33,17 @@ class Collector(CollectorDaemon):  # type: ignore[misc]
 
         """
         try:
-            self.config = SentinelOneConfig()
+            self.config = TemplateConfig()
             self.config_instance = self.config.load
 
             super().__init__(
                 configuration=self.config_instance.to_daemon_config(),
                 callback=self._process_callback,
-                collector_type="openaev_sentinelone",
+                collector_type="openaev_template",
             )
 
             self.logger.info(  # type: ignore[has-type]
-                f"{LOG_PREFIX} SentinelOne Collector initialized successfully"
+                f"{LOG_PREFIX} Template Collector initialized successfully"
             )
 
         except Exception as err:
@@ -58,7 +58,7 @@ class Collector(CollectorDaemon):  # type: ignore[misc]
     def _setup(self) -> None:
         """Set up the collector.
 
-        Initializes SentinelOne services, expectation handler, expectation manager,
+        Initializes Template services, expectation handler, expectation manager,
         and OpenAEV detection helper. Sets up the collector for processing expectations.
 
         Raises:
@@ -70,17 +70,15 @@ class Collector(CollectorDaemon):  # type: ignore[misc]
 
             super()._setup()
 
-            self.logger.debug(f"{LOG_PREFIX} Initializing SentinelOne services...")
+            self.logger.debug(f"{LOG_PREFIX} Initializing Template services...")
 
-            self.sentinelone_service = SentinelOneExpectationService(
+            self.template_service = TemplateExpectationService(
                 config=self.config_instance
             )
 
-            self.trace_service = SentinelOneTraceService(self.config_instance)
+            self.trace_service = TemplateTraceService(self.config_instance)
 
-            self.expectation_handler = GenericExpectationHandler(
-                self.sentinelone_service
-            )
+            self.expectation_handler = GenericExpectationHandler(self.template_service)
 
             self.expectation_manager = GenericExpectationManager(
                 oaev_api=self.api,
@@ -89,7 +87,7 @@ class Collector(CollectorDaemon):  # type: ignore[misc]
                 trace_service=self.trace_service,
             )
 
-            supported_signatures = self.sentinelone_service.get_supported_signatures()
+            supported_signatures = self.template_service.get_supported_signatures()
             self.oaev_detection_helper = OpenAEVDetectionHelper(
                 logger=self.logger,
                 relevant_signatures_types=supported_signatures,
@@ -100,7 +98,7 @@ class Collector(CollectorDaemon):  # type: ignore[misc]
                 f"{LOG_PREFIX} Supported signatures: {[sig.value for sig in supported_signatures]}"
             )
 
-            service_info = self.sentinelone_service.get_service_info()
+            service_info = self.template_service.get_service_info()
             self.logger.debug(f"{LOG_PREFIX} Service info: {service_info}")
 
         except Exception as err:
@@ -121,7 +119,7 @@ class Collector(CollectorDaemon):  # type: ignore[misc]
         try:
             self.logger.info(f"{LOG_PREFIX} Starting processing cycle...")
             self.logger.debug(
-                f"{LOG_PREFIX} Processing expectations using SentinelOne services"
+                f"{LOG_PREFIX} Processing expectations using Template services"
             )
 
             results = self.expectation_manager.process_expectations(

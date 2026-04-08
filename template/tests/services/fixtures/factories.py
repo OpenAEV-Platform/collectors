@@ -1,4 +1,4 @@
-"""Essential polyfactory factories for SentinelOne models and test fixtures."""
+"""Essential polyfactory factories for Template models and test fixtures."""
 
 import os
 import uuid
@@ -10,8 +10,8 @@ from polyfactory.factories.pydantic_factory import ModelFactory
 from src.collector.models import ExpectationResult, ExpectationTrace
 from src.models.configs.collector_configs import _ConfigLoaderOAEV
 from src.models.configs.config_loader import ConfigLoader, ConfigLoaderCollector
-from src.models.configs.sentinelone_configs import _ConfigLoaderSentinelOne
-from src.services.model_threat import SentinelOneThreat
+from src.models.configs.template_configs import _ConfigLoaderTemplate
+from src.services.model_data import TemplateData
 
 
 class ConfigLoaderOAEVFactory(ModelFactory[_ConfigLoaderOAEV]):
@@ -39,10 +39,10 @@ class ConfigLoaderOAEVFactory(ModelFactory[_ConfigLoaderOAEV]):
         return super().build(**kwargs)
 
 
-class ConfigLoaderSentinelOneFactory(ModelFactory[_ConfigLoaderSentinelOne]):
-    """Factory for SentinelOne configuration.
+class ConfigLoaderTemplateFactory(ModelFactory[_ConfigLoaderTemplate]):
+    """Factory for Template configuration.
 
-    Creates test instances of SentinelOne configuration with required
+    Creates test instances of Template configuration with required
     environment variables automatically set.
     """
 
@@ -56,11 +56,10 @@ class ConfigLoaderSentinelOneFactory(ModelFactory[_ConfigLoaderSentinelOne]):
             **kwargs: Additional keyword arguments for model creation.
 
         Returns:
-            _ConfigLoaderSentinelOne instance with test configuration.
+            _ConfigLoaderTemplate instance with test configuration.
 
         """
-        os.environ["SENTINELONE_API_KEY"] = "test-sentinelone-api-key"
-        os.environ["SENTINELONE_BASE_URL"] = "https://test-sentinelone.example.com"
+        os.environ["TEMPLATE_KEY"] = "test-template-key"
         return super().build(**kwargs)
 
 
@@ -73,29 +72,28 @@ class ConfigLoaderCollectorFactory(ModelFactory[ConfigLoaderCollector]):
 
     __check_model__ = False
 
-    id = Use(lambda: f"sentinelone--{uuid.uuid4()}")
-    name = "SentinelOne"
+    id = Use(lambda: f"template--{uuid.uuid4()}")
+    name = "Template"
 
 
 class ConfigLoaderFactory(ModelFactory[ConfigLoader]):
     """Factory for main configuration.
 
     Creates complete test configuration instances combining OpenAEV,
-    collector, and SentinelOne settings using subfactories.
+    collector, and Template settings using subfactories.
     """
 
     __check_model__ = False
 
     openaev = Use(ConfigLoaderOAEVFactory.build)
     collector = Use(ConfigLoaderCollectorFactory.build)
-    sentinelone = Use(ConfigLoaderSentinelOneFactory.build)
+    template = Use(ConfigLoaderTemplateFactory.build)
 
 
-class SentinelOneThreatFactory(ModelFactory[SentinelOneThreat]):
-    """Factory for SentinelOne threats.
+class TemplateDataFactory(ModelFactory[TemplateData]):
+    """Factory for Template data.
 
-    Creates test instances of SentinelOne threat objects with
-    auto-generated threat IDs.
+    Creates test instances of Template data objects.
     """
 
     __check_model__ = False
@@ -132,20 +130,6 @@ class MockObjectsFactory:
     Provides static methods for creating various mock objects
     used throughout the test suite.
     """
-
-    @staticmethod
-    def create_mock_client_api():
-        """Create mock SentinelOne client API.
-
-        Returns:
-            Mock SentinelOneClientAPI instance with basic attributes set.
-
-        """
-        mock_client = Mock()
-        mock_client.base_url = "https://test-api.example.com"
-        mock_client.session = Mock()
-        mock_client.session.headers = {}
-        return mock_client
 
     @staticmethod
     def create_mock_detection_helper(match_result: bool = True):
@@ -229,18 +213,7 @@ class TestDataFactory:
             List of OAEV-formatted detection data dictionaries.
 
         """
-        return [
-            {
-                "parent_process_name": {
-                    "type": "simple",
-                    "data": [f"oaev-implant-test-{uuid.uuid4().hex[:8]}"],
-                },
-                "threat_id": {
-                    "type": "simple",
-                    "data": [f"threat-{uuid.uuid4().hex[:8]}"],
-                },
-            }
-        ]
+        return []
 
     @staticmethod
     def create_oaev_prevention_data() -> list[dict[str, Any]]:
@@ -250,25 +223,14 @@ class TestDataFactory:
             List of OAEV-formatted prevention data dictionaries.
 
         """
-        return [
-            {
-                "parent_process_name": {
-                    "type": "simple",
-                    "data": [f"oaev-implant-test-{uuid.uuid4().hex[:8]}"],
-                },
-                "threat_id": {
-                    "type": "simple",
-                    "data": [f"threat-{uuid.uuid4().hex[:8]}"],
-                },
-            }
-        ]
+        return []
 
     @staticmethod
-    def create_mixed_sentinelone_data() -> list[Any]:
-        """Create mixed SentinelOne data (DV events + threats).
+    def create_mixed_template_data() -> list[Any]:
+        """Create mixed Template data.
 
         Returns:
-            List containing both DV event dicts and SentinelOneThreat instances.
+            List containing both DV event dicts and TemplateData instances.
 
         """
         return []
@@ -288,37 +250,14 @@ def create_test_config(**overrides) -> ConfigLoader:
     return ConfigLoaderFactory.build(**overrides)
 
 
-def create_test_dv_events(count: int = 1) -> list[dict]:
-    """Create test Deep Visibility events.
+def create_test_data(count: int = 1) -> list[TemplateData]:
+    """Create test TemplateData data.
 
     Args:
-        count: Number of DV events to create (default 1).
+        count: Number of data to create (default 1).
 
     Returns:
-        List of dictionary representations of DV events for testing.
+        List of TemplateData instances for testing.
 
     """
-    events = []
-    for i in range(count):
-        events.append(
-            {
-                "src_proc_parent_name": f"oaev-implant-test-{uuid.uuid4().hex[:8]}",
-                "src_proc_name": f"process-{i}.exe",
-                "event_type": "process_creation",
-                "timestamp": "2024-01-01T10:00:00Z",
-            }
-        )
-    return events
-
-
-def create_test_threats(count: int = 1) -> list[SentinelOneThreat]:
-    """Create test SentinelOne threats.
-
-    Args:
-        count: Number of threats to create (default 1).
-
-    Returns:
-        List of SentinelOneThreat instances for testing.
-
-    """
-    return [SentinelOneThreatFactory.build() for _ in range(count)]
+    return [TemplateDataFactory.build() for _ in range(count)]

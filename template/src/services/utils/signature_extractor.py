@@ -1,4 +1,4 @@
-"""Signature extraction utilities for SentinelOne expectation processing."""
+"""Signature extraction utilities for Template expectation processing."""
 
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
