@@ -1,0 +1,10 @@
+openaev:
+  url: "http://change.me"
+  token: "ChangeMe"
+
+collector:
+  id: "ChangeMe"
+
+sentinelone:
+  base_url: "http://change.me"
+  api_key: "ChangeMe"
