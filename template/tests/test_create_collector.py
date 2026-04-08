@@ -1,4 +1,4 @@
-"""Test module for the SentinelOne Collector initialization - Gherkin GWT Format."""
+"""Test module for the Template Collector initialization - Gherkin GWT Format."""
 
 from os import environ as os_environ
 from typing import Any
@@ -26,10 +26,9 @@ def collector_config() -> dict[str, str]:  # type: ignore
         "OPENAEV_URL": "http://fake-url/",
         "OPENAEV_TOKEN": "fake-oaev-token",
         "COLLECTOR_ID": "fake-collector-id",
-        "COLLECTOR_NAME": "SentinelOne",
-        "SENTINELONE_BASE_URL": "https://fake-sentinelone.net/",
-        "SENTINELONE_API_KEY": "fake-api-key",
-        "COLLECTOR_ICON_FILEPATH": "src/img/sentinelone-logo.png",
+        "COLLECTOR_NAME": "Template",
+        "TEMPLATE_KEY": "fake-key",
+        "COLLECTOR_ICON_FILEPATH": "src/img/template-logo.png",
         "COLLECTOR_LOG_LEVEL": "debug",
     }
 
@@ -58,23 +57,6 @@ def test_create_collector_with_valid_config(capfd, collector_config):  # type: i
     _then_collector_created_successfully(capfd, mock_env, collector, collector_config)
 
 
-# Scenario: Create a collector with missing required config
-def test_create_collector_with_missing_api_key(collector_config) -> None:
-    """Scenario: Create a collector with missing required config.
-
-    Args:
-        collector_config: Fixture providing base collector configuration.
-
-    """
-    # Given: Configuration with missing required SentinelOne API key
-    incomplete_config = _given_config_missing_api_key(collector_config)
-    mock_env = _given_valid_collector_config(incomplete_config)
-
-    # When: I attempt to create the collector
-    # Then: The collector creation should fail with configuration error
-    _when_create_collector_then_raises_config_error(mock_env)
-
-
 # --------
 # Given Methods
 # --------
@@ -93,26 +75,6 @@ def _given_valid_collector_config(config_data: dict[str, str]) -> Any:  # type: 
     """
     mock_env = mock_env_vars(os_environ, config_data)
     return mock_env
-
-
-# Given: Configuration with missing required SentinelOne API key
-def _given_config_missing_api_key(base_config: dict[str, str]) -> dict[str, str]:
-    """Create configuration with missing SentinelOne API key.
-
-    Args:
-        base_config: Base configuration dictionary.
-
-    Returns:
-        Configuration dictionary without SentinelOne API key.
-
-    """
-    config = base_config.copy()
-    config.pop("SENTINELONE_API_KEY", None)
-
-    if "SENTINELONE_API_KEY" in os_environ:
-        del os_environ["SENTINELONE_API_KEY"]
-
-    return config
 
 
 # --------
@@ -195,15 +157,8 @@ def _then_collector_created_successfully(
     assert daemon_config.get("collector_name") == expected_config.get(
         "COLLECTOR_NAME"
     )  # noqa: S101
-    assert daemon_config.get(
-        "sentinelone_base_url"
-    ) == expected_config.get(  # noqa: S101
-        "SENTINELONE_BASE_URL"
-    )
-    assert daemon_config.get(
-        "sentinelone_api_key"
-    ) == expected_config.get(  # noqa: S101
-        "SENTINELONE_API_KEY"
+    assert daemon_config.get("template_key") == expected_config.get(  # noqa: S101
+        "TEMPLATE_KEY"
     )
     assert daemon_config.get(
         "collector_log_level"
@@ -229,5 +184,5 @@ def _then_collector_logged_initialization_success(
     """
     log_records = capfd.readouterr()
     if daemon_config.get("collector_log_level") in ["info", "debug"]:
-        registered_message = "SentinelOne Collector initialized successfully"
+        registered_message = "Template Collector initialized successfully"
         assert registered_message in log_records.err  # noqa: S101

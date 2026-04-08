@@ -60,6 +60,6 @@ class _ConfigLoaderCollector(ConfigBaseSettings):
     )
     icon_filepath: str | None = Field(
         alias="COLLECTOR_ICON_FILEPATH",
-        default="src/img/sentinelone-logo.png",
+        default="src/img/template-logo.png",
         description="Path to the icon file of the collector.",
     )

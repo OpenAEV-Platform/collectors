@@ -3,11 +3,11 @@ from src.models.configs.collector_configs import (
     _ConfigLoaderCollector,
     _ConfigLoaderOAEV,
 )
-from src.models.configs.sentinelone_configs import _ConfigLoaderSentinelOne
+from src.models.configs.template_configs import _ConfigLoaderTemplate
 
 __all__ = [
     "ConfigBaseSettings",
     "_ConfigLoaderCollector",
     "_ConfigLoaderOAEV",
-    "_ConfigLoaderSentinelOne",
+    "_ConfigLoaderTemplate",
 ]

@@ -7,15 +7,14 @@ in test structure.
 
 from os import environ as os_environ
 from typing import Any, Dict, List
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 import pytest
 from src.collector import Collector
-from src.services.client_api import SentinelOneClientAPI
-from src.services.converter import SentinelOneConverter
-from src.services.exception import SentinelOneValidationError
-from src.services.expectation_service import SentinelOneExpectationService
-from src.services.model_threat import SentinelOneThreat
+from src.services.converter import TemplateConverter
+from src.services.exception import TemplateValidationError
+from src.services.expectation_service import TemplateExpectationService
+from src.services.model_data import TemplateData
 from tests.conftest import mock_env_vars
 from tests.services.fixtures.factories import create_test_config
 
@@ -96,142 +95,106 @@ def given_config_with_invalid_value(
 # -----------------------------
 
 
-def given_initialized_converter() -> SentinelOneConverter:
+def given_initialized_converter() -> TemplateConverter:
     """Create an initialized converter.
 
     Returns:
-        Initialized SentinelOneConverter instance.
+        Initialized TemplateConverter instance.
 
     """
-    return SentinelOneConverter()
-
-
-def given_initialized_client_api():
-    """Create an initialized client API.
-
-    Returns:
-        Initialized SentinelOneClientAPI instance.
-
-    """
-    config = given_test_config()
-    return SentinelOneClientAPI(config=config)
+    return TemplateConverter()
 
 
 def given_initialized_expectation_service():
     """Create an initialized expectation service.
 
     Returns:
-        Initialized SentinelOneExpectationService instance.
+        Initialized TemplateExpectationService instance.
 
     """
     config = given_test_config()
-    return SentinelOneExpectationService(config=config)
+    return TemplateExpectationService(config=config)
 
 
 # Data Creation Given Methods
 # ---------------------------
 
 
-def given_threat_with_complete_data(
-    threat_id: str = "test_threat_123", hostname: str = "test-host.example.com"
-) -> SentinelOneThreat:
-    """Create a threat with complete data.
+def given_data_with_complete_data(key: str = "value123") -> TemplateData:
+    """Create a data with complete data.
 
     Args:
-        threat_id: ID for the threat.
-        hostname: Hostname for the threat.
+        key: example value.
 
     Returns:
-        SentinelOneThreat with complete data.
+        TemplateData with complete data.
 
     """
-    return SentinelOneThreat(threat_id=threat_id, hostname=hostname)
+    return TemplateData(key=key)
 
 
-def given_threat_without_hostname(
-    threat_id: str = "no_hostname_threat",
-) -> SentinelOneThreat:
-    """Create a threat without hostname.
+def given_data_with_empty_key() -> TemplateData:
+    """Create a data with empty key.
+
+    Returns:
+        TemplateData with empty key.
+
+    """
+    return TemplateData(key="")
+
+
+def given_multiple_data(count: int = 3) -> List[TemplateData]:
+    """Create multiple data with different data combinations.
 
     Args:
-        threat_id: ID for the threat.
+        count: Number of data to create.
 
     Returns:
-        SentinelOneThreat without hostname.
+        List of TemplateData objects.
 
     """
-    return SentinelOneThreat(threat_id=threat_id, hostname=None)
-
-
-def given_threat_with_empty_id(
-    hostname: str = "empty-id-host.example.com",
-) -> SentinelOneThreat:
-    """Create a threat with empty threat ID.
-
-    Args:
-        hostname: Hostname for the threat.
-
-    Returns:
-        SentinelOneThreat with empty threat_id.
-
-    """
-    return SentinelOneThreat(threat_id="", hostname=hostname)
-
-
-def given_multiple_threats(count: int = 3) -> List[SentinelOneThreat]:
-    """Create multiple threats with different data combinations.
-
-    Args:
-        count: Number of threats to create.
-
-    Returns:
-        List of SentinelOneThreat objects.
-
-    """
-    threats = []
+    data = []
     for i in range(count):
-        threat_id = f"multi_threat_{i + 1}"
-        hostname = f"host{i + 1}.example.com" if i % 2 == 0 else None
-        threats.append(SentinelOneThreat(threat_id=threat_id, hostname=hostname))
-    return threats
+        key = f"multi_data_{i + 1}"
+        data.append(TemplateData(key=key))
+    return data
 
 
-def given_large_batch_of_threats(count: int = 100) -> List[SentinelOneThreat]:
-    """Create a large batch of threats for performance testing.
+def given_large_batch_of_data(count: int = 100) -> List[TemplateData]:
+    """Create a large batch of data for performance testing.
 
     Args:
-        count: Number of threats to create.
+        count: Number of data to create.
 
     Returns:
-        List of SentinelOneThreat objects.
+        List of TemplateData objects.
 
     """
     return [
-        SentinelOneThreat(
-            threat_id=f"bulk_threat_{i}",
-            hostname=f"host{i}.example.com" if i % 2 == 0 else None,
+        TemplateData(
+            key=f"bulk_data_{i}",
         )
         for i in range(count)
     ]
 
 
-def given_mixed_valid_invalid_objects(valid_threat_id: str = "valid_mixed_123") -> List:
+def given_mixed_valid_invalid_objects(valid_data_key: str = "valid_mixed_123") -> List:
     """Create a list with mixed valid and invalid objects.
 
     Args:
-        valid_threat_id: ID for the valid threat in the list.
+        valid_data_key: key for the valid data in the list.
 
     Returns:
-        List containing valid threats and invalid objects.
+        List containing valid data and invalid objects.
 
     """
-    valid_threat = SentinelOneThreat(
-        threat_id=valid_threat_id, hostname="valid-mixed.example.com"
+    valid_data = TemplateData(
+        key=valid_data_key,
     )
     return [
-        valid_threat,
-        {"threat_id": "dict_threat"},
-        "string_threat",
+        valid_data,
+        {"key_data": "dict_data"},
+        "string_data",
         42,
     ]
 
@@ -250,60 +213,31 @@ def given_invalid_input_data() -> str:
 # ------------------------
 
 
-def given_mock_session_that_fails():
-    """Create a mock session that fails during creation.
-
-    Returns:
-        Context manager for mocking session failure.
-
-    """
-    return patch("requests.Session", side_effect=Exception("Session creation failed"))
-
-
-def given_mock_session_with_header_failure():
-    """Create a mock session that fails during header setup.
-
-    Returns:
-        Context manager for mocking header setup failure.
-
-    """
-
-    def create_failing_session():
-        mock_session = Mock()
-        mock_session.headers.update.side_effect = Exception("Header setup failed")
-        return mock_session
-
-    return patch("requests.Session", side_effect=create_failing_session)
-
-
-def given_conversion_error_setup(converter: SentinelOneConverter) -> List:
-    """Set up threats that will cause conversion errors.
+def given_conversion_error_setup(converter: TemplateConverter) -> List:
+    """Set up data that will cause conversion errors.
 
     Args:
         converter: The converter instance to mock.
 
     Returns:
-        List with valid threats and error-causing mock threats.
+        List with valid data and error-causing mock data.
 
     """
-    error_threat = Mock(spec=SentinelOneThreat)
-    error_threat.threat_id = "error_threat"
-    error_threat.hostname = None
+    error_data = Mock(spec=TemplateData)
+    error_data.key = "error_data"
 
-    valid_threat = SentinelOneThreat(
-        threat_id="valid_error_test_123", hostname="valid-error-test.example.com"
-    )
+    valid_data = TemplateData(key="valid_error_test_123")
 
-    original_convert = converter._convert_threat_to_oaev
+    original_convert = converter._convert_data_to_oaev
 
-    def mock_convert(threat):
-        if hasattr(threat, "threat_id") and threat.threat_id == "error_threat":
+    def mock_convert(data):
+        if hasattr(data, "key") and data.key == "error_data":
             raise Exception("Conversion error")
-        return original_convert(threat)
+        return original_convert(data)
 
-    converter._convert_threat_to_oaev = mock_convert
+    converter._convert_data_to_oaev = mock_convert
 
-    return [error_threat, valid_threat]
+    return [error_data, valid_data]
 
 
 # ========================================================================
@@ -325,72 +259,59 @@ def when_create_collector() -> Collector:
     return Collector()
 
 
-def when_initialize_converter() -> SentinelOneConverter:
+def when_initialize_converter() -> TemplateConverter:
     """Initialize a converter.
 
     Returns:
-        Initialized SentinelOneConverter instance.
+        Initialized TemplateConverter instance.
 
     """
-    return SentinelOneConverter()
-
-
-def when_initialize_client_api():
-    """Initialize a client API.
-
-    Returns:
-        Initialized SentinelOneClientAPI instance.
-
-    """
-    config = given_test_config()
-    return SentinelOneClientAPI(config=config)
+    return TemplateConverter()
 
 
 def when_initialize_expectation_service():
     """Initialize an expectation service.
 
     Returns:
-        Initialized SentinelOneExpectationService instance.
+        Initialized TemplateExpectationService instance.
 
     """
     config = given_test_config()
-    return SentinelOneExpectationService(config=config)
+    return TemplateExpectationService(config=config)
 
 
 # Data Processing When Methods
 # ----------------------------
 
 
-def when_convert_threats_to_oaev(
-    converter: SentinelOneConverter, threats: List
-) -> List:
-    """Convert threats to OAEV format.
+def when_convert_data_to_oaev(converter: TemplateConverter, data: List) -> List:
+    """Convert data to OAEV format.
 
     Args:
         converter: The converter instance.
-        threats: List of threats to convert.
+        data: List of data to convert.
 
     Returns:
         List of converted OAEV format data.
 
     """
-    return converter.convert_threats_to_oaev(threats)
+    return converter.convert_data_to_oaev(data)
 
 
 def when_call_private_conversion_method(
-    converter: SentinelOneConverter, threat: SentinelOneThreat
+    converter: TemplateConverter, data: TemplateData
 ) -> Dict:
     """Call the private conversion method directly.
 
     Args:
         converter: The converter instance.
-        threat: The threat to convert.
+        data: The data to convert.
 
     Returns:
         Converted OAEV format dictionary.
 
     """
-    return converter._convert_threat_to_oaev(threat)
+    return converter._convert_data_to_oaev(data)
 
 
 # Error Handling When Methods
@@ -412,7 +333,7 @@ def when_create_collector_expecting_error(mock_env: Any) -> None:
 
 
 def when_convert_invalid_data_expecting_validation_error(
-    converter: SentinelOneConverter, invalid_data: Any
+    converter: TemplateConverter, invalid_data: Any
 ) -> None:
     """Attempt to convert invalid data and expect validation error.
 
@@ -421,26 +342,10 @@ def when_convert_invalid_data_expecting_validation_error(
         invalid_data: Invalid input data.
 
     """
-    with pytest.raises(SentinelOneValidationError) as exc_info:
-        converter.convert_threats_to_oaev(invalid_data)
+    with pytest.raises(TemplateValidationError) as exc_info:
+        converter.convert_data_to_oaev(invalid_data)
 
-    assert "threats must be a list" in str(exc_info.value)  # noqa: S101
-
-
-def when_call_private_method_expecting_validation_error(
-    converter: SentinelOneConverter, threat: SentinelOneThreat
-) -> None:
-    """Call private method and expect validation error.
-
-    Args:
-        converter: The converter instance.
-        threat: The threat with empty threat_id.
-
-    """
-    with pytest.raises(SentinelOneValidationError) as exc_info:
-        converter._convert_threat_to_oaev(threat)
-
-    assert "Threat must have a threat_id" in str(exc_info.value)  # noqa: S101
+    assert "data must be a list" in str(exc_info.value)  # noqa: S101
 
 
 # ========================================================================
@@ -487,15 +392,12 @@ def then_collector_has_valid_configuration(
     assert daemon_config.get("collector_name") == expected_config.get(  # noqa: S101
         "COLLECTOR_NAME"
     )
-    assert daemon_config.get(  # noqa: S101
-        "sentinelone_base_url"
-    ) == expected_config.get("SENTINELONE_BASE_URL")
-    assert daemon_config.get(  # noqa: S101
-        "sentinelone_api_key"
-    ) == expected_config.get("SENTINELONE_API_KEY")
+    assert daemon_config.get("template_key") == expected_config.get(  # noqa: S101
+        "TEMPLATE_KEY"
+    )
 
 
-def then_converter_initialized_successfully(converter: SentinelOneConverter) -> None:
+def then_converter_initialized_successfully(converter: TemplateConverter) -> None:
     """Verify converter was initialized successfully.
 
     Args:
@@ -506,22 +408,8 @@ def then_converter_initialized_successfully(converter: SentinelOneConverter) -> 
     assert converter.logger is not None  # noqa: S101
 
 
-def then_client_api_initialized_successfully(client: SentinelOneClientAPI) -> None:
-    """Verify client API was initialized successfully.
-
-    Args:
-        client: The client API instance to verify.
-
-    """
-    assert client is not None  # noqa: S101
-    assert hasattr(client, "config")  # noqa: S101
-    assert hasattr(client, "session")  # noqa: S101
-    assert hasattr(client, "base_url")  # noqa: S101
-    assert hasattr(client, "api_key")  # noqa: S101
-
-
 def then_expectation_service_initialized_successfully(
-    service: SentinelOneExpectationService,
+    service: TemplateExpectationService,
 ) -> None:
     """Verify expectation service was initialized successfully.
 
@@ -530,9 +418,8 @@ def then_expectation_service_initialized_successfully(
 
     """
     assert service is not None  # noqa: S101
-    assert service.client_api is not None  # noqa: S101
     assert service.converter is not None  # noqa: S101
-    assert service.threat_fetcher is not None  # noqa: S101
+    assert service.data_fetcher is not None  # noqa: S101
 
 
 # Data Validation Then Methods
@@ -549,80 +436,40 @@ def then_empty_list_returned(result: List) -> None:
     assert result == []  # noqa: S101
 
 
-def then_single_threat_converted_completely(
-    result: List, threat: SentinelOneThreat
-) -> None:
-    """Verify single threat was converted with all fields.
+def then_single_data_converted_completely(result: List, data: TemplateData) -> None:
+    """Verify single data was converted with all fields.
 
     Args:
         result: The conversion result to verify.
-        threat: The original threat object.
+        data: The original data object.
 
     """
     assert len(result) == 1  # noqa: S101
 
     converted = result[0]
 
-    assert "threat_id" in converted  # noqa: S101
-    assert converted["threat_id"]["type"] == "fuzzy"  # noqa: S101
-    assert converted["threat_id"]["data"] == [threat.threat_id]  # noqa: S101
-    assert converted["threat_id"]["score"] == 95  # noqa: S101
-
-    if threat.hostname:
-        assert "target_hostname_address" in converted  # noqa: S101
-        assert converted["target_hostname_address"]["type"] == "fuzzy"  # noqa: S101
-        assert converted["target_hostname_address"]["data"] == [  # noqa: S101
-            threat.hostname
-        ]
-        assert converted["target_hostname_address"]["score"] == 95  # noqa: S101
+    assert "key" in converted  # noqa: S101
+    assert converted["key"] == [data.key]  # noqa: S101
 
 
-def then_single_threat_converted_without_hostname(
-    result: List, threat: SentinelOneThreat
-) -> None:
-    """Verify single threat was converted without hostname field.
+def then_multiple_data_converted(result: List, data: List[TemplateData]) -> None:
+    """Verify multiple data were converted correctly.
 
     Args:
         result: The conversion result to verify.
-        threat: The original threat object.
+        data: The original data list.
 
     """
-    assert len(result) == 1  # noqa: S101
+    valid_data = [d for d in data if d.key and d.key.strip()]
+    assert len(result) == len(valid_data)  # noqa: S101
 
-    converted = result[0]
-
-    assert "threat_id" in converted  # noqa: S101
-    assert converted["threat_id"]["data"] == [threat.threat_id]  # noqa: S101
-
-    assert "target_hostname_address" not in converted  # noqa: S101
+    keys = [item["key"]["data"][0] for item in result]
+    for d in valid_data:
+        assert d.key in keys  # noqa: S101
 
 
-def then_multiple_threats_converted(
-    result: List, threats: List[SentinelOneThreat]
-) -> None:
-    """Verify multiple threats were converted correctly.
-
-    Args:
-        result: The conversion result to verify.
-        threats: The original threats list.
-
-    """
-    valid_threats = [t for t in threats if t.threat_id and t.threat_id.strip()]
-    assert len(result) == len(valid_threats)  # noqa: S101
-
-    threat_ids = [item["threat_id"]["data"][0] for item in result]
-    for threat in valid_threats:
-        assert threat.threat_id in threat_ids  # noqa: S101
-
-    items_with_hostname = [item for item in result if "target_hostname_address" in item]
-    expected_hostname_count = sum(1 for threat in valid_threats if threat.hostname)
-    assert len(items_with_hostname) == expected_hostname_count  # noqa: S101
-
-
-def then_only_valid_threats_converted(
-    result: List, expected_valid_count: int = 1
-) -> None:
-    """Verify only valid threats were converted from mixed data.
+def then_only_valid_data_converted(result: List, expected_valid_count: int = 1) -> None:
+    """Verify only valid data were converted from mixed data.
 
     Args:
         result: The conversion result to verify.
@@ -642,63 +489,23 @@ def then_large_batch_converted_efficiently(result: List, expected_count: int) ->
     """
     assert len(result) == expected_count  # noqa: S101
 
-    converted_ids = {item["threat_id"]["data"][0] for item in result}
-    assert len(converted_ids) == expected_count  # noqa: S101
+    converted_keys = {item["key"]["data"][0] for item in result}
+    assert len(converted_keys) == expected_count  # noqa: S101
 
 
-def then_private_method_converts_properly(
-    result: Dict, threat: SentinelOneThreat
-) -> None:
-    """Verify private method converts threat properly.
+def then_private_method_converts_properly(result: Dict, data: TemplateData) -> None:
+    """Verify private method converts data properly.
 
     Args:
         result: The conversion result to verify.
-        threat: The original threat object.
+        data: The original data object.
 
     """
     assert isinstance(result, dict)  # noqa: S101
-    assert "threat_id" in result  # noqa: S101
-    assert result["threat_id"]["type"] == "fuzzy"  # noqa: S101
-    assert result["threat_id"]["data"] == [threat.threat_id]  # noqa: S101
-    assert result["threat_id"]["score"] == 95  # noqa: S101
-
-    if threat.hostname:
-        assert "target_hostname_address" in result  # noqa: S101
-        assert result["target_hostname_address"]["data"] == [  # noqa: S101
-            threat.hostname
-        ]
 
 
 # Session and Configuration Validation Then Methods
 # -------------------------------------------------
-
-
-def then_session_configured_properly(
-    client: SentinelOneClientAPI, expected_api_key: str
-) -> None:
-    """Verify session is configured properly.
-
-    Args:
-        client: The client API instance to verify.
-        expected_api_key: Expected API key value.
-
-    """
-    expected_auth = f"ApiToken {expected_api_key}"
-    assert client.session.headers["Authorization"] == expected_auth  # noqa: S101
-    assert client.session.headers["Content-Type"] == "application/json"  # noqa: S101
-    assert client.session.headers["Accept"] == "application/json"  # noqa: S101
-
-
-def then_base_url_normalized(client: SentinelOneClientAPI, expected_base: str) -> None:
-    """Verify base URL is properly normalized.
-
-    Args:
-        client: The client API instance to verify.
-        expected_base: Expected base URL without trailing slash.
-
-    """
-    assert not client.base_url.endswith("/")  # noqa: S101
-    assert client.base_url == expected_base  # noqa: S101
 
 
 def then_collector_logged_initialization_success(
@@ -713,7 +520,7 @@ def then_collector_logged_initialization_success(
     """
     log_records = capfd.readouterr()
     if daemon_config.get("collector_log_level") in ["info", "debug"]:
-        registered_message = "SentinelOne Collector initialized successfully"
+        registered_message = "Template Collector initialized successfully"
         assert registered_message in log_records.err  # noqa: S101
 
 

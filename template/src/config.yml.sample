@@ -5,6 +5,5 @@ openaev:
 collector:
   id: "ChangeMe"
 
-sentinelone:
-  base_url: "http://change.me"
-  api_key: "ChangeMe"
+template:
+  key: "value"

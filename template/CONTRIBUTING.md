@@ -1,32 +1,28 @@
-# Contributing to SentinelOne Collector
+# Contributing to Template Collector
 
-This document provides guidance for contributing to the SentinelOne collector for OpenAEV. This collector is now feature-complete with SentinelOne-specific implementation.
+This document provides guidance for contributing to the Template collector for OpenAEV. This collector is now feature-complete with Template-specific implementation.
 
 ## Current Implementation Status
 
-**COMPLETED**: The SentinelOne collector is fully implemented with the following components:
+**COMPLETED**: The Template collector is fully implemented with the following components:
 
 ### Core Components
--  **Collector Core** ([`src/collector/collector.py`](src/collector/collector.py)) - Main daemon with SentinelOne service integration
+-  **Collector Core** ([`src/collector/collector.py`](src/collector/collector.py)) - Main daemon with Template service integration
 -  **Expectation Handler** ([`src/collector/expectation_handler.py`](src/collector/expectation_handler.py)) - Generic handler using service provider pattern
 -  **Expectation Manager** ([`src/collector/expectation_manager.py`](src/collector/expectation_manager.py)) - Batch processing and API interactions
--  **Configuration System** ([`src/models/configs/`](src/models/configs/)) - Hierarchical configuration with SentinelOne settings
--  **Service Providers** - Complete SentinelOne-specific implementation
+-  **Configuration System** ([`src/models/configs/`](src/models/configs/)) - Hierarchical configuration with Template settings
+-  **Service Providers** - Complete Template-specific implementation
 
-### SentinelOne Implementation
--  **SentinelOne API Client** ([`src/services/client_api.py`](src/services/client_api.py)) - Full API integration
--  **Deep Visibility Fetcher** ([`src/services/fetcher_deep_visibility.py`](src/services/fetcher_deep_visibility.py)) - Process event queries
--  **Threat Fetcher** ([`src/services/fetcher_threat.py`](src/services/fetcher_threat.py)) - Prevention data correlation
+### Template Implementation
+-  **Data Fetcher** ([`src/services/fetcher_data.py`](src/services/fetcher_data.py)) - Prevention data correlation
 -  **Expectation Service** ([`src/services/expectation_service.py`](src/services/expectation_service.py)) - Business logic implementation
--  **Trace Service** ([`src/services/trace_service.py`](src/services/trace_service.py)) - Trace creation with SentinelOne links
--  **Data Converter** ([`src/services/converter.py`](src/services/converter.py)) - SentinelOne to OAEV format conversion
+-  **Trace Service** ([`src/services/trace_service.py`](src/services/trace_service.py)) - Trace creation
+-  **Data Converter** ([`src/services/converter.py`](src/services/converter.py)) - Template to OAEV format conversion
 
 ### Supported Features
--  **Signature Support**: `parent_process_name`, `start_date`, `end_date`
--  **Detection Expectations**: Deep Visibility event validation
--  **Prevention Expectations**: Combined event + threat validation
+-  **Signature Support**: `start_date`, `end_date`
 -  **Retry Mechanism**: Configurable retries with ingestion delay handling
--  **Trace Generation**: Links back to SentinelOne console
+-  **Trace Generation**: Links back to external tool available
 -  **Error Handling**: Comprehensive exception handling and logging
 -  **Configuration Management**: YAML, environment variables, defaults
 
@@ -60,7 +56,7 @@ poetry install -E local --with dev,test
 
 ```bash
 # Direct execution
-SentinelOneCollector
+TemplateCollector
 
 # Using Python module execution
 python -m src
@@ -76,7 +72,7 @@ poetry run python -m src
 1. **Clone and Install**:
    ```bash
    git clone <collector-repo>
-   cd sentinelone
+   cd template
    poetry install -E current --with dev,test
    ```
 
@@ -85,7 +81,7 @@ poetry run python -m src
    # Copy sample config
    cp src/config.yml.sample src/config.yml
 
-   # Edit with your SentinelOne details
+   # Edit with your Template details
    vim src/config.yml
    ```
 
@@ -116,12 +112,11 @@ src/
 │   ├── expectation_manager.py
 │   ├── trace_manager.py
 │   └── models.py       # Pydantic data models
-├── services/           # SentinelOne-specific implementation
-│   ├── client_api.py   # API client
+├── services/           # Template-specific implementation
 │   ├── expectation_service.py  # Business logic
 │   ├── trace_service.py        # Trace creation
 │   ├── converter.py    # Data conversion
-│   ├── fetcher_*.py    # API-specific fetchers
+│   ├── fetcher_*.py    # Data fetchers
 │   └── model_*.py      # Data models
 └── models/             # Configuration management
     └── configs/        # Hierarchical config system
@@ -145,7 +140,7 @@ poetry run pytest -v
 ### Test Categories
 
 - **Unit Tests**: Test individual components in isolation
-- **Integration Tests**: Test SentinelOne API interactions
+- **Integration Tests**: Test external tool interactions
 - **Configuration Tests**: Validate config loading and validation
 - **Service Provider Tests**: Test expectation handling logic
 
@@ -175,8 +170,8 @@ from src.collector.exception import CollectorProcessingError
 
 try:
     result = process_expectation(expectation)
-except SentinelOneServiceError as e:
-    logger.error(f"SentinelOne API error: {e}")
+except TemplateServiceError as e:
+    logger.error(f"Template error: {e}")
     raise CollectorProcessingError(f"Processing failed: {e}") from e
 ```
 
@@ -234,7 +229,7 @@ logger.error(
 #### Adding New Signature Types
 
 1. Update `SUPPORTED_SIGNATURES` in [`src/services/expectation_service.py`](src/services/expectation_service.py)
-2. Modify query building in [`src/services/client_api.py`](src/services/client_api.py)
+2. Update fetching processes in [`src/services/fetcher_data.py`](src/services/fetcher_data.py)
 3. Update data conversion logic in [`src/services/converter.py`](src/services/converter.py)
 4. Add corresponding tests
 
@@ -256,7 +251,7 @@ logger.error(
 
 This collector is built on a reusable foundation that can be adapted for other security platforms. If you want to create a similar collector for another platform (e.g., CrowdStrike, Microsoft Defender):
 
-### SentinelOne-Specific References to Change
+### Template-Specific References to Change
 
 #### Configuration Files
 - [ ] `pyproject.toml` - Update project name and script names
@@ -294,7 +289,7 @@ The following components are platform-agnostic and can be reused:
 
 #### API Integration Testing
 - Use mock objects for unit tests
-- Set up test SentinelOne environment for integration tests
+- Set up test Template environment for integration tests
 - Handle rate limits in test environments
 
 ### Production Issues
@@ -321,4 +316,4 @@ The following components are platform-agnostic and can be reused:
 - Provide example configurations for different scenarios
 - Include troubleshooting guides for common issues
 
-This collector provides a production-ready SentinelOne integration for OpenAEV with comprehensive error handling, configurable retry logic, and detailed trace generation.
+This collector provides a production-ready Template integration for OpenAEV with comprehensive error handling, configurable retry logic, and detailed trace generation.

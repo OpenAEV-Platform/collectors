@@ -8,7 +8,7 @@ from tests.services.fixtures.factories import (
     ExpectationResultFactory,
     ExpectationTraceFactory,
     MockObjectsFactory,
-    SentinelOneThreatFactory,
+    TemplateDataFactory,
     TestDataFactory,
     create_test_config,
 )
@@ -23,17 +23,6 @@ def mock_config():
 
     """
     return create_test_config()
-
-
-@pytest.fixture
-def mock_client_api():
-    """Provide a mock SentinelOne client API.
-
-    Returns:
-        Mock SentinelOne client API instance for testing.
-
-    """
-    return MockObjectsFactory.create_mock_client_api()
 
 
 @pytest.fixture
@@ -59,25 +48,25 @@ def mock_detection_helper_no_match():
 
 
 @pytest.fixture
-def sample_threat():
-    """Provide a sample SentinelOne threat.
+def sample_single_data():
+    """Provide a sample Template data.
 
     Returns:
-        SentinelOneThreat instance for testing.
+        TemplateData instance for testing.
 
     """
-    return SentinelOneThreatFactory.build()
+    return TemplateDataFactory.build()
 
 
 @pytest.fixture
-def sample_threats():
-    """Provide a list of sample SentinelOne threats.
+def sample_data():
+    """Provide a list of sample TemplateData data.
 
     Returns:
-        List of 2 SentinelOneThreat instances for testing.
+        List of 2 TemplateData instances for testing.
 
     """
-    return [SentinelOneThreatFactory.build() for _ in range(2)]
+    return [TemplateDataFactory.build() for _ in range(2)]
 
 
 @pytest.fixture
@@ -151,14 +140,14 @@ def oaev_prevention_data():
 
 
 @pytest.fixture
-def mixed_sentinelone_data():
-    """Provide mixed SentinelOne data (DV events + threats).
+def mixed_template_data():
+    """Provide mixed Template data (DV data).
 
     Returns:
-        List containing both DeepVisibilityEvent and SentinelOneThreat instances.
+        List containing both DeepVisibilityEvent and TemplateData instances.
 
     """
-    return TestDataFactory.create_mixed_sentinelone_data()
+    return TestDataFactory.create_mixed_template_data()
 
 
 @pytest.fixture
@@ -277,14 +266,14 @@ def config_factory():
 
 
 @pytest.fixture
-def threat_factory():
-    """Provide the SentinelOneThreatFactory for creating threats.
+def data_factory():
+    """Provide the TemplateDataFactory for creating data.
 
     Returns:
-        SentinelOneThreatFactory class for generating test threats.
+        TemplateDataFactory class for generating test data.
 
     """
-    return SentinelOneThreatFactory
+    return TemplateDataFactory
 
 
 @pytest.fixture

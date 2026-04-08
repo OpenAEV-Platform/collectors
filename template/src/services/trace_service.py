@@ -1,4 +1,4 @@
-"""SentinelOne Trace Service Provider."""
+"""Template Trace Service Provider."""
 
 import logging
 from datetime import UTC, datetime
@@ -6,34 +6,34 @@ from typing import Any
 
 from ..collector.models import ExpectationResult, ExpectationTrace
 from ..models.configs.config_loader import ConfigLoader
-from .exception import SentinelOneDataConversionError, SentinelOneValidationError
+from .exception import TemplateDataConversionError, TemplateValidationError
 
-LOG_PREFIX = "[SentinelOneTraceService]"
+LOG_PREFIX = "[TemplateTraceService]"
 
 
-class SentinelOneTraceService:
-    """SentinelOne-specific trace service provider.
+class TemplateTraceService:
+    """Template-specific trace service provider.
 
     This service extracts trace information from expectation processing results
     and converts them into OpenAEV expectation traces using proper Pydantic models.
     """
 
     def __init__(self, config: ConfigLoader | None = None) -> None:
-        """Initialize the SentinelOne trace service.
+        """Initialize the Template trace service.
 
         Args:
             config: Configuration loader instance for trace service settings.
 
         Raises:
-            SentinelOneValidationError: If config is None.
+            TemplateValidationError: If config is None.
 
         """
         if config is None:
-            raise SentinelOneValidationError("Config is required for trace service")
+            raise TemplateValidationError("Config is required for trace service")
 
         self.logger = logging.getLogger(__name__)
         self.config = config
-        self.logger.debug(f"{LOG_PREFIX} SentinelOne trace service initialized")
+        self.logger.debug(f"{LOG_PREFIX} Template trace service initialized")
 
     def create_traces_from_results(
         self, results: list[ExpectationResult], collector_id: str
@@ -48,15 +48,15 @@ class SentinelOneTraceService:
             List of ExpectationTrace models for OpenAEV.
 
         Raises:
-            SentinelOneValidationError: If inputs are invalid.
-            SentinelOneDataConversionError: If trace creation fails.
+            TemplateValidationError: If inputs are invalid.
+            TemplateDataConversionError: If trace creation fails.
 
         """
         if not collector_id:
-            raise SentinelOneValidationError("collector_id cannot be empty")
+            raise TemplateValidationError("collector_id cannot be empty")
 
         if not isinstance(results, list):
-            raise SentinelOneValidationError("results must be a list")
+            raise TemplateValidationError("results must be a list")
 
         try:
             valid_results = [r for r in results if r.is_valid and r.matched_alerts]
@@ -100,7 +100,7 @@ class SentinelOneTraceService:
                             f"{LOG_PREFIX} Trace creation returned None for expectation {expectation_id}"
                         )
                 except Exception as e:
-                    raise SentinelOneDataConversionError(
+                    raise TemplateDataConversionError(
                         f"Error creating trace for expectation {expectation_id}: {e}"
                     ) from e
 
@@ -109,10 +109,10 @@ class SentinelOneTraceService:
             )
             return traces
 
-        except SentinelOneDataConversionError:
+        except TemplateDataConversionError:
             raise
         except Exception as e:
-            raise SentinelOneDataConversionError(
+            raise TemplateDataConversionError(
                 f"Unexpected error creating traces from results: {e}"
             ) from e
 
@@ -130,18 +130,18 @@ class SentinelOneTraceService:
             ExpectationTrace model for OpenAEV.
 
         Raises:
-            SentinelOneValidationError: If inputs are invalid.
-            SentinelOneDataConversionError: If trace creation fails.
+            TemplateValidationError: If inputs are invalid.
+            TemplateDataConversionError: If trace creation fails.
 
         """
         if not expectation_id:
-            raise SentinelOneValidationError("expectation_id cannot be empty")
+            raise TemplateValidationError("expectation_id cannot be empty")
 
         if not collector_id:
-            raise SentinelOneValidationError("collector_id cannot be empty")
+            raise TemplateValidationError("collector_id cannot be empty")
 
         if not result.matched_alerts:
-            raise SentinelOneValidationError(
+            raise TemplateValidationError(
                 "result must have matched_alerts for trace creation"
             )
 
@@ -151,7 +151,7 @@ class SentinelOneTraceService:
                 f"{LOG_PREFIX} Processing matching data with {len(matching_data)} fields"
             )
 
-            alert_name = matching_data.get("alert_name", "SentinelOne Alert")
+            alert_name = matching_data.get("alert_name", "Template Alert")
 
             trace_link = matching_data.get("alert_link", "")
             self.logger.debug(f"{LOG_PREFIX} Using trace builder URL: {trace_link}")
@@ -173,10 +173,10 @@ class SentinelOneTraceService:
             )
             return trace
 
-        except SentinelOneValidationError:
+        except TemplateValidationError:
             raise
         except Exception as e:
-            raise SentinelOneDataConversionError(
+            raise TemplateDataConversionError(
                 f"Error creating expectation trace: {e}"
             ) from e
 
@@ -188,11 +188,11 @@ class SentinelOneTraceService:
 
         """
         info = {
-            "service_type": "sentinelone_trace",
-            "supported_result_types": ["SentinelOne processing results"],
+            "service_type": "template_trace",
+            "supported_result_types": ["Template processing results"],
             "creates_detection_traces": True,
             "creates_prevention_traces": True,
-            "description": "Creates traces from SentinelOne expectation processing results using trace builder URLs",
+            "description": "Creates traces from Template expectation processing results using trace builder URLs",
         }
         self.logger.debug(f"{LOG_PREFIX} Trace service info: {info}")
         return info
