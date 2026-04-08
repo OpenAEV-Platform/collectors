@@ -1,8 +1,8 @@
-"""Essential tests for SentinelOne Trace Service - Gherkin GWT Format."""
+"""Essential tests for Template Trace Service - Gherkin GWT Format."""
 
 import pytest
-from src.services.exception import SentinelOneValidationError
-from src.services.trace_service import SentinelOneTraceService
+from src.services.exception import TemplateValidationError
+from src.services.trace_service import TemplateTraceService
 from tests.gwt_shared import given_test_config
 
 # --------
@@ -96,11 +96,11 @@ def _given_valid_trace_service():
     """Create a valid trace service for testing.
 
     Returns:
-        Initialized SentinelOneTraceService instance.
+        Initialized TemplateTraceService instance.
 
     """
     config = given_test_config()
-    return SentinelOneTraceService(config=config)
+    return TemplateTraceService(config=config)
 
 
 # Given: Valid expectation results with matching alerts
@@ -121,8 +121,8 @@ def _given_valid_expectation_results_with_alerts():
             "alert_id": "alert_1",
             "severity": "high",
             "message": "Test alert 1",
-            "alert_name": "SentinelOne Test Alert 1",
-            "alert_link": "https://console.sentinelone.com/alerts/alert_1",
+            "alert_name": "Template Test Alert 1",
+            "alert_link": "https://foo.bar",
         }
     ]
     result1.expectation = Mock()
@@ -144,10 +144,10 @@ def _when_initialize_trace_service(config):
         config: Configuration object to use.
 
     Returns:
-        Initialized SentinelOneTraceService instance.
+        Initialized TemplateTraceService instance.
 
     """
-    return SentinelOneTraceService(config=config)
+    return TemplateTraceService(config=config)
 
 
 # When: I attempt to initialize with invalid config and expect validation error
@@ -158,8 +158,8 @@ def _when_initialize_trace_service_then_validation_error_raised(invalid_config):
         invalid_config: Invalid configuration to test.
 
     """
-    with pytest.raises(SentinelOneValidationError):
-        SentinelOneTraceService(config=invalid_config)
+    with pytest.raises(TemplateValidationError):
+        TemplateTraceService(config=invalid_config)
 
 
 # When: I create traces from the results

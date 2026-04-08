@@ -6,9 +6,9 @@ build-backend = "poetry.core.masonry.api"
 packages = [{ include = "src" }, { include = "tests" }]
 
 [project]
-name = "SentinelOneCollector"
+name = "TemplateCollector"
 version = "2.3.2"
-description = "Collector for SentinelOne EDR."
+description = "Collector template for OAEV."
 readme = "README.md"
 
 requires-python = ">=3.11,<3.14"
@@ -41,7 +41,7 @@ pytest = "^8.4.1"
 polyfactory = "^2.22.2"
 
 [project.scripts]
-SentinelOneCollector = "src.__main__:main"
+TemplateCollector = "src.__main__:main"
 
 [tool.pytest.ini_options]
 testpaths = ["./tests"]
@@ -124,4 +124,4 @@ plugins = ["pydantic.mypy"]
 [tool.cmw]
 install-command = "poetry install --extras local"
 config-dump-command = "poetry run python -m src --dump-config-schema"
-icon-path = "src/img/sentinelone-logo.png"
+icon-path = "src/img/change-me-logo.png"

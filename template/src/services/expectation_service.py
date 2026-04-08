@@ -1,4 +1,4 @@
-"""SentinelOne Expectation Service with batch-based processing."""
+"""Template Expectation Service with batch-based processing."""
 
 import logging
 from datetime import datetime, timezone
@@ -11,16 +11,13 @@ from pyoaev.apis.inject_expectation.model.expectation import (
 )
 from pyoaev.signatures.types import SignatureTypes
 
-from .client_api import SentinelOneClientAPI
-from .converter import SentinelOneConverter
-from .exception import SentinelOneAPIError, SentinelOneExpectationError
-from .fetcher_deep_visibility import FetcherDeepVisibility
-from .fetcher_threat import FetcherThreat
-from .fetcher_threat_events import FetcherThreatEvents
-from .model_threat import SentinelOneThreat
+from .converter import TemplateConverter
+from .exception import TemplateExpectationError, TemplateFetcherError
+from .fetcher_data import FetcherData
+from .model_data import TemplateData
 from .utils import SignatureExtractor, TraceBuilder
 
-LOG_PREFIX = "[SentinelOneExpectationService]"
+LOG_PREFIX = "[TemplateExpectationService]"
 
 
 class ExpectationResult(BaseModel):
@@ -40,38 +37,29 @@ class ExpectationResult(BaseModel):
     )
 
 
-class SentinelOneExpectationService:
-    """Service for processing SentinelOne expectations in batches."""
+class TemplateExpectationService:
+    """Service for processing Template expectations in batches."""
 
     def __init__(
         self,
         config: Any | None = None,
     ) -> None:
-        """Initialize the SentinelOne expectation service.
+        """Initialize the Template expectation service.
 
         Args:
             config: Configuration loader for alternative initialization.
 
         Raises:
-            SentinelOneValidationError: If required parameters are None.
+            TemplateValidationError: If required parameters are None.
 
         """
         self.logger: logging.Logger = logging.getLogger(__name__)
 
-        self.client_api: SentinelOneClientAPI = SentinelOneClientAPI(config)
-        self.converter: SentinelOneConverter = SentinelOneConverter()
-        self.batch_size: int = config.sentinelone.expectation_batch_size
-        self.enable_deep_visibility_search = (
-            config.sentinelone.enable_deep_visibility_search
-        )
+        self.converter: TemplateConverter = TemplateConverter()
+        self.batch_size: int = config.template.expectation_batch_size
+        self.time_window = config.template.time_window
 
-        self.threat_fetcher: FetcherThreat = FetcherThreat(self.client_api)
-        self.threat_events_fetcher: FetcherThreatEvents = FetcherThreatEvents(
-            self.client_api
-        )
-        self.deep_visibility_fetcher: FetcherDeepVisibility = FetcherDeepVisibility(
-            self.client_api
-        )
+        self.data_fetcher: FetcherData = FetcherData()
 
         self.logger.info(
             f"{LOG_PREFIX} Service initialized with batch size: {self.batch_size}"
@@ -107,7 +95,7 @@ class SentinelOneExpectationService:
             - skipped_count: Number of expectations skipped due to missing end_date
 
         Raises:
-            SentinelOneExpectationError: If batch processing fails.
+            TemplateExpectationError: If batch processing fails.
 
         """
         if not expectations:
@@ -146,7 +134,7 @@ class SentinelOneExpectationService:
                     )
                     error_results = [
                         self._create_error_result_object(
-                            SentinelOneExpectationError(f"Batch processing error: {e}"),
+                            TemplateExpectationError(f"Batch processing error: {e}"),
                             expectation,
                         )
                         for expectation in batch
@@ -163,7 +151,7 @@ class SentinelOneExpectationService:
             return all_results, skipped_count
 
         except Exception as e:
-            raise SentinelOneExpectationError(
+            raise TemplateExpectationError(
                 f"Error in handle_batch_expectations: {e}"
             ) from e
 
@@ -236,134 +224,19 @@ class SentinelOneExpectationService:
                 f"{LOG_PREFIX} Batch {batch_idx}: Found {len(process_names)} unique process names"
             )
 
-            threats = self._fetch_threats_for_time_window(batch)
+            data = self._fetch_data_for_time_window(batch)
             self.logger.info(
-                f"{LOG_PREFIX} Batch {batch_idx}: Fetched {len(threats)} threats from time window"
+                f"{LOG_PREFIX} Batch {batch_idx}: Fetched {len(data)} data from time window"
             )
 
-            static_threats = [threat for threat in threats if threat.is_static]
-            non_static_threats = [threat for threat in threats if not threat.is_static]
-
-            self.logger.debug(
-                f"{LOG_PREFIX} Batch {batch_idx}: Processing {len(static_threats)} static threats "
-                f"and {len(non_static_threats)} non-static threats"
-            )
-
-            threat_events = {}
-            for threat in non_static_threats:
-                try:
-                    events = self.threat_events_fetcher.fetch_events_for_threat(
-                        threat, process_names
-                    )
-                    if events:
-                        threat_events[threat.threat_id] = events
-                        self.logger.debug(
-                            f"{LOG_PREFIX} Batch {batch_idx}: Non-static threat {threat.threat_id} has {len(events)} threat events"
-                        )
-                    else:
-                        self.logger.debug(
-                            f"{LOG_PREFIX} Batch {batch_idx}: Non-static threat {threat.threat_id} - no threat events found"
-                        )
-                except Exception as e:
-                    self.logger.error(
-                        f"{LOG_PREFIX} Batch {batch_idx}: Error fetching threat events for non-static threat {threat.threat_id}: {e}"
-                    )
-
-            if static_threats and self.enable_deep_visibility_search:
-                try:
-                    sha1_to_threat = {}
-                    unique_sha1s = []
-
-                    for threat in static_threats:
-                        if threat.sha1:
-                            if threat.sha1 not in sha1_to_threat:
-                                sha1_to_threat[threat.sha1] = threat
-                                unique_sha1s.append(threat.sha1)
-                        else:
-                            self.logger.debug(
-                                f"{LOG_PREFIX} Batch {batch_idx}: Static threat {threat.threat_id} - no SHA1 available"
-                            )
-
-                    if unique_sha1s:
-                        end_time = self._extract_end_date_from_batch(batch)
-                        if end_time is None:
-                            end_time = datetime.now(timezone.utc)
-                        start_time = end_time - self.client_api.time_window
-
-                        self.logger.debug(
-                            f"{LOG_PREFIX} Batch {batch_idx}: Fetching DV events for {len(unique_sha1s)} unique SHA1s (from {len(static_threats)} static threats) in single query for time window: {start_time} to {end_time}"
-                        )
-
-                        sha1_to_events = (
-                            self.deep_visibility_fetcher.fetch_events_for_batch_sha1(
-                                unique_sha1s, start_time, end_time
-                            )
-                        )
-
-                        for sha1, events in sha1_to_events.items():
-                            if sha1 in sha1_to_threat:
-                                threat = sha1_to_threat[sha1]
-                                if events:
-                                    threat_events[threat.threat_id] = events
-                                    self.logger.debug(
-                                        f"{LOG_PREFIX} Batch {batch_idx}: Static threat {threat.threat_id} has {len(events)} DV events"
-                                    )
-                                else:
-                                    self.logger.debug(
-                                        f"{LOG_PREFIX} Batch {batch_idx}: Static threat {threat.threat_id} - no DV events found"
-                                    )
-
-                        self.logger.info(
-                            f"{LOG_PREFIX} Batch {batch_idx}: Processed {len(static_threats)} static threats with single DV query for {len(unique_sha1s)} unique SHA1s"
-                        )
-                    else:
-                        self.logger.debug(
-                            f"{LOG_PREFIX} Batch {batch_idx}: No valid SHA1s found for static threats"
-                        )
-
-                except Exception as e:
-                    self.logger.error(
-                        f"{LOG_PREFIX} Batch {batch_idx}: Error fetching DV events for static threats batch: {e}"
-                    )
-
-            results = self._match_threats_to_expectations(
-                batch, threats, threat_events, detection_helper
-            )
+            results = self._match_data_to_expectations(batch, data, detection_helper)
 
             return results
 
         except Exception as e:
-            raise SentinelOneExpectationError(
+            raise TemplateExpectationError(
                 f"Error processing batch {batch_idx}: {e}"
             ) from e
-
-    def _extract_hostnames_from_batch(
-        self, batch: list[DetectionExpectation | PreventionExpectation]
-    ) -> list[str]:
-        """Extract unique hostnames from a batch of expectations.
-
-        Args:
-            batch: Batch of expectations.
-
-        Returns:
-            List of unique hostnames.
-
-        """
-        return SignatureExtractor.extract_hostnames(batch)
-
-    def _extract_process_names_from_batch(
-        self, batch: list[DetectionExpectation | PreventionExpectation]
-    ) -> list[str]:
-        """Extract unique parent process names from a batch of expectations.
-
-        Args:
-            batch: Batch of expectations.
-
-        Returns:
-            List of unique parent process names.
-
-        """
-        return SignatureExtractor.extract_process_names(batch)
 
     def _extract_end_date_from_batch(
         self, batch: list[DetectionExpectation | PreventionExpectation] | None = None
@@ -384,19 +257,19 @@ class SentinelOneExpectationService:
             )
         return end_date
 
-    def _fetch_threats_for_time_window(
+    def _fetch_data_for_time_window(
         self, batch: list[DetectionExpectation | PreventionExpectation] | None = None
-    ) -> list[SentinelOneThreat]:
-        """Fetch all threats from the configured time window or date signatures.
+    ) -> list[TemplateData]:
+        """Fetch alldata from the configured time window or date signatures.
 
         Args:
             batch: Optional batch of expectations to extract date filters from.
 
         Returns:
-            List of SentinelOneThreat objects from the time window.
+            List of TemplateData objects from the time window.
 
         Raises:
-            SentinelOneAPIError: If API call fails.
+            TemplateFetcherError: If fetcher fails.
 
         """
         try:
@@ -405,36 +278,34 @@ class SentinelOneExpectationService:
             if end_time is None:
                 end_time = datetime.now(timezone.utc)
 
-            start_time = end_time - self.client_api.time_window
+            start_time = end_time - self.time_window
 
             self.logger.debug(
-                f"{LOG_PREFIX} Delegating threat fetching to FetcherThreat for time window: {start_time} to {end_time}"
+                f"{LOG_PREFIX} Delegating data fetching to FetcherData for time window: {start_time} to {end_time}"
             )
 
-            return self.threat_fetcher.fetch_threats_for_time_window(
+            return self.data_fetcher.fetch_data_for_time_window(
                 start_time=start_time,
                 end_time=end_time,
                 limit=1000,
             )
 
         except Exception as e:
-            raise SentinelOneAPIError(
-                f"Error fetching threats for time window: {e}"
+            raise TemplateFetcherError(
+                f"Error fetching data for time window: {e}"
             ) from e
 
-    def _match_threats_to_expectations(
+    def _match_data_to_expectations(
         self,
         batch: list[DetectionExpectation | PreventionExpectation],
-        threats: list[SentinelOneThreat],
-        threat_events: dict[str, list[dict[str, Any]]],
+        data: list[TemplateData],
         detection_helper: Any,
     ) -> list[ExpectationResult]:
-        """Match threats and events to expectations and create results.
+        """Match data to expectations and create results.
 
         Args:
             batch: Batch of expectations.
-            threats: List of filtered threats.
-            threat_events: Dictionary mapping threat IDs to their events.
+            data: List of filtered data.
             detection_helper: OpenAEV detection helper.
 
         Returns:
@@ -445,44 +316,30 @@ class SentinelOneExpectationService:
 
         for expectation in batch:
             try:
-                matched = False
                 traces = []
 
-                for threat in threats:
-                    events = threat_events.get(threat.threat_id, [])
-
-                    if self._expectation_matches_threat_data(
-                        expectation, threat, events, detection_helper
+                for single_data in data:
+                    if self._expectation_matches_data(
+                        expectation, single_data, detection_helper
                     ):
-                        base_url = self.client_api.base_url if self.client_api else ""
-                        trace = TraceBuilder.create_threat_trace(
-                            threat, base_url, events
-                        )
+                        trace = TraceBuilder.create_data_trace(data)
                         traces.append(trace)
 
                         if isinstance(expectation, PreventionExpectation):
-                            # breakpoint()
-                            if threat.is_mitigated:
-                                matched = True
-                                self.logger.debug(
-                                    f"{LOG_PREFIX} Prevention expectation {expectation.inject_expectation_id}: "
-                                    f"threat {threat.threat_id} matched signature and is mitigated -> expectation satisfied"
-                                )
-                                break
                             self.logger.debug(
                                 f"{LOG_PREFIX} Prevention expectation {expectation.inject_expectation_id}: "
-                                f"threat {threat.threat_id} matched signature but not mitigated -> continuing search"
+                                f"data {data} matched signature and is mitigated -> expectation satisfied"
                             )
+                            break
                         else:
-                            matched = True
                             self.logger.debug(
                                 f"{LOG_PREFIX} Detection expectation {expectation.inject_expectation_id}: "
-                                f"threat {threat.threat_id} matched signature -> expectation satisfied"
+                                f"data {data} matched signature -> expectation satisfied"
                             )
                             break
 
                 result_dict = {
-                    "is_valid": matched,
+                    "is_valid": True,
                     "traces": traces,
                     "expectation_type": (
                         "detection"
@@ -496,7 +353,7 @@ class SentinelOneExpectationService:
 
                 self.logger.debug(
                     f"{LOG_PREFIX} Expectation {expectation.inject_expectation_id}: "
-                    f"matched={matched}, traces={len(traces)}"
+                    f"matched=true, traces={len(traces)}"
                 )
 
             except Exception as e:
@@ -504,25 +361,23 @@ class SentinelOneExpectationService:
                     f"{LOG_PREFIX} Error matching expectation {expectation.inject_expectation_id}: {e}"
                 )
                 error_result = self._create_error_result_object(
-                    SentinelOneExpectationError(f"Matching error: {e}"), expectation
+                    TemplateExpectationError(f"Matching error: {e}"), expectation
                 )
                 results.append(error_result)
 
         return results
 
-    def _expectation_matches_threat_data(
+    def _expectation_matches_data(
         self,
         expectation: DetectionExpectation | PreventionExpectation,
-        threat: SentinelOneThreat,
-        events: list[dict[str, Any]],
+        data: TemplateData,
         detection_helper: Any,
     ) -> bool:
-        """Check if an expectation matches the given threat and events using converter and detection helper.
+        """Check if an expectation matches the given data using converter and detection helper.
 
         Args:
             expectation: The expectation to match.
-            threat: The threat data.
-            events: List of events for the threat.
+            data: The data.
             detection_helper: OpenAEV detection helper for matching.
 
         Returns:
@@ -530,51 +385,15 @@ class SentinelOneExpectationService:
 
         """
         try:
-            oaev_data_list = self.converter.convert_threats_to_oaev([threat])
+            oaev_data_list = self.converter.convert_data_to_oaev([data])
 
             if not oaev_data_list:
                 self.logger.debug(
-                    f"{LOG_PREFIX} No OAEV data generated for threat {threat.threat_id}"
+                    f"{LOG_PREFIX} No OAEV data generated for data {data}"
                 )
                 return False
 
             oaev_data = oaev_data_list[0]
-
-            if events:
-                if threat.is_static:
-                    parent_process_names = (
-                        SentinelOneThreat.get_parent_process_name_from_dv_events(events)
-                    )
-                else:
-                    parent_process_names = (
-                        SentinelOneThreat.get_parent_process_name_from_events(events)
-                    )
-                oaev_implant_names = [
-                    name
-                    for name in parent_process_names
-                    if name.startswith("oaev-implant-")
-                ]
-
-                if threat.is_static:
-                    event_source = "DV events (parentProcessName + processName)"
-                else:
-                    event_source = "threat events"
-
-                self.logger.debug(
-                    f"{LOG_PREFIX} Threat {threat.threat_id}: Found {len(parent_process_names)} "
-                    f"process names from {event_source}, {len(oaev_implant_names)} with oaev-implant- prefix"
-                )
-
-                if oaev_implant_names:
-                    # breakpoint()
-                    oaev_data["parent_process_name"] = {
-                        "type": "fuzzy",
-                        "data": oaev_implant_names,
-                        "score": 95,
-                    }
-                    self.logger.debug(
-                        f"{LOG_PREFIX} Added oaev-implant parent processes to OAEV for {threat.threat_id}: {oaev_implant_names}"
-                    )
 
             supported_signatures = self.get_supported_signatures()
             self.logger.debug(
@@ -627,12 +446,12 @@ class SentinelOneExpectationService:
 
                 if not match_result:
                     self.logger.debug(
-                        f"{LOG_PREFIX} {sig_type} signature failed for threat {threat.threat_id}"
+                        f"{LOG_PREFIX} {sig_type} signature failed for data {data}"
                     )
                     return False
 
             self.logger.debug(
-                f"{LOG_PREFIX} All signatures matched for expectation {expectation.inject_expectation_id} vs threat {threat.threat_id}"
+                f"{LOG_PREFIX} All signatures matched for expectation {expectation.inject_expectation_id} vs data {data}"
             )
             return True
 
@@ -696,7 +515,7 @@ class SentinelOneExpectationService:
 
         """
         return {
-            "service_name": "SentinelOneExpectationService",
+            "service_name": "TemplateExpectationService",
             "batch_size": self.batch_size,
             "supported_signatures": self.get_supported_signatures(),
             "flow_type": "batch_based",

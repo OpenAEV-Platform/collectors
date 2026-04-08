@@ -15,7 +15,7 @@ from src.models.configs import (
     ConfigBaseSettings,
     _ConfigLoaderCollector,
     _ConfigLoaderOAEV,
-    _ConfigLoaderSentinelOne,
+    _ConfigLoaderTemplate,
 )
 
 
@@ -23,17 +23,17 @@ class ConfigLoaderCollector(_ConfigLoaderCollector):
     """Basic collector configurations.
 
     Extends the base collector configuration with specific default values
-    for the SentinelOne collector instance.
+    for the Template collector instance.
     """
 
     id: str = Field(
         alias="Collector_ID",
-        default="sentinelone--0b13e3f7-5c9e-46f5-acc4-33032e9b4921",
+        default="template--0413e3c7-5c9e-46f5-adc4-33832e9b49a1",
         description="A unique UUIDv4 identifier for this collector instance.",
     )
     name: str = Field(
         alias="Collector_NAME",
-        default="SentinelOne",
+        default="Template",
         description="Name of the collector.",
     )
 
@@ -41,7 +41,7 @@ class ConfigLoaderCollector(_ConfigLoaderCollector):
 class ConfigLoader(ConfigBaseSettings):
     """Configuration loader for the collector.
 
-    Main configuration class that combines OpenAEV, collector, and SentinelOne
+    Main configuration class that combines OpenAEV, collector, and Template
     settings. Supports loading from YAML files, environment variables, and
     provides methods for converting to daemon-compatible format.
     """
@@ -54,9 +54,9 @@ class ConfigLoader(ConfigBaseSettings):
         default_factory=ConfigLoaderCollector,  # type: ignore[unused-ignore]
         description="Collector configurations.",
     )
-    sentinelone: _ConfigLoaderSentinelOne = Field(
-        default_factory=_ConfigLoaderSentinelOne,
-        description="SentinelOne configurations.",
+    template: _ConfigLoaderTemplate = Field(
+        default_factory=_ConfigLoaderTemplate,
+        description="Template configurations.",
     )
 
     @classmethod
@@ -106,13 +106,13 @@ class ConfigLoader(ConfigBaseSettings):
                     yaml_file_encoding="utf-8",
                 ),
             )
-        else:
-            return (
-                EnvSettingsSource(
-                    settings_cls,
-                    env_ignore_empty=True,
-                ),
-            )
+
+        return (
+            EnvSettingsSource(
+                settings_cls,
+                env_ignore_empty=True,
+            ),
+        )
 
     def to_daemon_config(self) -> Configuration:
         """Convert the nested configuration to the flat format expected by BaseDaemon.
@@ -139,17 +139,11 @@ class ConfigLoader(ConfigBaseSettings):
                     "data": int(self.collector.period.total_seconds())
                 },  # type: ignore[union-attr]
                 "collector_icon_filepath": {"data": self.collector.icon_filepath},
-                # SentinelOne configuration (flattened)
-                "sentinelone_base_url": {"data": str(self.sentinelone.base_url)},
-                "sentinelone_api_key": {
-                    "data": self.sentinelone.api_key.get_secret_value()
-                },
-                "sentinelone_time_window": {"data": self.sentinelone.time_window},
-                "sentinelone_expectation_batch_size": {
-                    "data": self.sentinelone.expectation_batch_size
-                },
-                "sentinelone_enable_deep_visibility_search": {
-                    "data": self.sentinelone.enable_deep_visibility_search
+                # Template configuration (flattened)
+                "template_key": {"data": self.template.key},
+                "template_time_window": {"data": self.template.time_window},
+                "template_expectation_batch_size": {
+                    "data": self.template.expectation_batch_size
                 },
             },
             config_base_model=self,

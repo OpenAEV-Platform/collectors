@@ -1,4 +1,4 @@
-"""Essential tests for SentinelOne Expectation Service - Gherkin GWT Format."""
+"""Essential tests for Template Expectation Service - Gherkin GWT Format."""
 
 from unittest.mock import Mock
 from uuid import uuid4
@@ -7,9 +7,9 @@ import pytest
 from pyoaev.signatures.types import SignatureTypes
 from src.services.expectation_service import (
     ExpectationResult,
-    SentinelOneExpectationService,
+    TemplateExpectationService,
 )
-from src.services.model_threat import SentinelOneThreat
+from src.services.model_data import TemplateData
 from tests.gwt_shared import (
     given_initialized_expectation_service,
     given_test_config,
@@ -52,8 +52,8 @@ def test_handle_single_detection_expectation():
     service = _given_initialized_expectation_service()
     # Given: A detection helper
     detection_helper = _given_mock_detection_helper()
-    # Given: Mock threats are available
-    _given_mock_threats_for_service(service)
+    # Given: Mock data are available
+    _given_mock_data_for_service(service)
     # Given: A detection expectation
     expectation = _given_detection_expectation()
 
@@ -71,8 +71,6 @@ def test_handle_prevention_expectation():
     service = _given_initialized_expectation_service()
     # Given: A detection helper
     detection_helper = _given_mock_detection_helper()
-    # Given: Mock mitigated threats are available
-    _given_mock_mitigated_threats_for_service(service)
     # Given: A prevention expectation
     expectation = _given_prevention_expectation()
 
@@ -83,106 +81,19 @@ def test_handle_prevention_expectation():
     _then_prevention_result_returned(result, expectation)
 
 
-# Scenario: Handle static threats with Deep Visibility enabled
-def test_handle_static_threats_with_deep_visibility_enabled():
-    """Scenario: Handle static threats with Deep Visibility enabled."""
-    # Given: A detection helper
-    detection_helper = _given_mock_detection_helper()
-    # Given: A static expectation
-    expectation = _given_static_expectation()
-
-    # When: I handle the static expectation with Deep Visibility enabled
-    with _given_expectation_service_with_deep_visibility_enabled() as service:
-        mock_static_threats = _given_mock_static_threats_for_service(service)
-        mock_dv_events = _given_mock_deep_visibility_events_for_service(service)
-
-        with mock_static_threats, mock_dv_events:
-            result = _when_handle_batch_expectations(
-                service, [expectation], detection_helper
-            )
-
-    # Then: A static result with Deep Visibility events should be returned
-    _then_static_result_with_deep_visibility_returned(result, expectation)
-
-
-# Scenario: Handle static threats with Deep Visibility disabled
-def test_handle_static_threats_with_deep_visibility_disabled():
-    """Scenario: Handle static threats with Deep Visibility disabled."""
-    # Given: A detection helper
-    detection_helper = _given_mock_detection_helper()
-    # Given: A static expectation
-    expectation = _given_static_expectation()
-
-    # When: I handle the static expectation with Deep Visibility disabled
-    with _given_expectation_service_with_deep_visibility_disabled() as service:
-        mock_static_threats = _given_mock_static_threats_for_service(service)
-
-        with mock_static_threats:
-            result = _when_handle_batch_expectations(
-                service, [expectation], detection_helper
-            )
-
-    # Then: A static result without Deep Visibility events should be returned
-    _then_static_result_without_deep_visibility_returned(result, expectation)
-
-
-# Scenario: Verify Deep Visibility fetcher is called when enabled
-def test_deep_visibility_fetcher_called_when_enabled():
-    """Scenario: Verify Deep Visibility fetcher is called when enabled."""
-    # Given: A detection helper
-    detection_helper = _given_mock_detection_helper()
-    # Given: A static expectation
-    static_expectation = _given_static_expectation()
-
-    # When: I handle the static expectation with Deep Visibility enabled
-    with _given_expectation_service_with_deep_visibility_enabled() as service:
-        mock_static_threats = _given_mock_static_threats_for_service(service)
-        mock_dv_events = _given_mock_deep_visibility_events_for_service(service)
-
-        with mock_static_threats, mock_dv_events as dv_mock:
-            _when_handle_batch_expectations(
-                service, [static_expectation], detection_helper
-            )
-
-            # Then: Deep Visibility fetcher should have been called
-            dv_mock.assert_called_once()
-
-
-# Scenario: Verify Deep Visibility fetcher is not called when disabled
-def test_deep_visibility_fetcher_not_called_when_disabled():
-    """Scenario: Verify Deep Visibility fetcher is not called when disabled."""
-    # Given: A detection helper
-    detection_helper = _given_mock_detection_helper()
-    # Given: A static expectation
-    static_expectation = _given_static_expectation()
-
-    # When: I handle the static expectation with Deep Visibility disabled
-    with _given_expectation_service_with_deep_visibility_disabled() as service:
-        mock_static_threats = _given_mock_static_threats_for_service(service)
-        mock_dv_events = _given_mock_deep_visibility_events_for_service(service)
-
-        with mock_static_threats, mock_dv_events as dv_mock:
-            _when_handle_batch_expectations(
-                service, [static_expectation], detection_helper
-            )
-
-            # Then: Deep Visibility fetcher should not have been called
-            dv_mock.assert_not_called()
-
-
-# Scenario: Match threats to expectations
-def test_match_threats_to_expectations():
-    """Scenario: Match threats to expectations."""
+# Scenario: Match data to expectations
+def test_match_data_to_expectations():
+    """Scenario: Match data to expectations."""
     # Given: An initialized expectation service
     service = _given_initialized_expectation_service()
-    # Given: Threats and expectations
-    threats, expectations = _given_threats_and_expectations()
+    # Given: data and expectations
+    data, expectations = _given_data_and_expectations()
 
-    # When: I match threats to expectations
-    matches = _when_match_threats_to_expectations(service, threats, expectations)
+    # When: I match data to expectations
+    matches = _when_match_data_to_expectations(service, data, expectations)
 
     # Then: Proper matches should be found
-    _then_proper_matches_found(matches, threats, expectations)
+    _then_proper_matches_found(matches, data, expectations)
     # Then: The match should succeed without requiring mitigation
     _then_match_succeeds_without_mitigation_requirement(matches)
 
@@ -219,7 +130,7 @@ def _given_initialized_expectation_service():
     """Create an initialized expectation service.
 
     Returns:
-        Initialized SentinelOneExpectationService instance.
+        Initialized TemplateExpectationService instance.
 
     """
     return given_initialized_expectation_service()
@@ -236,44 +147,20 @@ def _given_mock_detection_helper():
     return Mock()
 
 
-# Given: Mock threats are available
-def _given_mock_threats_for_service(service):
-    """Set up mock threats for the service.
+# Given: Mock data are available
+def _given_mock_data_for_service(service):
+    """Set up mock data for the service.
 
     Args:
         service: The expectation service instance.
 
     """
-    mock_threats = [
-        SentinelOneThreat(
-            threat_id="test_threat_1",
-            hostname="target-host.example.com",
-            is_mitigated=False,
+    mock_data = [
+        TemplateData(
+            key="test_data_1",
         )
     ]
-    service.threat_fetcher.fetch_threats_for_time_window = Mock(
-        return_value=mock_threats
-    )
-
-
-# Given: Mock mitigated threats are available
-def _given_mock_mitigated_threats_for_service(service):
-    """Set up mock mitigated threats for the service.
-
-    Args:
-        service: The expectation service instance.
-
-    """
-    mock_threats = [
-        SentinelOneThreat(
-            threat_id="test_threat_1",
-            hostname="target-host.example.com",
-            is_mitigated=True,
-        )
-    ]
-    service.threat_fetcher.fetch_threats_for_time_window = Mock(
-        return_value=mock_threats
-    )
+    service.data_fetcher.fetch_data_for_time_window = Mock(return_value=mock_data)
 
 
 # Given: A detection expectation
@@ -319,19 +206,17 @@ def _given_prevention_expectation():
     return expectation
 
 
-# Given: Threats and expectations
-def _given_threats_and_expectations():
-    """Create threats and expectations for matching tests.
+# Given: data and expectations
+def _given_data_and_expectations():
+    """Create data and expectations for matching tests.
 
     Returns:
-        Tuple of (threats, expectations).
+        Tuple of (data, expectations).
 
     """
-    threats = [
-        SentinelOneThreat(
-            threat_id="match_threat_1",
-            hostname="match-host.example.com",
-            is_mitigated=False,
+    data = [
+        TemplateData(
+            key="match_data_1",
         )
     ]
 
@@ -341,68 +226,7 @@ def _given_threats_and_expectations():
     expectation = _create_mock_expectation(signatures=[hostname_sig])
     expectations = [expectation]
 
-    return threats, expectations
-
-
-# Given: An unmitigated threat
-def _given_unmitigated_threat():
-    """Create an unmitigated threat.
-
-    Returns:
-        SentinelOneThreat instance that is not mitigated.
-
-    """
-    return SentinelOneThreat(
-        threat_id="unmitigated_threat",
-        hostname="unmitigated-host.example.com",
-        is_mitigated=False,
-    )
-
-
-# Given: An expectation service with Deep Visibility enabled
-def _given_expectation_service_with_deep_visibility_enabled():
-    """Create an expectation service with Deep Visibility enabled.
-
-    Returns:
-        Context manager that yields SentinelOneExpectationService with Deep Visibility enabled.
-
-    """
-    import os
-    from contextlib import contextmanager
-    from unittest.mock import patch
-
-    @contextmanager
-    def _service_context():
-        with patch.dict(
-            os.environ, {"SENTINELONE_ENABLE_DEEP_VISIBILITY_SEARCH": "true"}
-        ):
-            config = given_test_config()
-            yield SentinelOneExpectationService(config)
-
-    return _service_context()
-
-
-# Given: An expectation service with Deep Visibility disabled
-def _given_expectation_service_with_deep_visibility_disabled():
-    """Create an expectation service with Deep Visibility disabled.
-
-    Returns:
-        Context manager that yields SentinelOneExpectationService with Deep Visibility disabled.
-
-    """
-    import os
-    from contextlib import contextmanager
-    from unittest.mock import patch
-
-    @contextmanager
-    def _service_context():
-        with patch.dict(
-            os.environ, {"SENTINELONE_ENABLE_DEEP_VISIBILITY_SEARCH": "false"}
-        ):
-            config = given_test_config()
-            yield SentinelOneExpectationService(config)
-
-    return _service_context()
+    return data, expectations
 
 
 # Given: A static expectation
@@ -426,140 +250,6 @@ def _given_static_expectation():
     return expectation
 
 
-# Given: Mock static threats for service
-def _given_mock_static_threats_for_service(service):
-    """Set up mock static threats for the service.
-
-    Args:
-        service: The expectation service to mock.
-
-    """
-    from unittest.mock import patch
-
-    static_threats = [
-        SentinelOneThreat(
-            threat_id="static_threat_1",
-            hostname="static-host.example.com",
-            is_mitigated=False,
-            is_static=True,
-            sha1="a1b2c3d4e5f6789012345678901234567890abcd",
-        ),
-        SentinelOneThreat(
-            threat_id="static_threat_2",
-            hostname="static-host.example.com",
-            is_mitigated=False,
-            is_static=True,
-            sha1="b2c3d4e5f6789012345678901234567890abcdef",
-        ),
-    ]
-
-    return patch.object(
-        service.threat_fetcher,
-        "fetch_threats_for_time_window",
-        return_value=static_threats,
-    )
-
-
-# Given: Mock mixed threats for service
-def _given_mock_mixed_threats_for_service(service):
-    """Set up mock mixed threats (static and non-static) for the service.
-
-    Args:
-        service: The expectation service to mock.
-
-    """
-    from unittest.mock import patch
-
-    mixed_threats = [
-        SentinelOneThreat(
-            threat_id="static_threat_1",
-            hostname="mixed-host.example.com",
-            is_mitigated=False,
-            is_static=True,
-            sha1="a1b2c3d4e5f6789012345678901234567890abcd",
-        ),
-        SentinelOneThreat(
-            threat_id="behavior_threat_1",
-            hostname="mixed-host.example.com",
-            is_mitigated=False,
-            is_static=False,
-            sha1=None,
-        ),
-    ]
-
-    return patch.object(
-        service.threat_fetcher,
-        "fetch_threats_for_time_window",
-        return_value=mixed_threats,
-    )
-
-
-# Given: Mock Deep Visibility events for service
-def _given_mock_deep_visibility_events_for_service(service):
-    """Set up mock Deep Visibility events for the service.
-
-    Args:
-        service: The expectation service to mock.
-
-    """
-    from unittest.mock import patch
-
-    mock_dv_events = {
-        "a1b2c3d4e5f6789012345678901234567890abcd": [
-            {
-                "fileSha1": "a1b2c3d4e5f6789012345678901234567890abcd",
-                "processName": "oaev-implant-test.exe",
-                "timestamp": "2024-01-01T12:00:00Z",
-                "eventType": "Process Creation",
-                "parentProcessName": "cmd.exe",
-            }
-        ],
-        "b2c3d4e5f6789012345678901234567890abcdef": [
-            {
-                "fileSha1": "b2c3d4e5f6789012345678901234567890abcdef",
-                "processName": "oaev-implant-test2.exe",
-                "timestamp": "2024-01-01T12:01:00Z",
-                "eventType": "Process Creation",
-                "parentProcessName": "powershell.exe",
-            }
-        ],
-    }
-
-    return patch.object(
-        service.deep_visibility_fetcher,
-        "fetch_events_for_batch_sha1",
-        return_value=mock_dv_events,
-    )
-
-
-# Given: Mock threat events for service
-def _given_mock_threat_events_for_service(service):
-    """Set up mock threat events for the service.
-
-    Args:
-        service: The expectation service to mock.
-
-    """
-    from unittest.mock import patch
-
-    mock_threat_events = {
-        "behavior_threat_1": [
-            {
-                "processName": "oaev-implant-behavior.exe",
-                "parentProcessName": "cmd.exe",
-                "timestamp": "2024-01-01T12:00:00Z",
-                "eventType": "Process Creation",
-            }
-        ]
-    }
-
-    return patch.object(
-        service.threat_events_fetcher,
-        "fetch_events_for_threat",
-        return_value=mock_threat_events,
-    )
-
-
 # --------
 # When Methods
 # --------
@@ -573,10 +263,10 @@ def _when_initialize_expectation_service(config):
         config: Configuration object to use.
 
     Returns:
-        Initialized SentinelOneExpectationService instance.
+        Initialized TemplateExpectationService instance.
 
     """
-    return SentinelOneExpectationService(config=config)
+    return TemplateExpectationService(config=config)
 
 
 # When: I attempt to initialize with invalid config and expect AttributeError
@@ -588,7 +278,7 @@ def _when_initialize_expectation_service_then_attribute_error_raised(invalid_con
 
     """
     with pytest.raises(AttributeError):
-        SentinelOneExpectationService(config=invalid_config)
+        TemplateExpectationService(config=invalid_config)
 
 
 # When: I handle batch expectations
@@ -608,47 +298,41 @@ def _when_handle_batch_expectations(service, expectations, detection_helper):
     return results
 
 
-# When: I match threats to expectations
-def _when_match_threats_to_expectations(service, threats, expectations):
-    """Match threats to expectations.
+# When: I match data to expectations
+def _when_match_data_to_expectations(service, data, expectations):
+    """Match data to expectations.
 
     Args:
         service: The expectation service instance.
-        threats: List of threats.
+        data: List of data.
         expectations: List of expectations.
 
     Returns:
         List of matches.
 
     """
-    threat_events = {threat.threat_id: [] for threat in threats}
-    return service._match_threats_to_expectations(
-        expectations, threats, threat_events, "detection"
-    )
+    return service._match_data_to_expectations(expectations, data, "detection")
 
 
-# When: I check if expectation matches threat data
-def _when_check_expectation_matches_threat(service, expectation, threat):
-    """Check if expectation matches threat data.
+# When: I check if expectation matches data
+def _when_check_expectation_matches_data(service, expectation, data):
+    """Check if expectation matches data.
 
     Args:
         service: The expectation service instance.
         expectation: The expectation to check.
-        threat: The threat to match against.
+        data: The data to match against.
 
     Returns:
         Boolean indicating if there's a match.
 
     """
-    events = []
     expectation_type = (
         "prevention"
         if hasattr(expectation, "is_prevention") and expectation.is_prevention
         else "detection"
     )
-    return service._expectation_matches_threat_data(
-        expectation, threat, events, expectation_type
-    )
+    return service._expectation_matches_data(expectation, data, expectation_type)
 
 
 # --------
@@ -666,7 +350,7 @@ def _then_expectation_service_initialized_with_valid_config(service, config):
 
     """
     then_expectation_service_initialized_successfully(service)
-    assert service.batch_size == config.sentinelone.expectation_batch_size  # noqa: S101
+    assert service.batch_size == config.template.expectation_batch_size  # noqa: S101
 
 
 # Then: A detection result should be returned
@@ -698,12 +382,12 @@ def _then_prevention_result_returned(result, expectation):
 
 
 # Then: Proper matches should be found
-def _then_proper_matches_found(matches, threats, expectations):
+def _then_proper_matches_found(matches, data, expectations):
     """Verify proper matches were found.
 
     Args:
         matches: The found matches.
-        threats: The original threats.
+        data: The original data.
         expectations: The original expectations.
 
     """

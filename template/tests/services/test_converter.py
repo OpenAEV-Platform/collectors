@@ -1,9 +1,9 @@
-"""Essential tests for SentinelOne Converter services - Gherkin GWT Format."""
+"""Essential tests for Template Converter services - Gherkin GWT Format."""
 
 import pytest
-from src.services.converter import SentinelOneConverter
-from src.services.exception import SentinelOneValidationError
-from src.services.model_threat import SentinelOneThreat
+from src.services.converter import TemplateConverter
+from src.services.exception import TemplateValidationError
+from src.services.model_data import TemplateData
 
 # --------
 # Scenarios
@@ -23,32 +23,32 @@ def test_initialize_converter():
     _then_converter_initialized_successfully(converter)
 
 
-# Scenario: Convert empty threats list
-def test_convert_empty_threats():
-    """Scenario: Convert empty threats list."""
+# Scenario: Convert empty data list
+def test_convert_empty_data():
+    """Scenario: Convert empty data list."""
     # Given: A converter is available
     converter = _given_initialized_converter()
 
-    # When: I convert an empty threats list
-    result = _when_convert_threats_to_oaev(converter, [])
+    # When: I convert an empty data list
+    result = _when_convert_data_to_oaev(converter, [])
 
     # Then: An empty list should be returned
     _then_empty_list_returned(result)
 
 
-# Scenario: Convert single threat with complete data
-def test_convert_single_threat_complete_data():
-    """Scenario: Convert single threat with complete data."""
+# Scenario: Convert single data with complete data
+def test_convert_single_data_complete_data():
+    """Scenario: Convert single data with complete data."""
     # Given: A converter is available
     converter = _given_initialized_converter()
-    # Given: A threat with complete data
-    threat = _given_threat_with_complete_data()
+    # Given: A data with complete data
+    data = _given_data_with_complete_data()
 
-    # When: I convert the threat to OAEV format
-    result = _when_convert_threats_to_oaev(converter, [threat])
+    # When: I convert the data to OAEV format
+    result = _when_convert_data_to_oaev(converter, [data])
 
-    # Then: The threat should be converted with all fields
-    _then_single_threat_converted_completely(result, threat)
+    # Then: The data should be converted with all fields
+    _then_single_data_converted_completely(result, data)
 
 
 # Scenario: Convert invalid data type
@@ -76,27 +76,25 @@ def _given_converter_dependencies_available():
 
 
 # Given: A converter is available
-def _given_initialized_converter() -> SentinelOneConverter:
+def _given_initialized_converter() -> TemplateConverter:
     """Create and return an initialized converter.
 
     Returns:
-        Initialized SentinelOneConverter instance.
+        Initialized TemplateConverter instance.
 
     """
-    return SentinelOneConverter()
+    return TemplateConverter()
 
 
-# Given: A threat with complete data
-def _given_threat_with_complete_data() -> SentinelOneThreat:
-    """Create a threat with complete data.
+# Given: A data with complete data
+def _given_data_with_complete_data() -> TemplateData:
+    """Create a data with complete data.
 
     Returns:
-        SentinelOneThreat with threat_id and hostname.
+        TemplateData with key.
 
     """
-    return SentinelOneThreat(
-        threat_id="complete_threat_123", hostname="complete-host.example.com"
-    )
+    return TemplateData(key="complete_data_123")
 
 
 # Given: Invalid input data (not a list)
@@ -116,36 +114,34 @@ def _given_invalid_input_data() -> str:
 
 
 # When: I initialize the converter
-def _when_initialize_converter() -> SentinelOneConverter:
+def _when_initialize_converter() -> TemplateConverter:
     """Initialize the converter.
 
     Returns:
-        Initialized SentinelOneConverter instance.
+        Initialized TemplateConverter instance.
 
     """
-    return SentinelOneConverter()
+    return TemplateConverter()
 
 
-# When: I convert threats to OAEV format
-def _when_convert_threats_to_oaev(
-    converter: SentinelOneConverter, threats: list
-) -> list:
-    """Convert threats to OAEV format.
+# When: I convert data to OAEV format
+def _when_convert_data_to_oaev(converter: TemplateConverter, data: list) -> list:
+    """Convert data to OAEV format.
 
     Args:
         converter: The converter instance.
-        threats: List of threats to convert.
+        data: List of data to convert.
 
     Returns:
         List of converted OAEV format data.
 
     """
-    return converter.convert_threats_to_oaev(threats)
+    return converter.convert_data_to_oaev(data)
 
 
 # When: I attempt to convert invalid data and expect validation error
 def _when_convert_invalid_data_then_validation_error_raised(
-    converter: SentinelOneConverter, invalid_data: str
+    converter: TemplateConverter, invalid_data: str
 ) -> None:
     """Attempt to convert invalid data and expect validation error.
 
@@ -154,10 +150,10 @@ def _when_convert_invalid_data_then_validation_error_raised(
         invalid_data: Invalid input data.
 
     """
-    with pytest.raises(SentinelOneValidationError) as exc_info:
-        converter.convert_threats_to_oaev(invalid_data)
+    with pytest.raises(TemplateValidationError) as exc_info:
+        converter.convert_data_to_oaev(invalid_data)
 
-    assert "threats must be a list" in str(exc_info.value)  # noqa: S101
+    assert "data must be a list" in str(exc_info.value)  # noqa: S101
 
 
 # --------
@@ -166,7 +162,7 @@ def _when_convert_invalid_data_then_validation_error_raised(
 
 
 # Then: The converter should be initialized successfully
-def _then_converter_initialized_successfully(converter: SentinelOneConverter) -> None:
+def _then_converter_initialized_successfully(converter: TemplateConverter) -> None:
     """Verify the converter was initialized successfully.
 
     Args:
@@ -188,29 +184,13 @@ def _then_empty_list_returned(result: list) -> None:
     assert result == []  # noqa: S101
 
 
-# Then: The threat should be converted with all fields
-def _then_single_threat_converted_completely(
-    result: list, threat: SentinelOneThreat
-) -> None:
-    """Verify single threat was converted with all fields.
+# Then: The data should be converted with all fields
+def _then_single_data_converted_completely(result: list, data: TemplateData) -> None:
+    """Verify single data was converted with all fields.
 
     Args:
         result: The conversion result to verify.
-        threat: The original threat object.
+        data: The original data object.
 
     """
     assert len(result) == 1  # noqa: S101
-
-    converted = result[0]
-
-    assert "threat_id" in converted  # noqa: S101
-    assert converted["threat_id"]["type"] == "fuzzy"  # noqa: S101
-    assert converted["threat_id"]["data"] == [threat.threat_id]  # noqa: S101
-    assert converted["threat_id"]["score"] == 95  # noqa: S101
-
-    assert "target_hostname_address" in converted  # noqa: S101
-    assert converted["target_hostname_address"]["type"] == "fuzzy"  # noqa: S101
-    assert converted["target_hostname_address"]["data"] == [  # noqa: S101
-        threat.hostname
-    ]
-    assert converted["target_hostname_address"]["score"] == 95  # noqa: S101

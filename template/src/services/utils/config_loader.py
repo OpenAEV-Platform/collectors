@@ -8,11 +8,11 @@ from src.models import ConfigLoader
 LOG_PREFIX = "[CollectorConfig]"
 
 
-class SentinelOneConfig:
-    """Class for loading SentinelOne configuration."""
+class TemplateConfig:
+    """Class for loading Template configuration."""
 
     def __init__(self) -> None:
-        """Initialize SentinelOne configuration loader.
+        """Initialize Template configuration loader.
 
         Loads configuration from YAML files, environment variables, and defaults.
         Sets up logging and validates the configuration structure.
@@ -22,9 +22,9 @@ class SentinelOneConfig:
 
         """
         self.logger = logging.getLogger(__name__)
-        self.logger.debug(f"{LOG_PREFIX} Initializing SentinelOne configuration loader")
+        self.logger.debug(f"{LOG_PREFIX} Initializing Template configuration loader")
         self.load = self._load_config()
-        self.logger.info(f"{LOG_PREFIX} SentinelOne configuration loaded successfully")
+        self.logger.info(f"{LOG_PREFIX} Template configuration loaded successfully")
 
     def _load_config(self) -> ConfigLoader:
         """Load configuration with proper error handling and logging.
@@ -56,7 +56,7 @@ class SentinelOneConfig:
             )
             self.logger.debug(f"{LOG_PREFIX} OpenAEV URL: {load_settings.openaev.url}")
             self.logger.debug(
-                f"{LOG_PREFIX} SentinelOne base URL: {load_settings.sentinelone.base_url}"
+                f"{LOG_PREFIX} Template key: {load_settings.template.key}"
             )
 
             return load_settings

@@ -1,117 +1,103 @@
-"""SentinelOne Data Converter to OAEV format."""
+"""Template Data Converter to OAEV format."""
 
 import logging
 from typing import Any
 
-from .exception import SentinelOneDataConversionError, SentinelOneValidationError
-from .model_threat import SentinelOneThreat
+from .exception import TemplateDataConversionError, TemplateValidationError
+from .model_data import TemplateData
 
-LOG_PREFIX = "[SentinelOneConverter]"
+LOG_PREFIX = "[TemplateConverter]"
 
 
-class SentinelOneConverter:
-    """Converter for SentinelOne threat data to OAEV format."""
+class TemplateConverter:
+    """Converter for Template data to OAEV format."""
 
     def __init__(self) -> None:
-        """Initialize the SentinelOne data converter."""
+        """Initialize the Template data converter."""
         self.logger = logging.getLogger(__name__)
-        self.logger.debug(f"{LOG_PREFIX} SentinelOne converter initialized")
+        self.logger.debug(f"{LOG_PREFIX} Template converter initialized")
 
-    def convert_threats_to_oaev(
-        self, threats: list[SentinelOneThreat]
-    ) -> list[dict[str, Any]]:
-        """Convert SentinelOne threat data to OAEV format.
+    def convert_data_to_oaev(self, data: list[TemplateData]) -> list[dict[str, Any]]:
+        """Convert Template data to OAEV format.
 
         Args:
-            threats: List of SentinelOneThreat objects.
+            data: List of TemplateData objects.
 
         Returns:
             List of OAEV data dictionaries.
 
         Raises:
-            SentinelOneValidationError: If data format is invalid.
-            SentinelOneDataConversionError: If conversion fails.
+            TemplateValidationError: If data format is invalid.
+            TemplateDataConversionError: If conversion fails.
 
         """
-        if not threats:
-            self.logger.debug(f"{LOG_PREFIX} No threats to convert")
+        if not data:
+            self.logger.debug(f"{LOG_PREFIX} No data to convert")
             return []
 
-        if not isinstance(threats, list):
-            raise SentinelOneValidationError("threats must be a list")
+        if not isinstance(data, list):
+            raise TemplateValidationError("data must be a list")
 
         try:
             self.logger.debug(
-                f"{LOG_PREFIX} Converting {len(threats)} threats to OAEV format"
+                f"{LOG_PREFIX} Converting {len(data)} data to OAEV format"
             )
 
             oaev_data_list = []
             converted_count = 0
 
-            for i, threat in enumerate(threats, 1):
-                if not isinstance(threat, SentinelOneThreat):
+            for i, single_data in enumerate(data, 1):
+                if not isinstance(single_data, TemplateData):
                     self.logger.warning(
-                        f"{LOG_PREFIX} Item {i} is not a SentinelOneThreat: {type(threat)}"
+                        f"{LOG_PREFIX} Item {i} is not a TemplateData: {type(single_data)}"
                     )
                     continue
 
                 try:
-                    oaev_data = self._convert_threat_to_oaev(threat)
+                    oaev_data = self._convert_data_to_oaev(single_data)
                     if oaev_data:
                         oaev_data_list.append(oaev_data)
                         converted_count += 1
                         self.logger.debug(
-                            f"{LOG_PREFIX} Converted threat {i}/{len(threats)}: {threat.threat_id}"
+                            f"{LOG_PREFIX} Converted data {i}/{len(data)}"
                         )
                 except Exception as e:
-                    self.logger.warning(
-                        f"{LOG_PREFIX} Failed to convert threat {i}: {e}"
-                    )
+                    self.logger.warning(f"{LOG_PREFIX} Failed to convert data {i}: {e}")
 
             self.logger.info(
-                f"{LOG_PREFIX} Conversion completed: {converted_count} threats -> {len(oaev_data_list)} OAEV items"
+                f"{LOG_PREFIX} Conversion completed: {converted_count} data -> {len(oaev_data_list)} OAEV items"
             )
+
             return oaev_data_list
 
         except Exception as e:
-            raise SentinelOneDataConversionError(
-                f"Failed to convert threats to OAEV format: {e}"
+            raise TemplateDataConversionError(
+                f"Failed to convert data to OAEV format: {e}"
             ) from e
 
-    def _convert_threat_to_oaev(self, threat: SentinelOneThreat) -> dict[str, Any]:
-        """Convert a single threat to OAEV format.
+    def _convert_data_to_oaev(self, data: TemplateData) -> dict[str, Any]:
+        """Convert a single data to OAEV format.
 
         Args:
-            threat: SentinelOneThreat object to convert.
+            data: TemplateData object to convert.
 
         Returns:
             OAEV formatted data dictionary.
 
         Raises:
-            SentinelOneValidationError: If threat data is invalid.
+            TemplateValidationError: If data is invalid.
 
         """
-        if not threat.threat_id:
-            raise SentinelOneValidationError("Threat must have a threat_id")
-
         try:
-            oaev_data = {
-                "threat_id": {"type": "fuzzy", "data": [threat.threat_id], "score": 95}
-            }
-
-            if threat.hostname:
-                oaev_data["target_hostname_address"] = {
-                    "type": "fuzzy",
-                    "data": [threat.hostname],
-                    "score": 95,
-                }
+            oaev_data = {"change-me-key": "change-me-value"}
+            # oaev_data to update according to the custom data object for your collector
 
             self.logger.debug(
-                f"{LOG_PREFIX} Successfully converted threat {threat.threat_id} to OAEV format"
+                f"{LOG_PREFIX} Successfully converted data to OAEV format"
             )
             return oaev_data
 
         except Exception as e:
-            raise SentinelOneDataConversionError(
-                f"Error converting threat {threat.threat_id} to OAEV: {e}"
+            raise TemplateDataConversionError(
+                f"Error converting data to OAEV: {e}"
             ) from e

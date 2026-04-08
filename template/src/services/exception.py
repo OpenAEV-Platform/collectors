@@ -1,43 +1,31 @@
-"""SentinelOne Service Exceptions."""
+"""Template Service Exceptions."""
 
 
-class SentinelOneServiceError(Exception):
-    """Base exception for all SentinelOne service errors."""
+class TemplateServiceError(Exception):
+    """Base exception for all Template service errors."""
 
     pass
 
 
-class SentinelOneExpectationError(SentinelOneServiceError):
+class TemplateExpectationError(TemplateServiceError):
     """Raised when there's an error processing expectations."""
 
     pass
 
 
-class SentinelOneDataConversionError(SentinelOneServiceError):
+class TemplateDataConversionError(TemplateServiceError):
     """Raised when there's an error converting data."""
 
     pass
 
 
-class SentinelOneAPIError(SentinelOneServiceError):
-    """Raised when there's an error with SentinelOne API operations."""
+class TemplateFetcherError(TemplateServiceError):
+    """Raised when there's an error with Template fetcher operations."""
 
     pass
 
 
-class SentinelOneNetworkError(SentinelOneServiceError):
-    """Raised when there's a network connectivity error."""
-
-    pass
-
-
-class SentinelOneSessionError(SentinelOneServiceError):
-    """Raised when there's an error with session management."""
-
-    pass
-
-
-class SentinelOneValidationError(SentinelOneServiceError):
+class TemplateValidationError(TemplateServiceError):
     """Raised when input validation fails."""
 
     pass
