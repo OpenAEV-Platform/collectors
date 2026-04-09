@@ -4,23 +4,7 @@ on:
   push:
     branches:
       - main
-    paths:
-      - "*/test/**"
-      - "*/tests/**"
-      - "*/pyproject.toml"
-      - "*/**/*.py"
-      - "run_test.sh"
-      - ".github/workflows/tests-collectors.yml"
-      - ".github/scripts/**"
   pull_request:
-    paths:
-      - "*/test/**"
-      - "*/tests/**"
-      - "*/pyproject.toml"
-      - "*/**/*.py"
-      - "run_test.sh"
-      - ".github/workflows/tests-collectors.yml"
-      - ".github/scripts/**"
 
 concurrency:
   group: tests-${{ github.workflow }}-${{ github.ref }}
