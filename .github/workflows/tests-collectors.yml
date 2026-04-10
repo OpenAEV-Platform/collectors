@@ -6,11 +6,45 @@ on:
       - main
   pull_request:
 
+concurrency:
+  group: tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 jobs:
-  test:
+  detect-test-files:
+    name: Detect test files
     runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+      has_tests: ${{ steps.set-matrix.outputs.has_tests }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - id: set-matrix
+        name: Build test matrix
+        env:
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          RELEASE_REF: main
+        run: python .github/scripts/build_test_matrix.py
+
+  test:
+    name: Test ${{ matrix.name }}
+    needs: detect-test-files
+    if: needs.detect-test-files.outputs.has_tests == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.detect-test-files.outputs.matrix) }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
@@ -27,52 +61,19 @@ jobs:
           fi
 
       - name: Install Poetry
-        working-directory: crowdstrike
-        run: pip install poetry==2.1.3 && poetry config installer.re-resolve false
+        run: pip install poetry==2.1.3
 
-      - name: Install crowdstrike dependencies
-        working-directory: crowdstrike
-        run: poetry install --extras prod
-
-      - name: Overwrite pyoaev with correct version from CI
-        working-directory: crowdstrike
-        run: |
-          BRANCH="${{ github.head_ref || github.ref_name }}"
-          if [ "$BRANCH" = "main" ]; then
-            poetry run pip install --force-reinstall git+https://github.com/OpenAEV-Platform/client-python.git@main
-          else
-            poetry run pip install --force-reinstall git+https://github.com/OpenAEV-Platform/client-python.git@release/current
-          fi
-
-      - name: Install Coverage
-        working-directory: crowdstrike
-        run: poetry run pip install coverage
-
-      - name: Tests for crowdstrike collector
-        working-directory: crowdstrike
-        run: poetry run python -m coverage run -m unittest
-      
-      - name: Generate coverage XML
-        working-directory: crowdstrike
-        run: poetry run python -m coverage xml -o coverage.xml
-      
-      - name: Install dependencies for palo-alto-cortex-xdr
-        working-directory: palo-alto-cortex-xdr
-        run: poetry run pip install pytest factory-boy pyoaev coverage
-
-      - name: Tests for palo-alto-cortex-xdr collector
-        working-directory: palo-alto-cortex-xdr
-        run: poetry run python -m coverage run -m pytest
-      
-      - name: Generate coverage XML
-        working-directory: palo-alto-cortex-xdr
-        run: poetry run python -m coverage xml -o coverage.xml
+      - name: Run tests via run_test.sh
+        env:
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          RELEASE_REF: main
+        run: bash run_test.sh ${{ matrix.collector }}
 
       - name: Upload coverage to Codecov
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && hashFiles(format('{0}/coverage.xml', matrix.collector)) != '' }}
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          flags: connectors
+          root_dir: ${{ github.workspace }}
           fail_ci_if_error: false
           verbose: true
