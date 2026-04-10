@@ -18,6 +18,17 @@ Table of Contents
     - [Behavior](#behavior)
     - [Synchronization Modes](#synchronization-modes)
 
+
+## Required API Permissions
+
+The Google Workspace collector requires:
+- Service account with Admin SDK API enabled.
+- Domain-wide delegation for the following scopes:
+  - https://www.googleapis.com/auth/admin.directory.user.readonly
+  - (add others as needed for your use case)
+
+See [Google Admin SDK API Scopes](https://developers.google.com/admin-sdk/directory/v1/guides/authorizing).
+
 ## Configuration variables
 
 There are a number of configuration options, which are set either in `docker-compose.yml` (for Docker) or

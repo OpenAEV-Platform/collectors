@@ -2,10 +2,14 @@
 
 The CrowdStrike Endpoint Security collector.
 
-## Prerequisites
 
-**Note**: Requires subscription to the CrowdStrike Falcon platform. The subscription
-details dictate what data is actually available to the collector.
+## Required API Permissions
+
+The CrowdStrike collector requires:
+- API client with "Alerts: Read" privilege.
+  - See [CrowdStrike API Permissions](https://falconpy.io/Service-Collections/Alerts.html).
+
+**Note**: Requires subscription to the CrowdStrike Falcon platform. The subscription details dictate what data is actually available to the collector.
 
 ## Configuration variables
 

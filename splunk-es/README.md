@@ -19,12 +19,21 @@ The collector uses Splunk's notable events and security alerts to validate detec
 - **Trace Generation**: Creates detailed traces with links back to Splunk ES search results
 - **Flexible Configuration**: Support for YAML, environment variables, and multiple deployment scenarios
 
+
+## Required API Permissions
+
+The Splunk ES collector requires a user account with:
+- Search access via REST API
+- Read access to the configured events index (e.g., `main`)
+- REST API access
+
+See [Splunk Roles and Capabilities](https://docs.splunk.com/Documentation/Splunk/latest/Security/Aboutusersandroles).
+
 ## Requirements
 
 - OpenAEV Platform
 - Splunk Enterprise Security instance.
 - Python 3.11+ (for manual deployment)
-- Splunk user account with appropriate search permissions
 
 ## Configuration
 

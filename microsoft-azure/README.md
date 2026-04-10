@@ -12,6 +12,14 @@ This collector enables OpenAEV to import Virtual Machines from Microsoft Azure s
 - Supports Azure tags for asset categorization
 - Uses Azure Resource Manager API for VM discovery
 
+
+## Required API Permissions
+
+The Microsoft Azure collector requires:
+- Azure AD Application assigned the "Reader" role on the subscription.
+
+See [Azure built-in roles](https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#reader).
+
 ## Requirements
 
 - Microsoft Azure subscription

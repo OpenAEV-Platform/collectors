@@ -20,12 +20,18 @@ The collector uses SentinelOne's Threats API to fetch threat data and correlates
 - **Trace Generation**: Creates detailed traces with links back to SentinelOne console
 - **Flexible Configuration**: Support for YAML, environment variables, and multiple deployment scenarios
 
+
+## Required API Permissions
+
+The SentinelOne collector requires:
+- API token with "Threats" and "Threat Events" permissions.
+  - See [SentinelOne API documentation](https://developer.sentinelone.com/reference).
+
 ## Requirements
 
 - OpenAEV Platform
 - SentinelOne Management Console with API access
 - Python 3.12+ (for manual deployment)
-- SentinelOne API token with Threats and Threat Events permissions
 
 ## Configuration
 

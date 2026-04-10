@@ -13,12 +13,16 @@ Table of Contents
         - [Manual Deployment](#manual-deployment)
     - [Behavior](#behavior)
 
-## Prerequisites
 
-To use this collector, you need to create an application in your Azure portal with the following permissions:
-**Microsoft Graph > ThreatHunting.Read.All**
+## Required API Permissions
 
-The permission type should be **Application** or **Delegated Work Account**.
+To use this collector, you need to create an application in your Azure portal with the following minimum permissions:
+
+- **Microsoft Graph > ThreatHunting.Read.All**
+  - Permission type: **Application** or **Delegated Work Account**
+
++
+See [Microsoft Graph permissions reference](https://learn.microsoft.com/en-us/graph/permissions-reference) for more details.
 
 ## Configuration variables
 

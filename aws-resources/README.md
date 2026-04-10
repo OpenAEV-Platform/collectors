@@ -13,6 +13,17 @@ This collector enables OpenAEV to import EC2 instances from AWS accounts as endp
 - Supports multiple authentication methods (IAM user, instance role, assume role)
 - Uses AWS EC2 API for instance discovery
 
+
+## Required API Permissions
+
+The AWS Resources collector requires:
+- IAM user or role with the following permissions:
+  - ec2:DescribeInstances
+  - ec2:DescribeRegions
+  - ec2:DescribeInstanceTypes
+
+See [AWS EC2 IAM Policies](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/iam-policies-ec2-console.html).
+
 ## Requirements
 
 - AWS Account with appropriate permissions

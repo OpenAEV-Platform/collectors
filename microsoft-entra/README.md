@@ -12,6 +12,14 @@ Table of Contents
         - [Manual Deployment](#manual-deployment)
     - [Behavior](#behavior)
 
+
+## Required API Permissions
+
+The Microsoft Entra collector requires:
+- Application with delegated permissions for directory read access (e.g., Directory.Read.All).
+
+See [Microsoft Graph permissions reference](https://learn.microsoft.com/en-us/graph/permissions-reference).
+
 ## Configuration variables
 
 There are a number of configuration options, which are set either in `docker-compose.yml` (for Docker) or
