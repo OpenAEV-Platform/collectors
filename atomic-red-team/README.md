@@ -85,6 +85,14 @@ Then, start the collector:
 poetry run python -m atomic_red_team.openaev_atomic_red_team
 ```
 
+
+## APIs Used
+
+This collector retrieves Atomic Red Team test definitions from the official GitHub repository:
+- [https://github.com/redcanaryco/atomic-red-team](https://github.com/redcanaryco/atomic-red-team)
+
+No external API endpoints are called; all data is fetched as static files from GitHub.
+
 ## Behavior
 
 This collector retrieves the Atomic Red Team GitHub repository to extract payloads and import them into your OpenAEV

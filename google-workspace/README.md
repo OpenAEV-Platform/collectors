@@ -115,6 +115,15 @@ Below are the parameters you'll need to set for the collector:
    ```
 6. Click "Authorize"
 
+## APIs Used
+
+This collector uses the following Google Admin SDK Directory API endpoints:
+- `GET /admin/directory/v1/users`
+- `GET /admin/directory/v1/groups`
+- `GET /admin/directory/v1/groups/{groupKey}/members`
+
+Base URL: `https://admin.googleapis.com/`
+
 ## Deployment
 
 ### Docker Deployment

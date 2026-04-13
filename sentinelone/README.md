@@ -156,6 +156,17 @@ docker run -d \
   openaev-sentinelone-collector
 ```
 
+## APIs Used
+
+This collector uses the following SentinelOne API endpoints:
+- `GET /web/api/v2.1/threats`
+- `GET /web/api/v2.1/threat-events`
+- `POST /web/api/v2.1/dv/init-query` (Deep Visibility)
+- `GET /web/api/v2.1/dv/query-status` (Deep Visibility)
+- `GET /web/api/v2.1/dv/events` (Deep Visibility)
+
+Base URL: `https://{your-console}.sentinelone.net/web/api/v2.1/`
+
 ## Behavior
 
 ### Supported Signature Types

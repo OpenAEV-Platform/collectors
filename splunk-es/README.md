@@ -116,6 +116,13 @@ export SPLUNKES_PASSWORD="your-splunk-password"
 export SPLUNKES_ALERTS_INDEX="main"
 ```
 
+## APIs Used
+
+This collector uses the following Splunk REST API endpoint:
+- `POST /services/search/jobs` (oneshot search)
+
+Base URL: `https://{your-splunk-es}:8089/services/`
+
 ## Deployment
 
 ### Manual Deployment with Poetry

@@ -165,6 +165,19 @@ All configuration can be provided via environment variables:
 - `COLLECTOR_AWS_ASSUME_ROLE_ARN`: ARN of IAM role to assume
 - `COLLECTOR_AWS_REGIONS`: Comma-separated list of AWS regions
 
+
+## APIs Used
+
+This collector uses the following AWS EC2 API endpoints:
+- `ec2:DescribeInstances`
+- `ec2:DescribeRegions`
+- `ec2:DescribeInstanceTypes`
+- `ec2:DescribeInstanceStatus`
+- `ec2:DescribeNetworkInterfaces`
+- `ec2:DescribeTags`
+
+All API calls are made via the official AWS SDK (boto3) to the AWS EC2 service endpoints for the configured regions.
+
 ## Data Collected
 
 For each EC2 instance, the collector captures:

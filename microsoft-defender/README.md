@@ -115,6 +115,15 @@ Then, start the collector:
 poetry run python -m microsoft_defender.openaev_microsoft_defender
 ```
 
+
+## APIs Used
+
+This collector uses the following Microsoft Graph Security API endpoints:
+- `GET /security/alerts`
+- `POST /security/alerts`
+
+Base URL: `https://graph.microsoft.com/v1.0/`
+
 ## Behavior
 
 The collector retrieves recent alerts (last 45 minutes) from Microsoft Defender and matches them with attacks executed

@@ -56,6 +56,14 @@ Below are the parameters you'll need to set for the collector:
 | Application Client Secret | collector.microsoft_entra_client_secret | `COLLECTOR_MICROSOFT_ENTRA_CLIENT_SECRET` |         | Yes       |                                           |
 | Include external user     | collector.include_external              | `COLLECTOR_INCLUDE_EXTERNAL`              | False   | No        | Include user with #EXT# in principal name |
 
+## APIs Used
+
+This collector uses the following Microsoft Graph API endpoints:
+- `GET /users`
+- `GET /groups`
+
+Base URL: `https://graph.microsoft.com/v1.0/`
+
 ## Deployment
 
 ### Docker Deployment

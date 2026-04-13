@@ -150,6 +150,14 @@ docker run -e CORTEX_XDR_API_KEY_ID=your_key_id \
            palo-alto-cortex-xdr-collector
 ```
 
+## APIs Used
+
+This collector uses the following Cortex XDR Public API endpoints:
+- `POST /public_api/v1/alerts/get_alerts`
+- `POST /public_api/v1/incidents/get_incident_extra_data`
+
+Base URL: `https://{FQDN}/public_api/v1/`
+
 ## Testing
 
 ### Run tests with Poetry

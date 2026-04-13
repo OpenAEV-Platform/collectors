@@ -123,6 +123,16 @@ All configuration can be provided via environment variables:
 - `COLLECTOR_MICROSOFT_AZURE_SUBSCRIPTION_ID`: Azure subscription ID
 - `COLLECTOR_MICROSOFT_AZURE_RESOURCE_GROUPS`: Comma-separated list of resource groups
 
+
+## APIs Used
+
+This collector uses the following Azure Resource Manager API endpoints:
+- `GET /subscriptions/{subscriptionId}/resourceGroups`
+- `GET /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Compute/virtualMachines` (API version: 2023-03-01)
+- `GET /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Network/networkInterfaces` (API version: 2023-06-01)
+
+Base URL: `https://management.azure.com/`
+
 ## Data Collected
 
 For each Virtual Machine, the collector captures:

@@ -93,6 +93,15 @@ these instructions](../README.md#simultaneous-development-on-pyoaev-and-a-collec
 poetry install --extras dev
 ```
 
+## APIs Used
+
+This collector uses the following CrowdStrike Falcon API endpoints:
+- `POST /oauth2/token` (authentication)
+- `GET /alerts/queries/alerts/v1`
+- `GET /alerts/entities/alerts/v2`
+
+Base URL: `https://api.us-2.crowdstrike.com` (or your region-specific Falcon API endpoint)
+
 ## Usage
 ```commandline
 poetry run python -m crowdstrike.openaev_crowdstrike

@@ -115,6 +115,14 @@ Then, start the collector:
 poetry run python -m tanium_threat_response.openaev_tanium_threat_response
 ```
 
+## APIs Used
+
+This collector uses the following Tanium Threat Response API endpoints:
+- `GET /api/v2/` endpoints (various for sensors, alerts, etc.)
+- `POST /api/v2/` endpoints
+
+Base URL: configurable, e.g., `https://{your-tanium}/api/v2/`
+
 ## Behavior
 
 The collector retrieves recent alerts (last 45 minutes) from Tanium Threat Response d matches them with attacks executed

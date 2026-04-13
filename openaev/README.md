@@ -78,6 +78,14 @@ Then, start the collector:
 poetry run python -m openaev.openaev_openaev
 ```
 
+
+## APIs Used
+
+This collector retrieves payloads from the OpenAEV Payloads Repository:
+- `GET` requests to `https://raw.githubusercontent.com/OpenAEV-Platform/payloads/refs/heads/main/`
+
+No other external API endpoints are called.
+
 ## Behavior
 
 The collector retrieves payloads from the Filigran OpenAEV payload repository. 

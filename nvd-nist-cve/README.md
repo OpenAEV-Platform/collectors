@@ -50,6 +50,14 @@ poetry install --extras prod
 poetry install --extras dev
 ```
 
+## APIs Used
+
+This collector uses the following NVD NIST CVE API endpoints:
+- `GET /cves/2.0`
+- `GET /source/2.0`
+
+Base URL: `https://services.nvd.nist.gov/rest/json`
+
 ## Usage
 
 ```bash

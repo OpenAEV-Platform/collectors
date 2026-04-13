@@ -85,6 +85,15 @@ Then, start the collector:
 poetry run python -m mitre_attack.openaev_mitre_attack
 ```
 
+
+## APIs Used
+
+This collector retrieves MITRE ATT&CK content from public STIX/TAXII endpoints or static files:
+- [https://attack.mitre.org/](https://attack.mitre.org/)
+- [https://cti-taxii.mitre.org/taxii/](https://cti-taxii.mitre.org/taxii/)
+
+No direct API calls are made unless configured to fetch from a TAXII server.
+
 ## Behavior
 
 This collector retrieves the mitre attack matrix to extract attack patterns and kill chain phases and import them into

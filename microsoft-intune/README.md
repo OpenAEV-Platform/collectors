@@ -137,6 +137,15 @@ All configuration can be provided via environment variables:
 - `COLLECTOR_MICROSOFT_INTUNE_DEVICE_FILTER`: OData filter for device selection (optional)
 - `COLLECTOR_MICROSOFT_INTUNE_DEVICE_GROUPS`: Comma-separated list of device group names or IDs (optional)
 
+
+## APIs Used
+
+This collector uses the following Microsoft Graph API endpoints:
+- `GET /deviceManagement/managedDevices`
+- `GET /groups`
+
+Base URL: `https://graph.microsoft.com/v1.0/`
+
 ## Data Collected
 
 For each managed device, the collector captures:

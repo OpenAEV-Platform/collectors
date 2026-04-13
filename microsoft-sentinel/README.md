@@ -62,6 +62,13 @@ Below are the parameters you'll need to set for the collector:
 | Resource group            | collector.microsoft_sentinel_resource_group  | `COLLECTOR_MICROSOFT_SENTINEL_RESOURCE_GROUP`  |         | Yes       |                                                                              |
 | UUID linked collectors    | collector.microsoft_sentinel_edr_collectors  | `COLLECTOR_MICROSOFT_SENTINEL_EDR_COLLECTORS`  |         | Yes       | The list of collector UUIDs is sourced from the EDR collectors' deployments. |
 
+## APIs Used
+
+This collector uses the following Azure Log Analytics API endpoint:
+- `POST /workspaces/{workspaceId}/query`
+
+Base URL: `https://api.loganalytics.io/v1/`
+
 ## Deployment
 
 ### Docker Deployment
