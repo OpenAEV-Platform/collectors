@@ -25,7 +25,6 @@ The Google Workspace collector requires:
 - Service account with Admin SDK API enabled.
 - Domain-wide delegation for the following scopes:
   - https://www.googleapis.com/auth/admin.directory.user.readonly
-  - (add others as needed for your use case)
 
 See [Google Admin SDK API Scopes](https://developers.google.com/admin-sdk/directory/v1/guides/authorizing).
 
