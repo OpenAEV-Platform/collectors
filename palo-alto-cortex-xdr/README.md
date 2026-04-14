@@ -150,13 +150,17 @@ docker run -e CORTEX_XDR_API_KEY_ID=your_key_id \
            palo-alto-cortex-xdr-collector
 ```
 
-## APIs Used
 
-This collector uses the following Cortex XDR Public API endpoints:
-- `POST /public_api/v1/alerts/get_alerts`
-- `POST /public_api/v1/incidents/get_incident_extra_data`
+## API Permissions and Endpoints Used
 
-Base URL: `https://{FQDN}/public_api/v1/`
+- **API Permissions Required:** API Key ID and API Key with read access to alerts.
+- **API Endpoints Used:**
+  - `POST /public_api/v1/alerts/get_alerts`
+  - `POST /public_api/v1/incidents/get_incident_extra_data` (for incident details, if used)
+- **Reference:** [Cortex XDR API Documentation](https://docs.paloaltonetworks.com/cortex/cortex-xdr/1-6/cortex-xdr-api)
+
+> **Warning** _(as of April 14, 2026)_: The required permissions and endpoints listed above are based on the current code and documentation. Palo Alto Networks may change API requirements or endpoints at any time. **Always check the [official documentation](https://docs.paloaltonetworks.com/cortex/cortex-xdr/1-6/cortex-xdr-api) for the latest requirements before deploying.**
+
 
 ## Testing
 

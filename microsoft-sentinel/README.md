@@ -62,12 +62,15 @@ Below are the parameters you'll need to set for the collector:
 | Resource group            | collector.microsoft_sentinel_resource_group  | `COLLECTOR_MICROSOFT_SENTINEL_RESOURCE_GROUP`  |         | Yes       |                                                                              |
 | UUID linked collectors    | collector.microsoft_sentinel_edr_collectors  | `COLLECTOR_MICROSOFT_SENTINEL_EDR_COLLECTORS`  |         | Yes       | The list of collector UUIDs is sourced from the EDR collectors' deployments. |
 
-## APIs Used
+## API Permissions and Endpoints Used
 
-This collector uses the following Azure Log Analytics API endpoint:
-- `POST /workspaces/{workspaceId}/query`
+- **API Permissions Required:** Log Analytics API > `Data.Read`
+  - **Type:** Application
+- **API Endpoints Used:**
+  - Log Analytics Query endpoint (Kusto queries)
+- **Reference:** [Log Analytics API Permissions](https://learn.microsoft.com/en-us/azure/azure-monitor/logs/api/access-control)
 
-Base URL: `https://api.loganalytics.io/v1/`
+> **Warning** _(as of April 14, 2026)_: The required permissions and endpoints listed above are based on the current code and documentation. Microsoft may change API requirements or endpoints at any time. **Always check the [official documentation](https://learn.microsoft.com/en-us/azure/azure-monitor/logs/api/access-control) for the latest requirements before deploying.**
 
 ## Deployment
 

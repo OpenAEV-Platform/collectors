@@ -86,14 +86,12 @@ poetry run python -m atomic_red_team.openaev_atomic_red_team
 ```
 
 
-## APIs Used
 
-This collector retrieves Atomic Red Team test definitions from the official GitHub repository:
-- [https://github.com/redcanaryco/atomic-red-team](https://github.com/redcanaryco/atomic-red-team)
+## API Permissions and Endpoints Used
 
-No external API endpoints are called; all data is fetched as static files from GitHub.
+- **API Permissions Required:** None (public GitHub repository)
+- **API Endpoints Used:**
+  - [https://github.com/redcanaryco/atomic-red-team](https://github.com/redcanaryco/atomic-red-team)
+- **Reference:** [Atomic Red Team GitHub](https://github.com/redcanaryco/atomic-red-team)
 
-## Behavior
-
-This collector retrieves the Atomic Red Team GitHub repository to extract payloads and import them into your OpenAEV
-instance.
+> **Warning** _(as of April 14, 2026)_: The required endpoints listed above are based on the current code and documentation. The Atomic Red Team repository structure may change at any time. **Always check the [official repository](https://github.com/redcanaryco/atomic-red-team) for the latest requirements before deploying.**

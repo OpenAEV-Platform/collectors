@@ -116,13 +116,17 @@ poetry run python -m microsoft_defender.openaev_microsoft_defender
 ```
 
 
-## APIs Used
+## API Permissions and Endpoints Used
 
-This collector uses the following Microsoft Graph Security API endpoints:
-- `GET /security/alerts`
-- `POST /security/alerts`
+- **API Permissions Required:** Microsoft Graph > `ThreatHunting.Read.All`
+  - **Type:** Application or Delegated Work Account
+- **API Endpoints Used:**
+  - `/security/alerts_v2` (via Advanced Hunting queries)
+- **Reference:** [Microsoft Graph Security API Permissions](https://learn.microsoft.com/en-us/graph/permissions-reference#security-permissions)
 
-Base URL: `https://graph.microsoft.com/v1.0/`
+> **Warning** _(as of April 14, 2026)_: The required permissions and endpoints listed above are based on the current code and documentation. Microsoft may change API requirements or endpoints at any time. **Always check the [official documentation](https://learn.microsoft.com/en-us/graph/permissions-reference#security-permissions) for the latest requirements before deploying.**
+
+---
 
 ## Behavior
 

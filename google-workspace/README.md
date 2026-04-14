@@ -114,14 +114,19 @@ Below are the parameters you'll need to set for the collector:
    ```
 6. Click "Authorize"
 
-## APIs Used
+## API Permissions and Endpoints Used
 
-This collector uses the following Google Admin SDK Directory API endpoints:
-- `GET /admin/directory/v1/users`
-- `GET /admin/directory/v1/groups`
-- `GET /admin/directory/v1/groups/{groupKey}/members`
+- **API Permissions Required:** Service account with domain-wide delegation for:
+  - `https://www.googleapis.com/auth/admin.directory.user.readonly`
+  - `https://www.googleapis.com/auth/admin.directory.group.readonly`
+  - `https://www.googleapis.com/auth/admin.directory.group.member.readonly`
+- **API Endpoints Used:**
+  - `GET /admin/directory/v1/users`
+  - `GET /admin/directory/v1/groups`
+  - `GET /admin/directory/v1/groups/{groupKey}/members`
+- **Reference:** [Google Admin SDK API Scopes](https://developers.google.com/admin-sdk/directory/v1/guides/authorizing)
 
-Base URL: `https://admin.googleapis.com/`
+> **Warning** _(as of April 14, 2026)_: The required permissions and endpoints listed above are based on the current code and documentation. Google may change API requirements or endpoints at any time. **Always check the [official documentation](https://developers.google.com/admin-sdk/directory/v1/guides/authorizing) for the latest requirements before deploying.**
 
 ## Deployment
 

@@ -124,14 +124,16 @@ All configuration can be provided via environment variables:
 - `COLLECTOR_MICROSOFT_AZURE_RESOURCE_GROUPS`: Comma-separated list of resource groups
 
 
-## APIs Used
+## API Permissions and Endpoints Used
 
-This collector uses the following Azure Resource Manager API endpoints:
-- `GET /subscriptions/{subscriptionId}/resourceGroups`
-- `GET /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Compute/virtualMachines` (API version: 2023-03-01)
-- `GET /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Network/networkInterfaces` (API version: 2023-06-01)
+- **API Permissions Required:** Azure AD Application assigned the "Reader" role on the subscription.
+- **API Endpoints Used:**
+  - `GET /subscriptions/{subscriptionId}/resourceGroups`
+  - `GET /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Compute/virtualMachines` (API version: 2023-03-01)
+  - `GET /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Network/networkInterfaces` (API version: 2023-06-01)
+- **Reference:** [Azure built-in roles](https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#reader)
 
-Base URL: `https://management.azure.com/`
+> **Warning** _(as of April 14, 2026)_: The required permissions and endpoints listed above are based on the current code and documentation. Microsoft may change API requirements or endpoints at any time. **Always check the [official documentation](https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#reader) for the latest requirements before deploying.**
 
 ## Data Collected
 

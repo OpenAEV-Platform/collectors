@@ -115,13 +115,16 @@ Then, start the collector:
 poetry run python -m tanium_threat_response.openaev_tanium_threat_response
 ```
 
-## APIs Used
 
-This collector uses the following Tanium Threat Response API endpoints:
-- `GET /api/v2/` endpoints (various for sensors, alerts, etc.)
-- `POST /api/v2/` endpoints
+## API Permissions and Endpoints Used
 
-Base URL: configurable, e.g., `https://{your-tanium}/api/v2/`
+- **API Permissions Required:** API token with read access to Threat Response data ([see Tanium API documentation](https://docs.tanium.com/threatresponse/threatresponse/api.html))
+- **API Endpoints Used:**
+  - `GET /api/v2/` endpoints
+  - `POST /api/v2/` endpoints
+- **Reference:** [Tanium API documentation](https://docs.tanium.com/threatresponse/threatresponse/api.html)
+
+> **Warning** _(as of April 14, 2026)_: The required permissions and endpoints listed above are based on the current code and documentation. Tanium may change API requirements or endpoints at any time. **Always check the [official documentation](https://docs.tanium.com/threatresponse/threatresponse/api.html) for the latest requirements before deploying.**
 
 ## Behavior
 

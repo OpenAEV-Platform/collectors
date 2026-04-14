@@ -93,14 +93,16 @@ these instructions](../README.md#simultaneous-development-on-pyoaev-and-a-collec
 poetry install --extras dev
 ```
 
-## APIs Used
+## API Permissions and Endpoints Used
 
-This collector uses the following CrowdStrike Falcon API endpoints:
-- `POST /oauth2/token` (authentication)
-- `GET /alerts/queries/alerts/v1`
-- `GET /alerts/entities/alerts/v2`
+- **API Permissions Required:** API client with "Alerts: Read" privilege (and "Read and Write" for some features)
+- **API Endpoints Used:**
+  - `POST /oauth2/token`
+  - `GET /alerts/queries/alerts/v1`
+  - `GET /alerts/entities/alerts/v2`
+- **Reference:** [CrowdStrike API Permissions](https://falconpy.io/Service-Collections/Alerts.html)
 
-Base URL: `https://api.us-2.crowdstrike.com` (or your region-specific Falcon API endpoint)
+> **Warning** _(as of April 14, 2026)_: The required permissions and endpoints listed above are based on the current code and documentation. CrowdStrike may change API requirements or endpoints at any time. **Always check the [official documentation](https://falconpy.io/Service-Collections/Alerts.html) for the latest requirements before deploying.**
 
 ## Usage
 ```commandline
