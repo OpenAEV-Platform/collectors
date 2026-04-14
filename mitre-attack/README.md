@@ -85,7 +85,12 @@ Then, start the collector:
 poetry run python -m mitre_attack.openaev_mitre_attack
 ```
 
-## Behavior
+## API Permissions and Endpoints Used
 
-This collector retrieves the mitre attack matrix to extract attack patterns and kill chain phases and import them into
-your OpenAEV instance.
+- **API Permissions Required:** None (public endpoints)
+- **API Endpoints Used:**
+  - [https://attack.mitre.org/](https://attack.mitre.org/)
+  - [https://cti-taxii.mitre.org/taxii/](https://cti-taxii.mitre.org/taxii/)
+- **Reference:** [MITRE ATT&CK](https://attack.mitre.org/)
+
+> **Warning** _(as of April 14, 2026)_: The required endpoints listed above are based on the current code and documentation. MITRE may change endpoint structure or data format at any time. **Always check the [official documentation](https://attack.mitre.org/) for the latest requirements before deploying.**

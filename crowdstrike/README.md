@@ -2,10 +2,14 @@
 
 The CrowdStrike Endpoint Security collector.
 
-## Prerequisites
 
-**Note**: Requires subscription to the CrowdStrike Falcon platform. The subscription
-details dictate what data is actually available to the collector.
+## Required API Permissions
+
+The CrowdStrike collector requires:
+- API client with "Alerts: Read" privilege.
+  - See [CrowdStrike API Permissions](https://falconpy.io/Service-Collections/Alerts.html).
+
+**Note**: Requires subscription to the CrowdStrike Falcon platform. The subscription details dictate what data is actually available to the collector.
 
 ## Configuration variables
 
@@ -88,6 +92,17 @@ these instructions](../README.md#simultaneous-development-on-pyoaev-and-a-collec
 # development environment
 poetry install --extras dev
 ```
+
+## API Permissions and Endpoints Used
+
+- **API Permissions Required:** API client with "Alerts: Read" privilege (and "Read and Write" for some features)
+- **API Endpoints Used:**
+  - `POST /oauth2/token`
+  - `GET /alerts/queries/alerts/v1`
+  - `GET /alerts/entities/alerts/v2`
+- **Reference:** [CrowdStrike API Permissions](https://falconpy.io/Service-Collections/Alerts.html)
+
+> **Warning** _(as of April 14, 2026)_: The required permissions and endpoints listed above are based on the current code and documentation. CrowdStrike may change API requirements or endpoints at any time. **Always check the [official documentation](https://falconpy.io/Service-Collections/Alerts.html) for the latest requirements before deploying.**
 
 ## Usage
 ```commandline

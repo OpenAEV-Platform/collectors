@@ -137,100 +137,17 @@ All configuration can be provided via environment variables:
 - `COLLECTOR_MICROSOFT_INTUNE_DEVICE_FILTER`: OData filter for device selection (optional)
 - `COLLECTOR_MICROSOFT_INTUNE_DEVICE_GROUPS`: Comma-separated list of device group names or IDs (optional)
 
-## Data Collected
 
-For each managed device, the collector captures:
+## API Permissions and Endpoints Used
 
-- **Device Name**: Used as asset name and hostname
-- **Device ID**: Intune device identifier (external reference)
-- **Platform**: Operating system (Windows/iOS/Android/macOS/Linux/Generic)
-- **Architecture**: Device architecture (x86_64/arm64)
-- **MAC Addresses**: WiFi and Ethernet MAC addresses when available
-- **Compliance State**: Device compliance status (all devices imported regardless of state)
-- **Model & Manufacturer**: Hardware information
-- **Management Details**: Enrollment date, last sync, management agent
-- **Security Status**: Encryption, supervision status
-- **User Information**: Associated user principal name
+- **API Permissions Required:**
+  - `DeviceManagementManagedDevices.Read.All` (Application)
+  - `Group.Read.All` (Application, required for device group filtering)
+  - `Device.Read.All` (optional, for Azure AD device info)
+  - `User.Read.All` (optional, for device-user association)
+- **API Endpoints Used:**
+  - `GET /deviceManagement/managedDevices`
+  - `GET /groups`
+- **Reference:** [Microsoft Graph API Permissions](https://learn.microsoft.com/en-us/graph/permissions-reference)
 
-### Tags
-
-The collector automatically creates and assigns tags for better device categorization:
-
-- **compliance**: Device compliance state (compliant/noncompliant)
-- **enrollment**: Enrollment type (e.g., corporate, byod)
-- **category**: Device category from Intune
-- **manufacturer**: Device manufacturer (e.g., Microsoft, Apple, Dell)
-- **model**: Device model (sanitized for tag compatibility)
-- **os**: Operating system type (windows, ios, android, macos, linux)
-- **security:encrypted**: Applied to encrypted devices
-- **management:supervised**: Applied to supervised devices
-- **agent**: Management agent type
-
-
-
-## API Permissions Required
-
-The minimum required Microsoft Graph API permissions are:
-
-| Permission | Type | Description |
-|------------|------|-------------|
-| DeviceManagementManagedDevices.Read.All | Application | Read all managed devices in Intune |
-
-Required for device group filtering:
-
-| Permission | Type | Description |
-|------------|------|-------------|
-| Group.Read.All | Application | Read all groups (required if using device group filtering) |
-
-Optional permissions for enhanced functionality:
-
-| Permission | Type | Description |
-|------------|------|-------------|
-| Device.Read.All | Application | Read Azure AD device information |
-| User.Read.All | Application | Read user information for device association |
-
-## Troubleshooting
-
-### Authentication Issues
-
-If you encounter authentication errors:
-1. Verify tenant ID, client ID, and client secret are correct
-2. Ensure admin consent has been granted for API permissions
-3. Check if the client secret has expired
-4. Verify the application has the required permissions
-
-### No Devices Found
-
-If no devices are being discovered:
-1. Verify devices are enrolled in Intune
-2. Check the device filter syntax if using one
-3. Ensure the application has `DeviceManagementManagedDevices.Read.All` permission
-4. Check Intune portal to confirm devices are visible there
-
-### API Rate Limiting
-
-Microsoft Graph API has rate limits. If you encounter throttling:
-1. Increase the collector period to reduce API calls
-2. Use device filters to reduce the number of devices retrieved
-3. Monitor the logs for 429 (Too Many Requests) errors
-
-### Non-Compliant Devices
-
-By default, the collector includes all devices. To exclude non-compliant devices:
-1. Use a filter: `complianceState eq 'compliant'`
-2. Or the collector will log warnings for non-compliant devices
-
-## Device Platform Mapping
-
-| Intune OS | OpenAEV Platform |
-|-----------|------------------|
-| Windows | Windows |
-| iOS/iPadOS | iOS |
-| Android | Android |
-| macOS | MacOS |
-| Linux | Linux |
-| Other | Generic |
-
-## Support
-
-For issues or questions, please open an issue in the OpenAEV GitHub repository.
+> **Warning** _(as of April 14, 2026)_: The required permissions and endpoints listed above are based on the current code and documentation. Microsoft may change API requirements or endpoints at any time. **Always check the [official documentation](https://learn.microsoft.com/en-us/graph/permissions-reference) for the latest requirements before deploying.**

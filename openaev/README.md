@@ -78,6 +78,16 @@ Then, start the collector:
 poetry run python -m openaev.openaev_openaev
 ```
 
+## API Permissions and Endpoints Used
+
+- **API Permissions Required:** None (public GitHub repository)
+- **API Endpoints Used:**
+  - `https://raw.githubusercontent.com/OpenAEV-Platform/payloads/refs/heads/main/`
+- **Reference:** [OpenAEV Payloads Repository](https://github.com/OpenAEV-Platform/payloads)
+
+> **Warning** _(as of April 14, 2026)_: The required endpoints listed above are based on the current code and documentation. The OpenAEV payloads repository structure may change at any time. **Always check the [official repository](https://github.com/OpenAEV-Platform/payloads) for the latest requirements before deploying.**
+
+
 ## Behavior
 
-The collector retrieves payloads from the Filigran OpenAEV payload repository. 
+The collector retrieves payloads from the Filigran OpenAEV payload repository.

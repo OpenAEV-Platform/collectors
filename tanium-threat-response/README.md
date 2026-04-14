@@ -13,7 +13,19 @@ Table of Contents
         - [Manual Deployment](#manual-deployment)
     - [Behavior](#behavior)
 
+
+## Required API Permissions
+
+The Tanium Threat Response collector requires:
+- API token with read access to Threat Response data.
+
+See [Tanium API documentation](https://docs.tanium.com/threatresponse/threatresponse/api.html).
+
+
 ## Prerequisites
+
+- OpenAEV Platform
+- Tanium instance and API token
 
 To use this collector, you need to have a Tanium instance and create an API token.
 
@@ -102,6 +114,17 @@ Then, start the collector:
 ```shell
 poetry run python -m tanium_threat_response.openaev_tanium_threat_response
 ```
+
+
+## API Permissions and Endpoints Used
+
+- **API Permissions Required:** API token with read access to Threat Response data ([see Tanium API documentation](https://docs.tanium.com/threatresponse/threatresponse/api.html))
+- **API Endpoints Used:**
+  - `GET /api/v2/` endpoints
+  - `POST /api/v2/` endpoints
+- **Reference:** [Tanium API documentation](https://docs.tanium.com/threatresponse/threatresponse/api.html)
+
+> **Warning** _(as of April 14, 2026)_: The required permissions and endpoints listed above are based on the current code and documentation. Tanium may change API requirements or endpoints at any time. **Always check the [official documentation](https://docs.tanium.com/threatresponse/threatresponse/api.html) for the latest requirements before deploying.**
 
 ## Behavior
 
