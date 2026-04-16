@@ -41,7 +41,7 @@ Below are the parameters you'll need to set for running the collector properly:
 
 Below are the parameters you'll need to set for the collector:
 
-**Note**: the Crowdstrike credentials must have been granted the following privilege for this to work: `Alerts: Read and Write`
+**Note**: the Crowdstrike credentials must have been granted the following privilege for this to work: `Alerts: Read`
 (as per https://falcon.us-2.crowdstrike.com/documentation/page/d02475a5/converting-from-detects-api-to-alerts-api#s4c83596)
 
 | Parameter     | config.yml                | Docker environment variable | Default                               | Mandatory | Description                                                     |
@@ -95,7 +95,7 @@ poetry install --extras dev
 
 ## API Permissions and Endpoints Used
 
-- **API Permissions Required:** API client with "Alerts: Read" privilege (and "Read and Write" for some features)
+- **API Permissions Required:** API client with "Alerts: Read" privilege
 - **API Endpoints Used:**
   - `POST /oauth2/token`
   - `GET /alerts/queries/alerts/v1`
