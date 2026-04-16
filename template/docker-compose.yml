@@ -1,0 +1,10 @@
+version: "3"
+services:
+  collector-template:
+    image: openaev/collector-template:rolling
+    environment:
+      - OPENAEV_URL=http://localhost
+      - OPENAEV_TOKEN=ChangeMe
+      - COLLECTOR_ID=ChangeMe
+      - TEMPLATE_KEY=ChangeMe
+    restart: always
