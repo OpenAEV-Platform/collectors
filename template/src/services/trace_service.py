@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from ..collector.models import ExpectationResult, ExpectationTrace
-from ..models.configs.config_loader import ConfigLoader
+from ..models.settings.config_loader import ConfigLoader
 from .exception import TemplateDataConversionError, TemplateValidationError
 
 LOG_PREFIX = "[TemplateTraceService]"
