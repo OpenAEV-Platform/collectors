@@ -18,6 +18,16 @@ Table of Contents
     - [Behavior](#behavior)
     - [Synchronization Modes](#synchronization-modes)
 
+
+## Required API Permissions
+
+The Google Workspace collector requires:
+- Service account with Admin SDK API enabled.
+- Domain-wide delegation for the following scopes:
+  - https://www.googleapis.com/auth/admin.directory.user.readonly
+
+See [Google Admin SDK API Scopes](https://developers.google.com/admin-sdk/directory/v1/guides/authorizing).
+
 ## Configuration variables
 
 There are a number of configuration options, which are set either in `docker-compose.yml` (for Docker) or
@@ -103,6 +113,20 @@ Below are the parameters you'll need to set for the collector:
    https://www.googleapis.com/auth/admin.directory.group.member.readonly
    ```
 6. Click "Authorize"
+
+## API Permissions and Endpoints Used
+
+- **API Permissions Required:** Service account with domain-wide delegation for:
+  - `https://www.googleapis.com/auth/admin.directory.user.readonly`
+  - `https://www.googleapis.com/auth/admin.directory.group.readonly`
+  - `https://www.googleapis.com/auth/admin.directory.group.member.readonly`
+- **API Endpoints Used:**
+  - `GET /admin/directory/v1/users`
+  - `GET /admin/directory/v1/groups`
+  - `GET /admin/directory/v1/groups/{groupKey}/members`
+- **Reference:** [Google Admin SDK API Scopes](https://developers.google.com/admin-sdk/directory/v1/guides/authorizing)
+
+> **Warning** _(as of April 14, 2026)_: The required permissions and endpoints listed above are based on the current code and documentation. Google may change API requirements or endpoints at any time. **Always check the [official documentation](https://developers.google.com/admin-sdk/directory/v1/guides/authorizing) for the latest requirements before deploying.**
 
 ## Deployment
 

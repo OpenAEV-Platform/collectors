@@ -12,6 +12,14 @@ Table of Contents
         - [Manual Deployment](#manual-deployment)
     - [Behavior](#behavior)
 
+
+## Required API Permissions
+
+The Microsoft Entra collector requires:
+- Application with delegated permissions for directory read access (e.g., Directory.Read.All).
+
+See [Microsoft Graph permissions reference](https://learn.microsoft.com/en-us/graph/permissions-reference).
+
 ## Configuration variables
 
 There are a number of configuration options, which are set either in `docker-compose.yml` (for Docker) or
@@ -47,6 +55,17 @@ Below are the parameters you'll need to set for the collector:
 | Application Client ID     | collector.microsoft_entra_client_id     | `COLLECTOR_MICROSOFT_ENTRA_CLIENT_ID`     |         | Yes       |                                           |
 | Application Client Secret | collector.microsoft_entra_client_secret | `COLLECTOR_MICROSOFT_ENTRA_CLIENT_SECRET` |         | Yes       |                                           |
 | Include external user     | collector.include_external              | `COLLECTOR_INCLUDE_EXTERNAL`              | False   | No        | Include user with #EXT# in principal name |
+
+## API Permissions and Endpoints Used
+
+- **API Permissions Required:** Directory read access (e.g., `Directory.Read.All`)
+  - **Type:** Application with delegated permissions
+- **API Endpoints Used:**
+  - `GET /users`
+  - `GET /groups`
+- **Reference:** [Microsoft Graph permissions reference](https://learn.microsoft.com/en-us/graph/permissions-reference)
+
+> **Warning** _(as of April 14, 2026)_: The required permissions and endpoints listed above are based on the current code and documentation. Microsoft may change API requirements or endpoints at any time. **Always check the [official documentation](https://learn.microsoft.com/en-us/graph/permissions-reference) for the latest requirements before deploying.**
 
 ## Deployment
 

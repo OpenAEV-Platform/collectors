@@ -12,6 +12,14 @@ This collector enables OpenAEV to import Virtual Machines from Microsoft Azure s
 - Supports Azure tags for asset categorization
 - Uses Azure Resource Manager API for VM discovery
 
+
+## Required API Permissions
+
+The Microsoft Azure collector requires:
+- Azure AD Application assigned the "Reader" role on the subscription.
+
+See [Azure built-in roles](https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#reader).
+
 ## Requirements
 
 - Microsoft Azure subscription
@@ -114,6 +122,18 @@ All configuration can be provided via environment variables:
 - `COLLECTOR_MICROSOFT_AZURE_CLIENT_SECRET`: Azure application client secret
 - `COLLECTOR_MICROSOFT_AZURE_SUBSCRIPTION_ID`: Azure subscription ID
 - `COLLECTOR_MICROSOFT_AZURE_RESOURCE_GROUPS`: Comma-separated list of resource groups
+
+
+## API Permissions and Endpoints Used
+
+- **API Permissions Required:** Azure AD Application assigned the "Reader" role on the subscription.
+- **API Endpoints Used:**
+  - `GET /subscriptions/{subscriptionId}/resourceGroups`
+  - `GET /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Compute/virtualMachines` (API version: 2023-03-01)
+  - `GET /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Network/networkInterfaces` (API version: 2023-06-01)
+- **Reference:** [Azure built-in roles](https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#reader)
+
+> **Warning** _(as of April 14, 2026)_: The required permissions and endpoints listed above are based on the current code and documentation. Microsoft may change API requirements or endpoints at any time. **Always check the [official documentation](https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#reader) for the latest requirements before deploying.**
 
 ## Data Collected
 

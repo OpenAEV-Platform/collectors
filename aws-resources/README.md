@@ -13,6 +13,17 @@ This collector enables OpenAEV to import EC2 instances from AWS accounts as endp
 - Supports multiple authentication methods (IAM user, instance role, assume role)
 - Uses AWS EC2 API for instance discovery
 
+
+## Required API Permissions
+
+The AWS Resources collector requires:
+- IAM user or role with the following permissions:
+  - ec2:DescribeInstances
+  - ec2:DescribeRegions
+  - ec2:DescribeInstanceTypes
+
+See [AWS EC2 IAM Policies](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/iam-policies-ec2-console.html).
+
 ## Requirements
 
 - AWS Account with appropriate permissions
@@ -153,6 +164,21 @@ All configuration can be provided via environment variables:
 - `COLLECTOR_AWS_SESSION_TOKEN`: AWS Session Token (for temporary credentials)
 - `COLLECTOR_AWS_ASSUME_ROLE_ARN`: ARN of IAM role to assume
 - `COLLECTOR_AWS_REGIONS`: Comma-separated list of AWS regions
+
+
+## API Permissions and Endpoints Used
+
+- **API Permissions Required:** IAM user or role with EC2 read permissions (see [AWS EC2 IAM Policies](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/iam-policies-ec2-console.html))
+- **API Endpoints Used:**
+  - `ec2:DescribeInstances`
+  - `ec2:DescribeRegions`
+  - `ec2:DescribeInstanceTypes`
+  - `ec2:DescribeInstanceStatus`
+  - `ec2:DescribeNetworkInterfaces`
+  - `ec2:DescribeTags`
+- **Reference:** [AWS EC2 IAM Policies](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/iam-policies-ec2-console.html)
+
+> **Warning** _(as of April 14, 2026)_: The required permissions and endpoints listed above are based on the current code and documentation. AWS may change API requirements or endpoints at any time. **Always check the [official documentation](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/iam-policies-ec2-console.html) for the latest requirements before deploying.**
 
 ## Data Collected
 

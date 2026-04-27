@@ -44,7 +44,7 @@ The collector receives **expectations** from OpenAEV, which are:
 #### API Calls to Cortex XDR
 The collector makes the following API calls:
 
-**Endpoint:** `POST https://api-{FQDN}/public_api/v1/alerts/get_alerts`
+**Endpoint:** `POST https://{FQDN}/public_api/v1/alerts/get_alerts`
 
 **Request Body:**
 ```json
@@ -149,6 +149,18 @@ docker run -e CORTEX_XDR_API_KEY_ID=your_key_id \
            -e CORTEX_XDR_FQDN=your_fqdn \
            palo-alto-cortex-xdr-collector
 ```
+
+
+## API Permissions and Endpoints Used
+
+- **API Permissions Required:** API Key ID and API Key with read access to alerts.
+- **API Endpoints Used:**
+  - `POST /public_api/v1/alerts/get_alerts`
+  - `POST /public_api/v1/incidents/get_incident_extra_data` (for incident details, if used)
+- **Reference:** [Cortex XDR API Documentation](https://docs.paloaltonetworks.com/cortex/cortex-xdr/1-6/cortex-xdr-api)
+
+> **Warning** _(as of April 14, 2026)_: The required permissions and endpoints listed above are based on the current code and documentation. Palo Alto Networks may change API requirements or endpoints at any time. **Always check the [official documentation](https://docs.paloaltonetworks.com/cortex/cortex-xdr/1-6/cortex-xdr-api) for the latest requirements before deploying.**
+
 
 ## Testing
 

@@ -1,32 +1,25 @@
-name: "Validate PR Title"
+name: "[OpenAEV] Validate PR title Worker"
 
 on:
   pull_request:
-    types: [ opened, edited, reopened, ready_for_review, synchronize ]
+    branches: [main, release/current]
+    types: [opened, edited, reopened, ready_for_review, synchronize]
+
+permissions:
+  contents: read
 
 jobs:
   validate-pr-title:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
-
     steps:
-      - name: Check PR title format
-        shell: bash
-        run: |
-          TITLE="${{ github.event.pull_request.title }}"
-          echo "PR title: $TITLE"
-          
-          # Regex for:
-          # [category/subcategory] type(scope?): description (#123?)
-          PATTERN='^\[([a-z]+(/[a-z]+)*)\] (feat|fix|chore|docs|style|refactor|perf|test|build|ci|revert)(\([a-z]+\))?: [a-z].*( \(#[0-9]+\))$'
-          
-          if [[ ! "$TITLE" =~ $PATTERN ]]; then
-            echo "❌ Invalid PR title."
-            echo "Required format:"
-            echo "[category] type(scope?): description (#123)"
-            exit 1
-          fi
-          
-          echo "✅ PR title is valid."
+      - name: "Generate a token"
+        id: generate-token
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ secrets.OPENAEV_PR_CHECKS_APP_ID }}
+          private-key: ${{ secrets.OPENAEV_PR_CHECKS_PRIVATE_KEY }}
+      - name: "Validate PR title and create check"
+        uses: FiligranHQ/filigran-ci-tools/actions/pr-title-check@main
+        with:
+          token: ${{ steps.generate-token.outputs.token }}

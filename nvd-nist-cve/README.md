@@ -50,6 +50,16 @@ poetry install --extras prod
 poetry install --extras dev
 ```
 
+## API Permissions and Endpoints Used
+
+- **API Permissions Required:** (Optional) NVD API Key for increased rate limits ([request here](https://nvd.nist.gov/developers/request-an-api-key))
+- **API Endpoints Used:**
+  - `GET /cves/2.0`
+  - `GET /source/2.0`
+- **Reference:** [NVD API Documentation](https://nvd.nist.gov/developers/vulnerabilities)
+
+> **Warning** _(as of April 14, 2026)_: The required permissions and endpoints listed above are based on the current code and documentation. NIST may change API requirements or endpoints at any time. **Always check the [official documentation](https://nvd.nist.gov/developers/vulnerabilities) for the latest requirements before deploying.**
+
 ## Usage
 
 ```bash

@@ -88,7 +88,8 @@ let processEvidence = singleMachinePerAlert
     | extend process_hash=hash(strcat(DeviceId, d.ProcessId, normalised_filename, todatetime(d.CreationTimeUtc)))
     | project AlertId, FirstActivityTimestamp = d.CreatedTimeUtc, LastActivityTimestamp = Timestamp, Title, EntityType, DeviceId, DeviceName, Identifier=normalised_filename, LastRemediationState=d.LastRemediationState, DetectionStatus=d.DetectionStatus, normalised_folder_path="<empty>", process_hash;
 let hashedProcessEvents = DeviceProcessEvents
-    | extend process_hash = hash(strcat(DeviceId, ProcessId, normalisePath(FileName), ProcessCreationTime)), parent_hash = hash(strcat(DeviceId, InitiatingProcessId, normalisePath(InitiatingProcessFileName), InitiatingProcessCreationTime));
+    | extend process_hash = hash(strcat(DeviceId, ProcessId, normalisePath(FileName), ProcessCreationTime)), parent_hash = hash(strcat(DeviceId, InitiatingProcessId, normalisePath(InitiatingProcessFileName), InitiatingProcessCreationTime))
+    | project process_hash, parent_hash, ProcessId, FileName, ProcessCommandLine, ProcessCreationTime;
 let tree = hashedProcessEvents
     | join kind=inner hashedProcessEvents on $left.parent_hash == $right.process_hash
     | make-graph process_hash --> process_hash1 with hashedProcessEvents on process_hash
