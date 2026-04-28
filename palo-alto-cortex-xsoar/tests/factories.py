@@ -5,11 +5,7 @@ from pyoaev.apis.inject_expectation.model.expectation import (
     PreventionExpectation,
 )
 from pyoaev.signatures.types import SignatureTypes
-from src.models.incident import (
-    Alert,
-    CustomFields,
-    Incident,
-)
+from src.models.incident import Alert, CustomFields, Incident
 
 
 class ExpectationSignatureWithEndDateFactory(Factory):

@@ -1,5 +1,7 @@
 """Tests for TraceBuilder and _build_web_base_url."""
 
+from unittest.mock import patch
+
 import pytest
 from src.models.incident import Alert
 from src.services.utils.trace_builder import TraceBuilder, _build_web_base_url
@@ -103,6 +105,25 @@ class TestCreateAlertTrace:
     def test_empty_api_url(self, sample_alert):
         trace = TraceBuilder.create_alert_trace(alert=sample_alert, api_url="")
         assert trace["alert_link"] == ""
+
+    def test_empty_alert_id(self):
+        alert = Alert(
+            alert_id="",
+            case_id=1,
+            detection_timestamp=1714200000000,
+        )
+        trace = TraceBuilder.create_alert_trace(alert=alert, api_url="test.com")
+        assert trace["alert_link"] == ""
+
+    def test_create_alert_trace_exception(self, sample_alert):
+        with patch(
+            "src.services.utils.trace_builder._build_web_base_url"
+        ) as mock_build:
+            mock_build.side_effect = Exception("error")
+            trace = TraceBuilder.create_alert_trace(
+                alert=sample_alert, api_url="test.com"
+            )
+            assert trace["alert_link"] == ""
 
     def test_fallback_api_url_link(self):
         alert = Alert(

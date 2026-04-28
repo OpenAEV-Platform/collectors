@@ -4,9 +4,7 @@ import logging
 from typing import Any
 
 from src.models.incident import Alert
-from src.services.exception import (
-    PaloAltoCortexXSOARDataConversionError,
-)
+from src.services.exception import PaloAltoCortexXSOARDataConversionError
 
 LOG_PREFIX = "[Converter]"
 
