@@ -6,8 +6,6 @@ from pydantic import BaseModel, ConfigDict, Field
 class Alert(BaseModel):
     """Represents an alert inside an XSOAR incident (CustomFields.xdralerts)."""
 
-    model_config = ConfigDict(populate_by_name=True)
-
     alert_id: str
     case_id: Optional[int] = None
     action_pretty: Optional[str] = None
@@ -32,12 +30,12 @@ class Alert(BaseModel):
 
 
 class CustomFields(BaseModel):
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(validate_by_alias=True, validate_by_name=True)
     xdralerts: List[Alert] = Field(default_factory=list, alias="xdralerts")
 
 
 class Incident(BaseModel):
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(validate_by_alias=True, validate_by_name=True)
 
     id: str
     name: Optional[str] = None

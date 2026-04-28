@@ -57,7 +57,7 @@ class ExpectationService:
             api_key_type=config.palo_alto_cortex_xsoar.api_key_type,
         )
         self.client_api = PaloAltoCortexXSOARClientAPI(
-            auth=auth, api_url=config.palo_alto_cortex_xsoar.api_url
+            auth=auth, api_url=str(config.palo_alto_cortex_xsoar.api_url)
         )
         self.converter: PaloAltoCortexXSOARConverter = PaloAltoCortexXSOARConverter()
 

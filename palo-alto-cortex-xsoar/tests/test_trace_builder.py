@@ -14,24 +14,30 @@ from src.services.utils.trace_builder import TraceBuilder, _build_web_base_url
 class TestBuildWebBaseUrl:
     def test_strips_api_soar_prefix(self):
         """api-soar- prefix is removed from the API URL."""
-        result = _build_web_base_url("api-soar-filigran.crtx.fa.paloaltonetworks.com")
+        result = _build_web_base_url(
+            "https://api-soar-filigran.crtx.fa.paloaltonetworks.com"
+        )
         assert result == "https://filigran.crtx.fa.paloaltonetworks.com"
 
     def test_different_tenant(self):
-        result = _build_web_base_url("api-soar-acme.crtx.us.paloaltonetworks.com")
+        result = _build_web_base_url(
+            "https://api-soar-acme.crtx.us.paloaltonetworks.com"
+        )
         assert result == "https://acme.crtx.us.paloaltonetworks.com"
 
     def test_trailing_slash(self):
-        result = _build_web_base_url("api-soar-filigran.crtx.fa.paloaltonetworks.com/")
+        result = _build_web_base_url(
+            "https://api-soar-filigran.crtx.fa.paloaltonetworks.com/"
+        )
         assert result == "https://filigran.crtx.fa.paloaltonetworks.com"
 
     def test_no_prefix_unchanged(self):
         """API URL without api-soar- prefix is kept as-is."""
-        result = _build_web_base_url("custom-host.example.com")
+        result = _build_web_base_url("https://custom-host.example.com")
         assert result == "https://custom-host.example.com"
 
     def test_no_prefix_strips_trailing_slash(self):
-        result = _build_web_base_url("custom-host.example.com/")
+        result = _build_web_base_url("https://custom-host.example.com/")
         assert result == "https://custom-host.example.com"
 
 
@@ -54,7 +60,7 @@ class TestCreateAlertTrace:
         """The exact example from the requirement."""
         trace = TraceBuilder.create_alert_trace(
             alert=sample_alert,
-            api_url="api-soar-filigran.crtx.fa.paloaltonetworks.com",
+            api_url="https://api-soar-filigran.crtx.fa.paloaltonetworks.com",
         )
         assert (
             trace["alert_link"]
@@ -70,7 +76,7 @@ class TestCreateAlertTrace:
         )
         trace = TraceBuilder.create_alert_trace(
             alert=alert,
-            api_url="api-soar-tenant.crtx.eu.paloaltonetworks.com",
+            api_url="https://api-soar-tenant.crtx.eu.paloaltonetworks.com",
         )
         assert trace["alert_link"].endswith("/issue-view/999")
 
@@ -82,21 +88,21 @@ class TestCreateAlertTrace:
         )
         trace = TraceBuilder.create_alert_trace(
             alert=alert,
-            api_url="api-soar-filigran.crtx.fa.paloaltonetworks.com",
+            api_url="https://api-soar-filigran.crtx.fa.paloaltonetworks.com",
         )
         assert trace["alert_link"].endswith("/issue-view/500")
 
     def test_alert_name(self, sample_alert):
         trace = TraceBuilder.create_alert_trace(
             alert=sample_alert,
-            api_url="api-soar-filigran.crtx.fa.paloaltonetworks.com",
+            api_url="https://api-soar-filigran.crtx.fa.paloaltonetworks.com",
         )
         assert trace["alert_name"] == "PaloAltoCortexXSOAR Alert 166"
 
     def test_additional_data(self, sample_alert):
         trace = TraceBuilder.create_alert_trace(
             alert=sample_alert,
-            api_url="api-soar-filigran.crtx.fa.paloaltonetworks.com",
+            api_url="https://api-soar-filigran.crtx.fa.paloaltonetworks.com",
         )
         assert trace["additional_data"]["alert_id"] == "166"
         assert trace["additional_data"]["case_id"] == 42
@@ -112,7 +118,7 @@ class TestCreateAlertTrace:
             case_id=1,
             detection_timestamp=1714200000000,
         )
-        trace = TraceBuilder.create_alert_trace(alert=alert, api_url="test.com")
+        trace = TraceBuilder.create_alert_trace(alert=alert, api_url="https://test.com")
         assert trace["alert_link"] == ""
 
     def test_create_alert_trace_exception(self, sample_alert):
@@ -121,7 +127,7 @@ class TestCreateAlertTrace:
         ) as mock_build:
             mock_build.side_effect = Exception("error")
             trace = TraceBuilder.create_alert_trace(
-                alert=sample_alert, api_url="test.com"
+                alert=sample_alert, api_url="https://test.com"
             )
             assert trace["alert_link"] == ""
 
@@ -133,6 +139,6 @@ class TestCreateAlertTrace:
         )
         trace = TraceBuilder.create_alert_trace(
             alert=alert,
-            api_url="custom-host.example.com",
+            api_url="https://custom-host.example.com",
         )
         assert trace["alert_link"] == "https://custom-host.example.com/issue-view/77"
