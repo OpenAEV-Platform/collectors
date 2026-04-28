@@ -3,6 +3,7 @@
 import logging
 from datetime import datetime, timezone
 from typing import Any
+from urllib.parse import urlparse, urlunparse
 
 from src.models.incident import Alert
 
@@ -14,16 +15,20 @@ _API_SOAR_PREFIX = "api-soar-"
 def _build_web_base_url(api_url: str) -> str:
     """Convert an API URL to the corresponding web console base URL.
 
-    Strips the ``api-soar-`` prefix when present.
+    Strips the ``api-soar-`` prefix from the hostname when present and
+    ensures a proper ``https://`` URL is returned.
+
+    Args:
+        api_url: Full API URL (scheme guaranteed by HttpUrl validation).
 
     Example:
-        api-soar-filigran.crtx.fa.paloaltonetworks.com
+        https://api-soar-filigran.crtx.fa.paloaltonetworks.com
         → https://filigran.crtx.fa.paloaltonetworks.com
     """
-    host = api_url.strip().rstrip("/")
-    if host.startswith(_API_SOAR_PREFIX):
-        host = host[len(_API_SOAR_PREFIX) :]
-    return f"https://{host}"
+    parsed = urlparse(api_url.strip().rstrip("/"))
+    host = (parsed.hostname or "").removeprefix(_API_SOAR_PREFIX)
+
+    return urlunparse(("https", host, "", "", "", ""))
 
 
 class TraceBuilder:

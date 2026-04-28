@@ -17,7 +17,7 @@ def correct_config():
             "COLLECTOR_ID": "collector-id",
             "COLLECTOR_NAME": "collector name",
             "COLLECTOR_LOG_LEVEL": "info",
-            "PALO_ALTO_CORTEX_XSOAR_API_URL": "palo-alto.fake",
+            "PALO_ALTO_CORTEX_XSOAR_API_URL": "https://palo-alto.fake",
             "PALO_ALTO_CORTEX_XSOAR_API_KEY": "api_key",
             "PALO_ALTO_CORTEX_XSOAR_API_KEY_ID": "1",
             "PALO_ALTO_CORTEX_XSOAR_API_KEY_TYPE": "standard",

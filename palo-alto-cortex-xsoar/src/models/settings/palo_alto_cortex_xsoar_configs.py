@@ -3,7 +3,7 @@
 from datetime import timedelta
 from typing import Literal
 
-from pydantic import Field, SecretStr, field_validator
+from pydantic import Field, HttpUrl, SecretStr
 from src.models.settings import ConfigBaseSettings
 
 
@@ -14,19 +14,10 @@ class ConfigLoaderPaloAltoCortexXSOAR(ConfigBaseSettings):
     for PaloAltoCortexXSOAR API integration.
     """
 
-    api_url: str = Field(
+    api_url: HttpUrl = Field(
         alias="PALO_ALTO_CORTEX_XSOAR_API_URL",
-        description="The API URL is the base host associated with each tenant (without scheme).",
+        description="The API URL is the base URL associated with each tenant.",
     )
-
-    @field_validator("api_url")
-    @classmethod
-    def strip_scheme(cls, v: str) -> str:
-        """Strip any URL scheme from the API URL to keep only the hostname."""
-        for scheme in ("https://", "http://"):
-            if v.startswith(scheme):
-                v = v[len(scheme) :]
-        return v.rstrip("/")
 
     api_key: SecretStr = Field(
         alias="PALO_ALTO_CORTEX_XSOAR_API_KEY",

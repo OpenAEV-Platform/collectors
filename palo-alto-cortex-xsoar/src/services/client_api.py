@@ -10,6 +10,10 @@ class PaloAltoCortexXSOARClientAPI:
         self._auth = auth
         self.api_url = api_url
 
+    def _build_url(self, path: str) -> str:
+        """Build a full URL from the configured api_url and a path."""
+        return f"{self.api_url.rstrip('/')}{path}"
+
     def search_incidents(
         self,
         from_date: Optional[str] = None,
@@ -17,7 +21,7 @@ class PaloAltoCortexXSOARClientAPI:
         search_from: int = 0,
         search_to: int = 100,
     ) -> XSOARSearchIncidentsResponse:
-        url = f"https://{self.api_url}/xsoar/public/v1/incidents/search"
+        url = self._build_url("/xsoar/public/v1/incidents/search")
         headers = self._auth.get_headers()
 
         size = search_to - search_from
