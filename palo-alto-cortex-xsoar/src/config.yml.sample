@@ -1,0 +1,12 @@
+openaev:
+  url: 'http://localhost:8081'
+  token: "ChangeMe"
+
+collector:
+  id: "Palo Alto Cortex XSOAR"
+
+palo_alto_cortex_xsoar:
+  api_url: "ChangeMe"
+  api_key: "ChangeMe"
+  api_key_id: "ChangeMe"
+  api_key_type: "standard" # standard or advanced
