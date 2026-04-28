@@ -3,10 +3,7 @@ from unittest.mock import patch
 
 import pytest
 from pyoaev.signatures.types import SignatureTypes
-from src.models.incident import (
-    CustomFields,
-    XSOARSearchIncidentsResponse,
-)
+from src.models.incident import CustomFields, XSOARSearchIncidentsResponse
 from tests.factories import AlertFactory, DetectionExpectationFactory, IncidentFactory
 
 

@@ -3,11 +3,7 @@ from unittest.mock import patch
 
 from pyoaev.apis import DetectionExpectation
 from src.collector import Collector
-from src.models.incident import (
-    Alert,
-    CustomFields,
-    XSOARSearchIncidentsResponse,
-)
+from src.models.incident import Alert, CustomFields, XSOARSearchIncidentsResponse
 from tests.factories import (
     AlertFactory,
     DetectionExpectationFactory,
