@@ -6,7 +6,7 @@ collector:
   id: "Palo Alto Cortex XSOAR"
 
 palo_alto_cortex_xsoar:
-  api_url: "ChangeMe"
+  api_url: "https://api-soar-tenant.crtx.fa.paloaltonetworks.com"
   api_key: "ChangeMe"
   api_key_id: "ChangeMe"
   api_key_type: "standard" # standard or advanced
