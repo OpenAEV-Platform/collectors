@@ -3,11 +3,7 @@ import re
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from requests.exceptions import (
-    ConnectionError,
-    RequestException,
-    Timeout,
-)
+from requests.exceptions import ConnectionError, RequestException, Timeout
 from src.models.incident import Alert
 from src.services.client_api import PaloAltoCortexXSOARClientAPI
 from src.services.exception import (
