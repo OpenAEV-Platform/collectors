@@ -1,12 +1,13 @@
 openaev:
   url: 'http://localhost:3001'
   token: 'ChangeMe'
+# tenant_id: 'ChangeMe'
 
 collector:
-  id: 'changeme'
+  id: 'ChangeMe'
   name: 'Google Workspace'
   period: 'PT1H'
-  log_level: 'info'
+  log_level: 'error'
   google_workspace_service_account_json: ''  # JSON string of service account credentials
   google_workspace_delegated_admin_email: ''  # Email of admin user for domain-wide delegation
   google_workspace_customer_id: 'my_customer'  # Customer ID or 'my_customer' for your own domain

@@ -5,6 +5,7 @@ services:
     environment:
       - OPENAEV_URL=http://localhost
       - OPENAEV_TOKEN=ChangeMe
+      - OPENAEV_TENANT_ID=ChangeMe
       - COLLECTOR_ID=ChangeMe
       - SPLUNKES_BASE_URL=https://change.me
       - SPLUNKES_USERNAME=ChangeMe

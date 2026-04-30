@@ -1,12 +1,13 @@
 openaev:
   url: 'http://localhost:3001'
   token: 'ChangeMe'
+# tenant_id: 'ChangeMe'
 
 collector:
-  id: 'changeme'
+  id: 'ChangeMe'
   name: 'Amazon Web Services'
   period: 'PT1H'
-  log_level: 'info'
+  log_level: 'error'
   aws_access_key_id: ''  # AWS Access Key ID (optional if using instance role)
   aws_secret_access_key: ''  # AWS Secret Access Key (optional if using instance role)
   aws_session_token: ''  # AWS Session Token (optional, for temporary credentials)

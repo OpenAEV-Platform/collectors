@@ -1,13 +1,15 @@
 openaev:
   url: 'http://localhost:8080'  # Required
   token: 'ChangeMe' # Required
+# tenant_id: 'ChangeMe'
 
 collector:
   id: 'ChangeMe' # Required
   name: 'CVE by NVD NIST'
   period: 'PT2H'
-  log_level: 'info'
+  log_level: 'error'
 
 nvdnistcve:
   api_base_url: 'https://services.nvd.nist.gov/rest/json'
   api_key: 'ChangeMe' # Optional but recommended
+  start_year: '2019'

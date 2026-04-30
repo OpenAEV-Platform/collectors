@@ -20,10 +20,17 @@ in `config.yml` (for manual deployment).
 
 Below are the parameters you'll need to set for OpenAEV:
 
-| Parameter     | config.yml    | Docker environment variable | Mandatory | Description                                          |
-|---------------|---------------|-----------------------------|-----------|------------------------------------------------------|
-| OpenAEV URL   | openaev.url   | `OPENAEV_URL`               | Yes       | The URL of the OpenAEV platform.                     |
-| OpenAEV Token | openaev.token | `OPENAEV_TOKEN`             | Yes       | The default admin token set in the OpenAEV platform. |
+| Parameter         | config.yml        | Docker environment variable | Mandatory | Description                                          |
+|-------------------|-------------------|-----------------------------|-----------|------------------------------------------------------|
+| OpenAEV URL       | openaev.url       | `OPENAEV_URL`               | Yes       | The URL of the OpenAEV platform.                     |
+| OpenAEV Token     | openaev.token     | `OPENAEV_TOKEN`             | Yes       | The default admin token set in the OpenAEV platform. |
+| OpenAEV Tenant ID | openaev.tenant_id | `OPENAEV_TENANT_ID`         | No        | Identifier of the tenant within the OpenAEV platform. |
+
+> ⚠️ Warning ⚠️
+>
+> The `tenant_id` parameter is a new configuration option. A period of backward compatibility is ensured: if this key is not defined,
+> existing configurations will not be affected, and the default value will be `None`. However, if a value is provided, it will be
+> validated by Pydantic and must conform to a valid UUID format, otherwise, a validation error will be returned.
 
 ### Base collector environment variables
 
@@ -34,7 +41,7 @@ Below are the parameters you'll need to set for running the collector properly:
 | Collector ID     | collector.id         | `COLLECTOR_ID`              |              | Yes       | A unique `UUIDv4` identifier for this collector instance.                              |
 | Collector Name   | collector.name       | `COLLECTOR_NAME`            | MITRE ATT&CK | No        | Name of the collector.                                                                 |
 | Collector Period | collector.period     | `COLLECTOR_PERIOD`          | P7D          | No        | The time interval at which your collector will run (ISO 8601 period expression, e.g. 'PT1M': 1 minute).                     |
-| Log Level        | collector.log_level  | `COLLECTOR_LOG_LEVEL`       | warn         | no        | Determines the verbosity of the logs. Options are `debug`, `info`, `warn`, or `error`. |
+| Log Level        | collector.log_level  | `COLLECTOR_LOG_LEVEL`       | error        | no        | Determines the verbosity of the logs. Options are `debug`, `info`, `warn`, or `error`. |
 
 ## Deployment
 

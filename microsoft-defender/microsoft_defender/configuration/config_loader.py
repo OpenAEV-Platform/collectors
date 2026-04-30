@@ -15,6 +15,7 @@ class ConfigLoader(SettingsLoader):
                 # OpenAEV configuration (flattened)
                 "openaev_url": {"data": str(self.openaev.url)},
                 "openaev_token": {"data": self.openaev.token},
+                "openaev_tenant_id": {"data": self.openaev.tenant_id},
                 # Collector configuration (flattened)
                 "collector_id": {"data": self.collector.id},
                 "collector_name": {"data": self.collector.name},

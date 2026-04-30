@@ -2,6 +2,7 @@
 
 from datetime import timedelta
 from typing import Annotated, Literal
+from uuid import UUID
 
 from pydantic import Field, HttpUrl, PlainSerializer
 from src.models.configs import ConfigBaseSettings
@@ -31,7 +32,11 @@ class _ConfigLoaderOAEV(ConfigBaseSettings):
         alias="OPENAEV_TOKEN",
         description="The token for the OpenAEV platform.",
     )
-
+    tenant_id: UUID | None = Field(
+        default=None,
+        description="Identifier of the tenant within the OpenAEV platform. Used in multi-tenant environments to scope "
+                    "API requests and ensure data isolation between different tenants.",
+    )
 
 class _ConfigLoaderCollector(ConfigBaseSettings):
     """Base collector configuration settings.
