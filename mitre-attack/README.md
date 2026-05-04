@@ -89,7 +89,7 @@ poetry install --extras dev
 Then, start the collector:
 
 ```shell
-poetry run python -m mitre_attack.openaev_mitre_attack
+poetry run python -m mitre_attack.openaev_mitre
 ```
 
 ## API Permissions and Endpoints Used
