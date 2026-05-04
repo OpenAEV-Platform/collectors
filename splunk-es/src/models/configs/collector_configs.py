@@ -34,6 +34,7 @@ class _ConfigLoaderOAEV(ConfigBaseSettings):
     )
     tenant_id: UUID | None = Field(
         default=None,
+        alias="OPENAEV_TENANT_ID",
         description="Identifier of the tenant within the OpenAEV platform. Used in multi-tenant environments to scope "
         "API requests and ensure data isolation between different tenants.",
     )
