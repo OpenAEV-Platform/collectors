@@ -149,16 +149,17 @@ def test_process_alerts_updates_detection_and_creates_trace():
     assert update_args[1]["is_success"] is True
     assert update_args[1]["metadata"]["alertId"] == "da639086874138071342_-1566804818"
 
-    collector.api.inject_expectation_trace.create.assert_called_once()
-    trace_payload = collector.api.inject_expectation_trace.create.call_args.kwargs[
-        "data"
+    collector.api.inject_expectation_trace.bulk_create.assert_called_once()
+    trace_payload = collector.api.inject_expectation_trace.bulk_create.call_args.kwargs[
+        "payload"
     ]
+    assert len(trace_payload["expectation_traces"]) == 1
     assert (
-        trace_payload["inject_expectation_trace_alert_name"]
+        trace_payload["expectation_traces"][0]["inject_expectation_trace_alert_name"]
         == "PowerSploit post-exploitation tool"
     )
     assert (
-        trace_payload["inject_expectation_trace_alert_link"]
+        trace_payload["expectation_traces"][0]["inject_expectation_trace_alert_link"]
         == "https://security.microsoft.com/alerts/da639086874138071342_-1566804818"
     )
 
