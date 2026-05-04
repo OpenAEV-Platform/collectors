@@ -2,6 +2,7 @@
 
 from os import environ as os_environ
 from typing import Any
+from uuid import UUID
 
 import pytest
 from src.collector import Collector
@@ -25,6 +26,7 @@ def collector_config() -> dict[str, str]:  # type: ignore
     return {
         "OPENAEV_URL": "http://fake-url/",
         "OPENAEV_TOKEN": "fake-oaev-token",
+        "OPENAEV_TENANT_ID": "deadbeef-dead-beef-dead-beefdeadbeef",
         "COLLECTOR_ID": "fake-collector-id",
         "COLLECTOR_NAME": "SentinelOne",
         "SENTINELONE_BASE_URL": "https://fake-sentinelone.net/",
@@ -188,6 +190,9 @@ def _then_collector_created_successfully(
     )  # noqa: S101
     assert daemon_config.get("openaev_token") == expected_config.get(
         "OPENAEV_TOKEN"
+    )  # noqa: S101
+    assert daemon_config.get("openaev_tenant_id") == UUID(
+        expected_config.get("OPENAEV_TENANT_ID")
     )  # noqa: S101
     assert daemon_config.get("collector_id") == expected_config.get(
         "COLLECTOR_ID"

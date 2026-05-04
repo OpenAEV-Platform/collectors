@@ -481,6 +481,9 @@ def then_collector_has_valid_configuration(
     assert daemon_config.get("openaev_token") == expected_config.get(  # noqa: S101
         "OPENAEV_TOKEN"
     )
+    assert daemon_config.get("openaev_tenant_id") == expected_config.get(  # noqa: S101
+        "OPENAEV_TENANT_ID"
+    )
     assert daemon_config.get("collector_id") == expected_config.get(  # noqa: S101
         "COLLECTOR_ID"
     )

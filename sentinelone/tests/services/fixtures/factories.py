@@ -36,6 +36,9 @@ class ConfigLoaderOAEVFactory(ModelFactory[_ConfigLoaderOAEV]):
         """
         os.environ["OPENAEV_URL"] = "https://test-openaev.example.com"
         os.environ["OPENAEV_TOKEN"] = "test-openaev-token-12345"  # noqa: S105
+        os.environ["OPENAEV_TENANT_ID"] = (
+            "deadbeef-dead-beef-dead-beefdeadbeef"  # noqa: S105
+        )
         return super().build(**kwargs)
 
 
