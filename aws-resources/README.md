@@ -107,12 +107,13 @@ Create or update `config.yml`:
 openaev:
   url: 'http://your-openaev-url:3001'
   token: 'your-openaev-token'
+# tenant_id: 'ChangeMe'
 
 collector:
-  id: 'unique-collector-id'
+  id: 'openaev_aws_resources'
   name: 'AWS Resources'
   period: 'PT1H'  # Collection period in ISO 8601
-  log_level: 'info'
+  log_level: 'error'
   aws_access_key_id: 'your-access-key-id'  # Optional if using instance role
   aws_secret_access_key: 'your-secret-access-key'  # Optional if using instance role
   aws_session_token: ''  # Optional, for temporary credentials
@@ -155,6 +156,7 @@ All configuration can be provided via environment variables:
 
 - `OPENAEV_URL`: OpenAEV platform URL
 - `OPENAEV_TOKEN`: OpenAEV API token
+- `OPENAEV_TENANT_ID`: Identifier of the tenant within the OpenAEV platform
 - `COLLECTOR_ID`: Unique collector identifier
 - `COLLECTOR_NAME`: Display name for the collector
 - `COLLECTOR_PERIOD`: Collection interval as ISO 8601 period expression, e.g. PT1M: 1 minute
@@ -164,6 +166,12 @@ All configuration can be provided via environment variables:
 - `COLLECTOR_AWS_SESSION_TOKEN`: AWS Session Token (for temporary credentials)
 - `COLLECTOR_AWS_ASSUME_ROLE_ARN`: ARN of IAM role to assume
 - `COLLECTOR_AWS_REGIONS`: Comma-separated list of AWS regions
+
+> ⚠️ Warning ⚠️
+>
+> The `tenant_id` parameter is a new configuration option. A period of backward compatibility is ensured: if this key is not defined,
+> existing configurations will not be affected, and the default value will be `None`. However, if a value is provided, it will be
+> validated by Pydantic and must conform to a valid UUID format, otherwise, a validation error will be returned.
 
 
 ## API Permissions and Endpoints Used

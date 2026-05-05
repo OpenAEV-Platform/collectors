@@ -14,6 +14,7 @@ class CrowdstrikeSettings(BaseSettings):
         description="The CrowdStrike API client secret.",
     )
     api_base_url: str = Field(
+        default="https://api.us-2.crowdstrike.com",
         description="The base URL for the CrowdStrike APIs. ",
     )
     ui_base_url: str = Field(

@@ -1,10 +1,11 @@
 openaev:
   url: 'http://localhost:3001'
   token: 'ChangeMe'
+# tenant_id: 'ChangeMe'
 
 collector:
-  id: 'changeme'
+  id: 'ChangeMe'
   name: 'MITRE ATT&CK'
   period: 'P7D'
-  log_level: 'info'
+  log_level: 'error'
 

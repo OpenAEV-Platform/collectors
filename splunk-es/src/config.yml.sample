@@ -1,12 +1,13 @@
 openaev:
   url: "http://change.me"
   token: "ChangeMe"
+# tenant_id: "ChangeMe"
 
 collector:
   id: "ChangeMe"
   name: "Splunk ES"
   period: 'PT1M'
-  log_level: "info"
+  log_level: "error"
 
 splunk_es:
   base_url: "https://splunk.company.com:8089"

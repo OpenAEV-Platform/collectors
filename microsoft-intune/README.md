@@ -58,12 +58,13 @@ Create or update `config.yml`:
 openaev:
   url: 'http://your-openaev-url:3001'
   token: 'your-openaev-token'
+# tenant_id: 'ChangeMe'
 
 collector:
   id: 'unique-collector-id'
   name: 'Microsoft Intune'
   period: 'PT1H'  # Collection period in ISO 8601
-  log_level: 'info'
+  log_level: 'error'
   microsoft_intune_tenant_id: 'your-tenant-id'
   microsoft_intune_client_id: 'your-client-id'
   microsoft_intune_client_secret: 'your-client-secret'
@@ -127,6 +128,7 @@ All configuration can be provided via environment variables:
 
 - `OPENAEV_URL`: OpenAEV platform URL
 - `OPENAEV_TOKEN`: OpenAEV API token
+- `OPENAEV_TENANT_ID`: Identifier of the tenant within the OpenAEV platform.
 - `COLLECTOR_ID`: Unique collector identifier
 - `COLLECTOR_NAME`: Display name for the collector
 - `COLLECTOR_PERIOD`: Collection interval as ISO 8601 period expression, e.g. PT1M: 1 minute
