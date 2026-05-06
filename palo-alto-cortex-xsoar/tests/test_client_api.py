@@ -33,7 +33,7 @@ def test_search_incidents_success(api_client):
         ],
     }
 
-    with patch("requests.post") as mock_post:
+    with patch("requests.Session.post") as mock_post:
         mock_post.return_value.json.return_value = mock_response
         mock_post.return_value.status_code = 200
 
@@ -60,7 +60,7 @@ def test_search_incidents_success(api_client):
 
 
 def test_search_incidents_http_error(api_client):
-    with patch("requests.post") as mock_post:
+    with patch("requests.Session.post") as mock_post:
         mock_post.return_value.raise_for_status.side_effect = (
             requests.exceptions.HTTPError("Error")
         )
@@ -70,7 +70,7 @@ def test_search_incidents_http_error(api_client):
 
 
 def test_search_incidents_pagination(api_client):
-    with patch("requests.post") as mock_post:
+    with patch("requests.Session.post") as mock_post:
         mock_post.return_value.json.return_value = {"total": 0, "data": []}
 
         api_client.search_incidents(search_from=20, search_to=30)
@@ -85,7 +85,7 @@ def test_search_incidents_pagination(api_client):
 
 def test_search_incidents_no_dates(api_client):
     """When no dates are provided, fromDate and toDate are absent."""
-    with patch("requests.post") as mock_post:
+    with patch("requests.Session.post") as mock_post:
         mock_post.return_value.json.return_value = {"total": 0, "data": []}
         api_client.search_incidents()
         _, kwargs = mock_post.call_args
@@ -95,7 +95,7 @@ def test_search_incidents_no_dates(api_client):
 
 def test_search_incidents_only_from_date(api_client):
     """When only from_date is provided, toDate is absent."""
-    with patch("requests.post") as mock_post:
+    with patch("requests.Session.post") as mock_post:
         mock_post.return_value.json.return_value = {"total": 0, "data": []}
         api_client.search_incidents(from_date="2026-01-01T00:00:00Z")
         _, kwargs = mock_post.call_args
@@ -105,7 +105,7 @@ def test_search_incidents_only_from_date(api_client):
 
 def test_search_incidents_only_to_date(api_client):
     """When only to_date is provided, fromDate is absent."""
-    with patch("requests.post") as mock_post:
+    with patch("requests.Session.post") as mock_post:
         mock_post.return_value.json.return_value = {"total": 0, "data": []}
         api_client.search_incidents(to_date="2026-12-31T23:59:59Z")
         _, kwargs = mock_post.call_args
@@ -115,7 +115,7 @@ def test_search_incidents_only_to_date(api_client):
 
 def test_search_incidents_zero_size(api_client):
     """When search_from == search_to, size is 0 and page is 0."""
-    with patch("requests.post") as mock_post:
+    with patch("requests.Session.post") as mock_post:
         mock_post.return_value.json.return_value = {"total": 0, "data": []}
         api_client.search_incidents(search_from=5, search_to=5)
         _, kwargs = mock_post.call_args
@@ -125,7 +125,7 @@ def test_search_incidents_zero_size(api_client):
 
 def test_search_incidents_default_page_size(api_client):
     """Default search_from=0, search_to=100 gives size=100, page=0."""
-    with patch("requests.post") as mock_post:
+    with patch("requests.Session.post") as mock_post:
         mock_post.return_value.json.return_value = {"total": 0, "data": []}
         api_client.search_incidents()
         _, kwargs = mock_post.call_args
@@ -136,7 +136,7 @@ def test_search_incidents_default_page_size(api_client):
 def test_search_incidents_headers_sent(api_client, auth):
     """Auth headers are included in the request."""
     expected_headers = auth.get_headers()
-    with patch("requests.post") as mock_post:
+    with patch("requests.Session.post") as mock_post:
         mock_post.return_value.json.return_value = {"total": 0, "data": []}
         api_client.search_incidents()
         _, kwargs = mock_post.call_args
@@ -145,7 +145,7 @@ def test_search_incidents_headers_sent(api_client, auth):
 
 def test_search_incidents_sort_order(api_client):
     """Request body always includes sort by 'created' ascending."""
-    with patch("requests.post") as mock_post:
+    with patch("requests.Session.post") as mock_post:
         mock_post.return_value.json.return_value = {"total": 0, "data": []}
         api_client.search_incidents()
         _, kwargs = mock_post.call_args
@@ -155,7 +155,8 @@ def test_search_incidents_sort_order(api_client):
 def test_search_incidents_connection_error(api_client):
     """Connection errors propagate."""
     with patch(
-        "requests.post", side_effect=requests.exceptions.ConnectionError("no route")
+        "requests.Session.post",
+        side_effect=requests.exceptions.ConnectionError("no route"),
     ):
         with pytest.raises(requests.exceptions.ConnectionError):
             api_client.search_incidents()
@@ -163,7 +164,9 @@ def test_search_incidents_connection_error(api_client):
 
 def test_search_incidents_timeout(api_client):
     """Timeout errors propagate."""
-    with patch("requests.post", side_effect=requests.exceptions.Timeout("timed out")):
+    with patch(
+        "requests.Session.post", side_effect=requests.exceptions.Timeout("timed out")
+    ):
         with pytest.raises(requests.exceptions.Timeout):
             api_client.search_incidents()
 
@@ -189,7 +192,7 @@ def test_search_incidents_multiple_incidents(api_client):
             },
         ],
     }
-    with patch("requests.post") as mock_post:
+    with patch("requests.Session.post") as mock_post:
         mock_post.return_value.json.return_value = mock_response
         response = api_client.search_incidents()
         assert response.total == 2
