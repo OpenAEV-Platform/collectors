@@ -1,6 +1,9 @@
+from http.cookiejar import DefaultCookiePolicy
 from typing import Optional
 
-import requests
+from requests import Session
+from requests.adapters import HTTPAdapter
+from requests.packages.urllib3.util import Retry
 from src.models.authentication import Authentication
 from src.models.incident import XSOARSearchIncidentsResponse
 
@@ -15,6 +18,21 @@ class PaloAltoCortexXSOARClientAPI:
     def _build_url(self, path: str) -> str:
         """Build a full URL from the configured api_url and a path."""
         return f"{self.api_url.rstrip('/')}{path}"
+
+    def _prepare_session(self) -> Session:
+        """Preparing a session with automatic retries (with increasing backoff) and no cookies"""
+        retries = Retry(
+            total=5,
+            allowed_methods=["POST"],
+            status_forcelist=[429, 500, 502, 503, 504],
+            backoff_factor=0.5,
+            backoff_jitter=0.2,
+        )
+        s = Session()
+        s.mount("http://", HTTPAdapter(max_retries=retries))
+        s.mount("https://", HTTPAdapter(max_retries=retries))
+        s.cookies.set_policy(DefaultCookiePolicy(allowed_domains=[]))
+        return s
 
     def search_incidents(
         self,
@@ -43,7 +61,8 @@ class PaloAltoCortexXSOARClientAPI:
         if to_date:
             body["filter"]["toDate"] = to_date
 
-        response = requests.post(
+        session = self._prepare_session()
+        response = session.post(
             url, headers=headers, json=body, timeout=REQUESTS_TIMEOUT_SECONDS
         )
         response.raise_for_status()
