@@ -4,6 +4,8 @@ import requests
 from src.models.authentication import Authentication
 from src.models.incident import XSOARSearchIncidentsResponse
 
+REQUESTS_TIMEOUT_SECONDS = 60
+
 
 class PaloAltoCortexXSOARClientAPI:
     def __init__(self, auth: Authentication, api_url: str) -> None:
@@ -41,6 +43,8 @@ class PaloAltoCortexXSOARClientAPI:
         if to_date:
             body["filter"]["toDate"] = to_date
 
-        response = requests.post(url, headers=headers, json=body)
+        response = requests.post(
+            url, headers=headers, json=body, timeout=REQUESTS_TIMEOUT_SECONDS
+        )
         response.raise_for_status()
         return XSOARSearchIncidentsResponse.model_validate(response.json())
