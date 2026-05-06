@@ -30,8 +30,7 @@ class Alert(BaseModel):
 
 
 class CustomFields(BaseModel):
-    model_config = ConfigDict(validate_by_alias=True, validate_by_name=True)
-    xdralerts: List[Alert] = Field(default_factory=list, alias="xdralerts")
+    xdralerts: List[Alert] = Field(default_factory=list)
 
 
 class Incident(BaseModel):
