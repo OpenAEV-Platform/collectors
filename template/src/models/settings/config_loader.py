@@ -11,7 +11,7 @@ from pydantic_settings import (
     YamlConfigSettingsSource,
 )
 from pyoaev.configuration import Configuration
-from src.models.configs import (
+from src.models.settings import (
     ConfigBaseSettings,
     _ConfigLoaderCollector,
     _ConfigLoaderOAEV,
@@ -98,7 +98,8 @@ class ConfigLoader(ConfigBaseSettings):
                     env_file_encoding="utf-8",
                 ),
             )
-        elif yaml_path.exists():
+
+        if yaml_path.exists():
             return (
                 YamlConfigSettingsSource(
                     settings_cls,

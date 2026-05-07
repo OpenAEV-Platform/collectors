@@ -3,7 +3,7 @@
 from datetime import timedelta
 
 from pydantic import Field
-from src.models.configs import ConfigBaseSettings
+from src.models.settings import ConfigBaseSettings
 
 
 class _ConfigLoaderTemplate(ConfigBaseSettings):
