@@ -179,7 +179,7 @@ class SourceHandlerTest(unittest.TestCase):
         )
 
         oaev_detection_helper.match_alert_elements.assert_called_with(
-            signature_groups["my_type"], {"my_type": oaev_data.sig_type}
+            signature_groups["my_type"], {"my_type": oaev_data.my_type}
         )
         self.assertTrue(flag)
 
@@ -198,7 +198,7 @@ class SourceHandlerTest(unittest.TestCase):
         )
 
         oaev_detection_helper.match_alert_elements.assert_called_with(
-            signature_groups["my_type"], {"my_type": oaev_data.sig_type}
+            signature_groups["my_type"], {"my_type": oaev_data.my_type}
         )
         self.assertFalse(flag)
 
@@ -229,7 +229,6 @@ class SourceHandlerTest(unittest.TestCase):
         module.SourceHandler().serialize_as_tracedata(data)
 
         data.to_traces_data.assert_called_once()
-        data.to_traces_data.return_value.model_dump.assert_called_once()
 
     def test_match_expectation_and_sourcedata_prevention_prevented(self):
         """

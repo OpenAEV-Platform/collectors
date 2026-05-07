@@ -18,8 +18,8 @@ class ExpectationResultTest(unittest.TestCase):
 
         self.assertEqual(expectation_id, expectation_result.expectation_id)
         self.assertEqual(is_valid, expectation_result.is_valid)
+        self.assertEqual(expectation_result.matched_alerts, [])
         self.assertIsNone(expectation_result.expectation)
-        self.assertIsNone(expectation_result.matched_alerts)
         self.assertIsNone(expectation_result.error_message)
         self.assertIsNone(expectation_result.processing_time)
 
@@ -63,7 +63,7 @@ class ExpectationResultTest(unittest.TestCase):
         self.assertEqual("id", expectation_result.expectation_id)
         self.assertFalse(expectation_result.is_valid)
         self.assertEqual(expectation, expectation_result.expectation)
-        self.assertIsNone(expectation_result.matched_alerts)
+        self.assertEqual(expectation_result.matched_alerts, [])
         self.assertEqual(str(error), expectation_result.error_message)
         self.assertIsNone(expectation_result.processing_time)
 

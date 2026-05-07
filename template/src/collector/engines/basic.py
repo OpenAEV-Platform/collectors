@@ -1,12 +1,13 @@
 import logging
 import os
 
-from pyoaev.apis.inject_expectation.model import (  # type: ignore[import-untyped]
+from pyoaev.apis.inject_expectation.model import (
     DetectionExpectation,
     PreventionExpectation,
 )
-from pyoaev.client import OpenAEV  # type: ignore[import_untyped]
+from pyoaev.client import OpenAEV
 from pyoaev.helpers import OpenAEVDetectionHelper
+from pyoaev.signatures.types import SignatureTypes
 from src.collector.internals.oaev_uploaders import ExpectationUploader, TraceUploader
 from src.collector.models.exception import (
     CollectorEngineConfigError,
@@ -15,7 +16,9 @@ from src.collector.models.exception import (
 )
 from src.collector.models.expectations import ExpectationResult, ExpectationSummary
 from src.collector.models.source import Source
+from src.collector.protocols.data_fetcher import DataFetcherProtocol
 from src.collector.protocols.source_handler import SourceHandlerProtocol
+from src.collector.types.collector import ExpectationsList
 from src.collector.utils.retroport_itertools import batched
 
 LOG_PREFIX = "[BasicCollectorEngine]"
@@ -35,7 +38,7 @@ class BasicCollectorEngine:
         source_handler: SourceHandlerProtocol,
         oaev_api: OpenAEV,
         batching: bool = False,
-    ):
+    ) -> None:
         self.name = name
         self.collector_id = collector_id
 
@@ -62,30 +65,9 @@ class BasicCollectorEngine:
 
         self.logger = logging.getLogger(__name__)
         self.current_summary = ExpectationSummary()
-        self.oaev_detection_helper = None
-        self.expectation_uploader = None
-        self.trace_uploader = None
-
-        self.configured = False
-
-    @property
-    def data_fetcher_model(self):
-        return self.source.data_fetcher_model
-
-    @property
-    def signatures(self):
-        return self.source.signatures
-
-    def configure_engine(self, config, batching=False):
-        self.logger.info(
-            f"{LOG_PREFIX} Supported signatures: {[sig.value for sig in self.signatures]}"
-        )
-        self.config = config
-        self.batching = batching
-
         self.oaev_detection_helper = OpenAEVDetectionHelper(
             logger=self.logger,
-            relevant_signatures_types=self.signatures,
+            relevant_signatures_types=self.source.signatures,
         )
         self.expectation_uploader = ExpectationUploader(
             oaev_api=self.oaev_api,
@@ -97,6 +79,22 @@ class BasicCollectorEngine:
             collector_name=self.name,
         )
 
+        self.configured = False
+
+    @property
+    def data_fetcher_model(self) -> type[DataFetcherProtocol]:
+        return self.source.data_fetcher_model
+
+    @property
+    def signatures(self) -> list[SignatureTypes]:
+        return self.source.signatures
+
+    def configure_engine(self, config, batching=False) -> None:
+        self.logger.info(
+            f"{LOG_PREFIX} Supported signatures: {[sig.value for sig in self.signatures]}"
+        )
+        self.config = config
+        self.batching = batching
         self._reset_summary()
         self.configured = True
 
@@ -109,14 +107,14 @@ class BasicCollectorEngine:
             total_processing_time=None,
         )
 
-    def _filter_supported(self, expectations):
+    def _filter_supported(self, expectations: ExpectationsList) -> ExpectationsList:
         return [
             exp
             for exp in expectations
             if isinstance(exp, (DetectionExpectation, PreventionExpectation))
         ]
 
-    def _fetch_expectations(self) -> list[DetectionExpectation | PreventionExpectation]:
+    def _fetch_expectations(self) -> ExpectationsList:
         """Fetch expectations from OpenAEV.
 
         Returns:
@@ -141,7 +139,7 @@ class BasicCollectorEngine:
             self.logger.error(f"{LOG_PREFIX} Error fetching expectations: {e}")
             return []
 
-    def fetch_and_filter_expectations(self):
+    def fetch_and_filter_expectations(self) -> ExpectationsList:
         """fetch expectations and filter out unsupported ones (wrong expectation types)"""
         self.logger.debug(f"{LOG_PREFIX} Fetching expectations from OpenAEV...")
         expectations = self._fetch_expectations()
@@ -162,7 +160,8 @@ class BasicCollectorEngine:
         return expectations
 
     def _process_batch(
-        self, batch: list[DetectionExpectation | PreventionExpectation]
+        self,
+        batch: ExpectationsList,
     ) -> list[ExpectationResult]:
         """
         Processing a single batch of expectations through the following steps:
@@ -208,7 +207,7 @@ class BasicCollectorEngine:
                     if flag:
                         # (5) serialize data as tracedata
                         trace = self.source_handler.serialize_as_tracedata(element)
-                        traces.append(trace)
+                        traces.append(trace.model_dump())
 
                         # (6) match expectation (0) with sourcedata (1)
                         matchflag, breakflag = (
@@ -277,13 +276,14 @@ class BasicCollectorEngine:
 
             results = []
 
-            batches = [
-                expectations,
-            ]  # default: single giant batch of expectations
             if self.batching:
                 # using a retro-compatible batched
                 # instead of itertools.batched due to python 3.11 support
                 batches = batched(expectations, self.config.expectation_batch_size)
+            else:
+                batches = [
+                    expectations,
+                ]  # default: single giant batch of expectations
 
             for batch in batches:
                 self.logger.info(

@@ -1,3 +1,10 @@
-from typing import TypeAlias
+from typing import Sequence, TypeAlias
 
-SignatureGroups: TypeAlias = list[dict[str, str]]
+from pyoaev.apis.inject_expectation.model import (
+    DetectionExpectation,
+    PreventionExpectation,
+)
+
+
+ExpectationsList: TypeAlias = Sequence[DetectionExpectation | PreventionExpectation]
+SignatureGroups: TypeAlias = dict[str, list[dict[str, str]]]

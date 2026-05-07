@@ -35,9 +35,9 @@ class TestBasicCollectorEngine(unittest.TestCase):
         self.assertFalse(collector_engine.configured)
         self.assertIsNotNone(collector_engine.logger)
         self.assertIsNotNone(collector_engine.current_summary)
-        self.assertIsNone(collector_engine.oaev_detection_helper)
-        self.assertIsNone(collector_engine.expectation_uploader)
-        self.assertIsNone(collector_engine.trace_uploader)
+        self.assertIsNotNone(collector_engine.oaev_detection_helper)
+        self.assertIsNotNone(collector_engine.expectation_uploader)
+        self.assertIsNotNone(collector_engine.trace_uploader)
         self.assertEqual(collector_engine.data_fetcher_model, source.data_fetcher_model)
         self.assertEqual(collector_engine.signatures, source.signatures)
 
@@ -72,9 +72,9 @@ class TestBasicCollectorEngine(unittest.TestCase):
         self.assertFalse(collector_engine.configured)
         self.assertIsNotNone(collector_engine.logger)
         self.assertIsNotNone(collector_engine.current_summary)
-        self.assertIsNone(collector_engine.oaev_detection_helper)
-        self.assertIsNone(collector_engine.expectation_uploader)
-        self.assertIsNone(collector_engine.trace_uploader)
+        self.assertIsNotNone(collector_engine.oaev_detection_helper)
+        self.assertIsNotNone(collector_engine.expectation_uploader)
+        self.assertIsNotNone(collector_engine.trace_uploader)
 
     def test_wrong_source_init(self):
         """"""
@@ -164,6 +164,7 @@ class TestBasicCollectorEngine(unittest.TestCase):
         name = "my name is"
         collector_id = "1234abcd"
         source = MagicMock(spec=module.Source)
+        source.signatures = [MagicMock()]
         source_handler = MagicMock(spec_set=SourceHandler)
         oaev_api = MagicMock(spec_set=module.OpenAEV)
 
@@ -188,6 +189,7 @@ class TestBasicCollectorEngine(unittest.TestCase):
         name = "my name is"
         collector_id = "1234abcd"
         source = MagicMock(spec=module.Source)
+        source.signatures = [MagicMock()]
         source_handler = MagicMock(spec_set=SourceHandler)
         oaev_api = MagicMock(spec_set=module.OpenAEV)
 
@@ -215,6 +217,7 @@ class TestBasicCollectorEngine(unittest.TestCase):
         name = "my name is"
         collector_id = "1234abcd"
         source = MagicMock(spec=module.Source)
+        source.signatures = [MagicMock()]
         source_handler = MagicMock(spec_set=SourceHandler)
         oaev_api = MagicMock(spec=module.OpenAEV)
 
@@ -249,6 +252,7 @@ class TestBasicCollectorEngine(unittest.TestCase):
         name = "my name is"
         collector_id = "1234abcd"
         source = MagicMock(spec=module.Source)
+        source.signatures = [MagicMock()]
         source_handler = MagicMock(spec_set=SourceHandler)
         oaev_api = MagicMock(spec=module.OpenAEV)
 
@@ -280,7 +284,8 @@ class TestBasicCollectorEngine(unittest.TestCase):
         """"""
         name = "my name is"
         collector_id = "1234abcd"
-        source = MagicMock(spec_set=module.Source)
+        source = MagicMock(spec=module.Source)
+        source.signatures = [MagicMock()]
         source_handler = MagicMock(spec_set=SourceHandler)
         oaev_api = MagicMock(spec_set=module.OpenAEV)
         fetched_expectations = [
@@ -389,13 +394,13 @@ class TestBasicCollectorEngine(unittest.TestCase):
             expectation_id=str(expectation1.inject_expectation_id),
             is_valid=True,
             expectation=expectation1,
-            matched_alerts=[source_handler.serialize_as_tracedata.return_value],
+            matched_alerts=[source_handler.serialize_as_tracedata.return_value.model_dump.return_value],
         )
         m_expectation_result.assert_any_call(
             expectation_id=str(expectation2.inject_expectation_id),
             is_valid=False,
             expectation=expectation2,
-            matched_alerts=[source_handler.serialize_as_tracedata.return_value],
+            matched_alerts=[source_handler.serialize_as_tracedata.return_value.model_dump.return_value],
         )
         self.assertEqual(batch_results, [result1, result2])
 
