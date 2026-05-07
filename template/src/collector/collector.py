@@ -1,64 +1,97 @@
-"""Core collector."""
+import logging
 
-import os
-
-from pyoaev.daemons import CollectorDaemon  # type: ignore[import-untyped]
-from pyoaev.helpers import OpenAEVDetectionHelper  # type: ignore[import-untyped]
-from src.services.expectation_service import TemplateExpectationService
-from src.services.trace_service import TemplateTraceService
-from src.services.utils import TemplateConfig
-
-from .exception import (
+from pyoaev.daemons import CollectorDaemon
+from src.collector.engines.basic import BasicCollectorEngine
+from src.collector.models.exception import (
     CollectorConfigError,
-    CollectorProcessingError,
+    CollectorEngineConfigError,
     CollectorSetupError,
 )
-from .expectation_handler import GenericExpectationHandler
-from .expectation_manager import GenericExpectationManager
+from src.collector.models.source import (
+    Source,
+    SourceHandler,
+)
+from src.collector.protocols.engine import CollectorEngineProtocol
+from src.collector.protocols.source_handler import SourceHandlerProtocol
+from src.models.settings.config_loader import ConfigLoader
 
 LOG_PREFIX = "[Collector]"
 
 
-class Collector(CollectorDaemon):  # type: ignore[misc]
-    """Generic Collector using service provider pattern.
-
-    This collector is use-case agnostic and works with any service provider.
+class BaseCollector(CollectorDaemon):  # type: ignore[misc]
+    """
+    Generic BaseCollector providing a defined source to a generic collector engine.
+    This collector is use-case agnostic and works with any source provided.
     """
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        name: str,
+        source: Source,
+        source_handler: SourceHandlerProtocol | None = None,
+        engine_model: type[CollectorEngineProtocol] | None = None,
+    ) -> None:
         """Initialize the collector.
 
         Raises:
             CollectorConfigError: If collector initialization fails.
-
+            CollectorEngineConfigError: If collector engine initialization fails.
         """
+        self.name = name
+
         try:
-            self.config = TemplateConfig()
-            self.config_instance = self.config.load
+            if source and not isinstance(source, Source):
+                raise TypeError("Source provided is not of type Source")
+            self.source = source
+
+            if source_handler and not isinstance(source_handler, SourceHandlerProtocol):
+                raise TypeError(
+                    "Source handler provided does not follow source handler protocol"
+                )
+            self.source_handler = source_handler or SourceHandler()
+
+            if engine_model and not issubclass(engine_model, CollectorEngineProtocol):
+                raise TypeError(
+                    "Engine model provided does not follow collector engine protocol"
+                )
+            self.engine_model = engine_model or BasicCollectorEngine
+
+            self.config = ConfigLoader()
 
             super().__init__(
-                configuration=self.config_instance.to_daemon_config(),
-                callback=self._process_callback,
-                collector_type="openaev_template",
+                configuration=self.config.to_daemon_config(),
+                collector_type=f"openaev_{self.name}",
             )
 
             self.logger.info(  # type: ignore[has-type]
-                f"{LOG_PREFIX} Template Collector initialized successfully"
+                f"{LOG_PREFIX} {self.name} Collector initialized successfully"
             )
 
         except Exception as err:
-            import logging
-
             logging.basicConfig(level=logging.ERROR)
             self.logger = logging.getLogger(__name__)
             raise CollectorConfigError(
-                f"Failed to initialize the collector: {err}"
+                f"Failed to initialize the {self.name} collector: {err}"
             ) from err
 
-    def _setup(self) -> None:
+        try:
+            self.engine = self.engine_model(
+                name=self.name,
+                collector_id=self.get_id(),
+                source=self.source,
+                source_handler=self.source_handler,
+                oaev_api=self.api,
+            )
+            self.set_callback(self.engine.run_engine)
+        except Exception as err:
+            raise CollectorEngineConfigError(
+                f"Faile to initialize the engine of {self.name} collector: {err}"
+            ) from err
+
+    def _setup(self, batching=False) -> None:
         """Set up the collector.
 
-        Initializes Template services, expectation handler, expectation manager,
+        Initializes PaloAltoCortexXDR services, expectation handler, expectation manager,
         and OpenAEV detection helper. Sets up the collector for processing expectations.
 
         Raises:
@@ -70,71 +103,11 @@ class Collector(CollectorDaemon):  # type: ignore[misc]
 
             super()._setup()
 
-            self.logger.debug(f"{LOG_PREFIX} Initializing Template services...")
-
-            self.template_service = TemplateExpectationService(
-                config=self.config_instance
-            )
-
-            self.trace_service = TemplateTraceService(self.config_instance)
-
-            self.expectation_handler = GenericExpectationHandler(self.template_service)
-
-            self.expectation_manager = GenericExpectationManager(
-                oaev_api=self.api,
-                collector_id=self.get_id(),
-                expectation_handler=self.expectation_handler,
-                trace_service=self.trace_service,
-            )
-
-            supported_signatures = self.template_service.get_supported_signatures()
-            self.oaev_detection_helper = OpenAEVDetectionHelper(
-                logger=self.logger,
-                relevant_signatures_types=supported_signatures,
-            )
+            self.logger.debug(f"{LOG_PREFIX} Configuring the collector engine...")
+            self.engine.configure_engine(self.config.template, batching=batching)
 
             self.logger.info(f"{LOG_PREFIX} Collector setup completed successfully")
-            self.logger.info(
-                f"{LOG_PREFIX} Supported signatures: {[sig.value for sig in supported_signatures]}"
-            )
-
-            service_info = self.template_service.get_service_info()
-            self.logger.debug(f"{LOG_PREFIX} Service info: {service_info}")
 
         except Exception as err:
             self.logger.error(f"{LOG_PREFIX} Collector setup failed: {err}")
             raise CollectorSetupError(f"Failed to setup the collector: {err}") from err
-
-    def _process_callback(self) -> None:
-        """Process the callback for expectation processing.
-
-        Executes a single processing cycle, handling expectations through the
-        expectation manager and logging results. Handles keyboard interrupts
-        and system exits gracefully.
-
-        Raises:
-            CollectorProcessingError: If processing cycle fails.
-
-        """
-        try:
-            self.logger.info(f"{LOG_PREFIX} Starting processing cycle...")
-            self.logger.debug(
-                f"{LOG_PREFIX} Processing expectations using Template services"
-            )
-
-            results = self.expectation_manager.process_expectations(
-                detection_helper=self.oaev_detection_helper
-            )
-
-            self.logger.info(
-                f"{LOG_PREFIX} Processing cycle completed: {results.processed} total, "
-                f"{results.valid} valid, {results.invalid} invalid, "
-                f"{results.skipped} skipped"
-            )
-
-        except (KeyboardInterrupt, SystemExit):
-            self.logger.info(f"{LOG_PREFIX} Collector stopping...")
-            os._exit(0)
-        except Exception as e:
-            self.logger.error(f"{LOG_PREFIX} Error during processing cycle: {str(e)}")
-            raise CollectorProcessingError(f"Processing error: {str(e)}") from e
