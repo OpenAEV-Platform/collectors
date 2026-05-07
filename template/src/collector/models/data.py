@@ -43,7 +43,7 @@ class TraceData(BaseModel):
     alert_name: str = Field(..., description="Alert name")
     alert_link: AnyUrl = Field(..., description="Alert link")
     alert_date: datetime = Field(
-        ..., description="Alert date", default_factory=lambda: datetime.now(UTC)
+        default_factory=lambda: datetime.now(UTC), description="Alert date"
     )
 
     def __str__(self) -> str:
