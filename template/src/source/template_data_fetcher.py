@@ -6,6 +6,6 @@ class TemplateDataFetcher:
     Placeholder data fetcher class, meant to follow the data fetcher protocol
     """
 
-    def fetch_data(self):
+    def fetch_data(self) -> list[TemplateSourceData]:
         """return placeholder data in the source data format"""
         return [TemplateSourceData(), TemplateSourceData(), TemplateSourceData()]

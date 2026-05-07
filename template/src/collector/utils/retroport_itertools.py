@@ -1,8 +1,11 @@
 import itertools
 import sys
+from typing import Iterable, Sequence, TypeVar
+
+T = TypeVar("T")
 
 
-def _batched(iterable, size):
+def _batched(iterable: Sequence[T], size: int) -> Iterable[Sequence[T]]:
     """
     pseudo-itertools.batched for python 3.11
     based on https://docs.python.org/3/library/itertools.html#itertools.batched
@@ -14,7 +17,7 @@ def _batched(iterable, size):
         yield batch
 
 
-def batched(iterable, size):
+def batched(iterable: Sequence[T], size: int) -> Iterable[Sequence[T]]:
     """providing support for itertools.batched in 3.11"""
     if not (sys.version_info.major >= 3 and sys.version_info.minor >= 12):
         return _batched(iterable, size)

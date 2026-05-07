@@ -18,7 +18,7 @@ from src.models.settings.config_loader import ConfigLoader
 LOG_PREFIX = "[Collector]"
 
 
-class BaseCollector(CollectorDaemon):  # type: ignore[misc]
+class BaseCollector(CollectorDaemon):
     """
     Generic BaseCollector providing a defined source to a generic collector engine.
     This collector is use-case agnostic and works with any source provided.
@@ -63,7 +63,7 @@ class BaseCollector(CollectorDaemon):  # type: ignore[misc]
                 collector_type=f"openaev_{self.name}",
             )
 
-            self.logger.info(  # type: ignore[has-type]
+            self.logger.info(
                 f"{LOG_PREFIX} {self.name} Collector initialized successfully"
             )
 
@@ -88,7 +88,7 @@ class BaseCollector(CollectorDaemon):  # type: ignore[misc]
                 f"Faile to initialize the engine of {self.name} collector: {err}"
             ) from err
 
-    def _setup(self, batching=False) -> None:
+    def _setup(self, batching: bool = False) -> None:
         """Set up the collector.
 
         Initializes PaloAltoCortexXDR services, expectation handler, expectation manager,

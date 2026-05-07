@@ -1,6 +1,6 @@
 """Expectation uploader and expectation trace uploader based on the ResilientUploader object"""
 
-from typing import Any, Iterable
+from typing import Any, Iterable, Mapping
 
 from pyoaev.client import OpenAEV
 from src.collector.internals.resilient_uploader import ResilientUploader
@@ -25,7 +25,7 @@ class ExpectationUploader(ResilientUploader):
 
     def expectation_prepare_bulk_data(
         self, results: list[Any]
-    ) -> tuple[Iterable[Any], int]:
+    ) -> tuple[dict[str, Any], int]:
         """
         convert a list of results into the required format
         for API's bulk_update later down the road
@@ -65,11 +65,11 @@ class ExpectationUploader(ResilientUploader):
     def expectation_bulk_upload(self, bulk_data: Iterable[Any]) -> None:
         """expectation bulk update using the OpenAEV API"""
         self.oaev_api.inject_expectation.bulk_update(
-            inject_expectation_input_by=bulk_data
+            inject_expectation_input_by_id=bulk_data
         )
 
     def expectation_unpack_bulk_data(
-        self, bulk_data: Iterable[Any]
+        self, bulk_data: Mapping[str, Any]
     ) -> Iterable[tuple[str, Any]]:
         """unpack the default expectation bulk data format into a (index,data) iterable"""
         return bulk_data.items()
@@ -144,6 +144,6 @@ class TraceUploader(ResilientUploader):
         """unpack the default expectation trace bulk data format into a (index,data) iterable"""
         return enumerate(traces, 1)
 
-    def trace_individual_upload(self, _, trace: Any) -> None:
+    def trace_individual_upload(self, _: Any, trace: Any) -> None:
         """expectation trace single upload using the OpenAEV API"""
         self.oaev_api.inject_expectation_trace.create(trace.to_api_dict())
