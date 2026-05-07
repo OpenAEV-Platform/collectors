@@ -16,8 +16,9 @@ class ExpectationResult(BaseModel):
     expectation_id: str = Field(..., description="ID of the processed expectation")
     is_valid: bool = Field(..., description="Whether the expectation was validated")
     expectation: Any | None = Field(None, description="The original expectation object")
-    matched_alerts: list[dict[str, Any]] | None = Field(
-        None, description="List of alerts that matched this expectation"
+    matched_alerts: list[dict[str, Any]] = Field(
+        default_factory=list,
+        description="List of alerts that matched this expectation",
     )
     error_message: str | None = Field(
         None, description="Error message if processing failed"
@@ -29,7 +30,7 @@ class ExpectationResult(BaseModel):
     @classmethod
     def from_error(
         cls, error: Exception, expectation: DetectionExpectation | PreventionExpectation
-    ):
+    ) -> "ExpectationResult":
         """
         Produce an ExpectationResult based on an error message
         and the related expectation
@@ -38,9 +39,7 @@ class ExpectationResult(BaseModel):
             expectation_id=str(expectation.inject_expectation_id),
             is_valid=False,
             expectation=expectation,
-            matched_alerts=None,
             error_message=str(error),
-            processing_time=None,
         )
 
     def to_result_text(self) -> str:
@@ -197,7 +196,7 @@ class ExpectationTrace(BaseModel):
     @classmethod
     def from_result(
         cls, result: ExpectationResult, collector_id: str, collector_name: str
-    ):
+    ) -> "ExpectationTrace":
         """
         Produce an ExpectationTrace based on the provided ExpectationResult
         and collector's ID and name
@@ -234,26 +233,26 @@ class ExpectationSummary(BaseModel):
     )
 
     @property
-    def unsupported(self):
+    def unsupported(self) -> int:
         """Number of unsupported expectations received"""
         return self.received - self.supported
 
     @property
-    def unprocessed(self):
+    def unprocessed(self) -> int:
         """Number of expectations skipped during processing"""
         return self.supported - self.processed
 
     @property
-    def invalid(self):
+    def invalid(self) -> int:
         """Number of invalid expectations"""
         return self.processed - self.valid
 
     @property
-    def total_skipped(self):
+    def total_skipped(self) -> int:
         """Number of expectations skipped since receiving (unsupported+unprocessed)"""
         return self.received - self.processed
 
-    def __str__(self):
+    def __str__(self) -> str:
         """Return an overview of the summary as a string"""
         return (
             f"{self.received} expectations received, "

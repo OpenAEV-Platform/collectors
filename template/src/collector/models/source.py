@@ -59,12 +59,12 @@ class SourceHandler(SourceHandlerProtocol):
         self,
         signatures: list[SignatureTypes],
         expectation: DetectionExpectation | PreventionExpectation,
-    ) -> dict[str, list[dict]]:
+    ) -> SignatureGroups:
         """
         group the expectation's signatures according to the source provided signatures
         """
         supported_types = {sig_type.value for sig_type in signatures}
-        signature_groups = {}
+        signature_groups: SignatureGroups = {}
         for sig in expectation.inject_expectation_signatures:
             # ignore unsupported signatures according to source
             if sig.type.value not in supported_types:
@@ -93,7 +93,7 @@ class SourceHandler(SourceHandlerProtocol):
 
         for sig_type, signature_data in signature_groups.items():
             try:
-                filtered_data = {sig_type: oaev_data.sig_type}
+                filtered_data = {sig_type: getattr(oaev_data, sig_type)}
             except AttributeError:
                 return False
             match_result = oaev_detection_helper.match_alert_elements(
@@ -108,7 +108,6 @@ class SourceHandler(SourceHandlerProtocol):
         use pydantic-based TraceData model to serialize then return in dictionary format
         """
         trace = data.to_traces_data()
-        trace = trace.model_dump()
         return trace
 
     def match_expectation_and_sourcedata(
