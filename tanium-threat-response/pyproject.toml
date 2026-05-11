@@ -15,7 +15,7 @@ pyoaev = [
     { markers = "extra == 'prod' and extra != 'dev'", version = "2.3.5", source = "pypi"  },
     { markers = "extra == 'dev' and extra != 'prod'", path = "../../client-python", develop = true },
 ]
-thefuzz = "0.22.1"
+thefuzz = "^0.22.1"
 
 [tool.poetry.extras]
 prod = ["pyoaev"]
