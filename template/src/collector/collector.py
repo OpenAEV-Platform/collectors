@@ -1,6 +1,7 @@
 import logging
 
 from pyoaev.daemons import CollectorDaemon
+from slugify import slugify
 from src.collector.engines.basic import BasicCollectorEngine
 from src.collector.models.exception import (
     CollectorConfigError,
@@ -60,7 +61,7 @@ class BaseCollector(CollectorDaemon):
 
             super().__init__(
                 configuration=self.config.to_daemon_config(),
-                collector_type=f"openaev_{self.name}",
+                collector_type=f"openaev_{slugify(self.name)}",
             )
 
             self.logger.info(
@@ -84,6 +85,9 @@ class BaseCollector(CollectorDaemon):
             )
             self.set_callback(self.engine.run_engine)
         except Exception as err:
+            self.logger.info(
+                f"{LOG_PREFIX} {self.name} Failure during collector engine configuration: {err}"
+            )
             raise CollectorEngineConfigError(
                 f"Failed to initialize the engine of {self.name} collector: {err}"
             ) from err
