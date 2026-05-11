@@ -1,5 +1,5 @@
 """
-Template collector meant to easier collector development,
+Template collector meant to ease collector development,
 based on the distinction between the normalized collector engine
 and the custom source related to the implemented tool/service
 """

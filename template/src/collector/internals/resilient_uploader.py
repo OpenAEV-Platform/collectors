@@ -6,7 +6,7 @@ unpacked data
 """
 
 import logging
-from typing import Any, Sequence
+from typing import Any
 
 from src.collector.models.exception import (
     APIError,
@@ -14,6 +14,7 @@ from src.collector.models.exception import (
     BulkUploadError,
 )
 from src.collector.types.internals import (
+    BulkData,
     BulkUploadFunction,
     IndividualUploadFunction,
     PrepareBulkFunction,
@@ -43,7 +44,7 @@ class ResilientUploader:
         self._unpack_bulk_data = _unpack_bulk_data
         self._individual_upload = _individual_upload
 
-    def prepare_bulk_data(self, data: list[Any]) -> Sequence[Any]:
+    def prepare_bulk_data(self, data: list[Any]) -> BulkData:
         """
         Using the provided function, prepare the data for bulk upload
         """
@@ -65,7 +66,7 @@ class ResilientUploader:
 
         return bulk_data
 
-    def bulk_upload_data(self, bulk_data: Sequence[Any]) -> None:
+    def bulk_upload_data(self, bulk_data: BulkData) -> None:
         """
         Using the provided functions, attempt to bulk upload
         and on failure, unpack the bulk data and attempt to
