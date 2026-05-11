@@ -111,7 +111,7 @@ class TraceUploader(ResilientUploader):
 
         traces = []
         skipped_count = 0
-        for result in results:
+        for result in valid_results:
             try:
                 # skipping result without expectation_id
                 if not result.expectation_id:
