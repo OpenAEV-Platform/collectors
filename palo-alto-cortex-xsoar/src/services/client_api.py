@@ -15,6 +15,8 @@ class PaloAltoCortexXSOARClientAPI:
         self._auth = auth
         self.api_url = api_url
 
+        self.session = self._prepare_session()
+
     def _build_url(self, path: str) -> str:
         """Build a full URL from the configured api_url and a path."""
         return f"{self.api_url.rstrip('/')}{path}"
@@ -61,8 +63,7 @@ class PaloAltoCortexXSOARClientAPI:
         if to_date:
             body["filter"]["toDate"] = to_date
 
-        session = self._prepare_session()
-        response = session.post(
+        response = self.session.post(
             url, headers=headers, json=body, timeout=REQUESTS_TIMEOUT_SECONDS
         )
         response.raise_for_status()
