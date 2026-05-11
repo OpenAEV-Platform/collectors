@@ -27,12 +27,12 @@ class ConfigLoaderCollector(_ConfigLoaderCollector):
     """
 
     id: str = Field(
-        alias="Collector_ID",
+        alias="COLLECTOR_ID",
         default="template--0413e3c7-5c9e-46f5-adc4-33832e9b49a1",
         description="A unique UUIDv4 identifier for this collector instance.",
     )
     name: str = Field(
-        alias="Collector_NAME",
+        alias="COLLECTOR_NAME",
         default="Template",
         description="Name of the collector.",
     )
