@@ -82,7 +82,7 @@ def test_fetch_alerts_pagination(fetcher, mock_client):
     alert2 = Alert(
         alert_id="a2",
         detection_timestamp=2000,
-        actor_process_command_line="oaev-implant-2-agent-2",
+        actor_process_image_name="oaev-implant-2-agent-2",
     )
 
     incident1 = Incident(id="i1", CustomFields=CustomFields(xdralerts=[alert1]))
