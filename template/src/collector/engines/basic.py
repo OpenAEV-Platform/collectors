@@ -43,22 +43,17 @@ class BasicCollectorEngine:
         self.collector_id = collector_id
 
         if source and not isinstance(source, Source):
-            # TODO custom exception + logging
-            raise TypeError("Source provided is not of type Source")  # TODO
+            raise TypeError("Source provided is not of type Source")
         self.source = source
 
         if source_handler and not isinstance(source_handler, SourceHandlerProtocol):
-            # TODO custom exception + logging
             raise TypeError(
                 "Source handler provided does not follow source handler protocol"
-            )  # TODO
+            )
         self.source_handler = source_handler
 
         if oaev_api and not isinstance(oaev_api, OpenAEV):
-            # TODO custom exception + logging
-            raise TypeError(
-                "Source handler provided does not follow source handler protocol"
-            )  # TODO
+            raise TypeError("OAEV API must be of OpenAEV type")
         self.oaev_api = oaev_api
 
         self.batching = batching
