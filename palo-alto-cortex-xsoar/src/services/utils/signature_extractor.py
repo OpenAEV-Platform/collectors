@@ -75,9 +75,6 @@ class SignatureExtractor:
         signature_groups = defaultdict(list)
         for sig in expectation.inject_expectation_signatures:
             sig_type = sig.type.value if hasattr(sig.type, "value") else str(sig.type)
-            print(
-                f"DEBUG_EXTRACTOR: sig_type={sig_type}, supported_types={supported_types}"
-            )
 
             if supported_types and sig_type not in supported_types:
                 continue
@@ -85,6 +82,5 @@ class SignatureExtractor:
             if sig_type == "end_date":
                 continue
 
-            print(f"DEBUG_EXTRACTOR: ADDING {sig_type}")
             signature_groups[sig_type].append({"type": sig_type, "value": sig.value})
         return signature_groups
