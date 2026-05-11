@@ -5,6 +5,5 @@ from pyoaev.apis.inject_expectation.model import (
     PreventionExpectation,
 )
 
-
 ExpectationsList: TypeAlias = Sequence[DetectionExpectation | PreventionExpectation]
 SignatureGroups: TypeAlias = dict[str, list[dict[str, str]]]

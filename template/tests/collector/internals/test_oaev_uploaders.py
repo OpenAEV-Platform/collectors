@@ -79,7 +79,7 @@ class TestExpectationUploader(unittest.TestCase):
         self.expectation_uploader.expectation_bulk_upload(bulk_data)
 
         self.oaev_api.inject_expectation.bulk_update.assert_called_once_with(
-            inject_expectation_input_by=bulk_data
+            inject_expectation_input_by_id=bulk_data
         )
 
     def test_expectation_uploader_expectation_unpack_bulk_data(self):

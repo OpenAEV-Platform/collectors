@@ -1,6 +1,7 @@
-from typing import Any, Callable, Iterable, Mapping, TypeAlias
+from typing import Any, Callable, Iterable, Mapping, Sequence, TypeAlias
 
-PrepareBulkFunction: TypeAlias = Callable[[list[Any]], tuple[Iterable[Any], int]]
-BulkUploadFunction: TypeAlias = Callable[[Iterable[Any]], None]
-UnpackBulkFunction: TypeAlias = Callable[[Iterable[Any] | Mapping[str, Any]], Iterable[tuple[Any, Any]]]
+BulkData: TypeAlias = Mapping[str, Any] | Sequence[Any]
+PrepareBulkFunction: TypeAlias = Callable[[list[Any]], tuple[BulkData, int]]
+BulkUploadFunction: TypeAlias = Callable[[BulkData], None]
+UnpackBulkFunction: TypeAlias = Callable[[BulkData], Iterable[tuple[Any, Any]]]
 IndividualUploadFunction: TypeAlias = Callable[[Any, Any], None]

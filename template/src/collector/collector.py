@@ -85,14 +85,14 @@ class BaseCollector(CollectorDaemon):
             self.set_callback(self.engine.run_engine)
         except Exception as err:
             raise CollectorEngineConfigError(
-                f"Faile to initialize the engine of {self.name} collector: {err}"
+                f"Failed to initialize the engine of {self.name} collector: {err}"
             ) from err
 
     def _setup(self, batching: bool = False) -> None:
         """Set up the collector.
 
-        Initializes PaloAltoCortexXDR services, expectation handler, expectation manager,
-        and OpenAEV detection helper. Sets up the collector for processing expectations.
+        Setup the collector daemon and configure the engine.
+        Set up the collector for processing expectations.
 
         Raises:
             CollectorSetupError: If collector setup fails.

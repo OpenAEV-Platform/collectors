@@ -394,13 +394,17 @@ class TestBasicCollectorEngine(unittest.TestCase):
             expectation_id=str(expectation1.inject_expectation_id),
             is_valid=True,
             expectation=expectation1,
-            matched_alerts=[source_handler.serialize_as_tracedata.return_value.model_dump.return_value],
+            matched_alerts=[
+                source_handler.serialize_as_tracedata.return_value.model_dump.return_value
+            ],
         )
         m_expectation_result.assert_any_call(
             expectation_id=str(expectation2.inject_expectation_id),
             is_valid=False,
             expectation=expectation2,
-            matched_alerts=[source_handler.serialize_as_tracedata.return_value.model_dump.return_value],
+            matched_alerts=[
+                source_handler.serialize_as_tracedata.return_value.model_dump.return_value
+            ],
         )
         self.assertEqual(batch_results, [result1, result2])
 
