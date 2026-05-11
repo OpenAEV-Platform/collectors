@@ -136,4 +136,8 @@ def _extract_implant_names(alert: Alert) -> list[str]:
         matches = IMPLANT_PATTERN.findall(alert.actor_process_command_line)
         names.update(matches)
 
+    if alert.actor_process_image_name:
+        matches = IMPLANT_PATTERN.findall(alert.actor_process_image_name)
+        names.update(matches)
+
     return list(names)
