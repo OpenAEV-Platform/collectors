@@ -15,6 +15,7 @@ pyoaev = [
     { markers = "extra == 'prod' and extra != 'dev'", version = "2.260525.0", source = "pypi"  },
     { markers = "extra == 'dev' and extra != 'prod'", path = "../../client-python", develop = true },
 ]
+json-api-doc = "^0.15.0"
 
 [tool.poetry.extras]
 prod = ["pyoaev"]
