@@ -13,6 +13,7 @@ packages = [
 
 [tool.poetry.dependencies]
 python = "^3.11"
+json-api-doc = "^0.15.0"
 
 [[tool.poetry.dependencies.pyoaev]]
 markers = "extra == 'prod' and extra != 'dev'"
