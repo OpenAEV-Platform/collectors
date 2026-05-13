@@ -18,7 +18,7 @@ from src.collector.models.expectations import ExpectationResult, ExpectationSumm
 from src.collector.models.source import Source
 from src.collector.protocols.data_fetcher import DataFetcherProtocol
 from src.collector.protocols.source_handler import SourceHandlerProtocol
-from src.collector.types.collector import ExpectationsList
+from src.collector.types.collector import CustomConfig, ExpectationsList
 from src.collector.utils.retroport_itertools import batched
 
 LOG_PREFIX = "[BasicCollectorEngine]"
@@ -84,7 +84,7 @@ class BasicCollectorEngine:
     def signatures(self) -> list[SignatureTypes]:
         return self.source.signatures
 
-    def configure_engine(self, config, batching=False) -> None:
+    def configure_engine(self, config: CustomConfig, batching: bool = False) -> None:
         self.logger.info(
             f"{LOG_PREFIX} Supported signatures: {[sig.value for sig in self.signatures]}"
         )
@@ -178,7 +178,9 @@ class BasicCollectorEngine:
                 f"{LOG_PREFIX} Fetching data providing "
                 f"data fetcher {self.data_fetcher_model} to source handler"
             )
-            data = self.source_handler.get_source_data(self.data_fetcher_model())
+            data = self.source_handler.get_source_data(
+                self.data_fetcher_model(self.source_handler.config)
+            )
         except Exception as err:  # per batch
             batch_results = [
                 ExpectationResult.from_error(

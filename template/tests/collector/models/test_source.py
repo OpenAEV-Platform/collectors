@@ -106,14 +106,27 @@ class SourceTest(unittest.TestCase):
 
 
 class SourceHandlerTest(unittest.TestCase):
+    def test_source_handler_init(self):
+        """
+        test the proper init of the SourceHandler object
+        """
+        config = MagicMock()
+
+        source_handler = module.SourceHandler(config=config)
+
+        self.assertEqual(config, source_handler.config)
+
     def test_get_source_data(self):
         """
         assert the calls made to data fetcher by source handler
         for the get_source_data function
         """
+        config = MagicMock()
         data_fetcher = MagicMock()
 
-        module.SourceHandler().get_source_data(data_fetcher)
+        source_handler = module.SourceHandler(config=config)
+
+        source_handler.get_source_data(data_fetcher)
 
         data_fetcher.fetch_data.assert_called_once()
 
@@ -123,8 +136,11 @@ class SourceHandlerTest(unittest.TestCase):
         for the serialize_as_oaevdata function
         """
         data = MagicMock()
+        config = MagicMock()
 
-        module.SourceHandler().serialize_as_oaevdata(data)
+        source_handler = module.SourceHandler(config=config)
+
+        source_handler.serialize_as_oaevdata(data)
 
         data.to_oaev_data.assert_called_once()
 
@@ -149,8 +165,11 @@ class SourceHandlerTest(unittest.TestCase):
                 end_date_ies,
             ]
         )
+        config = MagicMock()
 
-        signature_groups = module.SourceHandler().get_expectation_signature_groups(
+        source_handler = module.SourceHandler(config=config)
+
+        signature_groups = source_handler.get_expectation_signature_groups(
             signatures, expectation
         )
 
@@ -173,8 +192,11 @@ class SourceHandlerTest(unittest.TestCase):
         oaev_data = MagicMock()
         oaev_detection_helper = MagicMock()
         oaev_detection_helper.match_alert_elements.return_value = True
+        config = MagicMock()
 
-        flag = module.SourceHandler().match_signature_groups_and_oaevdata(
+        source_handler = module.SourceHandler(config=config)
+
+        flag = source_handler.match_signature_groups_and_oaevdata(
             signature_groups, oaev_data, oaev_detection_helper
         )
 
@@ -192,8 +214,11 @@ class SourceHandlerTest(unittest.TestCase):
         oaev_data = MagicMock()
         oaev_detection_helper = MagicMock()
         oaev_detection_helper.match_alert_elements.return_value = False
+        config = MagicMock()
 
-        flag = module.SourceHandler().match_signature_groups_and_oaevdata(
+        source_handler = module.SourceHandler(config=config)
+
+        flag = source_handler.match_signature_groups_and_oaevdata(
             signature_groups, oaev_data, oaev_detection_helper
         )
 
@@ -211,8 +236,11 @@ class SourceHandlerTest(unittest.TestCase):
         oaev_data = None
         oaev_detection_helper = MagicMock()
         oaev_detection_helper.match_alert_elements.return_value = True
+        config = MagicMock()
 
-        flag = module.SourceHandler().match_signature_groups_and_oaevdata(
+        source_handler = module.SourceHandler(config=config)
+
+        flag = source_handler.match_signature_groups_and_oaevdata(
             signature_groups, oaev_data, oaev_detection_helper
         )
 
@@ -225,8 +253,11 @@ class SourceHandlerTest(unittest.TestCase):
         for the serialize_as_tracedata function
         """
         data = MagicMock()
+        config = MagicMock()
 
-        module.SourceHandler().serialize_as_tracedata(data)
+        source_handler = module.SourceHandler(config=config)
+
+        source_handler.serialize_as_tracedata(data)
 
         data.to_traces_data.assert_called_once()
 
@@ -238,8 +269,11 @@ class SourceHandlerTest(unittest.TestCase):
         data = MagicMock()
         data.is_prevented.return_value = True
         data.is_detected.return_value = True
+        config = MagicMock()
 
-        matchflag, breakflag = module.SourceHandler().match_expectation_and_sourcedata(
+        source_handler = module.SourceHandler(config=config)
+
+        matchflag, breakflag = source_handler.match_expectation_and_sourcedata(
             expectation, data
         )
 
@@ -256,8 +290,11 @@ class SourceHandlerTest(unittest.TestCase):
         data = MagicMock()
         data.is_prevented.return_value = False
         data.is_detected.return_value = True
+        config = MagicMock()
 
-        matchflag, breakflag = module.SourceHandler().match_expectation_and_sourcedata(
+        source_handler = module.SourceHandler(config=config)
+
+        matchflag, breakflag = source_handler.match_expectation_and_sourcedata(
             expectation, data
         )
 
@@ -274,8 +311,11 @@ class SourceHandlerTest(unittest.TestCase):
         data = MagicMock()
         data.is_prevented.return_value = True
         data.is_detected.return_value = True
+        config = MagicMock()
 
-        matchflag, breakflag = module.SourceHandler().match_expectation_and_sourcedata(
+        source_handler = module.SourceHandler(config=config)
+
+        matchflag, breakflag = source_handler.match_expectation_and_sourcedata(
             expectation, data
         )
 
@@ -292,8 +332,11 @@ class SourceHandlerTest(unittest.TestCase):
         data = MagicMock()
         data.is_prevented.return_value = True
         data.is_detected.return_value = False
+        config = MagicMock()
 
-        matchflag, breakflag = module.SourceHandler().match_expectation_and_sourcedata(
+        source_handler = module.SourceHandler(config=config)
+
+        matchflag, breakflag = source_handler.match_expectation_and_sourcedata(
             expectation, data
         )
 
