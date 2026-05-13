@@ -11,7 +11,7 @@ class OAEVData(BaseModel, extra="allow"):
     Apart from context, the allowed fields are signature types (e.g. parent_process_name)
     """
 
-    __pydantic_extra__: dict[str, str] = {}  # or should it be dict[str, Any]
+    __pydantic_extra__: dict[str, str] = Field(default_factory=dict)
     _allowed_values: ClassVar[frozenset[str]] = frozenset(
         [sig.value for sig in SignatureTypes]
     )
