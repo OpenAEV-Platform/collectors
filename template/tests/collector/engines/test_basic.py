@@ -333,6 +333,7 @@ class TestBasicCollectorEngine(unittest.TestCase):
         ]
         source.data_fetcher_model = data_fetcher_model
         source_handler = MagicMock(spec=SourceHandler)
+        source_handler.config = MagicMock()
         data_element = MagicMock()
         source_handler.get_source_data.return_value = [
             data_element,
@@ -369,7 +370,9 @@ class TestBasicCollectorEngine(unittest.TestCase):
 
         batch_results = collector_engine._process_batch(batch)
 
-        source_handler.get_source_data.assert_called_with(source.data_fetcher_model())
+        source_handler.get_source_data.assert_called_with(
+            source.data_fetcher_model(source_handler.config)
+        )
 
         self.assertEqual(source_handler.serialize_as_oaevdata._mock_call_count, 3)
         source_handler.serialize_as_oaevdata.assert_called_with(data_element)

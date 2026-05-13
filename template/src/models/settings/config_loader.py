@@ -14,8 +14,8 @@ from pyoaev.configuration import Configuration
 from src.models.settings import (
     ConfigBaseSettings,
     _ConfigLoaderCollector,
-    _ConfigLoaderOAEV,
     _ConfigLoaderCustom,
+    _ConfigLoaderOAEV,
 )
 
 

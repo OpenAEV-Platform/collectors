@@ -53,13 +53,13 @@ class BaseCollector(CollectorDaemon):
             )
 
             if source and not isinstance(source, Source):
-                self.logger.error(
-                    f"{LOG_PREFIX} Source provided is not of type Source"
-                )
+                self.logger.error(f"{LOG_PREFIX} Source provided is not of type Source")
                 raise TypeError("Source provided is not of type Source")
             self.source = source
 
-            if source_handler_model and not issubclass(source_handler_model, SourceHandlerProtocol):
+            if source_handler_model and not issubclass(
+                source_handler_model, SourceHandlerProtocol
+            ):
                 self.logger.error(
                     f"{LOG_PREFIX} Source handler model provided does not follow source handler protocol"
                 )

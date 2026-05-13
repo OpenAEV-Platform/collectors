@@ -9,7 +9,7 @@ from src.collector.models.data import OAEVData, TraceData
 from src.collector.protocols.data_fetcher import DataFetcherProtocol
 from src.collector.protocols.source_data import SourceDataProtocol
 from src.collector.protocols.source_handler import SourceHandlerProtocol
-from src.collector.types.collector import SignatureGroups
+from src.collector.types.collector import CustomConfig, SignatureGroups
 
 
 class Source(BaseModel):
@@ -37,6 +37,12 @@ class SourceHandler(SourceHandlerProtocol):
     - how to serialize the source data into TraceData (serialize_as_tracedata)
     - how to match an expectation and the source data to check for detection/prevention
     """
+
+    def __init__(self, config: CustomConfig) -> None:
+        """
+        attach the source handler object the custom config provided through the base collector
+        """
+        self.config = config
 
     def get_source_data(
         self, data_fetcher: DataFetcherProtocol
