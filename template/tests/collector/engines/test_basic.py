@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, sentinel
 
 import src.collector.engines.basic as module
 from src.collector.models.source import SourceHandler
@@ -313,12 +313,14 @@ class TestBasicCollectorEngine(unittest.TestCase):
         self.assertEqual(collector_engine.current_summary.received, 1)
         self.assertEqual(collector_engine.current_summary.supported, 1)
 
+    @patch.object(module, "ExpectationProcessingError")
     @patch.object(module, "ExpectationResult")
     @patch.object(module.BasicCollectorEngine, "_reset_summary")
     def test_process_batch(
         self,
         m_reset_summary,
         m_expectation_result,
+        m_expectation_processing_error,
     ):
         """"""
         name = "my name is"
@@ -338,15 +340,20 @@ class TestBasicCollectorEngine(unittest.TestCase):
         source_handler.match_expectation_and_sourcedata.side_effect = [
             [True, True],
             [False, False],
+            Exception("Nope"),
         ]
         oaev_api = MagicMock(spec_set=module.OpenAEV)
 
         expectation1 = MagicMock()
         expectation2 = MagicMock()
-        batch = [expectation1, expectation2]
+        expectation3 = MagicMock()
+        batch = [expectation1, expectation2, expectation3]
         result1 = MagicMock()
         result2 = MagicMock()
+        result3 = MagicMock()
         m_expectation_result.side_effect = [result1, result2]
+        m_expectation_result.from_error.return_value = result3
+        m_expectation_processing_error.return_value = sentinel.exp_pro_error
 
         collector_engine = module.BasicCollectorEngine(
             name=name,
@@ -363,31 +370,41 @@ class TestBasicCollectorEngine(unittest.TestCase):
         batch_results = collector_engine._process_batch(batch)
 
         source_handler.get_source_data.assert_called_with(source.data_fetcher_model())
-        self.assertEqual(source_handler.serialize_as_oaevdata._mock_call_count, 2)
+
+        self.assertEqual(source_handler.serialize_as_oaevdata._mock_call_count, 3)
         source_handler.serialize_as_oaevdata.assert_called_with(data_element)
+
         self.assertEqual(
-            source_handler.get_expectation_signature_groups._mock_call_count, 2
+            source_handler.get_expectation_signature_groups._mock_call_count, 3
         )
         source_handler.get_expectation_signature_groups.assert_any_call(
             source.signatures, expectation1
         )
-        source_handler.get_expectation_signature_groups.assert_called_with(
+        source_handler.get_expectation_signature_groups.assert_any_call(
             source.signatures, expectation2
         )
+        source_handler.get_expectation_signature_groups.assert_called_with(
+            source.signatures, expectation3
+        )
+
         source_handler.match_signature_groups_and_oaevdata.assert_any_call(
             source_handler.get_expectation_signature_groups.return_value,
             source_handler.serialize_as_oaevdata.return_value,
             collector_engine.oaev_detection_helper,
         )
         source_handler.serialize_as_tracedata.assert_called_with(data_element)
+
         self.assertEqual(
-            source_handler.match_expectation_and_sourcedata._mock_call_count, 2
+            source_handler.match_expectation_and_sourcedata._mock_call_count, 3
         )
         source_handler.match_expectation_and_sourcedata.assert_any_call(
             expectation1, data_element
         )
-        source_handler.match_expectation_and_sourcedata.assert_called_with(
+        source_handler.match_expectation_and_sourcedata.assert_any_call(
             expectation2, data_element
+        )
+        source_handler.match_expectation_and_sourcedata.assert_called_with(
+            expectation3, data_element
         )
 
         m_expectation_result.assert_any_call(
@@ -406,7 +423,11 @@ class TestBasicCollectorEngine(unittest.TestCase):
                 source_handler.serialize_as_tracedata.return_value.model_dump.return_value
             ],
         )
-        self.assertEqual(batch_results, [result1, result2])
+        m_expectation_processing_error.assert_called_with("Processing error: Nope")
+        m_expectation_result.from_error.assert_called_with(
+            sentinel.exp_pro_error, expectation3
+        )
+        self.assertEqual(batch_results, [result1, result2, result3])
 
     @patch.object(module, "TraceUploader")
     @patch.object(module, "ExpectationUploader")

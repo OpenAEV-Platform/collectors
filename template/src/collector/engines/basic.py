@@ -171,6 +171,7 @@ class BasicCollectorEngine:
         then return a list of all the results produced from the batch
         """
         batch_results = []
+
         try:
             # (1) fetch data
             self.logger.info(
@@ -178,8 +179,24 @@ class BasicCollectorEngine:
                 f"data fetcher {self.data_fetcher_model} to source handler"
             )
             data = self.source_handler.get_source_data(self.data_fetcher_model())
+        except Exception as err:  # per batch
+            batch_results = [
+                ExpectationResult.from_error(
+                    ExpectationProcessingError(
+                        f"Batch processing error during data fetching: {err}"
+                    ),
+                    expectation,
+                )
+                for expectation in batch
+            ]
+            self.logger.error(
+                f"{LOG_PREFIX} Error processing batch during data fetching: {err}"
+            )
+            return batch_results
 
-            for expectation in batch:
+        error_count = 0
+        for expectation in batch:
+            try:
                 matched = False
                 traces = []
                 for element in data:
@@ -222,19 +239,18 @@ class BasicCollectorEngine:
                     expectation=expectation,
                     matched_alerts=traces,
                 )
-                batch_results.append(result)
-            self.logger.info(
-                f"{LOG_PREFIX} Batch processed: {len(batch_results)} results"
-            )
-        except Exception as err:  # per batch
-            batch_results = [
-                ExpectationResult.from_error(
-                    ExpectationProcessingError(f"Batch processing error: {err}"),
+            except Exception as err:
+                result = ExpectationResult.from_error(
+                    ExpectationProcessingError(f"Processing error: {err}"),
                     expectation,
                 )
-                for expectation in batch
-            ]
-            self.logger.error(f"{LOG_PREFIX} Error processing batch: {err}")
+                self.logger.error(f"{LOG_PREFIX} Processing batch: {err}")
+                error_count += 1
+            batch_results.append(result)
+
+        self.logger.info(
+            f"{LOG_PREFIX} Batch processed: {len(batch_results)} results (including {error_count} errors))"
+        )
 
         return batch_results
 
