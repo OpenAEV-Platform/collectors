@@ -29,7 +29,7 @@ class BaseCollector(CollectorDaemon):
         self,
         name: str,
         source: Source,
-        source_handler: SourceHandlerProtocol | None = None,
+        source_handler_model: type[SourceHandlerProtocol] | None = None,
         engine_model: type[CollectorEngineProtocol] | None = None,
     ) -> None:
         """Initialize the collector.
@@ -41,22 +41,6 @@ class BaseCollector(CollectorDaemon):
         self.name = name
 
         try:
-            if source and not isinstance(source, Source):
-                raise TypeError("Source provided is not of type Source")
-            self.source = source
-
-            if source_handler and not isinstance(source_handler, SourceHandlerProtocol):
-                raise TypeError(
-                    "Source handler provided does not follow source handler protocol"
-                )
-            self.source_handler = source_handler or SourceHandler()
-
-            if engine_model and not issubclass(engine_model, CollectorEngineProtocol):
-                raise TypeError(
-                    "Engine model provided does not follow collector engine protocol"
-                )
-            self.engine_model = engine_model or BasicCollectorEngine
-
             self.config = ConfigLoader()
 
             super().__init__(
@@ -67,6 +51,32 @@ class BaseCollector(CollectorDaemon):
             self.logger.info(
                 f"{LOG_PREFIX} {self.name} Collector initialized successfully"
             )
+
+            if source and not isinstance(source, Source):
+                self.logger.error(
+                    f"{LOG_PREFIX} Source provided is not of type Source"
+                )
+                raise TypeError("Source provided is not of type Source")
+            self.source = source
+
+            if source_handler_model and not issubclass(source_handler_model, SourceHandlerProtocol):
+                self.logger.error(
+                    f"{LOG_PREFIX} Source handler model provided does not follow source handler protocol"
+                )
+                raise TypeError(
+                    "Source handler model provided does not follow source handler protocol"
+                )
+            source_handler_model = source_handler_model or SourceHandler
+            self.source_handler = source_handler_model(self.config.custom)
+
+            if engine_model and not issubclass(engine_model, CollectorEngineProtocol):
+                self.logger.error(
+                    f"{LOG_PREFIX} Engine model provided does not follow collector engine protocol"
+                )
+                raise TypeError(
+                    "Engine model provided does not follow collector engine protocol"
+                )
+            self.engine_model = engine_model or BasicCollectorEngine
 
         except Exception as err:
             logging.basicConfig(level=logging.ERROR)
@@ -108,7 +118,7 @@ class BaseCollector(CollectorDaemon):
             super()._setup()
 
             self.logger.debug(f"{LOG_PREFIX} Configuring the collector engine...")
-            self.engine.configure_engine(self.config.template, batching=batching)
+            self.engine.configure_engine(self.config.custom, batching=batching)
 
             self.logger.info(f"{LOG_PREFIX} Collector setup completed successfully")
 

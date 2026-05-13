@@ -15,7 +15,7 @@ from src.models.settings import (
     ConfigBaseSettings,
     _ConfigLoaderCollector,
     _ConfigLoaderOAEV,
-    _ConfigLoaderTemplate,
+    _ConfigLoaderCustom,
 )
 
 
@@ -33,7 +33,7 @@ class ConfigLoaderCollector(_ConfigLoaderCollector):
     )
     name: str = Field(
         alias="COLLECTOR_NAME",
-        default="Template",
+        default="Custom",
         description="Name of the collector.",
     )
 
@@ -41,7 +41,7 @@ class ConfigLoaderCollector(_ConfigLoaderCollector):
 class ConfigLoader(ConfigBaseSettings):
     """Configuration loader for the collector.
 
-    Main configuration class that combines OpenAEV, collector, and Template
+    Main configuration class that combines OpenAEV, collector, and custom
     settings. Supports loading from YAML files, environment variables, and
     provides methods for converting to daemon-compatible format.
     """
@@ -54,9 +54,9 @@ class ConfigLoader(ConfigBaseSettings):
         default_factory=ConfigLoaderCollector,  # type: ignore[unused-ignore]
         description="Collector configurations.",
     )
-    template: _ConfigLoaderTemplate = Field(
-        default_factory=_ConfigLoaderTemplate,
-        description="Template configurations.",
+    custom: _ConfigLoaderCustom = Field(
+        default_factory=_ConfigLoaderCustom,
+        description="Custom configurations.",
     )
 
     @classmethod
@@ -140,11 +140,11 @@ class ConfigLoader(ConfigBaseSettings):
                     "data": int(self.collector.period.total_seconds())
                 },  # type: ignore[union-attr]
                 "collector_icon_filepath": {"data": self.collector.icon_filepath},
-                # Template configuration (flattened)
-                "template_key": {"data": self.template.key},
-                "template_time_window": {"data": self.template.time_window},
-                "template_expectation_batch_size": {
-                    "data": self.template.expectation_batch_size
+                # Custom configuration (flattened)
+                "custom_key": {"data": self.custom.key},
+                "custom_time_window": {"data": self.custom.time_window},
+                "custom_expectation_batch_size": {
+                    "data": self.custom.expectation_batch_size
                 },
             },
             config_base_model=self,
