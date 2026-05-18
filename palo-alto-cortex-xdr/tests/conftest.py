@@ -17,6 +17,7 @@ def correct_config():
         {
             "OPENAEV_URL": "http://url",
             "OPENAEV_TOKEN": "token",
+            "OPENAEV_TENANT_ID": "deadbeef-dead-beef-dead-beefdeadbeef",
             "COLLECTOR_ID": "collector-id",
             "COLLECTOR_NAME": "collector name",
             "COLLECTOR_LOG_LEVEL": "info",

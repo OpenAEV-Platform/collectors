@@ -1,12 +1,14 @@
 openaev:
   url: 'http://localhost:3001'
   token: 'ChangeMe'
+# tenant_id: 'ChangeMe'
 
 collector:
-  id: 'changeme'
+  id: 'ChangeMe'
   name: 'Microsoft Defender'
   period: 'PT1M'
-  log_level: 'info'
+  log_level: 'error'
+  platform: 'EDR'
   microsoft_defender_tenant_id: ''
   microsoft_defender_client_id: ''
   microsoft_defender_client_secret: ''

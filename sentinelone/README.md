@@ -49,35 +49,42 @@ The collector supports multiple configuration sources in order of precedence:
 
 Below are the parameters you'll need to set for OpenAEV:
 
-| Parameter     | config.yml    | Docker environment variable | Mandatory | Description                                          |
-|---------------|---------------|-----------------------------|-----------|------------------------------------------------------|
-| OpenAEV URL   | openaev.url   | `OPENAEV_URL`               | Yes       | The URL of the OpenAEV platform.                    |
-| OpenAEV Token | openaev.token | `OPENAEV_TOKEN`             | Yes       | The default admin token set in the OpenAEV platform.|
+| Parameter         | config.yml        | Docker environment variable | Mandatory | Description                                           |
+|-------------------|-------------------|-----------------------------|-----------|-------------------------------------------------------|
+| OpenAEV URL       | openaev.url       | `OPENAEV_URL`               | Yes       | The URL of the OpenAEV platform.                      |
+| OpenAEV Token     | openaev.token     | `OPENAEV_TOKEN`             | Yes       | The default admin token set in the OpenAEV platform.  |
+| OpenAEV Tenant ID | openaev.tenant_id | `OPENAEV_TENANT_ID`         | No        | Identifier of the tenant within the OpenAEV platform. |
+
+> ⚠️ Warning ⚠️
+>
+> The `tenant_id` parameter is a new configuration option. A period of backward compatibility is ensured: if this key is not defined,
+> existing configurations will not be affected, and the default value will be `None`. However, if a value is provided, it will be
+> validated by Pydantic and must conform to a valid UUID format, otherwise, a validation error will be returned.
 
 ### Base collector environment variables
 
 Below are the parameters you'll need to set for running the collector properly:
 
-| Parameter        | config.yml          | Docker environment variable | Default                 | Mandatory | Description                                                                                   |
-|------------------|---------------------|-----------------------------|-------------------------|-----------|-----------------------------------------------------------------------------------------------|
-| Collector ID     | collector.id        | `COLLECTOR_ID`              | sentinelone--0b13e3f7-5c9e-46f5-acc4-33032e9b4921 | Yes       | A unique `UUIDv4` identifier for this collector instance.                                     |
-| Collector Name   | collector.name      | `COLLECTOR_NAME`            | SentinelOne             | No        | Name of the collector.                                                                        |
-| Collector Period | collector.period    | `COLLECTOR_PERIOD`          | PT2M                    | No        | Collection interval (ISO 8601 format).                                                       |
-| Log Level        | collector.log_level | `COLLECTOR_LOG_LEVEL`       | error                   | No        | Determines the verbosity of the logs. Options are `debug`, `info`, `warn`, or `error`.      |
-| Platform         | collector.platform  | `COLLECTOR_PLATFORM`        | EDR                     | No        | Type of security platform this collector works for. One of: `EDR, XDR, SIEM, SOAR, NDR, ISPM` |
-| Icon Filepath    | collector.icon_filepath | `COLLECTOR_ICON_FILEPATH` | src/img/sentinelone-logo.png | No        | Path to the icon file of the collector.                                           |
+| Parameter        | config.yml              | Docker environment variable | Default                                           | Mandatory | Description                                                                                   |
+|------------------|-------------------------|-----------------------------|---------------------------------------------------|-----------|-----------------------------------------------------------------------------------------------|
+| Collector ID     | collector.id            | `COLLECTOR_ID`              | sentinelone--0b13e3f7-5c9e-46f5-acc4-33032e9b4921 | Yes       | A unique `UUIDv4` identifier for this collector instance.                                     |
+| Collector Name   | collector.name          | `COLLECTOR_NAME`            | SentinelOne                                       | No        | Name of the collector.                                                                        |
+| Collector Period | collector.period        | `COLLECTOR_PERIOD`          | PT2M                                              | No        | Collection interval (ISO 8601 format).                                                        |
+| Log Level        | collector.log_level     | `COLLECTOR_LOG_LEVEL`       | error                                             | No        | Determines the verbosity of the logs. Options are `debug`, `info`, `warn`, or `error`.        |
+| Platform         | collector.platform      | `COLLECTOR_PLATFORM`        | EDR                                               | No        | Type of security platform this collector works for. One of: `EDR, XDR, SIEM, SOAR, NDR, ISPM` |
+| Icon Filepath    | collector.icon_filepath | `COLLECTOR_ICON_FILEPATH`   | src/img/sentinelone-logo.png                      | No        | Path to the icon file of the collector.                                                       |
 
 ### Collector extra parameters environment variables
 
 Below are the parameters you'll need to set for the collector:
 
-| Parameter                | config.yml                           | Docker environment variable            | Default                     | Mandatory | Description                                                                                        |
-|--------------------------|--------------------------------------|----------------------------------------|-----------------------------|-----------|----------------------------------------------------------------------------------------------------|
-| Base URL                 | sentinelone.base_url                 | `SENTINELONE_BASE_URL`                 | https://api.sentinelone.com | No        | SentinelOne Management Console URL                                                                 |
-| API Key                  | sentinelone.api_key                  | `SENTINELONE_API_KEY`                  |                             | Yes       | SentinelOne API token with Threats and Threat Events permissions                                  |
-| Time Window              | sentinelone.time_window              | `SENTINELONE_TIME_WINDOW`              | PT1H                        | No        | Default search time window when no date signatures are provided (ISO 8601 format)                |
-| Expectation Batch Size   | sentinelone.expectation_batch_size   | `SENTINELONE_EXPECTATION_BATCH_SIZE`   | 50                          | No        | Number of expectations to process in each batch for batch-based processing                         |
-| Enable Deep Visibility   | sentinelone.enable_deep_visibility_search | `SENTINELONE_ENABLE_DEEP_VISIBILITY_SEARCH` | false                  | No        | Enable Deep Visibility search for advanced threat detection (requires Complete license)           |
+| Parameter                | config.yml                                | Docker environment variable                 | Default                     | Mandatory | Description                                                                             |
+|--------------------------|-------------------------------------------|---------------------------------------------|-----------------------------|-----------|-----------------------------------------------------------------------------------------|
+| Base URL                 | sentinelone.base_url                      | `SENTINELONE_BASE_URL`                      | https://api.sentinelone.com | No        | SentinelOne Management Console URL                                                      |
+| API Key                  | sentinelone.api_key                       | `SENTINELONE_API_KEY`                       |                             | Yes       | SentinelOne API token with Threats and Threat Events permissions                        |
+| Time Window              | sentinelone.time_window                   | `SENTINELONE_TIME_WINDOW`                   | PT1H                        | No        | Default search time window when no date signatures are provided (ISO 8601 format)       |
+| Expectation Batch Size   | sentinelone.expectation_batch_size        | `SENTINELONE_EXPECTATION_BATCH_SIZE`        | 50                          | No        | Number of expectations to process in each batch for batch-based processing              |
+| Enable Deep Visibility   | sentinelone.enable_deep_visibility_search | `SENTINELONE_ENABLE_DEEP_VISIBILITY_SEARCH` | false                       | No        | Enable Deep Visibility search for advanced threat detection (requires Complete license) |
 
 ### Example Configuration Files
 
@@ -86,12 +93,13 @@ Below are the parameters you'll need to set for the collector:
 openaev:
   url: "https://your-openaev-instance.com"
   token: "your-openaev-token"
+# tenant_id: "ChangeMe"
 
 collector:
   id: "sentinelone--your-unique-uuid"
   name: "SentinelOne Production"
   period: "PT10M"
-  log_level: "info"
+  log_level: "error"
 
 sentinelone:
   base_url: "https://your-sentinelone-console.sentinelone.net"
@@ -105,6 +113,7 @@ sentinelone:
 ```bash
 export OPENAEV_URL="https://your-openaev-instance.com"
 export OPENAEV_TOKEN="your-openaev-token"
+export OPENAEV_TENANT_ID="ChangeMe"
 export COLLECTOR_ID="sentinelone--your-unique-uuid"
 export SENTINELONE_BASE_URL="https://your-sentinelone-console.sentinelone.net"
 export SENTINELONE_API_KEY="your-sentinelone-api-token"
@@ -145,6 +154,7 @@ docker build -t openaev-sentinelone-collector .
 docker run -d \
   -e OPENAEV_URL="https://your-openaev-instance.com" \
   -e OPENAEV_TOKEN="your-token" \
+  -e OPENAEV_TENANT_ID="your-tenant-id" \
   -e COLLECTOR_ID="sentinelone--your-uuid" \
   -e SENTINELONE_BASE_URL="https://your-console.sentinelone.net" \
   -e SENTINELONE_API_KEY="your-api-key" \

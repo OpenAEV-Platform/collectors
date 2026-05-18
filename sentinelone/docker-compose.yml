@@ -5,6 +5,7 @@ services:
     environment:
       - OPENAEV_URL=http://localhost
       - OPENAEV_TOKEN=ChangeMe
+      - OPENAEV_TENANT_ID=ChangeMe
       - COLLECTOR_ID=ChangeMe
       - SENTINELONE_BASE_URL=https://change.me
       - SENTINELONE_API_KEY=ChangeMe

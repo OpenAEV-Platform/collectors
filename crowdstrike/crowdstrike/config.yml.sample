@@ -1,16 +1,17 @@
 openaev:
   url: 'http://localhost:8080'
   token: 'ChangeMe'
+# tenant_id: 'ChangeMe'
 
 collector:
   id: 'ChangeMe'
   name: 'CrowdStrike Endpoint Security'
   period: 'PT1M'
-  log_level: 'info'
-  platform: 'ChangeMe'
+  log_level: 'error'
+  platform: 'EDR'
 
 crowdstrike:
-  api_base_url: 'ChangeMe'
-  ui_base_url: 'ChangeMe'
+  api_base_url: 'https://api.us-2.crowdstrike.com'
+  ui_base_url: 'https://falcon.us-2.crowdstrike.com'
   client_id: 'ChangeMe'
   client_secret: 'ChangeMe'
