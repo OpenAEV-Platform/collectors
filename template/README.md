@@ -1,27 +1,43 @@
 # OpenAEV Template Collector
 
-A template for OpenAEV collector built from late-2025/early-2026 collectors (e.g. SentinelOne). Provides a modular approach to collector development based on a service-provider architecture with `Protocol` based interfaces for advanced customisation.
+A template for OpenAEV collectors based on a split between a generic base collector (under `src/collector`) and a custom source (under `src/source`). The premade elements provided by the generic base collector should be enough for basic collector development. Yet, thanks to various models, protocols and alternative implementations, the generic elements can be customized, expanded and/or overwritten for more complex collectors.
 
 ## Overview
 
-This collector is not meant to be used directly in OpenAEV but as a first support for collector development. Please update this README.md with the relevant elements to describe your collector.
+This collector is not meant to be used directly in OpenAEV: it's a starting point for collector development. Please, remember to update this README.md with the relevant elements to describe your collector.
 
-The codebase to adapt to your specific needs can be found under `src/services/`, by replacing reference to the abstract TemplateData with your specific objects, updating the DataFetcher and the various services according to this custom object and your specific needs (keywords such as data and template can be used to help parsing the generic code that should be customized).
+For a basic collector, the work required should be limited to :
+1. rewriting files under `src/source` to fit your needs
+2. replacing `src/template_collector.py` with your own, feeding your source into a generic collector
+3. updating the import made in `src/__main__.py` (according to your file's name from point number 2)
 
-Once `src/services/` updated, the imports must be updated in `src/collector/collector.py`. Finally, new configuration parameters for your collector should be integrated under the `src/models/configs/` folder, replacing the `template_configs.py` file with yours.
+Under `src/source` the minimal expectations are the following:
+- a data fetcher object following the `DataFetcherProtocol` (e.g. `src/source/template_data_fetcher.py`)
+- a source data object following the `SourceDataProtocol` (e.g. `src/source/template_source_data.py`)
+- a list of supported signature types (e.g. `src/source/template_signatures.py`)
+A source (from `src/collector/models/source.py`) will be built from those three elements in the `src/templateçcollector.py` (from point number 2 in the list earlier). Protocols can be found under `src/collector/protocols/` for more details.
+
+As of now, outside of `src/collector` (generic) and `src/source` (custom) there is still a mixed codebase of generic and custom elements under `src/models/settings`. In rder to forward custom parameters to your source elements, the `src/models/custom_configs.py` is available. Note that elements added to `custom_configs.py` must be reflected in `config_loader.py` too.
+
+Your custom configuration will be propagated through the source handler to the `__init__.py` of you data fetcher object as a `custom_config` parameter. From there, it can be used at your convenience.
+
+*Nota bene*: for now, please keep the `CUSTOM_EXPECTATION_BATCH_SIZE` available in the custom parameters.
 
 Do not hesitate to check the `CONTRIBUTING.md` for more details regarding the collector design and help regarding development setup.
 
 ## Features
 
-- **Batch Processing**: Processes expectations in configurable batches for improved performance
+- **Clean Split**: Clear distinction between the generic collector and the custom source
+- **Highly Customizable**: Alternative engines, source handler injection, base models and protocols for source
+- **Opt-in Batch Processing**: Processes expectations in configurable batches for improved performance
 - **Trace Generation**: Creates detailed traces with links back if available
+- **Resilient Uploader**: Provides a resilient uploader for results and traces upload into OpenAEV
 - **Flexible Configuration**: Support for YAML, environment variables, and multiple deployment scenarios
 
 ## Requirements
 
 - OpenAEV Platform
-- Python 3.12+ (for manual deployment)
+- Python 3.11+
 
 ## Configuration
 
@@ -63,9 +79,9 @@ Below are the parameters you'll need to set for the collector:
 
 | Parameter                | config.yml                           | Docker environment variable            | Default                     | Mandatory | Description                                                                                        |
 |--------------------------|--------------------------------------|----------------------------------------|-----------------------------|-----------|----------------------------------------------------------------------------------------------------|
-| Base URL                 | template.key                 | `TEMPLATE_KEY`                 |value| No        | Template example key value                                                                 |
-| Time Window              | template.time_window              | `TEMPLATE_TIME_WINDOW`              | PT1H                        | No        | Default search time window when no date signatures are provided (ISO 8601 format)                |
-| Expectation Batch Size   | template.expectation_batch_size   | `TEMPLATE_EXPECTATION_BATCH_SIZE`   | 50                          | No        | Number of expectations to process in each batch for batch-based processing                         |
+| Key                  | custom.key                          | `CUSTOM_KEY`                      |value                        | No        | Template example key value                                                                 |
+| Time Window              | custom.time_window              | `CUSTOM_TIME_WINDOW`              | PT1H                        | No        | Default search time window when no date signatures are provided (ISO 8601 format)                |
+| Expectation Batch Size   | custom.expectation_batch_size   | `CUSTOM_EXPECTATION_BATCH_SIZE`   | 50                          | No        | Number of expectations to process in each batch for batch-based processing                         |
 
 ### Example Configuration Files
 
@@ -81,7 +97,7 @@ collector:
   period: "PT10M"
   log_level: "info"
 
-template:
+custom:
   key: "your-value"
   time_window: "PT1H"
   expectation_batch_size: 50
@@ -92,7 +108,7 @@ template:
 export OPENAEV_URL="https://your-openaev-instance.com"
 export OPENAEV_TOKEN="your-openaev-token"
 export COLLECTOR_ID="template--your-unique-uuid"
-export TEMPLATE_KEY="value"
+export CUSTOM_KEY="value"
 ```
 
 ## Deployment
@@ -130,7 +146,7 @@ docker run -d \
   -e OPENAEV_URL="https://your-openaev-instance.com" \
   -e OPENAEV_TOKEN="your-token" \
   -e COLLECTOR_ID="template--your-uuid" \
-  -e TEMPLATE_KEY="your-value" \
+  -e CUSTOM_KEY="your-value" \
   openaev-template-collector
 
 # Or run with configuration file mounted
@@ -146,23 +162,23 @@ docker run -d \
 The collector supports the following OpenAEV signature types:
 - **change_me**: detail of the supported signature
 
+### Link between collector, engine and source handler
+
+1. **Start from the daemon**: The `BaseCollector` is the foundation, inheriting from `CollectorDaemon`
+2. **Provide an engine to the collector**: A `CollectorEngine` is attached to the `BaseCollector` (by default the `BasicCollectorEngine`)
+3. **Provide a source handler to the engine**: Through the `BaseCollector` a `SourceHandler` is provided to the `CollectorEngine`
+4. **Setup and start the engine**: The `BaseCollector` will setup and start the `CollectorEngine`
+5. **Use the source handler through the engine**: While processing, the `CollectorEngine` will rely on the `SourceHandler` to operate elements from the `Source`
+
 ### Processing Flow
 
-1. **Expectation Retrieval**: Fetches pending expectations from OpenAEV
-2. **Batch Creation**: Groups expectations into configurable batches for processing
-3. **Time Window Determination**: Extracts time windows from expectations or uses default configuration
-4. **Data Fetching**: Fetch data for the determined time window
-6. **Expectation Matching**: Matches data against expectation criteria using detection helper
-7. **Result Reporting**: Updates expectation status in OpenAEV
-8. **Trace Creation**: Creates detailed traces
-
-### Batch Processing
-
-The collector implements efficient batch processing to handle large volumes of expectations:
-
-1. **Configurable Batch Size**: Processes expectations in batches based on `expectation_batch_size` configuration
-2. **Time Window Optimization**: Extracts and consolidates time windows across batch expectations
-3. **Bulk Data Fetching**: Fetches data for the entire time window rather than individual queries
+1. **Fetch and filter the expectations**: Fetches pending expectations from OpenAEV and filter them according to handled expectation types
+2. **If enabled, split expectations in batches**: Groups expectations into configurable batches for processing
+3. **Fetch data**: Fetch data using the source handler to call the data fetcher
+4. **Match data and signature types**: Match fetched data with supported signature types
+5. **Match data and expectations**: Match fetched data with expectation using the OAEV detection helper
+6. **Create and upload results**: Update expectation status in OpenAEV
+7. **Create and upload traces**: Creates detailed traces OpenAEV-side
 
 ## Troubleshooting
 
@@ -201,7 +217,7 @@ collector:
 
 #### For High-Volume Environments
 - Reduce `collector.period` for more frequent processing
-- Increase `template.expectation_batch_size` for better throughput
+- Increase `custom.expectation_batch_size` for better throughput
 
 #### For Low-Latency Requirements
 - Use shorter time windows in expectations for faster queries
@@ -209,12 +225,11 @@ collector:
 
 ## Architecture
 
-The collector uses a modular, service-provider architecture:
-
-- **Collector Core**: Main daemon handling scheduling and coordination
-- **Expectation Service**: Batch processing and data correlation logic
-- **Data Fetcher**: Dedicated service for fetching data
-- **Trace Service**: Trace creation and submission
+The collector is based on a split between a generic base collector, seen as a data processing unit, and a custom source of data. The main architectural elements are the following:
+- **BaseCollector**: Main daemon handling scheduling and engine management
+- **CollectorEngine**: Generic expectation processing engine dispatching and matching the various relevant data
+- **Source**: Container made of a data fetcher, a source data format and the associated signatures
+- **SourceHandler**: Wrapper provided to the collector engine to interact with the custom service
 - **Configuration System**: Hierarchical configuration management
 
 This architecture allows for easy extension and customization while maintaining clean separation of concerns.
