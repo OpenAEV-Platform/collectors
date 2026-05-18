@@ -1,12 +1,12 @@
 openaev:
   url: 'http://localhost:3001'
   token: 'ChangeMe'
-
+# tenant_id: 'ChangeMe'
 collector:
-  id: 'changeme'
+  id: 'ChangeMe'
   name: 'Tanium Threat Response'
   period: 'PT1M'
-  log_level: 'info'
+  log_level: 'error'
   tanium_url: ''
   tanium_url_console: ''
   tanium_ssl_verify: ''

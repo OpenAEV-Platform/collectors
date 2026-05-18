@@ -2,6 +2,7 @@
 
 from os import environ as os_environ
 from typing import Any
+from uuid import UUID
 
 import pytest
 from src.collector import Collector
@@ -25,6 +26,7 @@ def collector_config() -> dict[str, str]:  # type: ignore
     return {
         "OPENAEV_URL": "http://fake-url/",
         "OPENAEV_TOKEN": "fake-oaev-token",
+        "OPENAEV_TENANT_ID": "deadbeef-dead-beef-dead-beefdeadbeef",
         "COLLECTOR_ID": "fake-collector-id",
         "COLLECTOR_NAME": "Splunk ES",
         "SPLUNKES_BASE_URL": "https://fake-splunk.net:8089/",
@@ -73,6 +75,7 @@ def test_collector_config_missing_required_values() -> None:
     data = {
         "OPENAEV_URL": "http://fake-url",
         "OPENAEV_TOKEN": "fake-oaev-token",
+        "OPENAEV_TENANT_ID": "deadbeef-dead-beef-dead-beefdeadbeef",
         "COLLECTOR_ID": "fake-collector-id",
         "COLLECTOR_NAME": "Splunk ES",
         "SPLUNKES_BASE_URL": "https://fake-splunk.net:8089/",
@@ -108,6 +111,7 @@ def test_collector_config_missing_password() -> None:
     data = {
         "OPENAEV_URL": "http://fake-url",
         "OPENAEV_TOKEN": "fake-oaev-token",
+        "OPENAEV_TENANT_ID": "deadbeef-dead-beef-dead-beefdeadbeef",
         "COLLECTOR_ID": "fake-collector-id",
         "COLLECTOR_NAME": "Splunk ES",
         "SPLUNKES_BASE_URL": "https://fake-splunk.net:8089/",
@@ -192,6 +196,9 @@ def _then_collector_created_successfully(capfd, mock_env, collector, data) -> No
     # Verify key configuration values
     assert daemon_config.get("openaev_url") == data.get("OPENAEV_URL")  # noqa: S101
     assert daemon_config.get("openaev_token") == data.get("OPENAEV_TOKEN")  # noqa: S101
+    assert daemon_config.get("openaev_tenant_id") == UUID(
+        data.get("OPENAEV_TENANT_ID")
+    )  # noqa: S101
     assert daemon_config.get("collector_id") == data.get("COLLECTOR_ID")  # noqa: S101
     assert daemon_config.get("collector_name") == data.get(  # noqa: S101
         "COLLECTOR_NAME"

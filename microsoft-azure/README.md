@@ -65,18 +65,25 @@ Create or update `config.yml`:
 openaev:
   url: 'http://your-openaev-url:3001'
   token: 'your-openaev-token'
+# tenant_id: 'ChangeMe'
 
 collector:
   id: 'unique-collector-id'
   name: 'Microsoft Azure'
   period: 'PT1H'  # Collection period in ISO 8601
-  log_level: 'info'
+  log_level: 'error'
   microsoft_azure_tenant_id: 'your-tenant-id'
   microsoft_azure_client_id: 'your-client-id'
   microsoft_azure_client_secret: 'your-client-secret'
   microsoft_azure_subscription_id: 'your-subscription-id'
   microsoft_azure_resource_groups: 'rg1,rg2,rg3'  # Comma-separated, leave empty for all
 ```
+
+> ⚠️ Warning ⚠️
+>
+> The `tenant_id` parameter is a new configuration option. A period of backward compatibility is ensured: if this key is not defined,
+> existing configurations will not be affected, and the default value will be `None`. However, if a value is provided, it will be
+> validated by Pydantic and must conform to a valid UUID format, otherwise, a validation error will be returned.
 
 ## Installation
 
@@ -113,6 +120,7 @@ All configuration can be provided via environment variables:
 
 - `OPENAEV_URL`: OpenAEV platform URL
 - `OPENAEV_TOKEN`: OpenAEV API token
+- `OPENAEV_TENANT_ID`: Identifier of the tenant within the OpenAEV platform.
 - `COLLECTOR_ID`: Unique collector identifier
 - `COLLECTOR_NAME`: Display name for the collector
 - `COLLECTOR_PERIOD`: Collection interval as ISO 8601 period expression, e.g. PT1M: 1 minute

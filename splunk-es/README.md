@@ -34,6 +34,7 @@ See [Splunk Roles and Capabilities](https://docs.splunk.com/Documentation/Splunk
 - OpenAEV Platform
 - Splunk Enterprise Security instance.
 - Python 3.11+ (for manual deployment)
+- Splunk user account with appropriate search permissions
 
 ## Configuration
 
@@ -51,36 +52,43 @@ The collector supports multiple configuration sources in order of precedence:
 
 Below are the parameters you'll need to set for OpenAEV:
 
-| Parameter     | config.yml    | Docker environment variable | Mandatory | Description                                          |
-|---------------|---------------|-----------------------------|-----------|------------------------------------------------------|
-| OpenAEV URL   | openaev.url   | `OPENAEV_URL`               | Yes       | The URL of the OpenAEV platform.                    |
-| OpenAEV Token | openaev.token | `OPENAEV_TOKEN`             | Yes       | The default admin token set in the OpenAEV platform.|
+| Parameter         | config.yml        | Docker environment variable | Mandatory | Description                                           |
+|-------------------|-------------------|-----------------------------|-----------|-------------------------------------------------------|
+| OpenAEV URL       | openaev.url       | `OPENAEV_URL`               | Yes       | The URL of the OpenAEV platform.                      |
+| OpenAEV Token     | openaev.token     | `OPENAEV_TOKEN`             | Yes       | The default admin token set in the OpenAEV platform.  |
+| OpenAEV Tenant ID | openaev.tenant_id | `OPENAEV_TENANT_ID`         | No        | Identifier of the tenant within the OpenAEV platform. |
+
+> ⚠️ Warning ⚠️
+>
+> The `tenant_id` parameter is a new configuration option. A period of backward compatibility is ensured: if this key is not defined,
+> existing configurations will not be affected, and the default value will be `None`. However, if a value is provided, it will be
+> validated by Pydantic and must conform to a valid UUID format, otherwise, a validation error will be returned.
 
 ### Base collector environment variables
 
 Below are the parameters you'll need to set for running the collector properly:
 
-| Parameter        | config.yml          | Docker environment variable | Default                 | Mandatory | Description                                                                                   |
-|------------------|---------------------|-----------------------------|-------------------------|-----------|-----------------------------------------------------------------------------------------------|
+| Parameter        | config.yml          | Docker environment variable | Default                                         | Mandatory | Description                                                                                   |
+|------------------|---------------------|-----------------------------|-------------------------------------------------|-----------|-----------------------------------------------------------------------------------------------|
 | Collector ID     | collector.id        | `COLLECTOR_ID`              | splunk-es--0b13e3f7-5c9e-46f5-acc4-33032e9b4921 | Yes       | A unique `UUIDv4` identifier for this collector instance.                                     |
-| Collector Name   | collector.name      | `COLLECTOR_NAME`            | Splunk ES               | No        | Name of the collector.                                                                        |
-| Collector Period | collector.period    | `COLLECTOR_PERIOD`          | PT1M                    | No        | Collection interval (ISO 8601 format).                                                       |
-| Log Level        | collector.log_level | `COLLECTOR_LOG_LEVEL`       | error                   | No        | Determines the verbosity of the logs. Options are `debug`, `info`, `warn`, or `error`.      |
-| Platform         | collector.platform  | `COLLECTOR_PLATFORM`        | SIEM                    | No        | Type of security platform this collector works for. One of: `EDR, XDR, SIEM, SOAR, NDR, ISPM` |
+| Collector Name   | collector.name      | `COLLECTOR_NAME`            | Splunk ES                                       | No        | Name of the collector.                                                                        |
+| Collector Period | collector.period    | `COLLECTOR_PERIOD`          | PT1M                                            | No        | Collection interval (ISO 8601 format).                                                        |
+| Log Level        | collector.log_level | `COLLECTOR_LOG_LEVEL`       | error                                           | No        | Determines the verbosity of the logs. Options are `debug`, `info`, `warn`, or `error`.        |
+| Platform         | collector.platform  | `COLLECTOR_PLATFORM`        | SIEM                                            | No        | Type of security platform this collector works for. One of: `EDR, XDR, SIEM, SOAR, NDR, ISPM` |
 
 ### Collector extra parameters environment variables
 
 Below are the parameters you'll need to set for the collector:
 
-| Parameter         | config.yml                    | Docker environment variable | Default                     | Mandatory | Description                                                                                        |
-|-------------------|-------------------------------|-----------------------------|-----------------------------|-----------|----------------------------------------------------------------------------------------------------|
-| Base URL          | splunk_es.base_url            | `SPLUNKES_BASE_URL`         | https://localhost:8089      | Yes       | Splunk ES Management URL (typically port 8089 for REST API)                                       |
-| Username          | splunk_es.username            | `SPLUNKES_USERNAME`         |                             | Yes       | Splunk username with search permissions                                                            |
-| Password          | splunk_es.password            | `SPLUNKES_PASSWORD`         |                             | Yes       | Splunk user password                                                                               |
-| Alerts Index      | splunk_es.alerts_index        | `SPLUNKES_ALERTS_INDEX`     | main                    | No        | Splunk index to search for security alerts                                                        |
-| Time Window       | splunk_es.time_window         | `SPLUNKES_TIME_WINDOW`      | PT1H                        | No        | Default search time window when no date signatures are provided (ISO 8601 format)                |
-| Offset            | splunk_es.offset              | `SPLUNKES_OFFSET`           | PT30S                       | No        | Delay between retry attempts to account for alert ingestion latency (ISO 8601 format)            |
-| Max Retry         | splunk_es.max_retry           | `SPLUNKES_MAX_RETRY`        | 3                           | No        | Maximum number of retry attempts after the initial API call fails or returns no results          |
+| Parameter    | config.yml             | Docker environment variable | Default                 | Mandatory | Description                                                                             |
+|--------------|------------------------|-----------------------------|-------------------------|-----------|-----------------------------------------------------------------------------------------|
+| Base URL     | splunk_es.base_url     | `SPLUNKES_BASE_URL`         | https://localhost:8089  | Yes       | Splunk ES Management URL (typically port 8089 for REST API)                             |
+| Username     | splunk_es.username     | `SPLUNKES_USERNAME`         |                         | Yes       | Splunk username with search permissions                                                 |
+| Password     | splunk_es.password     | `SPLUNKES_PASSWORD`         |                         | Yes       | Splunk user password                                                                    |
+| Alerts Index | splunk_es.alerts_index | `SPLUNKES_ALERTS_INDEX`     | main                    | No        | Splunk index to search for security alerts                                              |
+| Time Window  | splunk_es.time_window  | `SPLUNKES_TIME_WINDOW`      | PT1H                    | No        | Default search time window when no date signatures are provided (ISO 8601 format)       |
+| Offset       | splunk_es.offset       | `SPLUNKES_OFFSET`           | PT30S                   | No        | Delay between retry attempts to account for alert ingestion latency (ISO 8601 format)   |
+| Max Retry    | splunk_es.max_retry    | `SPLUNKES_MAX_RETRY`        | 3                       | No        | Maximum number of retry attempts after the initial API call fails or returns no results |
 
 ### Example Configuration Files
 
@@ -89,7 +97,7 @@ Below are the parameters you'll need to set for the collector:
 openaev:
   url: "https://your-openaev-instance.com"
   token: "your-openaev-token"
-
+# tenant_id: "your-openaev-tenant-id"
 collector:
   id: "splunk-es--your-unique-uuid"
   name: "Splunk ES Production"
@@ -109,6 +117,7 @@ splunk_es:
 ```bash
 export OPENAEV_URL="https://your-openaev-instance.com"
 export OPENAEV_TOKEN="your-openaev-token"
+export OPENAEV_TENANT_ID="your-openaev-tenant-id"
 export COLLECTOR_ID="splunk-es--your-unique-uuid"
 export SPLUNKES_BASE_URL="https://your-splunk-es.company.com:8089"
 export SPLUNKES_USERNAME="splunk-user"

@@ -1,10 +1,13 @@
 openaev:
   url: 'http://localhost:3001'
   token: 'ChangeMe'
+# tenant_id: 'ChangeMe'
+  url_prefix: False
+  import_only_native: "https://raw.githubusercontent.com/OpenAEV-Platform/payloads/refs/heads/main/"
 
 collector:
-  id: 'changeme'
+  id: 'ChangeMe'
   name: 'OpenAEV Datasets'
   period: 'P7D'
-  log_level: 'info'
+  log_level: 'error'
 

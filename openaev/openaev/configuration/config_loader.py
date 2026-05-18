@@ -15,6 +15,9 @@ class ConfigLoader(SettingsLoader):
                 # OpenAEV configuration (flattened)
                 "openaev_url": {"data": str(self.openaev.url)},
                 "openaev_token": {"data": self.openaev.token},
+                "openaev_tenant_id": {"data": self.openaev.tenant_id},
+                "openaev_url_prefix": {"data": self.openaev.url_prefix},
+                "openaev_import_only_native": {"data": self.openaev.import_only_native},
                 # Collector configuration (flattened)
                 "collector_id": {"data": self.collector.id},
                 "collector_name": {"data": self.collector.name},
@@ -24,8 +27,6 @@ class ConfigLoader(SettingsLoader):
                     "is_number": True,
                 },
                 "collector_icon_filepath": {"data": self.collector.icon_filepath},
-                "openaev_url_prefix": {"data": self.openaev.url_prefix},
-                "openaev_import_only_native": {"data": self.openaev.import_only_native},
             },
             config_base_model=self,
         )
