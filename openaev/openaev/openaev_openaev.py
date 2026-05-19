@@ -92,7 +92,9 @@ class OpenAEVOpenAEV(CollectorDaemon):
         if "type" in payload_document:
             del payload_document["type"]
         if payload_document.get("document_tags", []):
-            if isinstance(payload_document[0], dict):
+            if payload_document["document_tags"] and isinstance(
+                payload_document["document_tags"][0], dict
+            ):
                 payload_document["document_tags"] = [
                     tag["tag_id"] for tag in payload_document.get("document_tags", [])
                 ]
@@ -265,6 +267,7 @@ class OpenAEVOpenAEV(CollectorDaemon):
         )
         # unsure if the prefix needs to be refreshed to follow hot changes in the configuration
         self.openaev_url_prefix = self._configuration.get("openaev_url_prefix")
+        # TODO cookie-less session + retry mechanism + url builder using urllib.urlparse
         response = self.session.get(url=self.openaev_url_prefix + "manifest.json")
         payloads = response.json()
         payload_external_ids = []
