@@ -14,6 +14,8 @@ packages = [
 [tool.poetry.dependencies]
 python = "^3.11"
 json-api-doc = "^0.15.0"
+pygithub = "^2.9.1"
+requests = "<2.34"
 
 [[tool.poetry.dependencies.pyoaev]]
 markers = "extra == 'prod' and extra != 'dev'"
