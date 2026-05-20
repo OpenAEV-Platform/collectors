@@ -17,7 +17,8 @@ pyoaev = [
 ]
 json-api-doc = "^0.15.0"
 pygithub = "^2.9.1"
-requests = "<2.34"
+requests = ">=2.33.0,<2.34.0"
+orjson = "^3.11.9"
 
 [tool.poetry.extras]
 prod = ["pyoaev"]

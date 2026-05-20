@@ -55,6 +55,27 @@ class TestGithubCrawler(unittest.TestCase):
         m_requests.get.assert_called_with("https://dead/beef/feedc0de?recursive=true")
         self.assertEqual(json_file_paths, ["malware/malicious/evil/payload.json"])
 
+    @patch.object(module, "b64decode")
+    @patch.object(module, "orjson")
+    def test_get_json(self, m_orjson, m_b64decode, m_github):
+        repo_name = sentinel.repo_name
+        ref_value = sentinel.ref_value
+        content = MagicMock()
+        m_github.return_value.get_repo.return_value.get_contents.return_value = content
+
+        crawler = module.GithubCrawler(repo_name, ref_value)
+
+        json_file_path = "malware/malicious/evil/payload.json"
+
+        data = crawler.get_json(json_file_path)
+
+        m_github.return_value.get_repo.return_value.get_contents.assert_called_with(
+            "malware/malicious/evil/payload.json"
+        )
+        m_b64decode.assert_called_with(content.content)
+        m_orjson.loads.assert_called_with(m_b64decode.return_value)
+        self.assertEqual(data, m_orjson.loads.return_value)
+
     def test_get_attachment_filepaths(self, m_github):
         repo_name = sentinel.repo_name
         ref_value = sentinel.ref_value
