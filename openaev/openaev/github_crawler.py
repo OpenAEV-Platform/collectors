@@ -19,7 +19,7 @@ class GithubCrawler:
 
         self.github_client = Github()
         self.repo = self.github_client.get_repo(self.repo_name)
-        self.ref = self.github_client.get_git_ref(self.ref_value)
+        self.ref = self.repo.get_git_ref(self.ref_value)
 
     def get_json_file_paths(self):
         tree_url = self.repo.trees_url
