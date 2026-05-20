@@ -8,6 +8,7 @@ from pyoaev.configuration import Configuration
 from pyoaev.daemons import CollectorDaemon
 
 from openaev.configuration.config_loader import ConfigLoader
+from openaev.github_crawler import GithubCrawler, extract_from_url_prefix
 
 
 class OpenAEVOpenAEV(CollectorDaemon):
@@ -22,6 +23,8 @@ class OpenAEVOpenAEV(CollectorDaemon):
         )
         self.session = requests.Session()
         self.openaev_url_prefix = self._configuration.get("openaev_url_prefix")
+        repo_name, ref_value = extract_from_url_prefix(self.openaev_url_prefix)
+        self.github_crawler = GithubCrawler(repo_name, ref_value)
 
     def _create_or_get_tag(self, tag_name, tag_color="#6b7280"):
         """Create or get a tag and return its ID."""
@@ -107,6 +110,7 @@ class OpenAEVOpenAEV(CollectorDaemon):
                 if tag_id in tags_mapping
             ]
 
+            # TODO use url builder from urllib.parse
             zip_url = self.openaev_url_prefix + payload_document["document_path"]
             zip_response = self.session.get(zip_url)
             zip_response.raise_for_status()
@@ -250,7 +254,16 @@ class OpenAEVOpenAEV(CollectorDaemon):
 
         return payload_information["payload_external_id"]
 
-    def _process_single_payload(self, payload):
+    def _process_single_payload(self, payload_path):
+        payload = self.github_crawler.get_json(payload_path)
+
+        openaev_import_only_native = self._configuration.get(
+            "openaev_import_only_native"
+        )
+        if openaev_import_only_native and (
+            "native_collection" not in payload or not payload["native_collection"]
+        ):
+            return
         if self._is_valid_json_api(payload):  # new format
             return self._process_jsonapi_payload(payload)
         if self._is_valid_json_flat(payload):  # legacy format
@@ -262,25 +275,13 @@ class OpenAEVOpenAEV(CollectorDaemon):
         return
 
     def _process_message(self) -> None:
-        openaev_import_only_native = self._configuration.get(
-            "openaev_import_only_native"
-        )
-        # unsure if the prefix needs to be refreshed to follow hot changes in the configuration
-        self.openaev_url_prefix = self._configuration.get("openaev_url_prefix")
-        # TODO cookie-less session + retry mechanism + url builder using urllib.urlparse
-        response = self.session.get(url=self.openaev_url_prefix + "manifest.json")
-        payloads = response.json()
         payload_external_ids = []
+        payloads = self.github_crawler.get_json_file_paths()
 
-        for payload in payloads:
-            # Only native, continue
-            if openaev_import_only_native and (
-                "native_collection" not in payload or not payload["native_collection"]
-            ):
-                continue
-
-            payload_external_id = self._process_single_payload(payload)
-            payload_external_ids.append(payload_external_id)
+        for payload_path in payloads:
+            payload_external_id = self._process_single_payload(payload_path)
+            if payload_external_id:
+                payload_external_ids.append(payload_external_id)
 
         self.api.payload.deprecate(
             {
