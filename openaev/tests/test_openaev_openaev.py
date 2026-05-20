@@ -6,7 +6,7 @@ import openaev.openaev_openaev as module
 daemon_config_data = {
     "openaev_url": "http://fake.url",
     "openaev_token": "my_awesome_token",
-    "openaev_url_prefix": "https://fake.url/other/",
+    "openaev_url_prefix": "https://raw.githubusercontent.com/OpenAEV-Platform/payloads/refs/heads/main/",
 }
 
 
@@ -195,7 +195,18 @@ class TestOpenAEVOpenAEV(unittest.TestCase):
     def test_openaev_collector_process_jsonflat_payload(self):
         pass
 
-    def test_openaev_collector_process_single_payload(self):
+    @patch.object(module.OpenAEVOpenAEV, "_process_jsonapi_payload")
+    @patch.object(module.OpenAEVOpenAEV, "_is_valid_json_api")
+    def test_openaev_collector_process_single_payload_jsonapi_case(
+        self, m_is_valid_json_api, m_process_jsonapi_payload
+    ):
+        pass
+
+    @patch.object(module.OpenAEVOpenAEV, "_process_jsonflat_payload")
+    @patch.object(module.OpenAEVOpenAEV, "_is_valid_json_flat")
+    def test_openaev_collector_process_single_payload_jsonflat_case(
+        self, m_is_valid_json_flat, m_process_jsonflat_payload
+    ):
         pass
 
     def test_openaev_collector_process_message(self):
