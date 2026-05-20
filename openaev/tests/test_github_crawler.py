@@ -27,9 +27,14 @@ class TestGithubCrawler(unittest.TestCase):
         self.assertEqual(crawler.ref_value, sentinel.ref_value)
         self.assertEqual(crawler.github_client, m_github.return_value)
         self.assertEqual(crawler.repo, m_github.return_value.get_repo.return_value)
-        self.assertEqual(crawler.ref, m_github.return_value.get_repo.return_value.get_git_ref.return_value)
+        self.assertEqual(
+            crawler.ref,
+            m_github.return_value.get_repo.return_value.get_git_ref.return_value,
+        )
         m_github.return_value.get_repo.assert_called_with(sentinel.repo_name)
-        m_github.return_value.get_repo.return_value.get_git_ref.assert_called_with(sentinel.ref_value)
+        m_github.return_value.get_repo.return_value.get_git_ref.assert_called_with(
+            sentinel.ref_value
+        )
 
     @patch.object(module, "requests")
     def test_get_json_file_paths(self, m_requests, m_github):
@@ -38,7 +43,9 @@ class TestGithubCrawler(unittest.TestCase):
         m_github.return_value.get_repo.return_value.trees_url = (
             "https://dead/beef{/sha}"
         )
-        m_github.return_value.get_repo.return_value.get_git_ref.return_value.object.sha = "feedc0de"
+        m_github.return_value.get_repo.return_value.get_git_ref.return_value.object.sha = (
+            "feedc0de"
+        )
         m_requests.get.return_value.json.return_value = {
             "tree": [
                 {"path": "manifest.json"},
