@@ -1,5 +1,7 @@
+from base64 import b64decode
 from urllib.parse import urlparse
 
+import orjson
 import requests
 from github import Github
 
@@ -36,6 +38,11 @@ class GithubCrawler:
             and not element["path"].startswith(".")
         ]
         return json_file_paths
+
+    def get_json(self, json_file_path):
+        content = self.repo.get_contents(json_file_path)
+        data = orjson.loads(b64decode(content.content))
+        return data
 
     def get_attachment_filepaths(self, json_file_path):
         parent_path = "/".join(json_file_path.rsplit("/")[:-1])
