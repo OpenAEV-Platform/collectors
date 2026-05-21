@@ -1,5 +1,4 @@
-from base64 import b64decode
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
 
 import orjson
 import requests
@@ -41,21 +40,19 @@ class GithubCrawler:
 
     def get_json(self, json_file_path):
         content = self.repo.get_contents(json_file_path)
-        data = orjson.loads(b64decode(content.content))
+        data = content.decoded_content
+        data = orjson.loads(data)
         return data
 
-    def get_attachment_filepaths(self, json_file_path):
-        parent_path = "/".join(json_file_path.rsplit("/")[:-1])
-        folder_content = self.repo.get_contents(parent_path)
-        attachment_filepaths = [
-            contentfile.path
-            for contentfile in folder_content
-            if contentfile.path != json_file_path
-        ]
-        return attachment_filepaths
+    def get_filepath_if_exists(self, folderpath, filename):
+        """check if a specific file exists in a specific folder"""
+        filepath = f"{folderpath.rstrip('/')}/{filename.lstrip('/')}"
+        if filepath in [el.path for el in self.repo.get_contents(folderpath)]:
+            return filepath
+        return
 
-    def get_attachment_download_url(self, attachment_filepath):
-        content = self.repo.get_contents(attachment_filepath)
-        # content.url for API url
-        # content.content for the actual data
-        return content.download_url
+    def gen_raw_download_url(self, path):
+        """return the raw download URL for a specific path"""
+        path = quote(path)
+        url = f"https://raw.githubusercontent.com/{self.repo_name}/{self.ref_value}/{path}"
+        return url
