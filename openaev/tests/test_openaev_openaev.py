@@ -23,6 +23,7 @@ class TestOpenAEVOpenAEV(unittest.TestCase):
         )
         m_githubcrawler.assert_called_with("OpenAEV-Platform/payloads", "heads/main")
         self.assertEqual(collector.github_crawler, m_githubcrawler.return_value)
+        self.assertIsNone(collector.current_payload_path)
 
     def test_openaev_collector_create_or_get_tag(self, m_githubcrawler):
         api = MagicMock()
@@ -182,8 +183,12 @@ class TestOpenAEVOpenAEV(unittest.TestCase):
         self.assertIsNone(payload_document.get("id"))
         self.assertIsNone(payload_document.get("type"))
         self.assertEqual(payload_document["document_tags"], [{"key": "value"}])
+        m_githubcrawler.return_value.get_filepath_if_exists.assert_not_called()
+        m_githubcrawler.return_value.gen_raw_download_url.assert_called_with(
+            "malware/malicious/evil/legit_document.docx"
+        )
         session.get.assert_called_with(
-            collector.openaev_url_prefix + "malware/malicious/evil/legit_document.docx"
+            m_githubcrawler.return_value.gen_raw_download_url.return_value
         )
         session.get.return_value.raise_for_status.assert_called_once()
         m_bytesio.assert_any_call(session.get.return_value.content)
@@ -192,7 +197,7 @@ class TestOpenAEVOpenAEV(unittest.TestCase):
             document=payload_document,
             file=(
                 "path.file",
-                m_bytesio.return_value,
+                m_bytesio.return_value.__enter__.return_value,
                 "application/pdf",
             ),
         )
@@ -348,11 +353,11 @@ class TestOpenAEVOpenAEV(unittest.TestCase):
 
         collector = module.OpenAEVOpenAEV(_configuration)
 
-        payload_path = sentinel.payload_path
+        collector.current_payload_path = sentinel.payload_path
         _payload = MagicMock
         m_githubcrawler.return_value.get_json.return_value = _payload
 
-        data = collector._process_single_payload(payload_path)
+        data = collector._process_single_payload()
 
         m_githubcrawler.return_value.get_json.assert_called_with(sentinel.payload_path)
         m_is_valid_json_api.assert_called_with(_payload)
@@ -379,11 +384,11 @@ class TestOpenAEVOpenAEV(unittest.TestCase):
 
         collector = module.OpenAEVOpenAEV(_configuration)
 
-        payload_path = sentinel.payload_path
+        collector.current_payload_path = sentinel.payload_path
         _payload = MagicMock
         m_githubcrawler.return_value.get_json.return_value = _payload
 
-        data = collector._process_single_payload(payload_path)
+        data = collector._process_single_payload()
 
         m_githubcrawler.return_value.get_json.assert_called_with(sentinel.payload_path)
         m_is_valid_json_api.assert_called_with(_payload)
@@ -407,7 +412,8 @@ class TestOpenAEVOpenAEV(unittest.TestCase):
         collector._process_message()
 
         m_githubcrawler.return_value.get_json_file_paths.assert_called_once()
-        m_process_single_payload.assert_called_with(payload_path)
+        m_process_single_payload.assert_called_once()
+        self.assertEqual(collector.current_payload_path, sentinel.payload_path)
         api.payload.deprecate.assert_called_with(
             {
                 "collector_id": collector._configuration.get("collector_id"),

@@ -26,6 +26,8 @@ class OpenAEVOpenAEV(CollectorDaemon):
         repo_name, ref_value = extract_from_url_prefix(self.openaev_url_prefix)
         self.github_crawler = GithubCrawler(repo_name, ref_value)
 
+        self.current_payload_path = None
+
     def _create_or_get_tag(self, tag_name, tag_color="#6b7280"):
         """Create or get a tag and return its ID."""
         try:
@@ -87,7 +89,6 @@ class OpenAEVOpenAEV(CollectorDaemon):
         return attack_patterns
 
     def _process_document(self, payload, document_key, tags_mapping):
-        new_document = None
         payload_document = payload.get(document_key, {})
 
         if "id" in payload_document:
@@ -102,41 +103,63 @@ class OpenAEVOpenAEV(CollectorDaemon):
                     tag["tag_id"] for tag in payload_document.get("document_tags", [])
                 ]
 
-        if payload_document.get("document_path", ""):
-            # Upload the document
-            payload_document["document_tags"] = [
-                tags_mapping[tag_id]
-                for tag_id in payload_document.get("document_tags", [])
-                if tag_id in tags_mapping
-            ]
+        if not payload_document.get("document_path", "") and payload_document.get(
+            "document_target"
+        ):
+            folderpath = self.current_payload_path.rsplit("/", 1)[0]
+            filename = payload_document.get("document_target")
+            filepath = self.github_crawler.get_filepath_if_exists(folderpath, filename)
+            if filepath:
+                payload_document["document_path"] = filepath
+            else:
+                self.logger.warning(
+                    f"Failed to find document {filename} for payload {self.current_payload_path}"
+                )
 
-            # TODO use url builder from urllib.parse
-            zip_url = self.openaev_url_prefix + payload_document["document_path"]
-            zip_response = self.session.get(zip_url)
+        if not payload_document.get("document_name", "") and payload_document.get(
+            "document_target"
+        ):
+            payload_document["document_name"] = payload_document["document_target"]
+
+        if not payload_document.get("document_path", ""):
+            return payload_document, None
+
+        # Upload the document
+        payload_document["document_tags"] = [
+            tags_mapping[tag_id]
+            for tag_id in payload_document.get("document_tags", [])
+            if tag_id in tags_mapping
+        ]
+
+        url = self.github_crawler.gen_raw_download_url(
+            payload_document["document_path"]
+        )
+        if payload_document["document_path"].endswith(".zip"):
+            target = payload_document["document_target"]
+            zip_response = self.session.get(url)
             zip_response.raise_for_status()
-            # could using ziphyr be more efficient here?
             with io.BytesIO(zip_response.content) as zip_buffer:
                 with zipfile.ZipFile(zip_buffer) as z:
-                    file_names = z.namelist()
-                    if not file_names:
-                        raise Exception(f"No file found in zip at {zip_url}")
-                    file_name = file_names[0]
-                    with z.open(file_name, pwd=b"infected") as unzipped_file:
+                    if not target in z.namelist():
+                        raise Exception(f"No {target} file found in zip at {url}")
+                    with z.open(target, pwd=b"infected") as unzipped_file:
                         file_content = unzipped_file.read()
-                        mime_type, _ = mimetypes.guess_type(
-                            payload_document["document_name"]
-                        )
-                        if mime_type is None:
-                            mime_type = "application/octet-stream"
-                        file_handle = io.BytesIO(file_content)
-                        file = (
-                            payload_document["document_name"],
-                            file_handle,
-                            mime_type,
-                        )
-                        new_document = self.api.document.upsert(
-                            document=payload_document, file=file
-                        )
+        else:
+            file_response = self.session.get(url)
+            file_response.raise_for_status()
+            file_content = file_response.content
+
+        mime_type, _ = mimetypes.guess_type(payload_document["document_name"])
+        mime_type = mime_type or "application/octet_stream"
+        with io.BytesIO(file_content) as file_handle:
+            file = (
+                payload_document["document_name"],
+                file_handle,
+                mime_type,
+            )
+            new_document = self.api.document.upsert(
+                document=payload_document, file=file
+            )
 
         return payload_document, new_document
 
@@ -254,8 +277,8 @@ class OpenAEVOpenAEV(CollectorDaemon):
 
         return payload_information["payload_external_id"]
 
-    def _process_single_payload(self, payload_path):
-        payload = self.github_crawler.get_json(payload_path)
+    def _process_single_payload(self):
+        payload = self.github_crawler.get_json(self.current_payload_path)
 
         openaev_import_only_native = self._configuration.get(
             "openaev_import_only_native"
@@ -279,7 +302,8 @@ class OpenAEVOpenAEV(CollectorDaemon):
         payloads = self.github_crawler.get_json_file_paths()
 
         for payload_path in payloads:
-            payload_external_id = self._process_single_payload(payload_path)
+            self.current_payload_path = payload_path
+            payload_external_id = self._process_single_payload()
             if payload_external_id:
                 payload_external_ids.append(payload_external_id)
 
