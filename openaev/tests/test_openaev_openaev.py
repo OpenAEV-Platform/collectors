@@ -235,7 +235,6 @@ class TestOpenAEVOpenAEV(unittest.TestCase):
         m_githubcrawler,
     ):
         _configuration = daemon_config_data
-        api = MagicMock()
         payload = MagicMock()
         flat_payload = {
             "id": "json api id",
@@ -261,34 +260,27 @@ class TestOpenAEVOpenAEV(unittest.TestCase):
         m_process_document.return_value = payload_document, new_document
 
         collector = module.OpenAEVOpenAEV(_configuration)
-        collector.api = api
 
-        external_id = collector._process_jsonapi_payload(payload)
+        output_payload = collector._process_jsonapi_payload(payload)
 
         m_json_api_doc.deserialize.assert_called_with(payload)
         m_process_payload_tags.assert_called_with(flat_payload)
-        self.assertEqual(flat_payload["payload_tags"], new_tags)
+        self.assertEqual(output_payload["payload_tags"], new_tags)
         m_process_payload_attack_patterns.assert_called_with(flat_payload)
         self.assertEqual(
-            flat_payload["payload_attack_patterns"],
+            output_payload["payload_attack_patterns"],
             m_process_payload_attack_patterns.return_value,
         )
         m_process_document.assert_called_with(flat_payload, "dropper", tags_mapping)
-        self.assertIsNone(flat_payload.get("dropper"))
-        self.assertEqual(flat_payload["payload_document"], payload_document)
+        self.assertIsNone(output_payload.get("dropper"))
+        self.assertEqual(output_payload["payload_document"], payload_document)
         self.assertEqual(
-            flat_payload["payload_domains"],
+            output_payload["payload_domains"],
             [{"domain_name": "domain name", "domain_color": "domain color"}],
         )
-        self.assertIsNone(flat_payload.get("id"))
-        self.assertIsNone(flat_payload.get("type"))
-        self.assertIsNone(flat_payload.get("payload_id"))
-        self.assertEqual(
-            flat_payload["payload_collector"],
-            collector._configuration.get("collector_id"),
-        )
-        api.payload.upsert.assert_called_with(flat_payload)
-        self.assertEqual(external_id, "payload id")
+        self.assertIsNone(output_payload.get("id"))
+        self.assertIsNone(output_payload.get("type"))
+        self.assertIsNone(output_payload.get("payload_id"))
 
     @patch.object(module.OpenAEVOpenAEV, "_process_document")
     @patch.object(module.OpenAEVOpenAEV, "_process_payload_attack_patterns")
@@ -308,7 +300,6 @@ class TestOpenAEVOpenAEV(unittest.TestCase):
             "payload_information": payload_information,
         }
         _configuration = daemon_config_data
-        api = MagicMock()
         tags_mapping = MagicMock()
         new_tags = MagicMock()
         m_process_payload_tags.return_value = tags_mapping, new_tags
@@ -317,24 +308,17 @@ class TestOpenAEVOpenAEV(unittest.TestCase):
         m_process_document.return_value = payload_document, new_document
 
         collector = module.OpenAEVOpenAEV(_configuration)
-        collector.api = api
 
-        external_id = collector._process_jsonflat_payload(payload)
+        output_payload = collector._process_jsonflat_payload(payload)
 
         m_process_payload_tags.assert_called_with(payload)
-        self.assertEqual(payload_information["payload_tags"], new_tags)
+        self.assertEqual(output_payload["payload_tags"], new_tags)
         m_process_payload_attack_patterns.assert_called_with(payload)
         self.assertEqual(
-            payload_information["payload_attack_patterns"],
+            output_payload["payload_attack_patterns"],
             m_process_payload_attack_patterns.return_value,
         )
         m_process_document.assert_called_with(payload, "payload_document", tags_mapping)
-        self.assertEqual(
-            payload_information["payload_collector"],
-            collector._configuration.get("collector_id"),
-        )
-        api.payload.upsert.assert_called_with(payload_information)
-        self.assertEqual(external_id, "payload external id")
 
     @patch.object(module.OpenAEVOpenAEV, "_process_jsonflat_payload")
     @patch.object(module.OpenAEVOpenAEV, "_is_valid_json_flat")
@@ -349,22 +333,31 @@ class TestOpenAEVOpenAEV(unittest.TestCase):
         m_githubcrawler,
     ):
         _configuration = daemon_config_data
+        api = MagicMock()
         m_is_valid_json_api.return_value = True
+        _payload = MagicMock()
+        m_githubcrawler.return_value.get_json.return_value = _payload
+        _output_payload = {"payload_name": "name", "payload_external_id": "external-id"}
+        m_process_jsonapi_payload.return_value = _output_payload
 
         collector = module.OpenAEVOpenAEV(_configuration)
 
+        collector.api = api
         collector.current_payload_path = sentinel.payload_path
-        _payload = MagicMock
-        m_githubcrawler.return_value.get_json.return_value = _payload
 
-        data = collector._process_single_payload()
+        external_id = collector._process_single_payload()
 
         m_githubcrawler.return_value.get_json.assert_called_with(sentinel.payload_path)
         m_is_valid_json_api.assert_called_with(_payload)
         m_process_jsonapi_payload.assert_called_with(_payload)
         m_is_valid_json_flat.assert_not_called()
         m_process_jsonflat_payload.assert_not_called()
-        self.assertEqual(data, m_process_jsonapi_payload.return_value)
+        api.payload.upsert.assert_called_with(m_process_jsonapi_payload.return_value)
+        self.assertEqual(
+            _output_payload["payload_collector"],
+            collector._configuration.get("collector_id"),
+        )
+        self.assertEqual(external_id, "external-id")
 
     @patch.object(module.OpenAEVOpenAEV, "_process_jsonflat_payload")
     @patch.object(module.OpenAEVOpenAEV, "_is_valid_json_flat")
@@ -379,23 +372,32 @@ class TestOpenAEVOpenAEV(unittest.TestCase):
         m_githubcrawler,
     ):
         _configuration = daemon_config_data
+        api = MagicMock()
         m_is_valid_json_api.return_value = False
         m_is_valid_json_flat.return_value = True
+        _payload = MagicMock()
+        m_githubcrawler.return_value.get_json.return_value = _payload
+        _output_payload = {"payload_name": "name", "payload_external_id": "external-id"}
+        m_process_jsonflat_payload.return_value = _output_payload
 
         collector = module.OpenAEVOpenAEV(_configuration)
 
+        collector.api = api
         collector.current_payload_path = sentinel.payload_path
-        _payload = MagicMock
-        m_githubcrawler.return_value.get_json.return_value = _payload
 
-        data = collector._process_single_payload()
+        external_id = collector._process_single_payload()
 
         m_githubcrawler.return_value.get_json.assert_called_with(sentinel.payload_path)
         m_is_valid_json_api.assert_called_with(_payload)
         m_process_jsonapi_payload.assert_not_called()
         m_is_valid_json_flat.assert_called_with(_payload)
         m_process_jsonflat_payload.assert_called_with(_payload)
-        self.assertEqual(data, m_process_jsonflat_payload.return_value)
+        api.payload.upsert.assert_called_with(m_process_jsonflat_payload.return_value)
+        self.assertEqual(
+            _output_payload["payload_collector"],
+            collector._configuration.get("collector_id"),
+        )
+        self.assertEqual(external_id, "external-id")
 
     @patch.object(module.OpenAEVOpenAEV, "_process_single_payload")
     def test_openaev_collector_process_message(
