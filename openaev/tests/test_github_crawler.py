@@ -62,9 +62,8 @@ class TestGithubCrawler(unittest.TestCase):
         m_requests.get.assert_called_with("https://dead/beef/feedc0de?recursive=true")
         self.assertEqual(json_file_paths, ["malware/malicious/evil/payload.json"])
 
-    @patch.object(module, "b64decode")
     @patch.object(module, "orjson")
-    def test_get_json(self, m_orjson, m_b64decode, m_github):
+    def test_get_json(self, m_orjson, m_github):
         repo_name = sentinel.repo_name
         ref_value = sentinel.ref_value
         content = MagicMock()
@@ -79,48 +78,41 @@ class TestGithubCrawler(unittest.TestCase):
         m_github.return_value.get_repo.return_value.get_contents.assert_called_with(
             "malware/malicious/evil/payload.json"
         )
-        m_b64decode.assert_called_with(content.content)
-        m_orjson.loads.assert_called_with(m_b64decode.return_value)
+        m_orjson.loads.assert_called_with(content.decoded_content)
         self.assertEqual(data, m_orjson.loads.return_value)
 
-    def test_get_attachment_filepaths(self, m_github):
+    def test_get_filepath_if_exists(self, m_github):
         repo_name = sentinel.repo_name
         ref_value = sentinel.ref_value
-        contentfile1 = MagicMock()
-        contentfile1.path = "malware/malicious/evil/payload.json"
-        contentfile2 = MagicMock()
-        contentfile2.path = "malware/malicious/evil/legit_document.docx"
+        content1 = MagicMock(path="malware/malicious/evil/payload.json")
+        content2 = MagicMock(path="malware/malicious/evil/legit.docx")
         m_github.return_value.get_repo.return_value.get_contents.return_value = [
-            contentfile1,
-            contentfile2,
+            content1, content2,
         ]
 
         crawler = module.GithubCrawler(repo_name, ref_value)
 
-        json_file_path = "malware/malicious/evil/payload.json"
+        folderpath = "malware/malicious/evil"
+        filename = "payload.json"
 
-        attachment_filepaths = crawler.get_attachment_filepaths(json_file_path)
+        filepath = crawler.get_filepath_if_exists(folderpath, filename)
 
-        m_github.return_value.get_repo.return_value.get_contents.assert_called_with(
-            "malware/malicious/evil"
-        )
-        self.assertEqual(
-            attachment_filepaths, ["malware/malicious/evil/legit_document.docx"]
-        )
+        self.assertEqual(filepath, "malware/malicious/evil/payload.json")
 
-    def test_get_attachment_download_url(self, m_github):
-        repo_name = sentinel.repo_name
-        ref_value = sentinel.ref_value
-        content = MagicMock()
-        content.download_url = sentinel.download_url
-        m_github.return_value.get_repo.return_value.get_contents.return_value = content
+        filename = "wrong_filename.json"
+
+        filepath = crawler.get_filepath_if_exists(folderpath, filename)
+
+        self.assertIsNone(filepath)
+
+    def test_gen_raw_download_url(self, m_github):
+        repo_name = "repo/name"
+        ref_value = "heads/main"
 
         crawler = module.GithubCrawler(repo_name, ref_value)
 
-        attachment_filepath = "malware/malicious/evil/legit_document.docx"
-        download_url = crawler.get_attachment_download_url(attachment_filepath)
+        path = "malware/malicious/evil/payload.json"
 
-        m_github.return_value.get_repo.return_value.get_contents.assert_called_with(
-            attachment_filepath
-        )
-        self.assertEqual(download_url, sentinel.download_url)
+        raw_url = crawler.gen_raw_download_url(path)
+
+        self.assertEqual(raw_url, "https://raw.githubusercontent.com/repo/name/heads/main/malware/malicious/evil/payload.json")
