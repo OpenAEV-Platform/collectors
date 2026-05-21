@@ -15,7 +15,7 @@ class OpenAEVOpenAEV(CollectorDaemon):
     def __init__(
         self,
         configuration: Configuration,
-    ):
+    ) -> None:
         super().__init__(
             configuration=configuration,
             callback=self._process_message,
@@ -28,7 +28,7 @@ class OpenAEVOpenAEV(CollectorDaemon):
 
         self.current_payload_path = None
 
-    def _create_or_get_tag(self, tag_name, tag_color="#6b7280"):
+    def _create_or_get_tag(self, tag_name: str, tag_color: str = "#6b7280"):
         """Create or get a tag and return its ID."""
         try:
             tag_data = {"tag_name": tag_name, "tag_color": tag_color}
@@ -38,7 +38,7 @@ class OpenAEVOpenAEV(CollectorDaemon):
             self.logger.warning(f"Failed to upsert tag {tag_name}: {e}")
             return None
 
-    def _process_payload_tags(self, payload):
+    def _process_payload_tags(self, payload: dict):
         tags_mapping = {}
         payload_tags = payload.get("payload_tags", [])
         for tag in payload_tags:
@@ -71,7 +71,7 @@ class OpenAEVOpenAEV(CollectorDaemon):
 
         return tags_mapping, new_tags
 
-    def _process_payload_attack_patterns(self, payload):
+    def _process_payload_attack_patterns(self, payload: dict) -> list:
         attack_patterns = payload.get("payload_attack_patterns", [])
 
         for idx in range(len(attack_patterns)):
@@ -88,7 +88,7 @@ class OpenAEVOpenAEV(CollectorDaemon):
         ]
         return attack_patterns
 
-    def _process_document(self, payload, document_key, tags_mapping):
+    def _process_document(self, payload: dict, document_key: str, tags_mapping: dict):
         payload_document = payload.get(document_key, {})
 
         if "id" in payload_document:
@@ -163,15 +163,15 @@ class OpenAEVOpenAEV(CollectorDaemon):
 
         return payload_document, new_document
 
-    def _is_valid_json_api(self, payload):
+    def _is_valid_json_api(self, payload: dict) -> bool:
         """check if the JSON data is in the JSON:API format"""
         return "data" in payload.keys()
 
-    def _is_valid_json_flat(self, payload):
+    def _is_valid_json_flat(self, payload: dict) -> bool:
         """check if the JSON data is in the legacy flat JSON payload format"""
         return "payload_information" in payload.keys()
 
-    def _process_jsonapi_payload(self, payload):
+    def _process_jsonapi_payload(self, payload: dict) -> dict:
         """processing a single JSON:API payload"""
         flat_payload = json_api_doc.deserialize(payload)
         self.logger.info("Importing payload " + flat_payload["payload_name"])
@@ -238,14 +238,9 @@ class OpenAEVOpenAEV(CollectorDaemon):
             if key in flat_payload:
                 del flat_payload[key]
 
-        # Upsert payload
-        flat_payload["payload_collector"] = self._configuration.get("collector_id")
-        self.api.payload.upsert(flat_payload)
-        self.logger.info("Payload " + flat_payload["payload_name"] + " imported")
+        return flat_payload
 
-        return flat_payload["payload_external_id"]
-
-    def _process_jsonflat_payload(self, payload):
+    def _process_jsonflat_payload(self, payload: dict) -> dict:
         """processing a single legacy flat JSON payload"""
         payload_information = payload.get("payload_information")
         self.logger.info("Importing payload " + payload_information["payload_name"])
@@ -268,16 +263,9 @@ class OpenAEVOpenAEV(CollectorDaemon):
             if key in payload_information and new_document is not None:
                 payload_information[key] = new_document["document_id"]
 
-        # Upsert payload
-        payload_information["payload_collector"] = self._configuration.get(
-            "collector_id"
-        )
-        self.api.payload.upsert(payload_information)
-        self.logger.info("Payload " + payload_information["payload_name"] + " imported")
+        return payload_information
 
-        return payload_information["payload_external_id"]
-
-    def _process_single_payload(self):
+    def _process_single_payload(self) -> str | None:
         payload = self.github_crawler.get_json(self.current_payload_path)
 
         openaev_import_only_native = self._configuration.get(
@@ -287,15 +275,22 @@ class OpenAEVOpenAEV(CollectorDaemon):
             "native_collection" not in payload or not payload["native_collection"]
         ):
             return
-        if self._is_valid_json_api(payload):  # new format
-            return self._process_jsonapi_payload(payload)
-        if self._is_valid_json_flat(payload):  # legacy format
-            return self._process_jsonflat_payload(payload)
 
-        self.logger.warning(
-            "Skipping a payload that didn't match JSON:API format nor flat legacy format"
-        )  # should it be a logger.error / a raise Exception?
-        return
+        if self._is_valid_json_api(payload):  # new format
+            payload = self._process_jsonapi_payload(payload)
+        elif self._is_valid_json_flat(payload):  # legacy format
+            payload = self._process_jsonflat_payload(payload)
+        else:
+            self.logger.warning(
+                f"Skipping a payload that didn't match JSON:API format nor flat legacy format: {self.current_payload_path}"
+            )
+            return
+
+        payload["payload_collector"] = self._configuration.get("collector_id")
+        self.api.payload.upsert(payload)
+        self.logger.info(f"Payload {payload["payload_name"]} imported")
+
+        return payload["payload_external_id"]
 
     def _process_message(self) -> None:
         payload_external_ids = []

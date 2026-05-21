@@ -14,7 +14,7 @@ def extract_from_url_prefix(url_prefix):
 
 
 class GithubCrawler:
-    def __init__(self, repo_name, ref_value):
+    def __init__(self, repo_name: str, ref_value: str) -> None:
         self.repo_name = repo_name
         self.ref_value = ref_value
 
@@ -22,7 +22,7 @@ class GithubCrawler:
         self.repo = self.github_client.get_repo(self.repo_name)
         self.ref = self.repo.get_git_ref(self.ref_value)
 
-    def get_json_file_paths(self):
+    def get_json_file_paths(self) -> list:
         tree_url = self.repo.trees_url
         tree_url = tree_url.replace("{/sha}", f"/{self.ref.object.sha}")
         tree_url += "?recursive=true"
@@ -38,20 +38,20 @@ class GithubCrawler:
         ]
         return json_file_paths
 
-    def get_json(self, json_file_path):
+    def get_json(self, json_file_path: str) -> dict:
         content = self.repo.get_contents(json_file_path)
         data = content.decoded_content
         data = orjson.loads(data)
         return data
 
-    def get_filepath_if_exists(self, folderpath, filename):
+    def get_filepath_if_exists(self, folderpath: str, filename: str) -> str | None:
         """check if a specific file exists in a specific folder"""
         filepath = f"{folderpath.rstrip('/')}/{filename.lstrip('/')}"
         if filepath in [el.path for el in self.repo.get_contents(folderpath)]:
             return filepath
         return
 
-    def gen_raw_download_url(self, path):
+    def gen_raw_download_url(self, path: str) -> str:
         """return the raw download URL for a specific path"""
         path = quote(path)
         url = f"https://raw.githubusercontent.com/{self.repo_name}/{self.ref_value}/{path}"
