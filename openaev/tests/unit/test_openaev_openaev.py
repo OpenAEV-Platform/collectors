@@ -170,7 +170,7 @@ class TestOpenAEVOpenAEV(unittest.TestCase):
                 "id": "leftover-id",
                 "type": "documents",
                 "document_tags": [{"tag_id": "tag1"}],
-                "document_name": "path.file",
+                "document_target": "path.file",
                 "document_path": "malware/malicious/evil/legit_document.docx",
             }
         }
