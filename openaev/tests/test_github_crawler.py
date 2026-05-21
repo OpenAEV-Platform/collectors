@@ -87,7 +87,8 @@ class TestGithubCrawler(unittest.TestCase):
         content1 = MagicMock(path="malware/malicious/evil/payload.json")
         content2 = MagicMock(path="malware/malicious/evil/legit.docx")
         m_github.return_value.get_repo.return_value.get_contents.return_value = [
-            content1, content2,
+            content1,
+            content2,
         ]
 
         crawler = module.GithubCrawler(repo_name, ref_value)
@@ -115,4 +116,7 @@ class TestGithubCrawler(unittest.TestCase):
 
         raw_url = crawler.gen_raw_download_url(path)
 
-        self.assertEqual(raw_url, "https://raw.githubusercontent.com/repo/name/heads/main/malware/malicious/evil/payload.json")
+        self.assertEqual(
+            raw_url,
+            "https://raw.githubusercontent.com/repo/name/heads/main/malware/malicious/evil/payload.json",
+        )
