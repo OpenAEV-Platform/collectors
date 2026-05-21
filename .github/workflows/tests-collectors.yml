@@ -52,13 +52,7 @@ jobs:
 
       - name: Clone pyoaev (satisfies Poetry path dependency)
         working-directory: ..
-        run: |
-          BRANCH="${{ github.head_ref || github.ref_name }}"
-          if [ "$BRANCH" = "main" ]; then
-            git clone -b main https://github.com/OpenAEV-Platform/client-python
-          else
-            git clone -b release/current https://github.com/OpenAEV-Platform/client-python
-          fi
+        run: git clone -b main https://github.com/OpenAEV-Platform/client-python
 
       - name: Install Poetry
         run: pip install poetry==2.1.3
