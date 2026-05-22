@@ -9,7 +9,6 @@
   ],
   "prConcurrentLimit": 2,
   "baseBranchPatterns": [
-    "release/current",
     "main"
   ],
   "packageRules": [
@@ -21,7 +20,7 @@
     },
     {
       "matchBaseBranches": [
-        "release/current"
+        "main"
       ],
       "commitMessageSuffix": null
     },
@@ -30,7 +29,7 @@
         "$exists(isVulnerabilityAlert)"
       ],
       "matchBaseBranches": [
-        "release/current"
+        "main"
       ],
       "enabled": false
     },

@@ -16,12 +16,8 @@ RELEASE_REF="${RELEASE_REF:-main}"
 BRANCH="${CIRCLE_BRANCH:-${GITHUB_REF_NAME:-$RELEASE_REF}}"
 REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
 
-# Determine pyoaev git branch
-if [ "$BRANCH" = "main" ]; then
-  PYOAEV_BRANCH="main"
-else
-  PYOAEV_BRANCH="release/current"
-fi
+# Use pyoaev main by default
+PYOAEV_BRANCH="main"
 
 # Discover collectors with test directories
 discover_collectors() {
