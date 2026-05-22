@@ -26,15 +26,6 @@
     },
     {
       "matchJsonata": [
-        "$exists(isVulnerabilityAlert)"
-      ],
-      "matchBaseBranches": [
-        "main"
-      ],
-      "enabled": false
-    },
-    {
-      "matchJsonata": [
         "$not($exists(isVulnerabilityAlert))"
       ],
       "matchBaseBranches": [
