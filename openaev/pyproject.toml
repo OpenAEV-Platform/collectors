@@ -18,15 +18,13 @@ pygithub = "^2.9.1"
 requests = ">=2.33.0,<2.34.0"
 orjson = "^3.11.9"
 
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.5"
+
 [[tool.poetry.dependencies.pyoaev]]
 markers = "extra == 'prod' and extra != 'dev'"
 version = "2.260717.0"
 source = "pypi"
-
-[[tool.poetry.dependencies.pyoaev]]
-markers = "extra == 'dev' and extra != 'prod'"
-path = "../../client-python"
-develop = true
 
 [tool.poetry.extras]
 prod = [
