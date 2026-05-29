@@ -40,6 +40,7 @@ if [ -f "${ENV_FILE}" ]; then
 fi
 
 # Build argument list
+set -- "$@" --platform "linux/amd64"
 set -- -f "${SCRIPT_DIR}/Dockerfile_ubi9"
 set -- "$@" --build-arg "COLLECTOR_CMD=${COLLECTOR_CMD}"
 
