@@ -102,9 +102,9 @@ jobs:
           name: Build Docker image openaev/collector-mitre-attack
           command: |
             if [[ "${CIRCLE_BRANCH}" == "main" ]]; then
-              docker build --progress=plain -t openaev/collector-mitre-attack:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
+              docker build --pull --progress=plain -t openaev/collector-mitre-attack:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
             else 
-              docker build --progress=plain -t openaev/collector-mitre-attack:${CIRCLE_SHA1} .
+              docker build --pull --progress=plain -t openaev/collector-mitre-attack:${CIRCLE_SHA1} .
             fi
             docker save -o ~/openaev/images/collector-mitre-attack openaev/collector-mitre-attack:${CIRCLE_SHA1}
       - run:
@@ -112,9 +112,9 @@ jobs:
           name: Build Docker image openaev/nvd-nist-cve
           command: |
             if [[ "${CIRCLE_BRANCH}" == "main" ]]; then
-              docker build --progress=plain -t openaev/collector-nvd-nist-cve:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
+              docker build --pull --progress=plain -t openaev/collector-nvd-nist-cve:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
             else 
-              docker build --progress=plain -t openaev/collector-nvd-nist-cve:${CIRCLE_SHA1} .
+              docker build --pull --progress=plain -t openaev/collector-nvd-nist-cve:${CIRCLE_SHA1} .
             fi
             docker save -o ~/openaev/images/collector-nvd-nist-cve openaev/collector-nvd-nist-cve:${CIRCLE_SHA1}
       - run:
@@ -122,9 +122,9 @@ jobs:
           name: Build Docker image openaev/collector-microsoft-entra
           command: |
             if [[ "${CIRCLE_BRANCH}" == "main" ]]; then
-              docker build --progress=plain -t openaev/collector-microsoft-entra:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
+              docker build --pull --progress=plain -t openaev/collector-microsoft-entra:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
             else 
-              docker build --progress=plain -t openaev/collector-microsoft-entra:${CIRCLE_SHA1} .
+              docker build --pull --progress=plain -t openaev/collector-microsoft-entra:${CIRCLE_SHA1} .
             fi
             docker save -o ~/openaev/images/collector-microsoft-entra openaev/collector-microsoft-entra:${CIRCLE_SHA1}
       - run:
@@ -132,9 +132,9 @@ jobs:
           name: Build Docker image openaev/collector-tanium-threat-response
           command: |
             if [[ "${CIRCLE_BRANCH}" == "main" ]]; then
-              docker build --progress=plain -t openaev/collector-tanium-threat-response:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
+              docker build --pull --progress=plain -t openaev/collector-tanium-threat-response:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
             else 
-              docker build --progress=plain -t openaev/collector-tanium-threat-response:${CIRCLE_SHA1} .
+              docker build --pull --progress=plain -t openaev/collector-tanium-threat-response:${CIRCLE_SHA1} .
             fi
             docker save -o ~/openaev/images/collector-tanium-threat-response openaev/collector-tanium-threat-response:${CIRCLE_SHA1}
       - run:
@@ -142,9 +142,9 @@ jobs:
           name: Build Docker image openaev/collector-microsoft-defender
           command: |
             if [[ "${CIRCLE_BRANCH}" == "main" ]]; then
-              docker build --progress=plain -t openaev/collector-microsoft-defender:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
+              docker build --pull --progress=plain -t openaev/collector-microsoft-defender:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
             else 
-              docker build --progress=plain -t openaev/collector-microsoft-defender:${CIRCLE_SHA1} .
+              docker build --pull --progress=plain -t openaev/collector-microsoft-defender:${CIRCLE_SHA1} .
             fi
             docker save -o ~/openaev/images/collector-microsoft-defender openaev/collector-microsoft-defender:${CIRCLE_SHA1}
       - run:
@@ -152,9 +152,9 @@ jobs:
           name: Build Docker image openaev/collector-microsoft-sentinel
           command: |
             if [[ "${CIRCLE_BRANCH}" == "main" ]]; then
-              docker build --progress=plain -t openaev/collector-microsoft-sentinel:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
+              docker build --pull --progress=plain -t openaev/collector-microsoft-sentinel:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
             else 
-              docker build --progress=plain -t openaev/collector-microsoft-sentinel:${CIRCLE_SHA1} .
+              docker build --pull --progress=plain -t openaev/collector-microsoft-sentinel:${CIRCLE_SHA1} .
             fi
             docker save -o ~/openaev/images/collector-microsoft-sentinel openaev/collector-microsoft-sentinel:${CIRCLE_SHA1}
       - run:
@@ -162,9 +162,9 @@ jobs:
           name: Build Docker image openaev/collector-atomic-red-team
           command: |
             if [[ "${CIRCLE_BRANCH}" == "main" ]]; then
-              docker build --progress=plain -t openaev/collector-atomic-red-team:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
+              docker build --pull --progress=plain -t openaev/collector-atomic-red-team:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
             else 
-              docker build --progress=plain -t openaev/collector-atomic-red-team:${CIRCLE_SHA1} .
+              docker build --pull --progress=plain -t openaev/collector-atomic-red-team:${CIRCLE_SHA1} .
             fi
             docker save -o ~/openaev/images/collector-atomic-red-team openaev/collector-atomic-red-team:${CIRCLE_SHA1}
       - run:
@@ -172,9 +172,9 @@ jobs:
           name: Build Docker image openaev/collector-crowdstrike
           command: |
             if [[ "${CIRCLE_BRANCH}" == "main" ]]; then
-              docker build --progress=plain -t openaev/collector-crowdstrike:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
+              docker build --pull --progress=plain -t openaev/collector-crowdstrike:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
             else 
-              docker build --progress=plain -t openaev/collector-crowdstrike:${CIRCLE_SHA1} .
+              docker build --pull --progress=plain -t openaev/collector-crowdstrike:${CIRCLE_SHA1} .
             fi
             docker save -o ~/openaev/images/collector-crowdstrike openaev/collector-crowdstrike:${CIRCLE_SHA1}
       - run:
@@ -182,9 +182,9 @@ jobs:
           name: Build Docker image openaev/collector-sentinelone
           command: |
             if [[ "${CIRCLE_BRANCH}" == "main" ]]; then
-              docker build --progress=plain -t openaev/collector-sentinelone:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
+              docker build --pull --progress=plain -t openaev/collector-sentinelone:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
             else 
-              docker build --progress=plain -t openaev/collector-sentinelone:${CIRCLE_SHA1} .
+              docker build --pull --progress=plain -t openaev/collector-sentinelone:${CIRCLE_SHA1} .
             fi
             docker save -o ~/openaev/images/collector-sentinelone openaev/collector-sentinelone:${CIRCLE_SHA1}
       - run:
@@ -192,9 +192,9 @@ jobs:
           name: Build Docker image openaev/collector-splunk-es
           command: |
             if [[ "${CIRCLE_BRANCH}" == "main" ]]; then
-              docker build --progress=plain -t openaev/collector-splunk-es:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
+              docker build --pull --progress=plain -t openaev/collector-splunk-es:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
             else 
-              docker build --progress=plain -t openaev/collector-splunk-es:${CIRCLE_SHA1} .
+              docker build --pull --progress=plain -t openaev/collector-splunk-es:${CIRCLE_SHA1} .
             fi
             docker save -o ~/openaev/images/collector-splunk-es openaev/collector-splunk-es:${CIRCLE_SHA1}
       - run:
@@ -202,9 +202,9 @@ jobs:
           name: Build Docker image openaev/collector-openaev
           command: |
             if [[ "${CIRCLE_BRANCH}" == "main" ]]; then
-              docker build --progress=plain -t openaev/collector-openaev:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
+              docker build --pull --progress=plain -t openaev/collector-openaev:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
             else 
-              docker build --progress=plain -t openaev/collector-openaev:${CIRCLE_SHA1} .
+              docker build --pull --progress=plain -t openaev/collector-openaev:${CIRCLE_SHA1} .
             fi
             docker save -o ~/openaev/images/collector-openaev openaev/collector-openaev:${CIRCLE_SHA1}
       - run:
@@ -212,9 +212,9 @@ jobs:
           name: Build Docker image openaev/collector-microsoft-azure
           command: |
             if [[ "${CIRCLE_BRANCH}" == "main" ]]; then
-              docker build --progress=plain -t openaev/collector-microsoft-azure:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
+              docker build --pull --progress=plain -t openaev/collector-microsoft-azure:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
             else 
-              docker build --progress=plain -t openaev/collector-microsoft-azure:${CIRCLE_SHA1} .
+              docker build --pull --progress=plain -t openaev/collector-microsoft-azure:${CIRCLE_SHA1} .
             fi
             docker save -o ~/openaev/images/collector-microsoft-azure openaev/collector-microsoft-azure:${CIRCLE_SHA1}
       - run:
@@ -222,9 +222,9 @@ jobs:
           name: Build Docker image openaev/collector-microsoft-intune
           command: |
             if [[ "${CIRCLE_BRANCH}" == "main" ]]; then
-              docker build --progress=plain -t openaev/collector-microsoft-intune:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
+              docker build --pull --progress=plain -t openaev/collector-microsoft-intune:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
             else 
-              docker build --progress=plain -t openaev/collector-microsoft-intune:${CIRCLE_SHA1} .
+              docker build --pull --progress=plain -t openaev/collector-microsoft-intune:${CIRCLE_SHA1} .
             fi
             docker save -o ~/openaev/images/collector-microsoft-intune openaev/collector-microsoft-intune:${CIRCLE_SHA1}
       - run:
@@ -232,9 +232,9 @@ jobs:
           name: Build Docker image openaev/collector-aws-resources
           command: |
             if [[ "${CIRCLE_BRANCH}" == "main" ]]; then
-              docker build --progress=plain -t openaev/collector-aws-resources:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
+              docker build --pull --progress=plain -t openaev/collector-aws-resources:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
             else 
-              docker build --progress=plain -t openaev/collector-aws-resources:${CIRCLE_SHA1} .
+              docker build --pull --progress=plain -t openaev/collector-aws-resources:${CIRCLE_SHA1} .
             fi
             docker save -o ~/openaev/images/collector-aws-resources openaev/collector-aws-resources:${CIRCLE_SHA1}
       - run:
@@ -242,9 +242,9 @@ jobs:
           name: Build Docker image openaev/collector-google-workspace
           command: |
             if [[ "${CIRCLE_BRANCH}" == "main" ]]; then
-              docker build --progress=plain -t openaev/collector-google-workspace:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
+              docker build --pull --progress=plain -t openaev/collector-google-workspace:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
             else 
-              docker build --progress=plain -t openaev/collector-google-workspace:${CIRCLE_SHA1} .
+              docker build --pull --progress=plain -t openaev/collector-google-workspace:${CIRCLE_SHA1} .
             fi
             docker save -o ~/openaev/images/collector-google-workspace openaev/collector-google-workspace:${CIRCLE_SHA1}
       - run:
@@ -252,9 +252,9 @@ jobs:
           name: Build Docker image openaev/collector-palo-alto-cortex-xdr
           command: |
             if [[ "${CIRCLE_BRANCH}" == "main" ]]; then
-              docker build --progress=plain -t openaev/collector-palo-alto-cortex-xdr:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
+              docker build --pull --progress=plain -t openaev/collector-palo-alto-cortex-xdr:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
             else 
-              docker build --progress=plain -t openaev/collector-palo-alto-cortex-xdr:${CIRCLE_SHA1} .
+              docker build --pull --progress=plain -t openaev/collector-palo-alto-cortex-xdr:${CIRCLE_SHA1} .
             fi
             docker save -o ~/openaev/images/collector-palo-alto-cortex-xdr openaev/collector-palo-alto-cortex-xdr:${CIRCLE_SHA1}
       - persist_to_workspace:
