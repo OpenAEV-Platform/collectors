@@ -85,6 +85,7 @@ Below are the parameters you'll need to set for the collector:
 | Time Window              | sentinelone.time_window                   | `SENTINELONE_TIME_WINDOW`                   | PT1H                        | No        | Default search time window when no date signatures are provided (ISO 8601 format)       |
 | Expectation Batch Size   | sentinelone.expectation_batch_size        | `SENTINELONE_EXPECTATION_BATCH_SIZE`        | 50                          | No        | Number of expectations to process in each batch for batch-based processing              |
 | Enable Deep Visibility   | sentinelone.enable_deep_visibility_search | `SENTINELONE_ENABLE_DEEP_VISIBILITY_SEARCH` | false                       | No        | Enable Deep Visibility search for advanced threat detection (requires Complete license) |
+| Disable Strict End Date  | sentinelone.disable_strict_end_date       | `SENTINELONE_DISABLE_STRICT_END_DATE`       | false                       | No        | Disable ignoring OpenAEV expectations provided without an end date (may strongly impact API use) |
 
 ### Example Configuration Files
 
@@ -107,6 +108,7 @@ sentinelone:
   time_window: "PT1H"
   expectation_batch_size: 50
   enable_deep_visibility_search: false
+  disable_strict_end_date: false
 ```
 
 #### Environment Variables
