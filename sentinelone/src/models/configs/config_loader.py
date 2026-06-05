@@ -152,6 +152,9 @@ class ConfigLoader(ConfigBaseSettings):
                 "sentinelone_enable_deep_visibility_search": {
                     "data": self.sentinelone.enable_deep_visibility_search
                 },
+                "sentinelone_disable_strict_end_date": {
+                    "data": self.sentinelone.disable_strict_end_date
+                },
             },
             config_base_model=self,
         )

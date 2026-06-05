@@ -37,3 +37,8 @@ class _ConfigLoaderSentinelOne(ConfigBaseSettings):
         default=False,
         description="Enable deep visibility search for SentinelOne threat searches.",
     )
+    disable_strict_end_date: bool = Field(
+        alias="SENTINELONE_DISABLE_STRICT_END_DATE",
+        default=False,
+        description="Disable ignoring OpenAEV expectations without a proper end dates.",
+    )
