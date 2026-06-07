@@ -1,5 +1,6 @@
 # pyoaev
 config.yml
+!.github/ISSUE_TEMPLATE/config.yml
 exports
 logs
 __test__.py
