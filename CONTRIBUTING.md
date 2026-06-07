@@ -41,7 +41,7 @@ in [`.github/LABELS.md`](.github/LABELS.md). In short:
   **discontinued**.
 
 * **GitHub reference** — Pull request titles **must** end with the related issue
-  reference, e.g. `(#1234)` (the PR title becomes the squash-merge commit). Every
+  reference, e.g. `(#1234)`, or `(#1234, #1235)` for multiple issues. GitHub automatically appends the PR number to the squash-merge commit, e.g. `… (#1234, #1235) (#5678)`. Every
   pull request must be linked to an issue. Enforcement is preventive and applied
   at the organization level; **Renovate** pull requests are exempt.
 
