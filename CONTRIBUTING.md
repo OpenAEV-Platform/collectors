@@ -35,22 +35,25 @@ in [`.github/LABELS.md`](.github/LABELS.md). In short:
   nouns. Types: `feat`, `fix`, `chore`, `docs`, `style`, `refactor`, `perf`,
   `test`, `build`, `ci`, `revert`.
 
-* **Integration name as scope** — Use the **lowercase collector name** as the
-  Conventional Commits scope (e.g. `feat(crowdstrike-falcon): ...`,
-  `fix(microsoft-defender): ...`). The old `[collector]` bracket prefixes are
-  **discontinued**.
+* **No more bracket prefixes** — The old `[backend]` / `[frontend]` /
+  `[component]` prefixes are **discontinued**; use a Conventional Commits scope
+  instead (e.g. `fix(backend): ...`).
 
 * **GitHub reference** — Pull request titles **must** end with the related issue
-  reference, e.g. `(#1234)`, or `(#1234, #1235)` for multiple issues. GitHub automatically appends the PR number to the squash-merge commit, e.g. `… (#1234, #1235) (#5678)`. Every
+  reference, e.g. `(#1234)` (the PR title becomes the squash-merge commit). Every
   pull request must be linked to an issue. Enforcement is preventive and applied
   at the organization level; **Renovate** pull requests are exempt.
 
 * **Signed commits** — All commits must be signed. See the
   [GitHub documentation on signing commits](https://docs.github.com/en/authentication/managing-commit-signature-verification/signing-commits).
 
-* **Labels** — Every issue carries one primary type label matching its title
+* **Labels** — Every **issue** carries one primary type label matching its title
   prefix (`feature` for `feat:`, `bug` for `fix:`, `documentation` for `docs:`)
-  plus optional area labels. Do not use the deprecated `enhancement` /
+  plus optional area labels, and its GitHub **Type** (Feature / Bug / Task) set
+  to match. **Pull requests do not carry a primary type label** (the `type:`
+  title prefix already conveys the type), but they should carry an **ownership**
+  label — `filigran team` or `community` — to differentiate the author, plus any
+  useful area/scope labels. Do not use the deprecated `enhancement` /
   `feature request` labels — use `feature`. See
   [`.github/LABELS.md`](.github/LABELS.md) for the shared palette
   ([`.github/labels.yml`](.github/labels.yml)).
