@@ -1,7 +1,7 @@
 ---
 name: Feature request
 about: Suggest a new feature or capability for the OpenAEV collectors
-title: 'feat: '
+title: 'feat(collector-name): '
 labels: needs triage, feature
 assignees: ''
 type: feature

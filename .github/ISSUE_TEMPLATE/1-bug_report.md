@@ -1,7 +1,7 @@
 ---
 name: Bug report
 about: Create a bug report to help us improve the OpenAEV collectors
-title: 'fix: '
+title: 'fix(collector-name): '
 labels: needs triage, bug
 assignees: ''
 type: bug
