@@ -110,7 +110,7 @@ run_collector_tests() {
   local test_rc=0
   if uses_pytest "$collector_dir"; then
     echo "→ Running pytest"
-    poetry run python -m coverage run -m pytest -q -rA || test_rc=$?
+    poetry run python -m coverage run -m pytest --junitxml="junit.xml" -q -rA || test_rc=$?
   else
     echo "→ Running unittest"
     poetry run python -m coverage run -m unittest discover -s "$test_dir" -v || test_rc=$?
