@@ -1,8 +1,0 @@
-openaev:
-  url: 'http://localhost:8080'
-  token: '5ccddea0-613c-4a91-a602-6a4eb243d21c'
-
-collector:
-  id: '1a75a48e-9bfd-4b66-8654-925dc64fac12'
-  name: 'OpenAEV Datasets'
-  log_level: 'info'
