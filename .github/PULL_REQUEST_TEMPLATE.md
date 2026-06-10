@@ -3,6 +3,14 @@ Thank you very much for your pull request to the OpenAEV project! We as a commun
 driven project depend on support and contributions like this!
 
 Thus already a BIG THANK YOU upfront to you for choosing to help with your PR.
+
+PR TITLE FORMAT (enforced by CI):
+  type(scope?)!?: description (#123)
+  - type: feat | fix | chore | docs | style | refactor | perf | test | build | ci | revert
+  - scope: optional, e.g. collector name (crowdstrike, sentinelone, …)
+  - description: must start with a lowercase letter
+  - (#123): required linked issue number
+  Example: feat(crowdstrike): add endpoint security import (#42)
 -->
 
 ### Proposed changes

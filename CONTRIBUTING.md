@@ -28,12 +28,15 @@ in [`.github/LABELS.md`](.github/LABELS.md). In short:
 
 * **Titles** — All commit, pull request and issue titles follow the
   [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/)
-  specification with a GitHub issue reference:
-  `type(scope?)!?: description (#issue)` (e.g.
-  `feat(api): add bulk export endpoint (#1234)`). The description starts with a
-  lowercase letter and has no trailing period; preserve acronyms and proper
-  nouns. Types: `feat`, `fix`, `chore`, `docs`, `style`, `refactor`, `perf`,
-  `test`, `build`, `ci`, `revert`.
+  specification with a GitHub issue reference. PR title format (enforced by CI):
+  ```
+  type(scope?)!?: description (#123)
+  ```
+  - **type**: one of `feat`, `fix`, `chore`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `revert`
+  - **scope**: optional — use the collector name or affected area (e.g. `crowdstrike`)
+  - **description**: must start with a lowercase letter, no trailing period; preserve acronyms and proper nouns
+  - **`(#123)`**: required — the linked issue number at the end
+  - Examples: `feat(crowdstrike): add endpoint security import (#42)`, `fix: resolve config loading issue (#99)`
 
 * **No more bracket prefixes** — The old `[backend]` / `[frontend]` /
   `[component]` prefixes are **discontinued**; use a Conventional Commits scope
