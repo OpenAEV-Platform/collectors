@@ -37,7 +37,7 @@ pip-audit = "^2.9.0"
 pre-commit = "^4.3.0"
 
 [tool.poetry.group.test.dependencies]
-pytest = "^8.4.1"
+pytest = "^9.0.0"
 polyfactory = "^2.22.2"
 
 [project.scripts]
