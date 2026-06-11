@@ -89,6 +89,30 @@ Below are the parameters you'll need to set for the collector:
 | Time Window  | splunk_es.time_window  | `SPLUNKES_TIME_WINDOW`      | PT1H                    | No        | Default search time window when no date signatures are provided (ISO 8601 format)       |
 | Offset       | splunk_es.offset       | `SPLUNKES_OFFSET`           | PT30S                   | No        | Delay between retry attempts to account for alert ingestion latency (ISO 8601 format)   |
 | Max Retry    | splunk_es.max_retry    | `SPLUNKES_MAX_RETRY`        | 3                       | No        | Maximum number of retry attempts after the initial API call fails or returns no results |
+| Query        | splunk_es.query        | `SPLUNKES_QUERY`            | *(see below)*           | No        | Custom SPL query template with placeholders (leave empty for default)                   |
+
+### Query Customization
+
+The `SPLUNKES_QUERY` field allows you to customize the SPL query used to fetch security alerts from Splunk ES. The query supports **placeholders** that are resolved at runtime:
+
+| Placeholder | Description | Example resolved value |
+|---|---|---|
+| `{alerts_index}` | The configured Splunk index (`SPLUNKES_ALERTS_INDEX`) | `main` |
+| `{ip_conditions}` | Auto-generated IP filter (source + destination) from expectation signatures | `(src_ip=10.0.0.1 OR src=10.0.0.1 ...)` |
+| `{process_conditions}` | Auto-generated URL path / parent process filter from signatures | `(url_path=*uuid* ...)` |
+| `{time_window}` | Computed earliest time in seconds (based on `SPLUNKES_TIME_WINDOW` + retry offset) | `3600` |
+
+**Default query template:**
+```spl
+index={alerts_index} {ip_conditions} {process_conditions} earliest=-{time_window}s | table _time, src_ip, src, source_ip, client_ip, dst_ip, dest, dest_ip, destination_ip, server_ip, signature, rule_name, event_type, severity, url_path, url, path, query, _raw | sort -_time
+```
+
+> ⚠️ **Important**: The query **must** include `| table _time` for proper alert parsing. Required fields for detection matching: `_time`, `src_ip`, `dst_ip`, `signature`, `rule_name`, `severity`.
+
+**Example — adding a sourcetype filter:**
+```spl
+index={alerts_index} sourcetype=notable {ip_conditions} {process_conditions} earliest=-{time_window}s | table _time, src_ip, src, source_ip, client_ip, dst_ip, dest, dest_ip, destination_ip, server_ip, signature, rule_name, event_type, severity, url_path, url, path, query, _raw | sort -_time
+```
 
 ### Example Configuration Files
 
