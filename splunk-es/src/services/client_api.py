@@ -1,6 +1,7 @@
 """Splunk ES API client for making HTTP requests with proper error handling."""
 
 import logging
+import string
 import time
 from datetime import timedelta
 from typing import Any
@@ -37,6 +38,23 @@ DEFAULT_QUERY_TEMPLATE = (
     "destination_ip, server_ip, signature, rule_name, event_type, severity, "
     "url_path, url, path, query, _raw | sort -_time"
 )
+
+ALLOWED_PLACEHOLDERS = {"alerts_index", "ip_conditions", "process_conditions", "time_window"}
+
+
+class _SafeFormatter(string.Formatter):
+    """Restricted formatter that prevents attribute/index access in format strings."""
+
+    def get_field(self, field_name: str, args: Any, kwargs: Any) -> tuple:
+        """Override to block attribute traversal (e.g., {value.__class__})."""
+        if "." in field_name or "[" in field_name:
+            raise ValueError(
+                f"Attribute/index access not allowed in query template: '{field_name}'"
+            )
+        return super().get_field(field_name, args, kwargs)
+
+
+_safe_formatter = _SafeFormatter()
 
 
 class SplunkESClientAPI:
@@ -547,7 +565,8 @@ class SplunkESClientAPI:
             )
 
             template = self.query_template or DEFAULT_QUERY_TEMPLATE
-            full_query = template.format(
+            full_query = _safe_formatter.format(
+                template,
                 alerts_index=self.alerts_index or "*",
                 ip_conditions=ip_conditions_str,
                 process_conditions=process_conditions_str,
@@ -566,9 +585,9 @@ class SplunkESClientAPI:
             self.logger.debug(f"{LOG_PREFIX} Built SPL query: {full_query}")
             return full_query
 
-        except KeyError as e:
+        except (KeyError, ValueError) as e:
             raise SplunkESValidationError(
-                f"Unknown placeholder in query template: {e}"
+                f"Invalid query template: {e}"
             ) from e
         except Exception as e:
             raise SplunkESValidationError(f"Failed to build SPL query: {e}") from e

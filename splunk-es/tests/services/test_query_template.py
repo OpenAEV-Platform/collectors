@@ -3,7 +3,12 @@
 from unittest.mock import Mock, patch
 
 import pytest
-from src.services.client_api import DEFAULT_QUERY_TEMPLATE, SplunkESClientAPI
+from src.services.client_api import (
+    ALLOWED_PLACEHOLDERS,
+    DEFAULT_QUERY_TEMPLATE,
+    SplunkESClientAPI,
+)
+from src.services.exception import SplunkESValidationError
 from src.services.models import SplunkESSearchCriteria
 from tests.services.fixtures.factories import create_test_config
 
@@ -239,3 +244,73 @@ class TestQueryTemplateResolution:
         assert "earliest=-3600s" in result
         # ip_conditions placeholder not in template, so IPs won't appear
         assert "src_ip=10.0.0.1" not in result
+
+
+class TestQueryTemplateSecurity:
+    """Security tests for query template resolution.
+
+    Verifies that the template engine prevents attribute traversal
+    and other format string injection attacks.
+    """
+
+    def _create_client(self, query_template=None):
+        """Create a test client with optional custom template."""
+        config = create_test_config()
+        config.splunk_es.query_template = query_template
+        return SplunkESClientAPI(config=config)
+
+    def _empty_criteria(self):
+        """Return empty search criteria for security tests."""
+        return SplunkESSearchCriteria(
+            source_ips=[],
+            target_ips=[],
+            parent_process_names=[],
+            start_date=None,
+            end_date=None,
+        )
+
+    def test_attribute_traversal_blocked(self):
+        """Test that {value.__class__} attribute access is rejected."""
+        malicious_template = (
+            "index={alerts_index.__class__} | table _time"
+        )
+        client = self._create_client(query_template=malicious_template)
+
+        with pytest.raises(SplunkESValidationError, match="Attribute/index access not allowed"):
+            client._build_spl_query(self._empty_criteria())
+
+    def test_index_access_blocked(self):
+        """Test that {value[0]} index access is rejected."""
+        malicious_template = (
+            "index={alerts_index[0]} | table _time"
+        )
+        client = self._create_client(query_template=malicious_template)
+
+        with pytest.raises(SplunkESValidationError, match="Attribute/index access not allowed"):
+            client._build_spl_query(self._empty_criteria())
+
+    def test_nested_attribute_blocked(self):
+        """Test that deep attribute chains are rejected."""
+        malicious_template = (
+            "{alerts_index.__class__.__subclasses__} | table _time"
+        )
+        client = self._create_client(query_template=malicious_template)
+
+        with pytest.raises(SplunkESValidationError, match="Attribute/index access not allowed"):
+            client._build_spl_query(self._empty_criteria())
+
+    def test_unknown_placeholder_raises_error(self):
+        """Test that unknown placeholder names raise a validation error."""
+        bad_template = "index={unknown_field} | table _time"
+        client = self._create_client(query_template=bad_template)
+
+        with pytest.raises(SplunkESValidationError, match="Invalid query template"):
+            client._build_spl_query(self._empty_criteria())
+
+    def test_allowed_placeholders_constant(self):
+        """Verify the ALLOWED_PLACEHOLDERS constant matches DEFAULT_QUERY_TEMPLATE."""
+        import string
+
+        parsed = string.Formatter().parse(DEFAULT_QUERY_TEMPLATE)
+        template_fields = {fname for _, fname, _, _ in parsed if fname is not None}
+        assert template_fields == ALLOWED_PLACEHOLDERS
