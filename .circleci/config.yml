@@ -76,6 +76,14 @@ jobs:
           working_directory: ~/openaev/palo-alto-cortex-xdr
           name: Tests for palo-alto-cortex-xdr collector
           command: poetry run pytest
+      - run:
+          working_directory: ~/openaev/palo-alto-cortex-xsoar
+          name: Install dependencies for palo-alto-cortex-xsoar
+          command: poetry run pip install pytest factory-boy pyoaev
+      - run:
+          working_directory: ~/openaev/palo-alto-cortex-xsoar
+          name: Tests for palo-alto-cortex-xsoar collector
+          command: poetry run pytest
   build_docker_images:
     working_directory: ~/openaev
     docker:
@@ -305,6 +313,19 @@ jobs:
             fi
             docker save -o ~/openaev/images/collector-palo-alto-cortex-xdr openaev/collector-palo-alto-cortex-xdr:${CIRCLE_SHA1}
             docker save -o ~/openaev/images/collector-palo-alto-cortex-xdr-ubi9 openaev/collector-palo-alto-cortex-xdr:${CIRCLE_SHA1}-ubi9
+      - run:
+          working_directory: ~/openaev/palo-alto-cortex-xsoar
+          name: Build Docker image openaev/collector-palo-alto-cortex-xsoar
+          command: |
+            if [[ "${CIRCLE_BRANCH}" == "main" ]]; then
+              docker build --pull --progress=plain -t openaev/collector-palo-alto-cortex-xsoar:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
+              docker build --pull --progress=plain -t openaev/collector-palo-alto-cortex-xsoar:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
+            else 
+              docker build --pull --progress=plain -t openaev/collector-palo-alto-cortex-xsoar:${CIRCLE_SHA1} .
+              docker build --pull --progress=plain -t openaev/collector-palo-alto-cortex-xsoar:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 .
+            fi
+              docker save -o ~/openaev/images/collector-palo-alto-cortex-xsoar openaev/collector-palo-alto-cortex-xsoar:${CIRCLE_SHA1}
+              docker save -o ~/openaev/images/collector-palo-alto-cortex-xsoar-ubi9 openaev/collector-palo-alto-cortex-xsoar:${CIRCLE_SHA1}-ubi9
       - persist_to_workspace:
           root: ~/openaev
           paths:
@@ -455,7 +476,14 @@ jobs:
             docker image load < collector-palo-alto-cortex-xdr-ubi9
             docker tag openaev/collector-palo-alto-cortex-xdr:${CIRCLE_SHA1}-ubi9 openaev/collector-palo-alto-cortex-xdr:${IMAGETAG}-ubi9
             docker tag openaev/collector-palo-alto-cortex-xdr:${CIRCLE_SHA1}-ubi9 openbas/collector-palo-alto-cortex-xdr:${IMAGETAG}-ubi9
-            
+
+            docker image load < collector-palo-alto-cortex-xsoar
+            docker tag openaev/collector-palo-alto-cortex-xsoar:${CIRCLE_SHA1} openaev/collector-palo-alto-cortex-xsoar:${IMAGETAG}
+            docker tag openaev/collector-palo-alto-cortex-xsoar:${CIRCLE_SHA1} openbas/collector-palo-alto-cortex-xsoar:${IMAGETAG}
+            docker image load < collector-palo-alto-cortex-xsoar-ubi9
+            docker tag openaev/collector-palo-alto-cortex-xsoar:${CIRCLE_SHA1}-ubi9 openaev/collector-palo-alto-cortex-xsoar:${IMAGETAG}-ubi9
+            docker tag openaev/collector-palo-alto-cortex-xsoar:${CIRCLE_SHA1}-ubi9 openbas/collector-palo-alto-cortex-xsoar:${IMAGETAG}-ubi9
+
             echo "$DOCKERHUB_PASS" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
             docker push openaev/collector-mitre-attack:${IMAGETAG}
             docker push openaev/collector-mitre-attack:${IMAGETAG}-ubi9
@@ -521,7 +549,10 @@ jobs:
             docker push openaev/collector-palo-alto-cortex-xdr:${IMAGETAG}-ubi9
             docker push openbas/collector-palo-alto-cortex-xdr:${IMAGETAG}
             docker push openbas/collector-palo-alto-cortex-xdr:${IMAGETAG}-ubi9
-
+            docker push openaev/collector-palo-alto-cortex-xsoar:${IMAGETAG}
+            docker push openaev/collector-palo-alto-cortex-xsoar:${IMAGETAG}-ubi9
+            docker push openbas/collector-palo-alto-cortex-xsoar:${IMAGETAG}
+            docker push openbas/collector-palo-alto-cortex-xsoar:${IMAGETAG}-ubi9
             if [ "${IS_LATEST}" == "true" ]
             then
               docker tag openaev/collector-mitre-attack:${IMAGETAG} openaev/collector-mitre-attack:latest
@@ -556,6 +587,8 @@ jobs:
               docker tag openaev/collector-google-workspace:${IMAGETAG} openbas/collector-google-workspace:latest
               docker tag openaev/collector-palo-alto-cortex-xdr:${IMAGETAG} openaev/collector-palo-alto-cortex-xdr:latest
               docker tag openaev/collector-palo-alto-cortex-xdr:${IMAGETAG} openbas/collector-palo-alto-cortex-xdr:latest
+              docker tag openaev/collector-palo-alto-cortex-xsoar:${IMAGETAG} openaev/collector-palo-alto-cortex-xsoar:latest
+              docker tag openaev/collector-palo-alto-cortex-xsoar:${IMAGETAG} openbas/collector-palo-alto-cortex-xsoar:latest
 
               docker push openaev/collector-mitre-attack:latest
               docker push openbas/collector-mitre-attack:latest
@@ -589,6 +622,8 @@ jobs:
               docker push openbas/collector-google-workspace:latest
               docker push openaev/collector-palo-alto-cortex-xdr:latest
               docker push openbas/collector-palo-alto-cortex-xdr:latest
+              docker push openaev/collector-palo-alto-cortex-xsoar:latest
+              docker push openbas/collector-palo-alto-cortex-xsoar:latest
             fi
       - slack/notify:
           event: fail
