@@ -33,13 +33,20 @@ REQUEST_TIMEOUT_SECONDS = 30
 MAX_RETRIES = 3
 
 DEFAULT_QUERY_TEMPLATE = (
-    "index={alerts_index} {ip_conditions} {process_conditions} earliest=-{time_window}s "
+    "index={alerts_index} "
+    "(src_ip IN ({source_ips}) OR src IN ({source_ips}) OR source_ip IN ({source_ips}) OR client_ip IN ({source_ips})) "
+    "(dst_ip IN ({target_ips}) OR dest IN ({target_ips}) OR dest_ip IN ({target_ips}) "
+    "OR destination_ip IN ({target_ips}) OR server_ip IN ({target_ips})) "
+    "{process_conditions} earliest=-{time_window}s "
     "| table _time, src_ip, src, source_ip, client_ip, dst_ip, dest, dest_ip, "
     "destination_ip, server_ip, signature, rule_name, event_type, severity, "
     "url_path, url, path, query, _raw | sort -_time"
 )
 
-ALLOWED_PLACEHOLDERS = {"alerts_index", "ip_conditions", "process_conditions", "time_window"}
+ALLOWED_PLACEHOLDERS = {
+    "alerts_index", "source_ips", "target_ips",
+    "ip_conditions", "process_conditions", "time_window",
+}
 
 
 class _SafeFormatter(string.Formatter):
@@ -556,6 +563,8 @@ class SplunkESClientAPI:
         try:
             ip_conditions_str = self._build_ip_conditions(search_criteria)
             process_conditions_str = self._build_process_conditions(search_criteria)
+            source_ips_str = self._build_ip_list(search_criteria.source_ips)
+            target_ips_str = self._build_ip_list(search_criteria.target_ips)
             time_window_seconds = int(self.time_window.total_seconds())
             earliest_seconds = time_window_seconds + extend_end_seconds
 
@@ -568,6 +577,8 @@ class SplunkESClientAPI:
             full_query = _safe_formatter.format(
                 template,
                 alerts_index=self.alerts_index or "*",
+                source_ips=source_ips_str,
+                target_ips=target_ips_str,
                 ip_conditions=ip_conditions_str,
                 process_conditions=process_conditions_str,
                 time_window=earliest_seconds,
@@ -661,3 +672,18 @@ class SplunkESClientAPI:
         if url_path_conditions:
             return f"({' OR '.join(url_path_conditions)})"
         return ""
+
+    @staticmethod
+    def _build_ip_list(ips: list[str]) -> str:
+        """Build a quoted comma-separated IP list for Splunk IN operator.
+
+        Args:
+            ips: List of IP addresses.
+
+        Returns:
+            Quoted CSV string for Splunk IN(), or "*" if empty.
+
+        """
+        if not ips:
+            return "*"
+        return ",".join(f'"{ip}"' for ip in ips)

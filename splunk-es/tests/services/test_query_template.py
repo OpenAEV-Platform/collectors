@@ -57,8 +57,8 @@ class TestQueryTemplateResolution:
         assert "index=" in result
         assert "| table _time" in result
         assert "| sort -_time" in result
-        assert "src_ip=192.168.1.100" in result
-        assert "dst_ip=10.0.0.50" in result
+        assert 'src_ip IN ("192.168.1.100")' in result
+        assert 'dst_ip IN ("10.0.0.50")' in result
         assert "earliest=-" in result
 
     def test_default_template_with_no_conditions(self):
@@ -193,8 +193,8 @@ class TestQueryTemplateResolution:
 
         result = client._build_spl_query(criteria)
 
-        assert "src_ip=10.0.0.1" in result
-        assert "src_ip=10.0.0.2" in result
+        assert '"10.0.0.1","10.0.0.2"' in result
+        assert "src_ip IN" in result
         assert " OR " in result
 
     def test_source_and_target_ips_combined(self):
@@ -210,17 +210,19 @@ class TestQueryTemplateResolution:
 
         result = client._build_spl_query(criteria)
 
-        assert "src_ip=192.168.1.1" in result
-        assert "dst_ip=10.0.0.5" in result
+        assert 'src_ip IN ("192.168.1.1")' in result
+        assert 'dst_ip IN ("10.0.0.5")' in result
 
     def test_default_query_template_constant_format(self):
         """Test that DEFAULT_QUERY_TEMPLATE has the expected placeholders."""
         assert "{alerts_index}" in DEFAULT_QUERY_TEMPLATE
-        assert "{ip_conditions}" in DEFAULT_QUERY_TEMPLATE
+        assert "{source_ips}" in DEFAULT_QUERY_TEMPLATE
+        assert "{target_ips}" in DEFAULT_QUERY_TEMPLATE
         assert "{process_conditions}" in DEFAULT_QUERY_TEMPLATE
         assert "{time_window}" in DEFAULT_QUERY_TEMPLATE
         assert "| table _time" in DEFAULT_QUERY_TEMPLATE
         assert "| sort -_time" in DEFAULT_QUERY_TEMPLATE
+        assert "IN" in DEFAULT_QUERY_TEMPLATE
 
     def test_custom_template_with_subset_of_placeholders(self):
         """Test a template that only uses some placeholders."""
@@ -308,9 +310,9 @@ class TestQueryTemplateSecurity:
             client._build_spl_query(self._empty_criteria())
 
     def test_allowed_placeholders_constant(self):
-        """Verify the ALLOWED_PLACEHOLDERS constant matches DEFAULT_QUERY_TEMPLATE."""
+        """Verify DEFAULT_QUERY_TEMPLATE only uses allowed placeholders."""
         import string
 
         parsed = string.Formatter().parse(DEFAULT_QUERY_TEMPLATE)
         template_fields = {fname for _, fname, _, _ in parsed if fname is not None}
-        assert template_fields == ALLOWED_PLACEHOLDERS
+        assert template_fields.issubset(ALLOWED_PLACEHOLDERS)
