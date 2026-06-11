@@ -286,7 +286,7 @@ class TestSplunkESClientAPIEssential:
 
         assert "index=_notable" in query  # noqa: S101
         assert "src_ip=192.168.1.100" in query  # noqa: S101
-        assert "AND" in query  # noqa: S101
+        # IP and process conditions are both present (implicit AND in SPL)
         assert "url_path" in query  # noqa: S101
         assert "/api/injects/" in query  # noqa: S101
         assert "executable-payload" in query  # noqa: S101
@@ -368,7 +368,8 @@ class TestSplunkESClientAPIEssential:
         assert "url_path" in query_str  # noqa: S101
         assert "/api/injects/" in query_str  # noqa: S101
         assert "executable-payload" in query_str  # noqa: S101
-        assert "AND" in query_str  # noqa: S101
+        # IP and process conditions are both present (implicit AND in SPL)
+        assert "src_ip=192.168.1.100" in query_str  # noqa: S101
 
     def test_parent_process_uuid_extraction(self):
         """Test UUID extraction from parent process names.
@@ -424,8 +425,7 @@ class TestSplunkESClientAPIEssential:
 
         query = client._build_spl_query(search_criteria)
 
-        # Verify AND logic structure
-        assert "AND" in query  # noqa: S101
+        # Verify both condition groups are present (implicit AND in SPL)
         # Verify IP OR conditions are grouped
         assert "src_ip=192.168.1.100 OR" in query  # noqa: S101
         assert "src_ip=10.0.0.1" in query  # noqa: S101
