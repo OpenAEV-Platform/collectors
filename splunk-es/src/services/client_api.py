@@ -31,6 +31,13 @@ DEFAULT_TIME_WINDOW_HOURS = 1
 REQUEST_TIMEOUT_SECONDS = 30
 MAX_RETRIES = 3
 
+DEFAULT_QUERY_TEMPLATE = (
+    "index={alerts_index} {ip_conditions} {process_conditions} earliest=-{time_window}s "
+    "| table _time, src_ip, src, source_ip, client_ip, dst_ip, dest, dest_ip, "
+    "destination_ip, server_ip, signature, rule_name, event_type, severity, "
+    "url_path, url, path, query, _raw | sort -_time"
+)
+
 
 class SplunkESClientAPI:
     """Splunk ES API client for fetching alerts and data."""
@@ -71,6 +78,18 @@ class SplunkESClientAPI:
             self.time_window = timedelta(hours=DEFAULT_TIME_WINDOW_HOURS)
             self.logger.warning(
                 f"{LOG_PREFIX} No time_window configured, using default {DEFAULT_TIME_WINDOW_HOURS} hour"
+            )
+
+        self.query_template = getattr(
+            self.config.splunk_es, "query_template", None
+        )
+        if self.query_template:
+            self.logger.info(
+                f"{LOG_PREFIX} Using custom query template from configuration"
+            )
+        else:
+            self.logger.debug(
+                f"{LOG_PREFIX} No custom query template configured, using default"
             )
 
         try:
@@ -502,6 +521,9 @@ class SplunkESClientAPI:
     ) -> str:
         """Build SPL query from search criteria.
 
+        If a custom query template is configured, resolves placeholders in it.
+        Otherwise, uses the built-in query construction logic.
+
         Args:
             search_criteria: SplunkESSearchCriteria object.
             extend_end_seconds: Optional seconds to extend the end_date for retries.
@@ -514,86 +536,109 @@ class SplunkESClientAPI:
 
         """
         try:
-            query_parts = []
-
-            if self.alerts_index:
-                query_parts.append(f"index={self.alerts_index}")
-
-            and_conditions = []
-            ip_conditions = []
-
-            if search_criteria.source_ips:
-                src_fields = ["src_ip", "src", "source_ip", "client_ip"]
-                src_parts = []
-                for ip in search_criteria.source_ips:
-                    for field in src_fields:
-                        src_parts.append(f"{field}={ip}")
-                if src_parts:
-                    ip_conditions.extend(src_parts)
-
-            if search_criteria.target_ips:
-                dst_fields = [
-                    "dst_ip",
-                    "dest",
-                    "dest_ip",
-                    "destination_ip",
-                    "server_ip",
-                ]
-                dst_parts = []
-                for ip in search_criteria.target_ips:
-                    for field in dst_fields:
-                        dst_parts.append(f"{field}={ip}")
-                if dst_parts:
-                    ip_conditions.extend(dst_parts)
-
-            if ip_conditions:
-                and_conditions.append(f"({' OR '.join(ip_conditions)})")
-
-            url_path_conditions = []
-            if search_criteria.parent_process_names:
-                for parent_process_name in search_criteria.parent_process_names:
-                    uuids = self.parent_process_parser.extract_uuids_from_parent_process_name(
-                        parent_process_name
-                    )
-                    if uuids:
-                        inject_uuid, agent_uuid = uuids
-                        url_path_query = (
-                            self.parent_process_parser.build_url_path_search_query(
-                                inject_uuid, agent_uuid
-                            )
-                        )
-                        if url_path_query:
-                            url_path_conditions.append(url_path_query)
-                            self.logger.debug(
-                                f"{LOG_PREFIX} Added URL path condition for parent process: {url_path_query}"
-                            )
-
-            if url_path_conditions:
-                and_conditions.append(f"({' OR '.join(url_path_conditions)})")
-
-            if and_conditions:
-                query_parts.append(f"({' AND '.join(and_conditions)})")
-
+            ip_conditions_str = self._build_ip_conditions(search_criteria)
+            process_conditions_str = self._build_process_conditions(search_criteria)
             time_window_seconds = int(self.time_window.total_seconds())
             earliest_seconds = time_window_seconds + extend_end_seconds
-            query_parts.append(f"earliest=-{earliest_seconds}s")
+
             self.logger.debug(
-                f"{LOG_PREFIX} Using time window: -{earliest_seconds}s (base: {time_window_seconds}s + extend: {extend_end_seconds}s)"
+                f"{LOG_PREFIX} Using time window: -{earliest_seconds}s "
+                f"(base: {time_window_seconds}s + extend: {extend_end_seconds}s)"
             )
 
-            if query_parts:
-                base_query = " ".join(query_parts)
-            else:
-                base_query = f"index={self.alerts_index}" if self.alerts_index else "*"
-
-            full_query = (
-                f"{base_query} | table _time, src_ip, src, source_ip, client_ip, "
-                f"dst_ip, dest, dest_ip, destination_ip, server_ip, signature, "
-                f"rule_name, event_type, severity, url_path, url, path, query, _raw | sort -_time"
+            template = self.query_template or DEFAULT_QUERY_TEMPLATE
+            full_query = template.format(
+                alerts_index=self.alerts_index or "*",
+                ip_conditions=ip_conditions_str,
+                process_conditions=process_conditions_str,
+                time_window=earliest_seconds,
             )
+
+            # Clean up double spaces from empty placeholders
+            full_query = " ".join(full_query.split())
+
+            if "| table" not in full_query:
+                self.logger.warning(
+                    f"{LOG_PREFIX} Query template does not contain '| table' pipe. "
+                    "Alert parsing may fail without proper field extraction."
+                )
 
             self.logger.debug(f"{LOG_PREFIX} Built SPL query: {full_query}")
             return full_query
 
+        except KeyError as e:
+            raise SplunkESValidationError(
+                f"Unknown placeholder in query template: {e}"
+            ) from e
         except Exception as e:
             raise SplunkESValidationError(f"Failed to build SPL query: {e}") from e
+
+    def _build_ip_conditions(self, search_criteria: SplunkESSearchCriteria) -> str:
+        """Build IP filter conditions from search criteria.
+
+        Args:
+            search_criteria: SplunkESSearchCriteria with source/target IPs.
+
+        Returns:
+            IP conditions string for SPL query, or empty string if no IPs.
+
+        """
+        ip_conditions = []
+
+        if search_criteria.source_ips:
+            src_fields = ["src_ip", "src", "source_ip", "client_ip"]
+            for ip in search_criteria.source_ips:
+                for field in src_fields:
+                    ip_conditions.append(f"{field}={ip}")
+
+        if search_criteria.target_ips:
+            dst_fields = [
+                "dst_ip",
+                "dest",
+                "dest_ip",
+                "destination_ip",
+                "server_ip",
+            ]
+            for ip in search_criteria.target_ips:
+                for field in dst_fields:
+                    ip_conditions.append(f"{field}={ip}")
+
+        if ip_conditions:
+            return f"({' OR '.join(ip_conditions)})"
+        return ""
+
+    def _build_process_conditions(
+        self, search_criteria: SplunkESSearchCriteria
+    ) -> str:
+        """Build parent process / URL path conditions from search criteria.
+
+        Args:
+            search_criteria: SplunkESSearchCriteria with parent process names.
+
+        Returns:
+            Process conditions string for SPL query, or empty string if none.
+
+        """
+        url_path_conditions = []
+
+        if search_criteria.parent_process_names:
+            for parent_process_name in search_criteria.parent_process_names:
+                uuids = self.parent_process_parser.extract_uuids_from_parent_process_name(
+                    parent_process_name
+                )
+                if uuids:
+                    inject_uuid, agent_uuid = uuids
+                    url_path_query = (
+                        self.parent_process_parser.build_url_path_search_query(
+                            inject_uuid, agent_uuid
+                        )
+                    )
+                    if url_path_query:
+                        url_path_conditions.append(url_path_query)
+                        self.logger.debug(
+                            f"{LOG_PREFIX} Added URL path condition for parent process: {url_path_query}"
+                        )
+
+        if url_path_conditions:
+            return f"({' OR '.join(url_path_conditions)})"
+        return ""
