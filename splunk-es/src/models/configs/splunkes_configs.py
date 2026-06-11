@@ -48,3 +48,11 @@ class _ConfigLoaderSplunkES(ConfigBaseSettings):
         default=timedelta(seconds=30),
         description="Time offset between retry attempts.",
     )
+    query_template: Optional[str] = Field(
+        alias="SPLUNKES_QUERY",
+        default=None,
+        description="SPL query template with placeholders: {alerts_index}, {ip_conditions}, "
+        "{process_conditions}, {time_window}. "
+        "Must include '| table _time' for proper alert parsing. "
+        "Leave empty to use the default query.",
+    )

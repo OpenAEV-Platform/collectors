@@ -15,3 +15,4 @@ splunk_es:
   password: "ChangeMe"
   alerts_index: "main"
   max_retry: 3
+  # query: "index={alerts_index} {ip_conditions} {process_conditions} earliest=-{time_window}s | table _time, src_ip, src, source_ip, client_ip, dst_ip, dest, dest_ip, destination_ip, server_ip, signature, rule_name, event_type, severity, url_path, url, path, query, _raw | sort -_time"
