@@ -1,26 +1,19 @@
 """Splunk ES API client for making HTTP requests with proper error handling."""
 
 import logging
+import string
 import time
 from datetime import timedelta
 from typing import Any
 
 import requests  # type: ignore[import-untyped]
 from requests.exceptions import (  # type: ignore[import-untyped]
-    ConnectionError,
-    RequestException,
-    Timeout,
-)
+    ConnectionError, RequestException, Timeout)
 
 from ..models.configs.config_loader import ConfigLoader
-from .exception import (
-    SplunkESAPIError,
-    SplunkESAuthenticationError,
-    SplunkESNetworkError,
-    SplunkESQueryError,
-    SplunkESSessionError,
-    SplunkESValidationError,
-)
+from .exception import (SplunkESAPIError, SplunkESAuthenticationError,
+                        SplunkESNetworkError, SplunkESQueryError,
+                        SplunkESSessionError, SplunkESValidationError)
 from .models import SplunkESAlert, SplunkESResponse, SplunkESSearchCriteria
 from .utils.parent_process_parser import ParentProcessParser
 
@@ -30,6 +23,43 @@ LOG_PREFIX = "[SplunkESClientAPI]"
 DEFAULT_TIME_WINDOW_HOURS = 1
 REQUEST_TIMEOUT_SECONDS = 30
 MAX_RETRIES = 3
+
+DEFAULT_QUERY_TEMPLATE = (
+    "index={alerts_index} "
+    "(src_ip IN ({source_ips}) OR src IN ({source_ips}) OR source_ip IN ({source_ips}) OR client_ip IN ({source_ips})) "
+    "(dst_ip IN ({target_ips}) OR dest IN ({target_ips}) OR dest_ip IN ({target_ips}) "
+    "OR destination_ip IN ({target_ips}) OR server_ip IN ({target_ips})) "
+    "{process_conditions} earliest={start_date} latest={end_date} "
+    "| table _time, src_ip, src, source_ip, client_ip, dst_ip, dest, dest_ip, "
+    "destination_ip, server_ip, signature, rule_name, event_type, severity, "
+    "url_path, url, path, query, _raw | sort -_time"
+)
+
+ALLOWED_PLACEHOLDERS = {
+    "alerts_index",
+    "source_ips",
+    "target_ips",
+    "ip_conditions",
+    "process_conditions",
+    "time_window",
+    "start_date",
+    "end_date",
+}
+
+
+class _SafeFormatter(string.Formatter):
+    """Restricted formatter that prevents attribute/index access in format strings."""
+
+    def get_field(self, field_name: str, args: Any, kwargs: Any) -> tuple:
+        """Override to block attribute traversal (e.g., {value.__class__})."""
+        if "." in field_name or "[" in field_name:
+            raise ValueError(
+                f"Attribute/index access not allowed in query template: '{field_name}'"
+            )
+        return super().get_field(field_name, args, kwargs)
+
+
+_safe_formatter = _SafeFormatter()
 
 
 class SplunkESClientAPI:
@@ -71,6 +101,16 @@ class SplunkESClientAPI:
             self.time_window = timedelta(hours=DEFAULT_TIME_WINDOW_HOURS)
             self.logger.warning(
                 f"{LOG_PREFIX} No time_window configured, using default {DEFAULT_TIME_WINDOW_HOURS} hour"
+            )
+
+        self.query_template = getattr(self.config.splunk_es, "query_template", None)
+        if self.query_template:
+            self.logger.info(
+                f"{LOG_PREFIX} Using custom query template from configuration"
+            )
+        else:
+            self.logger.debug(
+                f"{LOG_PREFIX} No custom query template configured, using default"
             )
 
         try:
@@ -502,6 +542,9 @@ class SplunkESClientAPI:
     ) -> str:
         """Build SPL query from search criteria.
 
+        If a custom query template is configured, resolves placeholders in it.
+        Otherwise, uses the built-in query construction logic.
+
         Args:
             search_criteria: SplunkESSearchCriteria object.
             extend_end_seconds: Optional seconds to extend the end_date for retries.
@@ -514,86 +557,139 @@ class SplunkESClientAPI:
 
         """
         try:
-            query_parts = []
-
-            if self.alerts_index:
-                query_parts.append(f"index={self.alerts_index}")
-
-            and_conditions = []
-            ip_conditions = []
-
-            if search_criteria.source_ips:
-                src_fields = ["src_ip", "src", "source_ip", "client_ip"]
-                src_parts = []
-                for ip in search_criteria.source_ips:
-                    for field in src_fields:
-                        src_parts.append(f"{field}={ip}")
-                if src_parts:
-                    ip_conditions.extend(src_parts)
-
-            if search_criteria.target_ips:
-                dst_fields = [
-                    "dst_ip",
-                    "dest",
-                    "dest_ip",
-                    "destination_ip",
-                    "server_ip",
-                ]
-                dst_parts = []
-                for ip in search_criteria.target_ips:
-                    for field in dst_fields:
-                        dst_parts.append(f"{field}={ip}")
-                if dst_parts:
-                    ip_conditions.extend(dst_parts)
-
-            if ip_conditions:
-                and_conditions.append(f"({' OR '.join(ip_conditions)})")
-
-            url_path_conditions = []
-            if search_criteria.parent_process_names:
-                for parent_process_name in search_criteria.parent_process_names:
-                    uuids = self.parent_process_parser.extract_uuids_from_parent_process_name(
-                        parent_process_name
-                    )
-                    if uuids:
-                        inject_uuid, agent_uuid = uuids
-                        url_path_query = (
-                            self.parent_process_parser.build_url_path_search_query(
-                                inject_uuid, agent_uuid
-                            )
-                        )
-                        if url_path_query:
-                            url_path_conditions.append(url_path_query)
-                            self.logger.debug(
-                                f"{LOG_PREFIX} Added URL path condition for parent process: {url_path_query}"
-                            )
-
-            if url_path_conditions:
-                and_conditions.append(f"({' OR '.join(url_path_conditions)})")
-
-            if and_conditions:
-                query_parts.append(f"({' AND '.join(and_conditions)})")
-
+            ip_conditions_str = self._build_ip_conditions(search_criteria)
+            process_conditions_str = self._build_process_conditions(search_criteria)
+            source_ips_str = self._build_ip_list(search_criteria.source_ips)
+            target_ips_str = self._build_ip_list(search_criteria.target_ips)
             time_window_seconds = int(self.time_window.total_seconds())
             earliest_seconds = time_window_seconds + extend_end_seconds
-            query_parts.append(f"earliest=-{earliest_seconds}s")
+
+            # Resolve start_date/end_date: use signature values if available, else relative time
+            start_date_str = (
+                search_criteria.start_date
+                if search_criteria.start_date
+                else f"-{earliest_seconds}s"
+            )
+            end_date_str = (
+                search_criteria.end_date if search_criteria.end_date else "now"
+            )
+
             self.logger.debug(
-                f"{LOG_PREFIX} Using time window: -{earliest_seconds}s (base: {time_window_seconds}s + extend: {extend_end_seconds}s)"
+                f"{LOG_PREFIX} Using time range: earliest={start_date_str}, latest={end_date_str} "
+                f"(base: {time_window_seconds}s + extend: {extend_end_seconds}s)"
             )
 
-            if query_parts:
-                base_query = " ".join(query_parts)
-            else:
-                base_query = f"index={self.alerts_index}" if self.alerts_index else "*"
-
-            full_query = (
-                f"{base_query} | table _time, src_ip, src, source_ip, client_ip, "
-                f"dst_ip, dest, dest_ip, destination_ip, server_ip, signature, "
-                f"rule_name, event_type, severity, url_path, url, path, query, _raw | sort -_time"
+            template = self.query_template or DEFAULT_QUERY_TEMPLATE
+            full_query = _safe_formatter.format(
+                template,
+                alerts_index=self.alerts_index or "*",
+                source_ips=source_ips_str,
+                target_ips=target_ips_str,
+                ip_conditions=ip_conditions_str,
+                process_conditions=process_conditions_str,
+                time_window=earliest_seconds,
+                start_date=start_date_str,
+                end_date=end_date_str,
             )
+
+            # Clean up double spaces from empty placeholders
+            full_query = " ".join(full_query.split())
+
+            if "| table" not in full_query:
+                self.logger.warning(
+                    f"{LOG_PREFIX} Query template does not contain '| table' pipe. "
+                    "Alert parsing may fail without proper field extraction."
+                )
 
             self.logger.debug(f"{LOG_PREFIX} Built SPL query: {full_query}")
             return full_query
 
+        except (KeyError, ValueError) as e:
+            raise SplunkESValidationError(f"Invalid query template: {e}") from e
         except Exception as e:
             raise SplunkESValidationError(f"Failed to build SPL query: {e}") from e
+
+    def _build_ip_conditions(self, search_criteria: SplunkESSearchCriteria) -> str:
+        """Build IP filter conditions from search criteria.
+
+        Args:
+            search_criteria: SplunkESSearchCriteria with source/target IPs.
+
+        Returns:
+            IP conditions string for SPL query, or empty string if no IPs.
+
+        """
+        ip_conditions = []
+
+        if search_criteria.source_ips:
+            src_fields = ["src_ip", "src", "source_ip", "client_ip"]
+            for ip in search_criteria.source_ips:
+                for field in src_fields:
+                    ip_conditions.append(f"{field}={ip}")
+
+        if search_criteria.target_ips:
+            dst_fields = [
+                "dst_ip",
+                "dest",
+                "dest_ip",
+                "destination_ip",
+                "server_ip",
+            ]
+            for ip in search_criteria.target_ips:
+                for field in dst_fields:
+                    ip_conditions.append(f"{field}={ip}")
+
+        if ip_conditions:
+            return f"({' OR '.join(ip_conditions)})"
+        return ""
+
+    def _build_process_conditions(self, search_criteria: SplunkESSearchCriteria) -> str:
+        """Build parent process / URL path conditions from search criteria.
+
+        Args:
+            search_criteria: SplunkESSearchCriteria with parent process names.
+
+        Returns:
+            Process conditions string for SPL query, or empty string if none.
+
+        """
+        url_path_conditions = []
+
+        if search_criteria.parent_process_names:
+            for parent_process_name in search_criteria.parent_process_names:
+                uuids = (
+                    self.parent_process_parser.extract_uuids_from_parent_process_name(
+                        parent_process_name
+                    )
+                )
+                if uuids:
+                    inject_uuid, agent_uuid = uuids
+                    url_path_query = (
+                        self.parent_process_parser.build_url_path_search_query(
+                            inject_uuid, agent_uuid
+                        )
+                    )
+                    if url_path_query:
+                        url_path_conditions.append(url_path_query)
+                        self.logger.debug(
+                            f"{LOG_PREFIX} Added URL path condition for parent process: {url_path_query}"
+                        )
+
+        if url_path_conditions:
+            return f"({' OR '.join(url_path_conditions)})"
+        return ""
+
+    @staticmethod
+    def _build_ip_list(ips: list[str]) -> str:
+        """Build a quoted comma-separated IP list for Splunk IN operator.
+
+        Args:
+            ips: List of IP addresses.
+
+        Returns:
+            Quoted CSV string for Splunk IN(), or "*" if empty.
+
+        """
+        if not ips:
+            return "*"
+        return ",".join(f'"{ip}"' for ip in ips)
