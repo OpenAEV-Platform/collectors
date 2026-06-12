@@ -3,11 +3,9 @@
 from unittest.mock import Mock, patch
 
 import pytest
-from src.services.client_api import (
-    ALLOWED_PLACEHOLDERS,
-    DEFAULT_QUERY_TEMPLATE,
-    SplunkESClientAPI,
-)
+
+from src.services.client_api import (ALLOWED_PLACEHOLDERS,
+                                     DEFAULT_QUERY_TEMPLATE, SplunkESClientAPI)
 from src.services.exception import SplunkESValidationError
 from src.services.models import SplunkESSearchCriteria
 from tests.services.fixtures.factories import create_test_config
@@ -159,9 +157,7 @@ class TestQueryTemplateResolution:
         client._build_spl_query(criteria)
 
         mock_logger.warning.assert_called()
-        warning_calls = [
-            str(call) for call in mock_logger.warning.call_args_list
-        ]
+        warning_calls = [str(call) for call in mock_logger.warning.call_args_list]
         assert any("| table" in call for call in warning_calls)
 
     def test_time_window_includes_extend_seconds(self):
@@ -323,32 +319,32 @@ class TestQueryTemplateSecurity:
 
     def test_attribute_traversal_blocked(self):
         """Test that {value.__class__} attribute access is rejected."""
-        malicious_template = (
-            "index={alerts_index.__class__} | table _time"
-        )
+        malicious_template = "index={alerts_index.__class__} | table _time"
         client = self._create_client(query_template=malicious_template)
 
-        with pytest.raises(SplunkESValidationError, match="Attribute/index access not allowed"):
+        with pytest.raises(
+            SplunkESValidationError, match="Attribute/index access not allowed"
+        ):
             client._build_spl_query(self._empty_criteria())
 
     def test_index_access_blocked(self):
         """Test that {value[0]} index access is rejected."""
-        malicious_template = (
-            "index={alerts_index[0]} | table _time"
-        )
+        malicious_template = "index={alerts_index[0]} | table _time"
         client = self._create_client(query_template=malicious_template)
 
-        with pytest.raises(SplunkESValidationError, match="Attribute/index access not allowed"):
+        with pytest.raises(
+            SplunkESValidationError, match="Attribute/index access not allowed"
+        ):
             client._build_spl_query(self._empty_criteria())
 
     def test_nested_attribute_blocked(self):
         """Test that deep attribute chains are rejected."""
-        malicious_template = (
-            "{alerts_index.__class__.__subclasses__} | table _time"
-        )
+        malicious_template = "{alerts_index.__class__.__subclasses__} | table _time"
         client = self._create_client(query_template=malicious_template)
 
-        with pytest.raises(SplunkESValidationError, match="Attribute/index access not allowed"):
+        with pytest.raises(
+            SplunkESValidationError, match="Attribute/index access not allowed"
+        ):
             client._build_spl_query(self._empty_criteria())
 
     def test_unknown_placeholder_raises_error(self):

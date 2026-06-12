@@ -4,9 +4,12 @@ from unittest.mock import Mock, patch
 
 import pytest
 from requests import Session
+
 from src.services.client_api import SplunkESClientAPI
-from src.services.exception import SplunkESAPIError, SplunkESAuthenticationError
-from tests.services.fixtures.factories import TestDataFactory, create_test_config
+from src.services.exception import (SplunkESAPIError,
+                                    SplunkESAuthenticationError)
+from tests.services.fixtures.factories import (TestDataFactory,
+                                               create_test_config)
 
 
 class TestSplunkESClientAPIEssential:
@@ -428,7 +431,7 @@ class TestSplunkESClientAPIEssential:
         # Verify both condition groups are present (implicit AND in SPL)
         # Verify IP IN conditions use new format
         assert '"192.168.1.100","10.0.0.1"' in query  # noqa: S101
-        assert 'src_ip IN' in query  # noqa: S101
+        assert "src_ip IN" in query  # noqa: S101
         assert 'dst_ip IN ("172.16.0.1")' in query  # noqa: S101
         # Verify URL path conditions
         assert "url_path=" in query  # noqa: S101

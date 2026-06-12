@@ -8,20 +8,12 @@ from typing import Any
 
 import requests  # type: ignore[import-untyped]
 from requests.exceptions import (  # type: ignore[import-untyped]
-    ConnectionError,
-    RequestException,
-    Timeout,
-)
+    ConnectionError, RequestException, Timeout)
 
 from ..models.configs.config_loader import ConfigLoader
-from .exception import (
-    SplunkESAPIError,
-    SplunkESAuthenticationError,
-    SplunkESNetworkError,
-    SplunkESQueryError,
-    SplunkESSessionError,
-    SplunkESValidationError,
-)
+from .exception import (SplunkESAPIError, SplunkESAuthenticationError,
+                        SplunkESNetworkError, SplunkESQueryError,
+                        SplunkESSessionError, SplunkESValidationError)
 from .models import SplunkESAlert, SplunkESResponse, SplunkESSearchCriteria
 from .utils.parent_process_parser import ParentProcessParser
 
@@ -44,9 +36,14 @@ DEFAULT_QUERY_TEMPLATE = (
 )
 
 ALLOWED_PLACEHOLDERS = {
-    "alerts_index", "source_ips", "target_ips",
-    "ip_conditions", "process_conditions", "time_window",
-    "start_date", "end_date",
+    "alerts_index",
+    "source_ips",
+    "target_ips",
+    "ip_conditions",
+    "process_conditions",
+    "time_window",
+    "start_date",
+    "end_date",
 }
 
 
@@ -106,9 +103,7 @@ class SplunkESClientAPI:
                 f"{LOG_PREFIX} No time_window configured, using default {DEFAULT_TIME_WINDOW_HOURS} hour"
             )
 
-        self.query_template = getattr(
-            self.config.splunk_es, "query_template", None
-        )
+        self.query_template = getattr(self.config.splunk_es, "query_template", None)
         if self.query_template:
             self.logger.info(
                 f"{LOG_PREFIX} Using custom query template from configuration"
@@ -576,9 +571,7 @@ class SplunkESClientAPI:
                 else f"-{earliest_seconds}s"
             )
             end_date_str = (
-                search_criteria.end_date
-                if search_criteria.end_date
-                else "now"
+                search_criteria.end_date if search_criteria.end_date else "now"
             )
 
             self.logger.debug(
@@ -612,9 +605,7 @@ class SplunkESClientAPI:
             return full_query
 
         except (KeyError, ValueError) as e:
-            raise SplunkESValidationError(
-                f"Invalid query template: {e}"
-            ) from e
+            raise SplunkESValidationError(f"Invalid query template: {e}") from e
         except Exception as e:
             raise SplunkESValidationError(f"Failed to build SPL query: {e}") from e
 
@@ -652,9 +643,7 @@ class SplunkESClientAPI:
             return f"({' OR '.join(ip_conditions)})"
         return ""
 
-    def _build_process_conditions(
-        self, search_criteria: SplunkESSearchCriteria
-    ) -> str:
+    def _build_process_conditions(self, search_criteria: SplunkESSearchCriteria) -> str:
         """Build parent process / URL path conditions from search criteria.
 
         Args:
@@ -668,8 +657,10 @@ class SplunkESClientAPI:
 
         if search_criteria.parent_process_names:
             for parent_process_name in search_criteria.parent_process_names:
-                uuids = self.parent_process_parser.extract_uuids_from_parent_process_name(
-                    parent_process_name
+                uuids = (
+                    self.parent_process_parser.extract_uuids_from_parent_process_name(
+                        parent_process_name
+                    )
                 )
                 if uuids:
                     inject_uuid, agent_uuid = uuids
