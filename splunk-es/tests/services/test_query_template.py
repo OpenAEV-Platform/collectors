@@ -213,13 +213,63 @@ class TestQueryTemplateResolution:
         assert 'src_ip IN ("192.168.1.1")' in result
         assert 'dst_ip IN ("10.0.0.5")' in result
 
+    def test_start_end_date_from_signatures(self):
+        """Test that start_date/end_date from signatures replace relative time."""
+        client = self._create_client()
+        criteria = SplunkESSearchCriteria(
+            source_ips=["10.0.0.1"],
+            target_ips=[],
+            parent_process_names=[],
+            start_date="2026-06-12T08:00:00Z",
+            end_date="2026-06-12T09:00:00Z",
+        )
+
+        result = client._build_spl_query(criteria)
+
+        assert "earliest=2026-06-12T08:00:00Z" in result
+        assert "latest=2026-06-12T09:00:00Z" in result
+        assert "earliest=-" not in result
+
+    def test_start_date_only_fallback_end_to_now(self):
+        """Test that missing end_date falls back to 'now'."""
+        client = self._create_client()
+        criteria = SplunkESSearchCriteria(
+            source_ips=["10.0.0.1"],
+            target_ips=[],
+            parent_process_names=[],
+            start_date="2026-06-12T08:00:00Z",
+            end_date=None,
+        )
+
+        result = client._build_spl_query(criteria)
+
+        assert "earliest=2026-06-12T08:00:00Z" in result
+        assert "latest=now" in result
+
+    def test_no_dates_fallback_to_time_window(self):
+        """Test that missing start_date/end_date uses relative time window."""
+        client = self._create_client()
+        criteria = SplunkESSearchCriteria(
+            source_ips=["10.0.0.1"],
+            target_ips=[],
+            parent_process_names=[],
+            start_date=None,
+            end_date=None,
+        )
+
+        result = client._build_spl_query(criteria)
+
+        assert "earliest=-3600s" in result
+        assert "latest=now" in result
+
     def test_default_query_template_constant_format(self):
         """Test that DEFAULT_QUERY_TEMPLATE has the expected placeholders."""
         assert "{alerts_index}" in DEFAULT_QUERY_TEMPLATE
         assert "{source_ips}" in DEFAULT_QUERY_TEMPLATE
         assert "{target_ips}" in DEFAULT_QUERY_TEMPLATE
         assert "{process_conditions}" in DEFAULT_QUERY_TEMPLATE
-        assert "{time_window}" in DEFAULT_QUERY_TEMPLATE
+        assert "{start_date}" in DEFAULT_QUERY_TEMPLATE
+        assert "{end_date}" in DEFAULT_QUERY_TEMPLATE
         assert "| table _time" in DEFAULT_QUERY_TEMPLATE
         assert "| sort -_time" in DEFAULT_QUERY_TEMPLATE
         assert "IN" in DEFAULT_QUERY_TEMPLATE

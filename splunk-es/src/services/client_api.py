@@ -37,7 +37,7 @@ DEFAULT_QUERY_TEMPLATE = (
     "(src_ip IN ({source_ips}) OR src IN ({source_ips}) OR source_ip IN ({source_ips}) OR client_ip IN ({source_ips})) "
     "(dst_ip IN ({target_ips}) OR dest IN ({target_ips}) OR dest_ip IN ({target_ips}) "
     "OR destination_ip IN ({target_ips}) OR server_ip IN ({target_ips})) "
-    "{process_conditions} earliest=-{time_window}s "
+    "{process_conditions} earliest={start_date} latest={end_date} "
     "| table _time, src_ip, src, source_ip, client_ip, dst_ip, dest, dest_ip, "
     "destination_ip, server_ip, signature, rule_name, event_type, severity, "
     "url_path, url, path, query, _raw | sort -_time"
@@ -46,6 +46,7 @@ DEFAULT_QUERY_TEMPLATE = (
 ALLOWED_PLACEHOLDERS = {
     "alerts_index", "source_ips", "target_ips",
     "ip_conditions", "process_conditions", "time_window",
+    "start_date", "end_date",
 }
 
 
@@ -568,8 +569,20 @@ class SplunkESClientAPI:
             time_window_seconds = int(self.time_window.total_seconds())
             earliest_seconds = time_window_seconds + extend_end_seconds
 
+            # Resolve start_date/end_date: use signature values if available, else relative time
+            start_date_str = (
+                search_criteria.start_date
+                if search_criteria.start_date
+                else f"-{earliest_seconds}s"
+            )
+            end_date_str = (
+                search_criteria.end_date
+                if search_criteria.end_date
+                else "now"
+            )
+
             self.logger.debug(
-                f"{LOG_PREFIX} Using time window: -{earliest_seconds}s "
+                f"{LOG_PREFIX} Using time range: earliest={start_date_str}, latest={end_date_str} "
                 f"(base: {time_window_seconds}s + extend: {extend_end_seconds}s)"
             )
 
@@ -582,6 +595,8 @@ class SplunkESClientAPI:
                 ip_conditions=ip_conditions_str,
                 process_conditions=process_conditions_str,
                 time_window=earliest_seconds,
+                start_date=start_date_str,
+                end_date=end_date_str,
             )
 
             # Clean up double spaces from empty placeholders
