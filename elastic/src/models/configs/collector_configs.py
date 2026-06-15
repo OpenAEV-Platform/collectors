@@ -5,7 +5,6 @@ from typing import Annotated, Literal
 from uuid import UUID
 
 from pydantic import Field, HttpUrl, PlainSerializer
-
 from src.models.configs import ConfigBaseSettings
 
 LogLevelToLower = Annotated[

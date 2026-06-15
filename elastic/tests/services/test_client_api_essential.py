@@ -5,7 +5,6 @@ from unittest.mock import Mock, patch
 import pytest
 from pydantic import SecretStr
 from requests import Session
-
 from src.services.client_api import ElasticClientAPI
 from src.services.exception import (
     ElasticAPIError,

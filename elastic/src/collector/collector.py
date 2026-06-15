@@ -4,7 +4,6 @@ import os
 
 from pyoaev.daemons import CollectorDaemon  # type: ignore[import-untyped]
 from pyoaev.helpers import OpenAEVDetectionHelper  # type: ignore[import-untyped]
-
 from src.services.expectation_service import ElasticExpectationService
 from src.services.trace_service import ElasticTraceService
 from src.services.utils import ElasticConfig

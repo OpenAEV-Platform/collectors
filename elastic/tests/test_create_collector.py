@@ -5,7 +5,6 @@ from typing import Any
 from uuid import UUID
 
 import pytest
-
 from src.collector import Collector
 from src.collector.exception import CollectorConfigError
 from tests.conftest import mock_env_vars
