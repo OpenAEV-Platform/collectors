@@ -3,7 +3,6 @@
 from unittest.mock import Mock, patch
 
 import pytest
-
 from src.services.client_api import (
     ALLOWED_PLACEHOLDERS,
     DEFAULT_QUERY_TEMPLATE,
