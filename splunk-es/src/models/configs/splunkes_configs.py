@@ -49,7 +49,7 @@ class _ConfigLoaderSplunkES(ConfigBaseSettings):
         description="Time offset between retry attempts.",
     )
     query_template: Optional[str] = Field(
-        alias="SPLUNKES_QUERY",
+        alias="SPLUNKES_QUERY_TEMPLATE",
         default=None,
         description="SPL query template with placeholders: {alerts_index}, {source_ips}, "
         "{target_ips}, {start_date}, {end_date}, {process_conditions}, "

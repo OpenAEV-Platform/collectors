@@ -89,11 +89,11 @@ Below are the parameters you'll need to set for the collector:
 | Time Window  | splunk_es.time_window  | `SPLUNKES_TIME_WINDOW`      | PT1H                    | No        | Default search time window when no date signatures are provided (ISO 8601 format)       |
 | Offset       | splunk_es.offset       | `SPLUNKES_OFFSET`           | PT30S                   | No        | Delay between retry attempts to account for alert ingestion latency (ISO 8601 format)   |
 | Max Retry    | splunk_es.max_retry    | `SPLUNKES_MAX_RETRY`        | 3                       | No        | Maximum number of retry attempts after the initial API call fails or returns no results |
-| Query        | splunk_es.query_template | `SPLUNKES_QUERY`            | *(see below)*           | No        | Custom SPL query template with placeholders (leave empty for default)                   |
+| Query        | splunk_es.query_template | `SPLUNKES_QUERY_TEMPLATE`   | *(see below)*           | No        | Custom SPL query template with placeholders (leave empty for default)                   |
 
 ### Query Customization
 
-The `SPLUNKES_QUERY` field allows you to customize the SPL query used to fetch security alerts from Splunk ES. The query supports **placeholders** that are resolved at runtime:
+The `SPLUNKES_QUERY_TEMPLATE` field allows you to customize the SPL query used to fetch security alerts from Splunk ES. The query supports **placeholders** that are resolved at runtime:
 
 | Placeholder | Description | Example resolved value |
 |---|---|---|

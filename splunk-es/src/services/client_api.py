@@ -111,7 +111,7 @@ class SplunkESClientAPI:
                 f"{LOG_PREFIX} No time_window configured, using default {DEFAULT_TIME_WINDOW_HOURS} hour"
             )
 
-        self.query_template = getattr(self.config.splunk_es, "query_template", None)
+        self.query_template = self.config.splunk_es.query_template
         if self.query_template:
             self.logger.info(
                 f"{LOG_PREFIX} Using custom query template from configuration"
