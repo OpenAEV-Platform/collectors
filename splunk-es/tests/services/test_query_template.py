@@ -4,8 +4,11 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from src.services.client_api import (ALLOWED_PLACEHOLDERS,
-                                     DEFAULT_QUERY_TEMPLATE, SplunkESClientAPI)
+from src.services.client_api import (
+    ALLOWED_PLACEHOLDERS,
+    DEFAULT_QUERY_TEMPLATE,
+    SplunkESClientAPI,
+)
 from src.services.exception import SplunkESValidationError
 from src.services.models import SplunkESSearchCriteria
 from tests.services.fixtures.factories import create_test_config
