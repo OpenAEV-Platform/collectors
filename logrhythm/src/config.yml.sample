@@ -1,0 +1,27 @@
+openaev:
+  url: "http://change.me"
+  token: "ChangeMe"
+# tenant_id: "ChangeMe"
+
+collector:
+  id: "ChangeMe"
+  name: "LogRhythm"
+  period: 'PT1M'
+  log_level: "error"
+
+logrhythm:
+  base_url: "https://logrhythm.company.com:8501"
+  # Authentication: provide an API bearer token (preferred)
+  # OR a username/password pair.
+  token: "ChangeMe"
+  # username: "ChangeMe"
+  # password: "ChangeMe"
+  query_event_manager: true
+  max_msgs: 100
+  # console_url: "https://logrhythm.company.com"
+  verify_ssl: true
+  time_window: "PT1H"
+  offset: "PT30S"
+  max_retry: 3
+  search_timeout: "PT5M"
+  poll_interval: "PT5S"
