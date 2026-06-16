@@ -113,10 +113,12 @@ class SplunkESClientAPI:
 
         self.query_template = self.config.splunk_es.query_template
         if self.query_template:
+            self._validate_template_placeholders(self.query_template)
             self.logger.info(
                 f"{LOG_PREFIX} Using custom query template from configuration"
             )
         else:
+            self.query_template = DEFAULT_QUERY_TEMPLATE
             self.logger.debug(
                 f"{LOG_PREFIX} No custom query template configured, using default"
             )
@@ -128,6 +130,29 @@ class SplunkESClientAPI:
             raise SplunkESSessionError(f"Failed to create HTTP session: {e}") from e
 
         self.logger.info(f"{LOG_PREFIX} Splunk ES API client initialized successfully")
+
+    def _validate_template_placeholders(self, template: str) -> None:
+        """Validate that a custom query template only uses allowed placeholders.
+
+        Args:
+            template: The query template string to validate.
+
+        Raises:
+            SplunkESValidationError: If unknown placeholders are found.
+
+        """
+        formatter = string.Formatter()
+        used_placeholders = {
+            field_name
+            for _, field_name, _, _ in formatter.parse(template)
+            if field_name is not None
+        }
+        unknown = used_placeholders - ALLOWED_PLACEHOLDERS
+        if unknown:
+            raise SplunkESValidationError(
+                f"Unknown placeholders in query template: {unknown}. "
+                f"Allowed: {sorted(ALLOWED_PLACEHOLDERS)}"
+            )
 
     def _create_session(self) -> requests.Session:
         """Create HTTP session with proper authentication.
@@ -587,9 +612,8 @@ class SplunkESClientAPI:
                 f"(base: {time_window_seconds}s + extend: {extend_end_seconds}s)"
             )
 
-            template = self.query_template or DEFAULT_QUERY_TEMPLATE
             full_query = _safe_formatter.format(
-                template,
+                self.query_template,
                 alerts_index=self.alerts_index or "*",
                 source_ips=source_ips_str,
                 target_ips=target_ips_str,
@@ -600,13 +624,14 @@ class SplunkESClientAPI:
                 end_date=end_date_str,
             )
 
-            # Clean up double spaces from empty placeholders
+            # Normalize whitespace: collapse runs of spaces caused by empty placeholders.
+            # This is safe because SPL tokens are never whitespace-sensitive.
             full_query = " ".join(full_query.split())
 
             if "| table" not in full_query:
-                self.logger.warning(
+                self.logger.error(
                     f"{LOG_PREFIX} Query template does not contain '| table' pipe. "
-                    "Alert parsing may fail without proper field extraction."
+                    "Alert parsing will fail without proper field extraction."
                 )
 
             self.logger.debug(f"{LOG_PREFIX} Built SPL query: {full_query}")
@@ -629,23 +654,13 @@ class SplunkESClientAPI:
         """
         ip_conditions = []
 
-        if search_criteria.source_ips:
-            src_fields = ["src_ip", "src", "source_ip", "client_ip"]
-            for ip in search_criteria.source_ips:
-                for field in src_fields:
-                    ip_conditions.append(f"{field}={ip}")
+        src_fields = ["src_ip", "src", "source_ip", "client_ip"]
+        for ip in search_criteria.source_ips:
+            ip_conditions.extend([f"{field}={ip}" for field in src_fields])
 
-        if search_criteria.target_ips:
-            dst_fields = [
-                "dst_ip",
-                "dest",
-                "dest_ip",
-                "destination_ip",
-                "server_ip",
-            ]
-            for ip in search_criteria.target_ips:
-                for field in dst_fields:
-                    ip_conditions.append(f"{field}={ip}")
+        dst_fields = ["dst_ip", "dest", "dest_ip", "destination_ip", "server_ip"]
+        for ip in search_criteria.target_ips:
+            ip_conditions.extend([f"{field}={ip}" for field in dst_fields])
 
         if ip_conditions:
             return f"({' OR '.join(ip_conditions)})"
@@ -663,25 +678,20 @@ class SplunkESClientAPI:
         """
         url_path_conditions = []
 
-        if search_criteria.parent_process_names:
-            for parent_process_name in search_criteria.parent_process_names:
-                uuids = (
-                    self.parent_process_parser.extract_uuids_from_parent_process_name(
-                        parent_process_name
-                    )
+        for parent_process_name in search_criteria.parent_process_names:
+            uuids = self.parent_process_parser.extract_uuids_from_parent_process_name(
+                parent_process_name
+            )
+            if uuids:
+                inject_uuid, agent_uuid = uuids
+                url_path_query = self.parent_process_parser.build_url_path_search_query(
+                    inject_uuid, agent_uuid
                 )
-                if uuids:
-                    inject_uuid, agent_uuid = uuids
-                    url_path_query = (
-                        self.parent_process_parser.build_url_path_search_query(
-                            inject_uuid, agent_uuid
-                        )
+                if url_path_query:
+                    url_path_conditions.append(url_path_query)
+                    self.logger.debug(
+                        f"{LOG_PREFIX} Added URL path condition for parent process: {url_path_query}"
                     )
-                    if url_path_query:
-                        url_path_conditions.append(url_path_query)
-                        self.logger.debug(
-                            f"{LOG_PREFIX} Added URL path condition for parent process: {url_path_query}"
-                        )
 
         if url_path_conditions:
             return f"({' OR '.join(url_path_conditions)})"
