@@ -1,0 +1,17 @@
+version: "3"
+services:
+  collector-qradar:
+    image: openaev/collector-qradar:rolling
+    environment:
+      - OPENAEV_URL=http://localhost
+      - OPENAEV_TOKEN=ChangeMe
+      - OPENAEV_TENANT_ID=ChangeMe
+      - COLLECTOR_ID=ChangeMe
+      - QRADAR_BASE_URL=https://change.me
+      # Authentication: provide QRADAR_TOKEN (preferred, SEC header) or username/password
+      - QRADAR_TOKEN=ChangeMe
+      # - QRADAR_USERNAME=ChangeMe
+      # - QRADAR_PASSWORD=ChangeMe
+      - QRADAR_API_VERSION=20.0
+      - QRADAR_DATA_SOURCE=events
+    restart: always

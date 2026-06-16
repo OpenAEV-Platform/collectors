@@ -1,0 +1,27 @@
+openaev:
+  url: "http://change.me"
+  token: "ChangeMe"
+# tenant_id: "ChangeMe"
+
+collector:
+  id: "ChangeMe"
+  name: "IBM QRadar"
+  period: 'PT1M'
+  log_level: "error"
+
+qradar:
+  base_url: "https://qradar.company.com"
+  # Authentication: provide an authorized service token (preferred, sent in the SEC header)
+  # OR a username/password pair.
+  token: "ChangeMe"
+  # username: "ChangeMe"
+  # password: "ChangeMe"
+  api_version: "20.0"
+  data_source: "events"
+  # console_url: "https://qradar.company.com"
+  verify_ssl: true
+  time_window: "PT1H"
+  offset: "PT30S"
+  max_retry: 3
+  search_timeout: "PT5M"
+  poll_interval: "PT5S"
