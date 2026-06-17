@@ -5,7 +5,7 @@ This module provides Pydantic models for LogRhythm Search API operations.
 
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field, PrivateAttr
+from pydantic import BaseModel, Field
 
 
 def _first(row: dict[str, Any], keys: list[str]) -> Optional[str]:
@@ -50,7 +50,6 @@ class LogRhythmAlert(BaseModel):
     rule_name: Optional[str] = Field(None, description="MPE rule name")
     event_type: Optional[str] = Field(None, description="Classification name")
     severity: Optional[str] = Field(None, description="Priority / risk")
-    _raw: Optional[dict[str, Any]] = PrivateAttr(default=None)
 
 
 class LogRhythmResponse(BaseModel):
@@ -93,7 +92,6 @@ class LogRhythmResponse(BaseModel):
                 rule_name=_first(item, ["mpeRuleName", "ruleName", "commonEventName"]),
                 event_type=_first(item, ["classificationName", "classificationType"]),
                 severity=_first(item, ["priority", "risk", "severity"]),
-                _raw=item,
             )
             alerts.append(alert)
 
