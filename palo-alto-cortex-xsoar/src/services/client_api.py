@@ -1,16 +1,40 @@
-import random
-import uuid
-from datetime import datetime, timezone
+from http.cookiejar import DefaultCookiePolicy
 from typing import Optional
 
+from requests import Session
+from requests.adapters import HTTPAdapter
+from requests.packages.urllib3.util import Retry
 from src.models.authentication import Authentication
 from src.models.incident import XSOARSearchIncidentsResponse
+
+REQUESTS_TIMEOUT_SECONDS = 60
 
 
 class PaloAltoCortexXSOARClientAPI:
     def __init__(self, auth: Authentication, api_url: str) -> None:
         self._auth = auth
         self.api_url = api_url
+
+        self.session = self._prepare_session()
+
+    def _build_url(self, path: str) -> str:
+        """Build a full URL from the configured api_url and a path."""
+        return f"{self.api_url.rstrip('/')}{path}"
+
+    def _prepare_session(self) -> Session:
+        """Preparing a session with automatic retries (with increasing backoff) and no cookies"""
+        retries = Retry(
+            total=5,
+            allowed_methods=["POST"],
+            status_forcelist=[429, 500, 502, 503, 504],
+            backoff_factor=0.5,
+            backoff_jitter=0.2,
+        )
+        s = Session()
+        s.mount("http://", HTTPAdapter(max_retries=retries))
+        s.mount("https://", HTTPAdapter(max_retries=retries))
+        s.cookies.set_policy(DefaultCookiePolicy(allowed_domains=[]))
+        return s
 
     def search_incidents(
         self,
@@ -19,37 +43,28 @@ class PaloAltoCortexXSOARClientAPI:
         search_from: int = 0,
         search_to: int = 100,
     ) -> XSOARSearchIncidentsResponse:
-        _ = (from_date, to_date, search_from, search_to)
+        url = self._build_url("/xsoar/public/v1/incidents/search")
+        headers = self._auth.get_headers()
 
-        incident_count = random.randint(1, 3)
-        detection_timestamp = int(datetime.now(timezone.utc).timestamp() * 1000)
+        size = search_to - search_from
+        page = search_from // size if size > 0 else 0
 
-        data = []
-        for _ in range(incident_count):
-            data.append(
-                {
-                    "id": str(uuid.uuid4()),
-                    "name": "Dummy XSOAR Incident",
-                    "CustomFields": {
-                        "xdralerts": [
-                            {
-                                "alert_id": str(uuid.uuid4()),
-                                "case_id": random.randint(1, 1000),
-                                "action_pretty": random.choice(
-                                    ["Detected (Reported)", "Prevented (Blocked)"]
-                                ),
-                                "actor_process_command_line": (
-                                    f"oaev-implant-{uuid.uuid4()}-agent-{uuid.uuid4()}"
-                                ),
-                                "actor_process_image_name": "oaev-implant.exe",
-                                "actor_process_image_path": "C:/Dummy/oaev-implant.exe",
-                                "detection_timestamp": detection_timestamp,
-                            }
-                        ]
-                    },
-                }
-            )
+        body = {
+            "filter": {
+                "page": page,
+                "size": size,
+                "sort": [{"field": "created", "asc": True}],
+            }
+        }
 
-        return XSOARSearchIncidentsResponse.model_validate(
-            {"total": len(data), "data": data}
+        if from_date:
+            body["filter"]["fromDate"] = from_date
+
+        if to_date:
+            body["filter"]["toDate"] = to_date
+
+        response = self.session.post(
+            url, headers=headers, json=body, timeout=REQUESTS_TIMEOUT_SECONDS
         )
+        response.raise_for_status()
+        return XSOARSearchIncidentsResponse.model_validate(response.json())
