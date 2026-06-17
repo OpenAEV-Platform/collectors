@@ -233,13 +233,20 @@ class NetWitnessTraceService:
     def _build_trace_url_from_expectation(
         self, expectation: DetectionExpectation | PreventionExpectation
     ) -> str:
-        """Build trace URL by reusing client_api query building logic.
+        """Build a NetWitness Investigate URL from the expectation signatures.
+
+        Reuses ``client_api._build_search_criteria`` to extract the source and
+        destination IPs from the expectation signatures, then builds an
+        Investigate query hint from those IPs only. Unlike the NWQL query built
+        by ``client_api._build_query``, this URL does not include the
+        parent-process ``url`` match or the time window.
 
         Args:
             expectation: The expectation object with signatures.
 
         Returns:
-            URL string for the trace using the exact same query as client_api.
+            NetWitness Investigate URL hinted with the expectation's source and
+            destination IPs.
 
         Raises:
             NetWitnessDataConversionError: If URL building fails.

@@ -5,7 +5,7 @@ This module provides Pydantic models for NetWitness Core SDK query operations.
 
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field, PrivateAttr
+from pydantic import BaseModel, Field
 
 
 def _meta_str(meta: dict[str, Any], keys: list[str]) -> Optional[str]:
@@ -50,7 +50,6 @@ class NetWitnessAlert(BaseModel):
     rule_name: Optional[str] = Field(None, description="Rule / alert name")
     event_type: Optional[str] = Field(None, description="Service / event category")
     severity: Optional[str] = Field(None, description="Risk severity")
-    _raw: Optional[dict[str, Any]] = PrivateAttr(default=None)
 
 
 class NetWitnessResponse(BaseModel):
@@ -104,7 +103,6 @@ class NetWitnessResponse(BaseModel):
                 rule_name=_meta_str(meta, ["alert.id", "rule.name"]),
                 event_type=_meta_str(meta, ["service", "event.cat.name"]),
                 severity=_meta_str(meta, ["risk", "severity"]),
-                _raw=meta,
             )
             alerts.append(alert)
 

@@ -575,7 +575,11 @@ class NetWitnessExpectationService:
                 f"{LOG_PREFIX} Processing {len(signature_groups)} signature groups"
             )
 
-            parent_process_match = False
+            # Parent process is only enforced when a parent_process_name
+            # signature is present (see step 1 of the docstring). Default to
+            # True so IP-only expectations are not rejected by the
+            # ``if not parent_process_match`` guard below.
+            parent_process_match = True
             source_ip_match = False
             target_ip_match = False
 
