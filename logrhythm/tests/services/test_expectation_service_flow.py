@@ -170,8 +170,7 @@ class TestExpectationServiceFlow:
         }
 
         assert (  # noqa: S101
-            service._match_with_detection_helper(signatures, data_item, helper)
-            is False
+            service._match_with_detection_helper(signatures, data_item, helper) is False
         )
 
     def test_create_error_result_dict(self):
