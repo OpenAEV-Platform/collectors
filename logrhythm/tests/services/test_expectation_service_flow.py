@@ -143,6 +143,37 @@ class TestExpectationServiceFlow:
             service._match_with_detection_helper(signatures, data_item, helper) is True
         )
 
+    def test_match_with_detection_helper_source_only_no_parent(self):
+        """An IP-only expectation (no parent_process signature) can still match."""
+        service = _service()
+        helper = Mock()
+        helper.match_alert_elements.return_value = True
+
+        signatures = [{"type": "source_ipv4_address", "value": "1.2.3.4"}]
+        data_item = {
+            "source_ipv4_address": {"type": "simple", "data": ["1.2.3.4"]},
+        }
+
+        assert (  # noqa: S101
+            service._match_with_detection_helper(signatures, data_item, helper) is True
+        )
+
+    def test_match_with_detection_helper_source_only_no_parent_no_match(self):
+        """An IP-only expectation returns False when the IP does not match."""
+        service = _service()
+        helper = Mock()
+        helper.match_alert_elements.return_value = False
+
+        signatures = [{"type": "source_ipv4_address", "value": "1.2.3.4"}]
+        data_item = {
+            "source_ipv4_address": {"type": "simple", "data": ["9.9.9.9"]},
+        }
+
+        assert (  # noqa: S101
+            service._match_with_detection_helper(signatures, data_item, helper)
+            is False
+        )
+
     def test_create_error_result_dict(self):
         """_create_error_result builds an error dictionary from a service error."""
         service = _service()

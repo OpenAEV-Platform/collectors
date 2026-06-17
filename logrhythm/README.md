@@ -38,10 +38,12 @@ See the LogRhythm documentation on the Search API (available on your deployment 
 
 There are a number of configuration options, which are set either in `docker-compose.yml` (for Docker) or in `config.yml` (for manual deployment).
 
-The collector supports multiple configuration sources in order of precedence:
-1. Environment variables
-2. YAML configuration file (`src/config.yml`)
-3. Default values
+The collector loads configuration from a single source, selected in this order (the first one found wins; sources are not merged):
+1. `.env` file (`src/.env`), if present
+2. YAML configuration file (`src/config.yml`), if present
+3. Environment variables
+
+Any value not provided by the selected source falls back to its default.
 
 ### OpenAEV environment variables
 
