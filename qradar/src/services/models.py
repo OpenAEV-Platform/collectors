@@ -5,7 +5,7 @@ This module provides Pydantic models for IBM QRadar Ariel search operations.
 
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field, PrivateAttr
+from pydantic import BaseModel, Field
 
 
 def _first(row: dict[str, Any], keys: list[str]) -> Optional[str]:
@@ -54,7 +54,6 @@ class QRadarAlert(BaseModel):
     )
     event_type: Optional[str] = Field(None, description="Event category name")
     severity: Optional[str] = Field(None, description="Event severity / magnitude")
-    _raw: Optional[dict[str, Any]] = PrivateAttr(default=None)
 
 
 class QRadarResponse(BaseModel):
@@ -95,7 +94,6 @@ class QRadarResponse(BaseModel):
                 rule_name=_first(row, ["Rule Name", "rulename", "creeventlist"]),
                 event_type=_first(row, ["categoryname", "category"]),
                 severity=_first(row, ["severity", "magnitude"]),
-                _raw=row,
             )
             alerts.append(alert)
 

@@ -233,13 +233,20 @@ class QRadarTraceService:
     def _build_trace_url_from_expectation(
         self, expectation: DetectionExpectation | PreventionExpectation
     ) -> str:
-        """Build trace URL by reusing client_api query building logic.
+        """Build a QRadar Log Activity URL from the expectation signatures.
+
+        Reuses ``client_api._build_search_criteria`` to extract the source and
+        destination IPs from the expectation signatures, then builds a Log
+        Activity filter from those IPs only. Unlike the AQL query built by
+        ``client_api._build_aql``, this URL does not include the parent-process
+        ``URL`` match or the search time window.
 
         Args:
             expectation: The expectation object with signatures.
 
         Returns:
-            URL string for the trace using the exact same query as client_api.
+            QRadar Log Activity URL filtered by the expectation's source and
+            destination IPs.
 
         Raises:
             QRadarDataConversionError: If URL building fails.
@@ -264,20 +271,22 @@ class QRadarTraceService:
                 search_signatures.append({"type": sig.type.value, "value": sig.value})
 
             search_criteria = self.client_api._build_search_criteria(search_signatures)
-            kql_parts = []
+            filter_parts = []
             for ip in search_criteria.source_ips or []:
-                kql_parts.append(f"sourceip={ip}")
+                filter_parts.append(f"sourceip={ip}")
             for ip in search_criteria.target_ips or []:
-                kql_parts.append(f"destinationip={ip}")
-            kql_query = " ".join(kql_parts)
+                filter_parts.append(f"destinationip={ip}")
+            filter_query = " ".join(filter_parts)
 
-            encoded_query = quote(kql_query)
+            encoded_query = quote(filter_query)
             url = (
                 f"{web_base_url}/console/qradar/jsp/QRadar.jsp"
                 f"?appName=Sem&pageId=LogActivity&filter={encoded_query}"
             )
 
-            self.logger.debug(f"{LOG_PREFIX} Built trace URL with filter: {kql_query}")
+            self.logger.debug(
+                f"{LOG_PREFIX} Built trace URL with filter: {filter_query}"
+            )
             return url
 
         except Exception as e:
