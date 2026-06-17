@@ -5,7 +5,7 @@ This module provides Pydantic models for Elastic Security operations.
 
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field, PrivateAttr
+from pydantic import BaseModel, Field
 
 
 def _dig(source: dict[str, Any], dotted: str) -> Optional[Any]:
@@ -79,7 +79,6 @@ class ElasticAlert(BaseModel):
     )
     event_type: Optional[str] = Field(None, description="Type of security event")
     severity: Optional[str] = Field(None, description="Alert severity level")
-    _raw: Optional[dict[str, Any]] = PrivateAttr(default=None)
 
 
 class ElasticResponse(BaseModel):
@@ -123,7 +122,6 @@ class ElasticResponse(BaseModel):
                 rule_name=rule_name,
                 event_type=_first(source, ["event.category", "event.action"]),
                 severity=_first(source, ["kibana.alert.severity", "event.severity"]),
-                _raw=source,
             )
             alerts.append(alert)
 

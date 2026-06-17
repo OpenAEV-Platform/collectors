@@ -233,13 +233,20 @@ class ElasticTraceService:
     def _build_trace_url_from_expectation(
         self, expectation: DetectionExpectation | PreventionExpectation
     ) -> str:
-        """Build trace URL by reusing client_api query building logic.
+        """Build a Kibana Security alerts URL from the expectation signatures.
+
+        Reuses ``client_api._build_search_criteria`` to extract the source and
+        destination IPs from the expectation signatures, then builds a Kibana
+        KQL query from those IPs only. Unlike the Elasticsearch ``_search``
+        query built by ``client_api._build_query``, this URL does not include
+        the parent-process ``url.path`` match or the ``@timestamp`` time window.
 
         Args:
             expectation: The expectation object with signatures.
 
         Returns:
-            URL string for the trace using the exact same query as client_api.
+            Kibana Security alerts URL filtered by the expectation's source and
+            destination IPs.
 
         Raises:
             ElasticDataConversionError: If URL building fails.

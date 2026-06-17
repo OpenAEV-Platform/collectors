@@ -39,10 +39,12 @@ See the Elastic documentation on [API keys](https://www.elastic.co/guide/en/elas
 
 There are a number of configuration options, which are set either in `docker-compose.yml` (for Docker) or in `config.yml` (for manual deployment).
 
-The collector supports multiple configuration sources in order of precedence:
-1. Environment variables
-2. YAML configuration file (`src/config.yml`)
-3. Default values
+The collector loads configuration from a single source, selected in this order (the first one found wins; sources are not merged):
+1. `.env` file (`src/.env`), if present
+2. YAML configuration file (`src/config.yml`), if present
+3. Environment variables
+
+Any value not provided by the selected source falls back to its default.
 
 ### OpenAEV environment variables
 
@@ -67,7 +69,7 @@ Below are the parameters you'll need to set for running the collector properly:
 | Parameter        | config.yml          | Docker environment variable | Default                                       | Mandatory | Description                                                                                   |
 |------------------|---------------------|-----------------------------|-----------------------------------------------|-----------|-----------------------------------------------------------------------------------------------|
 | Collector ID     | collector.id        | `COLLECTOR_ID`              | elastic--0b13e3f7-5c9e-46f5-acc4-33032e9b4921 | Yes       | A unique `UUIDv4` identifier for this collector instance.                                     |
-| Collector Name   | collector.name      | `COLLECTOR_NAME`            | Elastic Security                              | No        | Name of the collector.                                                                        |
+| Collector Name   | collector.name      | `COLLECTOR_NAME`            | Elastic                                       | No        | Name of the collector.                                                                        |
 | Collector Period | collector.period    | `COLLECTOR_PERIOD`          | PT1M                                          | No        | Collection interval (ISO 8601 format).                                                        |
 | Log Level        | collector.log_level | `COLLECTOR_LOG_LEVEL`       | error                                         | No        | Determines the verbosity of the logs. Options are `debug`, `info`, `warn`, or `error`.        |
 | Platform         | collector.platform  | `COLLECTOR_PLATFORM`        | SIEM                                          | No        | Type of security platform this collector works for. One of: `EDR, XDR, SIEM, SOAR, NDR, ISPM` |
