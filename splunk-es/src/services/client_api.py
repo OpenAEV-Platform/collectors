@@ -37,10 +37,12 @@ DEFAULT_QUERY_TEMPLATE = (
     "(src_ip IN ({source_ips}) OR src IN ({source_ips}) OR source_ip IN ({source_ips}) OR client_ip IN ({source_ips})) "
     "(dst_ip IN ({target_ips}) OR dest IN ({target_ips}) OR dest_ip IN ({target_ips}) "
     "OR destination_ip IN ({target_ips}) OR server_ip IN ({target_ips})) "
-    "{process_conditions} earliest={start_date} latest={end_date} "
+    "(url_path IN ({implant_urls}) OR url IN ({implant_urls}) OR path IN ({implant_urls}) OR query IN ({implant_urls}) "
+    "OR process_name IN ({implant_names}) OR parent_process_name IN ({implant_names})) "
+    "earliest={start_date} latest={end_date} "
     "| table _time, src_ip, src, source_ip, client_ip, dst_ip, dest, dest_ip, "
     "destination_ip, server_ip, signature, rule_name, event_type, severity, "
-    "url_path, url, path, query, _raw | sort -_time"
+    "url_path, url, path, query, process_name, parent_process_name, _raw | sort -_time"
 )
 
 ALLOWED_PLACEHOLDERS = {
@@ -49,6 +51,8 @@ ALLOWED_PLACEHOLDERS = {
     "target_ips",
     "ip_conditions",
     "process_conditions",
+    "implant_urls",
+    "implant_names",
     "time_window",
     "start_date",
     "end_date",
@@ -594,6 +598,8 @@ class SplunkESClientAPI:
             process_conditions_str = self._build_process_conditions(search_criteria)
             source_ips_str = self._build_ip_list(search_criteria.source_ips)
             target_ips_str = self._build_ip_list(search_criteria.target_ips)
+            implant_urls_str = self._build_implant_url_list(search_criteria)
+            implant_names_str = self._build_implant_name_list(search_criteria)
             time_window_seconds = int(self.time_window.total_seconds())
             earliest_seconds = time_window_seconds + extend_end_seconds
 
@@ -619,6 +625,8 @@ class SplunkESClientAPI:
                 target_ips=target_ips_str,
                 ip_conditions=ip_conditions_str,
                 process_conditions=process_conditions_str,
+                implant_urls=implant_urls_str,
+                implant_names=implant_names_str,
                 time_window=earliest_seconds,
                 start_date=start_date_str,
                 end_date=end_date_str,
@@ -711,3 +719,51 @@ class SplunkESClientAPI:
         if not ips:
             return "*"
         return ",".join(f'"{ip}"' for ip in ips)
+
+    def _build_implant_url_list(self, search_criteria: SplunkESSearchCriteria) -> str:
+        """Build a quoted comma-separated list of implant callback URLs.
+
+        Extracts inject/agent UUIDs from parent_process_name signatures
+        and constructs the API callback URL paths that appear in Splunk logs.
+
+        Args:
+            search_criteria: SplunkESSearchCriteria with parent process names.
+
+        Returns:
+            Quoted CSV string for Splunk IN(), or "*" if no implant URLs.
+
+        """
+        urls = []
+        for parent_process_name in search_criteria.parent_process_names:
+            uuids = self.parent_process_parser.extract_uuids_from_parent_process_name(
+                parent_process_name
+            )
+            if uuids:
+                inject_uuid, agent_uuid = uuids
+                urls.append(
+                    f"/api/injects/{inject_uuid}/{agent_uuid}/executable-payload"
+                )
+        if not urls:
+            return "*"
+        return ",".join(f'"{url}"' for url in urls)
+
+    @staticmethod
+    def _build_implant_name_list(
+        search_criteria: SplunkESSearchCriteria,
+    ) -> str:
+        """Build a quoted comma-separated list of implant process names.
+
+        Uses the raw parent_process_name signature values
+        (e.g., ``oaev-implant-{uuid}-agent-{uuid}``).
+
+        Args:
+            search_criteria: SplunkESSearchCriteria with parent process names.
+
+        Returns:
+            Quoted CSV string for Splunk IN(), or "*" if no names.
+
+        """
+        names = search_criteria.parent_process_names
+        if not names:
+            return "*"
+        return ",".join(f'"{name}"' for name in names)

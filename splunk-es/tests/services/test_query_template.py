@@ -265,7 +265,8 @@ class TestQueryTemplateResolution:
         assert "{alerts_index}" in DEFAULT_QUERY_TEMPLATE
         assert "{source_ips}" in DEFAULT_QUERY_TEMPLATE
         assert "{target_ips}" in DEFAULT_QUERY_TEMPLATE
-        assert "{process_conditions}" in DEFAULT_QUERY_TEMPLATE
+        assert "{implant_urls}" in DEFAULT_QUERY_TEMPLATE
+        assert "{implant_names}" in DEFAULT_QUERY_TEMPLATE
         assert "{start_date}" in DEFAULT_QUERY_TEMPLATE
         assert "{end_date}" in DEFAULT_QUERY_TEMPLATE
         assert "| table _time" in DEFAULT_QUERY_TEMPLATE
