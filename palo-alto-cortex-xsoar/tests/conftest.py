@@ -4,7 +4,12 @@ from unittest.mock import patch
 import pytest
 from pyoaev.signatures.types import SignatureTypes
 from src.models.incident import CustomFields, XSOARSearchIncidentsResponse
-from tests.factories import AlertFactory, DetectionExpectationFactory, IncidentFactory
+from src.services.ioc_extractor import IncidentResult, IndicatorResults
+from tests.factories import (
+    AlertFactory,
+    DetectionExpectationFactory,
+    IncidentFactory,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -82,19 +87,30 @@ def expectations(execution_uuid, mock_oaev_api):
 
 @pytest.fixture
 def alerts(execution_uuid):
-    """Create an alert with implant and mock search_incidents."""
+    """Create an alert with implant and mock search_incidents + extract_from_custom_fields."""
     agent_uuid = str(uuid.uuid4())
+    implant_name = f"oaev-implant-{execution_uuid}-agent-{agent_uuid}"
+
     alert = AlertFactory(
         case_id=42,
-        actor_process_command_line=f"oaev-implant-{execution_uuid}-agent-{agent_uuid}",
+        actor_process_command_line=implant_name,
     )
 
     incident = IncidentFactory(custom_fields=CustomFields(xdralerts=[alert]))
 
     alerts_response = XSOARSearchIncidentsResponse(total=1, data=[incident])
 
+    incident_result = IncidentResult(
+        id=str(incident.id),
+        action=["Detected (Reported)"],
+        indicators=IndicatorResults(oaev_implant=[implant_name]),
+    )
+
     with patch(
         "src.services.client_api.PaloAltoCortexXSOARClientAPI.search_incidents",
         return_value=alerts_response,
+    ), patch(
+        "src.services.alert_fetcher.extract_from_custom_fields",
+        return_value=[incident_result],
     ):
         yield alert

@@ -79,7 +79,7 @@ jobs:
       - run:
           working_directory: ~/openaev/palo-alto-cortex-xsoar
           name: Install dependencies for palo-alto-cortex-xsoar
-          command: poetry run pip install pytest factory-boy pyoaev
+          command: poetry run pip install pytest factory-boy pyoaev msticpy
       - run:
           working_directory: ~/openaev/palo-alto-cortex-xsoar
           name: Tests for palo-alto-cortex-xsoar collector

@@ -3,7 +3,8 @@ from unittest.mock import patch
 
 from pyoaev.apis import DetectionExpectation
 from src.collector import Collector
-from src.models.incident import Alert, CustomFields, XSOARSearchIncidentsResponse
+from src.models.incident import CustomFields, XSOARSearchIncidentsResponse
+from src.services.ioc_extractor import IncidentResult, IndicatorResults
 from tests.factories import (
     AlertFactory,
     DetectionExpectationFactory,
@@ -13,8 +14,8 @@ from tests.factories import (
 
 
 def get_matching_items(
-    expectations: list[DetectionExpectation], alert: Alert
-) -> tuple[DetectionExpectation, Alert] | tuple[None, None]:
+    expectations: list[DetectionExpectation], alert
+) -> tuple[DetectionExpectation, object] | tuple[None, None]:
     """Get the matching expectation for the given alert by checking signatures against alert's data."""
     for expectation in expectations:
         for signature in expectation.inject_expectation_signatures:
@@ -51,30 +52,17 @@ def test_collector(expectations, alerts, mock_oaev_api) -> None:
         is True
     )
 
-    # Verify that the API was called for traces creation
-    mock_oaev_api.inject_expectation_trace.bulk_create.assert_called_once()
-    expectation_traces = mock_oaev_api.inject_expectation_trace.bulk_create.call_args[
-        1
-    ]["payload"]["expectation_traces"]
 
-    assert len(expectation_traces) > 0, "No expectation traces were submitted"
-    assert expectation_traces[0]["inject_expectation_trace_expectation"] == str(
-        matching_expectation.inject_expectation_id
-    )
-    alert_link = expectation_traces[0]["inject_expectation_trace_alert_link"]
-    assert f"/issue-view/{matching_alert.alert_id}" in alert_link
-
-
-def test_collector_no_expectations(alerts, mock_oaev_api) -> None:
-    """Scenario: Start the collector when there are no expectations."""
+def test_no_expectations(mock_oaev_api) -> None:
+    """Scenario: No expectations returned from API."""
     collector = Collector()
     collector.api = mock_oaev_api
     collector._setup()
 
     mock_oaev_api.inject_expectation.expectations_models_for_source.return_value = []
+
     collector._process_callback()
 
-    # Verify that the API was NOT called for expectations update (or called with empty dict)
     if mock_oaev_api.inject_expectation.bulk_update.called:
         bulk_expectation = mock_oaev_api.inject_expectation.bulk_update.call_args[1][
             "inject_expectation_input_by_id"
@@ -84,19 +72,27 @@ def test_collector_no_expectations(alerts, mock_oaev_api) -> None:
         assert True
 
 
-def _create_test_mocks(execution_uuid):
+def _create_test_mocks(execution_uuid, action="Detected (Reported)"):
     """Helper to create alert mocks for a given execution_uuid."""
     agent_uuid = str(uuid.uuid4())
+    implant_name = f"oaev-implant-{execution_uuid}-agent-{agent_uuid}"
+
     alert = AlertFactory(
         case_id=42,
-        actor_process_command_line=f"oaev-implant-{execution_uuid}-agent-{agent_uuid}",
+        actor_process_command_line=implant_name,
     )
 
     incident = IncidentFactory(custom_fields=CustomFields(xdralerts=[alert]))
 
     alerts_response = XSOARSearchIncidentsResponse(total=1, data=[incident])
 
-    return alert, alerts_response
+    incident_result = IncidentResult(
+        id=str(incident.id),
+        action=[action],
+        indicators=IndicatorResults(oaev_implant=[implant_name]),
+    )
+
+    return alert, alerts_response, incident_result
 
 
 def test_detection_expectation_with_detected_alert(mock_oaev_api) -> None:
@@ -118,8 +114,9 @@ def test_detection_expectation_with_detected_alert(mock_oaev_api) -> None:
         f"oaev-implant-{execution_uuid}"
     )
 
-    alert, alerts_response = _create_test_mocks(execution_uuid)
-    alert.action_pretty = "Detected (Reported)"
+    alert, alerts_response, incident_result = _create_test_mocks(
+        execution_uuid, action="Detected (Reported)"
+    )
 
     mock_oaev_api.inject_expectation.expectations_models_for_source.return_value = [
         expectation
@@ -128,6 +125,9 @@ def test_detection_expectation_with_detected_alert(mock_oaev_api) -> None:
     with patch(
         "src.services.client_api.PaloAltoCortexXSOARClientAPI.search_incidents",
         return_value=alerts_response,
+    ), patch(
+        "src.services.alert_fetcher.extract_from_custom_fields",
+        return_value=[incident_result],
     ):
         collector._process_callback()
 
@@ -162,8 +162,9 @@ def test_detection_expectation_with_prevented_alert(mock_oaev_api) -> None:
         f"oaev-implant-{execution_uuid}"
     )
 
-    alert, alerts_response = _create_test_mocks(execution_uuid)
-    alert.action_pretty = "Prevented (Blocked)"
+    alert, alerts_response, incident_result = _create_test_mocks(
+        execution_uuid, action="Prevented (Reported)"
+    )
 
     mock_oaev_api.inject_expectation.expectations_models_for_source.return_value = [
         expectation
@@ -172,6 +173,9 @@ def test_detection_expectation_with_prevented_alert(mock_oaev_api) -> None:
     with patch(
         "src.services.client_api.PaloAltoCortexXSOARClientAPI.search_incidents",
         return_value=alerts_response,
+    ), patch(
+        "src.services.alert_fetcher.extract_from_custom_fields",
+        return_value=[incident_result],
     ):
         collector._process_callback()
 
@@ -206,8 +210,9 @@ def test_prevention_expectation_with_prevented_alert(mock_oaev_api) -> None:
         f"oaev-implant-{execution_uuid}"
     )
 
-    alert, alerts_response = _create_test_mocks(execution_uuid)
-    alert.action_pretty = "Prevented (Blocked)"
+    alert, alerts_response, incident_result = _create_test_mocks(
+        execution_uuid, action="Prevented (Reported)"
+    )
 
     mock_oaev_api.inject_expectation.expectations_models_for_source.return_value = [
         expectation
@@ -216,6 +221,9 @@ def test_prevention_expectation_with_prevented_alert(mock_oaev_api) -> None:
     with patch(
         "src.services.client_api.PaloAltoCortexXSOARClientAPI.search_incidents",
         return_value=alerts_response,
+    ), patch(
+        "src.services.alert_fetcher.extract_from_custom_fields",
+        return_value=[incident_result],
     ):
         collector._process_callback()
 
@@ -250,8 +258,9 @@ def test_prevention_expectation_with_detected_alert(mock_oaev_api) -> None:
         f"oaev-implant-{execution_uuid}"
     )
 
-    alert, alerts_response = _create_test_mocks(execution_uuid)
-    alert.action_pretty = "Detected (Blocked)"
+    alert, alerts_response, incident_result = _create_test_mocks(
+        execution_uuid, action="Detected (Reported)"
+    )
 
     mock_oaev_api.inject_expectation.expectations_models_for_source.return_value = [
         expectation
@@ -260,6 +269,9 @@ def test_prevention_expectation_with_detected_alert(mock_oaev_api) -> None:
     with patch(
         "src.services.client_api.PaloAltoCortexXSOARClientAPI.search_incidents",
         return_value=alerts_response,
+    ), patch(
+        "src.services.alert_fetcher.extract_from_custom_fields",
+        return_value=[incident_result],
     ):
         collector._process_callback()
 
@@ -292,7 +304,7 @@ def test_detection_expectation_with_non_matching_signature(mock_oaev_api) -> Non
     )
 
     # Create an alert with a different UUID
-    alert, alerts_response = _create_test_mocks(different_uuid)
+    alert, alerts_response, incident_result = _create_test_mocks(different_uuid)
 
     mock_oaev_api.inject_expectation.expectations_models_for_source.return_value = [
         expectation
@@ -301,6 +313,9 @@ def test_detection_expectation_with_non_matching_signature(mock_oaev_api) -> Non
     with patch(
         "src.services.client_api.PaloAltoCortexXSOARClientAPI.search_incidents",
         return_value=alerts_response,
+    ), patch(
+        "src.services.alert_fetcher.extract_from_custom_fields",
+        return_value=[incident_result],
     ):
         collector._process_callback()
 

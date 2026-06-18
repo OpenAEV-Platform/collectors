@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, List
 
 from pyoaev.apis.inject_expectation.model.expectation import (
     DetectionExpectation,
@@ -9,9 +9,8 @@ from pyoaev.apis.inject_expectation.model.expectation import (
 from pyoaev.signatures.types import SignatureTypes
 from src.collector.models import ExpectationResult
 from src.models.authentication import Authentication
-from src.models.incident import Alert
 from src.models.settings.config_loader import ConfigLoader
-from src.services.alert_fetcher import AlertFetcher, FetchResult
+from src.services.alert_fetcher import AlertFetcher
 from src.services.client_api import PaloAltoCortexXSOARClientAPI
 from src.services.converter import PaloAltoCortexXSOARConverter
 from src.services.exception import (
@@ -19,6 +18,7 @@ from src.services.exception import (
     PaloAltoCortexXSOARExpectationError,
     PaloAltoCortexXSOARValidationError,
 )
+from src.services.ioc_extractor import IncidentResult
 
 from .utils import SignatureExtractor, TraceBuilder
 
@@ -101,13 +101,13 @@ class ExpectationService:
                 f"{LOG_PREFIX} Starting processing of {len(expectations)} expectations"
             )
 
-            fetch_result = self._fetch_alerts_for_time_window(expectations)
+            incidents = self._fetch_alerts_for_time_window(expectations)
             self.logger.info(
-                f"{LOG_PREFIX} Fetched {len(fetch_result.alerts)} alerts from time window"
+                f"{LOG_PREFIX} Fetched {len(incidents)} incidents from time window"
             )
 
             results = self._match_alerts_to_expectations(
-                expectations, fetch_result, detection_helper
+                expectations, incidents, detection_helper
             )
 
             valid_count = sum(1 for r in results if r.is_valid)
@@ -147,14 +147,14 @@ class ExpectationService:
     def _fetch_alerts_for_time_window(
         self,
         expectations: list[DetectionExpectation | PreventionExpectation] | None = None,
-    ) -> FetchResult:
-        """Fetch all alerts from the configured time window or date signatures.
+    ) -> List[IncidentResult]:
+        """Fetch all incidents from the configured time window or date signatures.
 
         Args:
             expectations: Optional list of expectations to extract date filters from.
 
         Returns:
-            FetchResult with alerts and file_artifacts_by_case_id.
+            List of IncidentResult with extracted indicators.
 
         Raises:
             PaloAltoCortexXSOARAPIError: If API call fails.
@@ -189,14 +189,14 @@ class ExpectationService:
     def _match_alerts_to_expectations(
         self,
         batch: list[DetectionExpectation | PreventionExpectation],
-        fetch_result: FetchResult,
+        incidents: List[IncidentResult],
         detection_helper: Any,
     ) -> list[ExpectationResult]:
-        """Match alerts to expectations and create results.
+        """Match incidents to expectations and create results.
 
         Args:
             batch: Batch of expectations.
-            fetch_result: FetchResult containing alerts and file_artifacts_by_case_id.
+            incidents: List of IncidentResult containing extracted indicators.
             detection_helper: OpenAEV detection helper.
 
         Returns:
@@ -210,38 +210,36 @@ class ExpectationService:
                 matched = False
                 traces = []
 
-                for alert in fetch_result.alerts:
-                    process_names = fetch_result.process_names_by_alert_id.get(
-                        alert.alert_id, alert.get_process_image_names()
-                    )
-                    if self._expectation_matches_alert(
-                        expectation, alert, process_names, detection_helper
+                for incident in incidents:
+                    process_names = incident.indicators.oaev_implant
+                    if self._expectation_matches_incident(
+                        expectation, incident, process_names, detection_helper
                     ):
                         api_url = self.client_api.api_url
-                        trace = TraceBuilder.create_alert_trace(alert, api_url)
+                        trace = TraceBuilder.create_incident_trace(incident, api_url)
                         traces.append(trace)
 
                         if isinstance(expectation, PreventionExpectation):
-                            if "Prevented" in alert.action_pretty:
+                            if any("Prevented" in action for action in incident.action):
                                 matched = True
                                 self.logger.debug(
                                     f"{LOG_PREFIX} Prevention expectation {expectation.inject_expectation_id}: "
-                                    f"alert {alert.alert_id} matched signature and action is prevented -> expectation satisfied"
+                                    f"incident {incident.id} matched signature and action is prevented -> expectation satisfied"
                                 )
                                 break
                             self.logger.debug(
                                 f"{LOG_PREFIX} Prevention expectation {expectation.inject_expectation_id}: "
-                                f"alert {alert.alert_id} matched signature but not prevented -> continuing search"
+                                f"incident {incident.id} matched signature but not prevented -> continuing search"
                             )
                         else:
-                            if (
-                                "Detected" in alert.action_pretty
-                                or "Prevented" in alert.action_pretty
+                            if any(
+                                "Detected" in action or "Prevented" in action
+                                for action in incident.action
                             ):
                                 matched = True
                                 self.logger.debug(
                                     f"{LOG_PREFIX} Detection expectation {expectation.inject_expectation_id}: "
-                                    f"alert {alert.alert_id} matched signature ({alert.action_pretty}) -> expectation satisfied"
+                                    f"incident {incident.id} matched signature ({incident.action}) -> expectation satisfied"
                                 )
                                 break
 
@@ -276,19 +274,19 @@ class ExpectationService:
 
         return results
 
-    def _expectation_matches_alert(
+    def _expectation_matches_incident(
         self,
         expectation: DetectionExpectation | PreventionExpectation,
-        alert: Alert,
+        incident: IncidentResult,
         process_names: list[str],
         detection_helper: Any,
     ) -> bool:
-        """Check if an expectation matches the given alert using process names.
+        """Check if an expectation matches the given incident using process names.
 
         Args:
             expectation: The expectation to match.
-            alert: The alert data.
-            process_names: Implant process names (from events or original alert enrichment).
+            incident: The IncidentResult data.
+            process_names: Implant process names from indicators.oaev_implant.
             detection_helper: OpenAEV detection helper for matching.
 
         Returns:
@@ -296,11 +294,11 @@ class ExpectationService:
 
         """
         try:
-            oaev_data = self.converter.convert_alert_to_oaev(alert)
+            oaev_data = self.converter.convert_incident_to_oaev(incident)
 
             if not oaev_data:
                 self.logger.debug(
-                    f"{LOG_PREFIX} No OAEV data generated for alert {alert.alert_id}"
+                    f"{LOG_PREFIX} No OAEV data generated for incident {incident.id}"
                 )
                 return False
 
@@ -364,12 +362,12 @@ class ExpectationService:
 
                 if not match_result:
                     self.logger.debug(
-                        f"{LOG_PREFIX} {sig_type} signature failed for alert {alert.alert_id}"
+                        f"{LOG_PREFIX} {sig_type} signature failed for incident {incident.id}"
                     )
                     return False
 
             self.logger.debug(
-                f"{LOG_PREFIX} All signatures matched for expectation {expectation.inject_expectation_id} vs alert {alert.alert_id}"
+                f"{LOG_PREFIX} All signatures matched for expectation {expectation.inject_expectation_id} vs incident {incident.id}"
             )
             return True
 

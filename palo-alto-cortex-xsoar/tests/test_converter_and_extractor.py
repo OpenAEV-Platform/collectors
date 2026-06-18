@@ -6,32 +6,38 @@ import pytest
 from pyoaev.signatures.types import SignatureTypes
 from src.services.converter import PaloAltoCortexXSOARConverter
 from src.services.exception import PaloAltoCortexXSOARDataConversionError
+from src.services.ioc_extractor import IncidentResult, IndicatorResults
 from src.services.utils.signature_extractor import SignatureExtractor
-from tests.factories import AlertFactory, DetectionExpectationFactory
+from tests.factories import DetectionExpectationFactory
+
+
+def _make_incident(incident_id="test-id"):
+    return IncidentResult(
+        id=incident_id,
+        action=["Detected (Reported)"],
+        indicators=IndicatorResults(),
+    )
 
 
 class TestConverter:
     def test_convert_success(self):
         converter = PaloAltoCortexXSOARConverter()
-        alert = AlertFactory()
-        result = converter.convert_alert_to_oaev(alert)
+        incident = _make_incident(incident_id="inc-123")
+        result = converter.convert_incident_to_oaev(incident)
         assert "alert_id" in result
-        assert result["alert_id"]["data"] == [alert.alert_id]
+        assert result["alert_id"]["data"] == ["inc-123"]
 
     def test_convert_exception(self):
         """Converter wraps exceptions in PaloAltoCortexXSOARDataConversionError."""
-        # Create an alert-like object whose alert_id raises on first access inside try,
-        # but the except block also accesses alert.alert_id for the message
-        alert = AlertFactory()
-        # Monkey-patch the returned list construction to fail
+        incident = _make_incident()
         with patch(
-            "src.services.converter.PaloAltoCortexXSOARConverter.convert_alert_to_oaev"
+            "src.services.converter.PaloAltoCortexXSOARConverter.convert_incident_to_oaev"
         ) as mock_conv:
             mock_conv.side_effect = PaloAltoCortexXSOARDataConversionError(
-                "Error converting alert x to OAEV: fail"
+                "Error converting incident x to OAEV: fail"
             )
             with pytest.raises(PaloAltoCortexXSOARDataConversionError):
-                mock_conv(alert)
+                mock_conv(incident)
 
 
 class TestSignatureExtractor:

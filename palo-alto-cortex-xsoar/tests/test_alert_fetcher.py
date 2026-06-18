@@ -4,7 +4,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 from requests.exceptions import ConnectionError, RequestException
 from src.models.incident import (
-    Alert,
     CustomFields,
     Incident,
     XSOARSearchIncidentsResponse,
@@ -15,6 +14,7 @@ from src.services.exception import (
     PaloAltoCortexXSOARNetworkError,
     PaloAltoCortexXSOARValidationError,
 )
+from src.services.ioc_extractor import IncidentResult, IndicatorResults
 
 
 @pytest.fixture
@@ -68,45 +68,56 @@ def test_fetch_alerts_generic_exception(fetcher, mock_client):
     mock_client.search_incidents.side_effect = ValueError("generic error")
     start = datetime.now()
     end = start + timedelta(hours=1)
-    with pytest.raises(PaloAltoCortexXSOARAPIError, match="Error fetching alerts"):
+    with pytest.raises(PaloAltoCortexXSOARAPIError, match="Error fetching incidents"):
         fetcher.fetch_alerts_for_time_window(start, end)
 
 
 def test_fetch_alerts_pagination(fetcher, mock_client):
     # Mocking two pages of results
-    alert1 = Alert(
-        alert_id="a1",
-        detection_timestamp=1000,
-        actor_process_command_line="oaev-implant-1-agent-1",
+    incident1 = Incident(
+        id="i1",
+        CustomFields=CustomFields(xdralerts=[]),
     )
-    alert2 = Alert(
-        alert_id="a2",
-        detection_timestamp=2000,
-        actor_process_image_name="oaev-implant-2-agent-2",
+    incident2 = Incident(
+        id="i2",
+        CustomFields=CustomFields(xdralerts=[]),
     )
-
-    incident1 = Incident(id="i1", CustomFields=CustomFields(xdralerts=[alert1]))
-    incident2 = Incident(id="i2", CustomFields=CustomFields(xdralerts=[alert2]))
 
     response1 = XSOARSearchIncidentsResponse(total=2, data=[incident1])
     response2 = XSOARSearchIncidentsResponse(total=2, data=[incident2])
 
-    # In AlertFetcher, PAGE_SIZE is 100. Let's force it to 1 for this test or mock multiple calls.
-    # _fetch_all_alerts uses a while loop and increments search_from by PAGE_SIZE.
-    # It breaks if (search_from + len(response.data)) >= response.total
-
-    # First call: search_from=0, len=1, total=2 -> continues
-    # Second call: search_from=100, len=1, total=2 -> (100+1) >= 2 is true -> breaks
-
     mock_client.search_incidents.side_effect = [response1, response2]
 
     with patch("src.services.alert_fetcher.PAGE_SIZE", 1):
-        start = datetime(2023, 1, 1, tzinfo=timezone.utc)
-        end = datetime(2023, 1, 2, tzinfo=timezone.utc)
-        result = fetcher.fetch_alerts_for_time_window(start, end)
+        with patch(
+            "src.services.alert_fetcher.extract_from_custom_fields"
+        ) as mock_extract:
+            mock_extract.side_effect = [
+                [
+                    IncidentResult(
+                        id="i1",
+                        action=["Detected (Reported)"],
+                        indicators=IndicatorResults(
+                            oaev_implant=["oaev-implant-1-agent-1"]
+                        ),
+                    )
+                ],
+                [
+                    IncidentResult(
+                        id="i2",
+                        action=["Detected (Reported)"],
+                        indicators=IndicatorResults(
+                            oaev_implant=["oaev-implant-2-agent-2"]
+                        ),
+                    )
+                ],
+            ]
+            start = datetime(2023, 1, 1, tzinfo=timezone.utc)
+            end = datetime(2023, 1, 2, tzinfo=timezone.utc)
+            result = fetcher.fetch_alerts_for_time_window(start, end)
 
-        assert len(result.alerts) == 2
-        assert mock_client.search_incidents.call_count == 2
+            assert len(result) == 2
+            assert mock_client.search_incidents.call_count == 2
 
 
 def test_fetch_alerts_no_alerts(fetcher, mock_client):
@@ -116,5 +127,4 @@ def test_fetch_alerts_no_alerts(fetcher, mock_client):
     start = datetime.now()
     end = start + timedelta(hours=1)
     result = fetcher.fetch_alerts_for_time_window(start, end)
-    assert result.alerts == []
-    assert result.process_names_by_alert_id == {}
+    assert result == []

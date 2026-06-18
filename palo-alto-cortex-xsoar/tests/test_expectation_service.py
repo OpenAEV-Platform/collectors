@@ -5,14 +5,14 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from src.models.settings.config_loader import ConfigLoader
-from src.services.alert_fetcher import FetchResult
 from src.services.exception import (
     PaloAltoCortexXSOARAPIError,
     PaloAltoCortexXSOARExpectationError,
     PaloAltoCortexXSOARValidationError,
 )
 from src.services.expectation_service import ExpectationService
-from tests.factories import AlertFactory, DetectionExpectationFactory
+from src.services.ioc_extractor import IncidentResult, IndicatorResults
+from tests.factories import DetectionExpectationFactory
 
 
 @pytest.fixture
@@ -32,6 +32,15 @@ def service(mock_config):
     with patch("src.services.expectation_service.AlertFetcher"):
         with patch("src.services.expectation_service.PaloAltoCortexXSOARClientAPI"):
             return ExpectationService(config=mock_config)
+
+
+def _make_incident(incident_id="test-id", action=None, oaev_implant=None):
+    """Helper to create an IncidentResult for tests."""
+    return IncidentResult(
+        id=incident_id,
+        action=action or ["Detected (Reported)"],
+        indicators=IndicatorResults(oaev_implant=oaev_implant or []),
+    )
 
 
 class TestInit:
@@ -69,21 +78,21 @@ class TestHandleExpectations:
 
 class TestFetchAlertsForTimeWindow:
     def test_no_end_date_uses_now(self, service):
-        service.alert_fetcher.fetch_alerts_for_time_window.return_value = FetchResult()
+        service.alert_fetcher.fetch_alerts_for_time_window.return_value = []
         result = service._fetch_alerts_for_time_window(expectations=None)
-        assert isinstance(result, FetchResult)
+        assert isinstance(result, list)
         service.alert_fetcher.fetch_alerts_for_time_window.assert_called_once()
 
     def test_naive_end_time_gets_utc(self, service):
         """When end_date is naive (no tzinfo), it should get UTC attached."""
-        service.alert_fetcher.fetch_alerts_for_time_window.return_value = FetchResult()
+        service.alert_fetcher.fetch_alerts_for_time_window.return_value = []
         # Patch _extract_end_date to return a naive datetime
         naive_dt = datetime(2026, 4, 27, 12, 0, 0)
         with patch.object(
             service, "_extract_end_date_from_expectations", return_value=naive_dt
         ):
             result = service._fetch_alerts_for_time_window(expectations=[])
-        assert isinstance(result, FetchResult)
+        assert isinstance(result, list)
 
     def test_exception_wraps_in_api_error(self, service):
         service.alert_fetcher.fetch_alerts_for_time_window.side_effect = Exception(
@@ -97,18 +106,18 @@ class TestMatchAlertsToExpectations:
     def test_exception_in_matching_creates_error_result(self, service):
         """When matching raises, an error result is appended."""
         exp = DetectionExpectationFactory.create(api_client=MagicMock())
-        alert = AlertFactory()
-        fetch_result = FetchResult(
-            alerts=[alert],
-            process_names_by_alert_id={alert.alert_id: ["oaev-implant-test"]},
+        incident = _make_incident(
+            oaev_implant=["oaev-implant-test-agent-test"],
         )
         detection_helper = MagicMock()
 
         with patch.object(
-            service, "_expectation_matches_alert", side_effect=Exception("match error")
+            service,
+            "_expectation_matches_incident",
+            side_effect=Exception("match error"),
         ):
             results = service._match_alerts_to_expectations(
-                [exp], fetch_result, detection_helper
+                [exp], [incident], detection_helper
             )
         assert len(results) == 1
         assert results[0].is_valid is False
@@ -117,19 +126,23 @@ class TestMatchAlertsToExpectations:
     def test_no_oaev_data_returns_false(self, service):
         """When converter returns empty data, matching returns False."""
         exp = DetectionExpectationFactory.create(api_client=MagicMock())
-        alert = AlertFactory()
-        service.converter.convert_alert_to_oaev = MagicMock(return_value={})
-        result = service._expectation_matches_alert(exp, alert, ["proc"], MagicMock())
+        incident = _make_incident()
+        service.converter.convert_incident_to_oaev = MagicMock(return_value={})
+        result = service._expectation_matches_incident(
+            exp, incident, ["proc"], MagicMock()
+        )
         assert result is False
 
-    def test_exception_in_expectation_matches_alert(self, service):
+    def test_exception_in_expectation_matches_incident(self, service):
         """When an exception occurs during matching, returns False."""
         exp = DetectionExpectationFactory.create(api_client=MagicMock())
-        alert = AlertFactory()
-        service.converter.convert_alert_to_oaev = MagicMock(
+        incident = _make_incident()
+        service.converter.convert_incident_to_oaev = MagicMock(
             side_effect=Exception("convert fail")
         )
-        result = service._expectation_matches_alert(exp, alert, ["proc"], MagicMock())
+        result = service._expectation_matches_incident(
+            exp, incident, ["proc"], MagicMock()
+        )
         assert result is False
 
 
