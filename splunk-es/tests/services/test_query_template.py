@@ -265,7 +265,8 @@ class TestQueryTemplateResolution:
         assert "{alerts_index}" in DEFAULT_QUERY_TEMPLATE
         assert "{source_ips}" in DEFAULT_QUERY_TEMPLATE
         assert "{target_ips}" in DEFAULT_QUERY_TEMPLATE
-        assert "{implant_filter}" in DEFAULT_QUERY_TEMPLATE
+        assert "{implant_urls}" in DEFAULT_QUERY_TEMPLATE
+        assert "{implant_names}" in DEFAULT_QUERY_TEMPLATE
         assert "{start_date}" in DEFAULT_QUERY_TEMPLATE
         assert "{end_date}" in DEFAULT_QUERY_TEMPLATE
         assert "| table _time" in DEFAULT_QUERY_TEMPLATE
@@ -299,7 +300,7 @@ class TestQueryTemplateResolution:
 
 
 class TestImplantPlaceholders:
-    """Tests for {implant_filter}, {implant_urls} and {implant_names} placeholder resolution."""
+    """Tests for {implant_urls} and {implant_names} placeholder resolution."""
 
     def _create_client(self, query_template=None):
         config = create_test_config()
@@ -325,11 +326,11 @@ class TestImplantPlaceholders:
         assert "process_name IN" in result
         assert "parent_process_name IN" in result
 
-    def test_default_template_omits_implant_block_when_no_implants(self):
-        """Test that no implant names omits the implant filter block entirely.
+    def test_default_template_uses_wildcard_when_no_implants(self):
+        """Test that no implant names produces wildcard (*) for IN operator.
 
-        IN ("*") in SPL is an exact match on the literal asterisk, not a wildcard.
-        The correct behavior is to omit the filter so all events pass through.
+        Same behavior as source_ips/target_ips: when empty, the placeholder
+        resolves to * (unquoted) so the IN clause matches everything.
         """
         client = self._create_client()
         criteria = SplunkESSearchCriteria(
@@ -342,8 +343,8 @@ class TestImplantPlaceholders:
 
         result = client._build_spl_query(criteria)
 
-        assert "url_path IN" not in result
-        assert "process_name IN" not in result
+        assert "url_path IN (*)" in result
+        assert "process_name IN (*)" in result
         assert 'IN ("*")' not in result
 
     def test_multiple_implants_quoted_for_in_operator(self):

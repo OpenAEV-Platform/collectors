@@ -100,9 +100,8 @@ The `SPLUNKES_QUERY_TEMPLATE` field allows you to customize the SPL query used t
 | `{alerts_index}` | The configured Splunk index (`SPLUNKES_ALERTS_INDEX`) | `main` |
 | `{source_ips}` | Source IP values quoted for Splunk IN operator | `"10.0.0.1","10.0.0.2"` |
 | `{target_ips}` | Target IP values quoted for Splunk IN operator | `"192.168.1.1"` |
-| `{implant_filter}` | Full implant filter block (URL + process name conditions); **omitted** when no implants configured | `(url_path IN ("/name/callback") OR ...)` |
-| `{implant_urls}` | Implant callback URL paths quoted for Splunk IN operator (custom templates) | `"/oaev-implant-a1b2c3d4-agent-e5f6a7b8/callback"` |
-| `{implant_names}` | Implant process names quoted for Splunk IN operator (custom templates) | `"oaev-implant-a1b2c3d4-agent-e5f6a7b8"` |
+| `{implant_urls}` | Implant callback URL paths quoted for Splunk IN operator (`*` if none) | `"/oaev-implant-a1b2c3d4-agent-e5f6a7b8/callback"` |
+| `{implant_names}` | Implant process names quoted for Splunk IN operator (`*` if none) | `"oaev-implant-a1b2c3d4-agent-e5f6a7b8"` |
 | `{start_date}` | Start date from signatures, or relative time fallback | `2026-06-12T08:00:00Z` or `-3600s` |
 | `{end_date}` | End date from signatures, or `now` fallback | `2026-06-12T09:00:00Z` or `now` |
 | `{process_conditions}` | Legacy: auto-generated URL path / process filter | `(url_path=*uuid* ...)` |
@@ -111,7 +110,7 @@ The `SPLUNKES_QUERY_TEMPLATE` field allows you to customize the SPL query used t
 
 **Default query template:**
 ```spl
-index={alerts_index} (src_ip IN ({source_ips}) OR src IN ({source_ips}) OR source_ip IN ({source_ips}) OR client_ip IN ({source_ips})) (dst_ip IN ({target_ips}) OR dest IN ({target_ips}) OR dest_ip IN ({target_ips}) OR destination_ip IN ({target_ips}) OR server_ip IN ({target_ips})) {implant_filter}earliest={start_date} latest={end_date} | table _time, src_ip, src, source_ip, client_ip, dst_ip, dest, dest_ip, destination_ip, server_ip, signature, rule_name, event_type, severity, url_path, url, path, query, process_name, parent_process_name, _raw | sort -_time
+index={alerts_index} (src_ip IN ({source_ips}) OR src IN ({source_ips}) OR source_ip IN ({source_ips}) OR client_ip IN ({source_ips})) (dst_ip IN ({target_ips}) OR dest IN ({target_ips}) OR dest_ip IN ({target_ips}) OR destination_ip IN ({target_ips}) OR server_ip IN ({target_ips})) (url_path IN ({implant_urls}) OR url IN ({implant_urls}) OR path IN ({implant_urls}) OR query IN ({implant_urls}) OR process_name IN ({implant_names}) OR parent_process_name IN ({implant_names})) earliest={start_date} latest={end_date} | table _time, src_ip, src, source_ip, client_ip, dst_ip, dest, dest_ip, destination_ip, server_ip, signature, rule_name, event_type, severity, url_path, url, path, query, process_name, parent_process_name, _raw | sort -_time
 ```
 
 > ⚠️ **Important**: The query **must** include `| table _time` for proper alert parsing. Required fields for detection matching: `_time`, `src_ip`, `dst_ip`, `signature`, `rule_name`, `severity`.
@@ -126,7 +125,7 @@ index=_notable (src_ip IN ("10.0.0.5") OR src IN ("10.0.0.5") OR source_ip IN ("
 
 **Example — adding a sourcetype filter:**
 ```spl
-index={alerts_index} sourcetype=notable (src_ip IN ({source_ips}) OR src IN ({source_ips})) (dst_ip IN ({target_ips}) OR dest IN ({target_ips})) {implant_filter}earliest={start_date} latest={end_date} | table _time, src_ip, src, source_ip, client_ip, dst_ip, dest, dest_ip, destination_ip, server_ip, signature, rule_name, event_type, severity, url_path, url, path, query, process_name, parent_process_name, _raw | sort -_time
+index={alerts_index} sourcetype=notable (src_ip IN ({source_ips}) OR src IN ({source_ips})) (dst_ip IN ({target_ips}) OR dest IN ({target_ips})) (url_path IN ({implant_urls}) OR process_name IN ({implant_names})) earliest={start_date} latest={end_date} | table _time, src_ip, src, source_ip, client_ip, dst_ip, dest, dest_ip, destination_ip, server_ip, signature, rule_name, event_type, severity, url_path, url, path, query, process_name, parent_process_name, _raw | sort -_time
 ```
 
 ### Example Configuration Files
