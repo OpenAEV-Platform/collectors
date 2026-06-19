@@ -288,7 +288,10 @@ class TestSplunkESClientAPIEssential:
         assert 'src_ip IN ("192.168.1.100")' in query  # noqa: S101
         # IP and process conditions are both present (implicit AND in SPL)
         assert "url_path IN" in query  # noqa: S101
-        assert "/oaev-implant-12345678-1234-1234-1234-123456789abc-agent-87654321-4321-4321-4321-cba987654321/callback" in query  # noqa: S101
+        assert (
+            "/oaev-implant-12345678-1234-1234-1234-123456789abc-agent-87654321-4321-4321-4321-cba987654321/callback"
+            in query
+        )  # noqa: S101
 
     def test_build_spl_query_time_window_format(self):
         """Test SPL query time window format.
@@ -365,7 +368,10 @@ class TestSplunkESClientAPIEssential:
         call_args = mock_post.call_args
         query_str = str(call_args)
         assert "url_path" in query_str  # noqa: S101
-        assert "/oaev-implant-12345678-1234-1234-1234-123456789abc-agent-87654321-4321-4321-4321-cba987654321/callback" in query_str  # noqa: S101
+        assert (
+            "/oaev-implant-12345678-1234-1234-1234-123456789abc-agent-87654321-4321-4321-4321-cba987654321/callback"
+            in query_str
+        )  # noqa: S101
         # IP and process conditions are both present (implicit AND in SPL)
         assert 'src_ip IN ("192.168.1.100")' in query_str  # noqa: S101
 
@@ -430,7 +436,10 @@ class TestSplunkESClientAPIEssential:
         assert 'dst_ip IN ("172.16.0.1")' in query  # noqa: S101
         # Verify URL path conditions use new IN format with callback suffix
         assert "url_path IN" in query  # noqa: S101
-        assert "/oaev-implant-12345678-1234-1234-1234-123456789abc-agent-87654321-4321-4321-4321-cba987654321/callback" in query  # noqa: S101
+        assert (
+            "/oaev-implant-12345678-1234-1234-1234-123456789abc-agent-87654321-4321-4321-4321-cba987654321/callback"
+            in query
+        )  # noqa: S101
 
     def test_build_spl_query_retry_time_extension(self):
         """Test SPL query time extension for retries.
