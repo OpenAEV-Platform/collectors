@@ -265,8 +265,7 @@ class TestQueryTemplateResolution:
         assert "{alerts_index}" in DEFAULT_QUERY_TEMPLATE
         assert "{source_ips}" in DEFAULT_QUERY_TEMPLATE
         assert "{target_ips}" in DEFAULT_QUERY_TEMPLATE
-        assert "{implant_urls}" in DEFAULT_QUERY_TEMPLATE
-        assert "{implant_names}" in DEFAULT_QUERY_TEMPLATE
+        assert "{implant_filter}" in DEFAULT_QUERY_TEMPLATE
         assert "{start_date}" in DEFAULT_QUERY_TEMPLATE
         assert "{end_date}" in DEFAULT_QUERY_TEMPLATE
         assert "| table _time" in DEFAULT_QUERY_TEMPLATE
@@ -300,7 +299,7 @@ class TestQueryTemplateResolution:
 
 
 class TestImplantPlaceholders:
-    """Tests for {implant_urls} and {implant_names} placeholder resolution."""
+    """Tests for {implant_filter}, {implant_urls} and {implant_names} placeholder resolution."""
 
     def _create_client(self, query_template=None):
         config = create_test_config()
@@ -326,8 +325,12 @@ class TestImplantPlaceholders:
         assert "process_name IN" in result
         assert "parent_process_name IN" in result
 
-    def test_default_template_wildcard_when_no_implants(self):
-        """Test that no implant names resolves to wildcard IN clauses."""
+    def test_default_template_omits_implant_block_when_no_implants(self):
+        """Test that no implant names omits the implant filter block entirely.
+
+        IN ("*") in SPL is an exact match on the literal asterisk, not a wildcard.
+        The correct behavior is to omit the filter so all events pass through.
+        """
         client = self._create_client()
         criteria = SplunkESSearchCriteria(
             source_ips=[],
@@ -339,8 +342,9 @@ class TestImplantPlaceholders:
 
         result = client._build_spl_query(criteria)
 
-        assert 'url_path IN ("*")' in result
-        assert 'process_name IN ("*")' in result
+        assert "url_path IN" not in result
+        assert "process_name IN" not in result
+        assert 'IN ("*")' not in result
 
     def test_multiple_implants_quoted_for_in_operator(self):
         """Test that multiple implant names produce comma-separated quoted values."""
@@ -397,6 +401,22 @@ class TestImplantPlaceholders:
         result = client._build_spl_query(criteria)
 
         assert "/oaev-implant-12345678-agent-87654321/callback" in result
+
+    def test_implant_name_with_double_quote_is_escaped(self):
+        """Test that double quotes in implant names are escaped to prevent SPL injection."""
+        client = self._create_client()
+        criteria = SplunkESSearchCriteria(
+            source_ips=[],
+            target_ips=[],
+            parent_process_names=['malicious"name'],
+            start_date=None,
+            end_date=None,
+        )
+
+        result = client._build_spl_query(criteria)
+
+        assert '"malicious\\"name"' in result
+        assert 'malicious"name"' not in result
 
 
 class TestQueryTemplateSecurity:

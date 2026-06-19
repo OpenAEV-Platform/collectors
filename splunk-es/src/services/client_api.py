@@ -37,8 +37,7 @@ DEFAULT_QUERY_TEMPLATE = (
     "(src_ip IN ({source_ips}) OR src IN ({source_ips}) OR source_ip IN ({source_ips}) OR client_ip IN ({source_ips})) "
     "(dst_ip IN ({target_ips}) OR dest IN ({target_ips}) OR dest_ip IN ({target_ips}) "
     "OR destination_ip IN ({target_ips}) OR server_ip IN ({target_ips})) "
-    "(url_path IN ({implant_urls}) OR url IN ({implant_urls}) OR path IN ({implant_urls}) "
-    "OR query IN ({implant_urls}) OR process_name IN ({implant_names}) OR parent_process_name IN ({implant_names})) "
+    "{implant_filter}"
     "earliest={start_date} latest={end_date} "
     "| table _time, src_ip, src, source_ip, client_ip, dst_ip, dest, dest_ip, "
     "destination_ip, server_ip, signature, rule_name, event_type, severity, "
@@ -49,6 +48,7 @@ ALLOWED_PLACEHOLDERS = {
     "alerts_index",
     "source_ips",
     "target_ips",
+    "implant_filter",
     "implant_urls",
     "implant_names",
     "ip_conditions",
@@ -604,6 +604,9 @@ class SplunkESClientAPI:
             implant_names_str = self._build_implant_name_list(
                 search_criteria.parent_process_names or []
             )
+            implant_filter_str = self._build_implant_filter(
+                search_criteria.parent_process_names or []
+            )
             time_window_seconds = int(self.time_window.total_seconds())
             earliest_seconds = time_window_seconds + extend_end_seconds
 
@@ -627,6 +630,7 @@ class SplunkESClientAPI:
                 alerts_index=self.alerts_index or "*",
                 source_ips=source_ips_str,
                 target_ips=target_ips_str,
+                implant_filter=implant_filter_str,
                 implant_urls=implant_urls_str,
                 implant_names=implant_names_str,
                 ip_conditions=ip_conditions_str,
@@ -725,34 +729,73 @@ class SplunkESClientAPI:
         return ",".join(f'"{ip}"' for ip in ips)
 
     @staticmethod
-    def _build_implant_url_list(parent_process_names: list[str]) -> str:
-        """Build a quoted comma-separated implant callback URL list for Splunk IN operator.
+    def _build_implant_filter(parent_process_names: list[str]) -> str:
+        """Build the complete implant filter block for the default SPL query.
 
-        Each implant named ``oaev-implant-{uuid1}-agent-{uuid2}`` registers a callback
-        at ``/{name}/callback``.
+        When implants are present, returns a parenthesised condition block matching
+        callback URLs across all URL fields and process name fields. When no implants
+        are provided, returns an empty string so the filter is omitted entirely —
+        this is intentional: ``IN ("*")`` in SPL performs an exact match on the
+        literal asterisk, not a wildcard.
 
         Args:
             parent_process_names: List of implant process names.
 
         Returns:
-            Quoted CSV string for Splunk IN(), or ``'"*"'`` if empty (matches anything).
+            SPL filter block string (with trailing space) or ``""`` if empty.
+
+        """
+        if not parent_process_names:
+            return ""
+        escaped = [name.replace('"', '\\"') for name in parent_process_names]
+        urls = ",".join(f'"/{name}/callback"' for name in escaped)
+        names = ",".join(f'"{name}"' for name in escaped)
+        return (
+            f"(url_path IN ({urls}) OR url IN ({urls}) OR path IN ({urls}) "
+            f"OR query IN ({urls}) OR process_name IN ({names}) "
+            f"OR parent_process_name IN ({names})) "
+        )
+
+    @staticmethod
+    def _build_implant_url_list(parent_process_names: list[str]) -> str:
+        """Build a quoted comma-separated implant callback URL list for Splunk IN operator.
+
+        Intended for custom templates that use ``{implant_urls}`` directly.
+        Note: when empty, returns ``'"*"'`` which is a literal match in SPL ``IN()``,
+        not a wildcard. Use ``{implant_filter}`` in the default template instead.
+
+        Args:
+            parent_process_names: List of implant process names.
+
+        Returns:
+            Quoted CSV string for Splunk IN(), or ``'"*"'`` if empty.
 
         """
         if not parent_process_names:
             return '"*"'
-        return ",".join(f'"/{name}/callback"' for name in parent_process_names)
+        return ",".join(
+            f'"/{name.replace(chr(34), chr(92) + chr(34))}/callback"'
+            for name in parent_process_names
+        )
 
     @staticmethod
     def _build_implant_name_list(parent_process_names: list[str]) -> str:
         """Build a quoted comma-separated implant process name list for Splunk IN operator.
 
+        Intended for custom templates that use ``{implant_names}`` directly.
+        Note: when empty, returns ``'"*"'`` which is a literal match in SPL ``IN()``,
+        not a wildcard. Use ``{implant_filter}`` in the default template instead.
+
         Args:
             parent_process_names: List of implant process names.
 
         Returns:
-            Quoted CSV string for Splunk IN(), or ``'"*"'`` if empty (matches anything).
+            Quoted CSV string for Splunk IN(), or ``'"*"'`` if empty.
 
         """
         if not parent_process_names:
             return '"*"'
-        return ",".join(f'"{name}"' for name in parent_process_names)
+        return ",".join(
+            f'"{name.replace(chr(34), chr(92) + chr(34))}"'
+            for name in parent_process_names
+        )
