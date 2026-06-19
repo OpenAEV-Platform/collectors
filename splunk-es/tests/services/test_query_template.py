@@ -265,12 +265,15 @@ class TestQueryTemplateResolution:
         assert "{alerts_index}" in DEFAULT_QUERY_TEMPLATE
         assert "{source_ips}" in DEFAULT_QUERY_TEMPLATE
         assert "{target_ips}" in DEFAULT_QUERY_TEMPLATE
-        assert "{process_conditions}" in DEFAULT_QUERY_TEMPLATE
+        assert "{implant_urls}" in DEFAULT_QUERY_TEMPLATE
+        assert "{implant_names}" in DEFAULT_QUERY_TEMPLATE
         assert "{start_date}" in DEFAULT_QUERY_TEMPLATE
         assert "{end_date}" in DEFAULT_QUERY_TEMPLATE
         assert "| table _time" in DEFAULT_QUERY_TEMPLATE
         assert "| sort -_time" in DEFAULT_QUERY_TEMPLATE
         assert "IN" in DEFAULT_QUERY_TEMPLATE
+        assert "process_name" in DEFAULT_QUERY_TEMPLATE
+        assert "parent_process_name" in DEFAULT_QUERY_TEMPLATE
 
     def test_custom_template_with_subset_of_placeholders(self):
         """Test a template that only uses some placeholders."""
@@ -294,6 +297,127 @@ class TestQueryTemplateResolution:
         assert "earliest=-3600s" in result
         # ip_conditions placeholder not in template, so IPs won't appear
         assert "src_ip=10.0.0.1" not in result
+
+
+class TestImplantPlaceholders:
+    """Tests for {implant_urls} and {implant_names} placeholder resolution."""
+
+    def _create_client(self, query_template=None):
+        config = create_test_config()
+        config.splunk_es.query_template = query_template
+        return SplunkESClientAPI(config=config)
+
+    def test_default_template_includes_implant_conditions_when_present(self):
+        """Test that implant process names resolve to url and name conditions."""
+        client = self._create_client()
+        criteria = SplunkESSearchCriteria(
+            source_ips=[],
+            target_ips=[],
+            parent_process_names=["oaev-implant-a1b2c3d4-agent-e5f6a7b8"],
+            start_date=None,
+            end_date=None,
+        )
+
+        result = client._build_spl_query(criteria)
+
+        assert '"/oaev-implant-a1b2c3d4-agent-e5f6a7b8/callback"' in result
+        assert '"oaev-implant-a1b2c3d4-agent-e5f6a7b8"' in result
+        assert "url_path IN" in result
+        assert "process_name IN" in result
+        assert "parent_process_name IN" in result
+
+    def test_default_template_uses_wildcard_when_no_implants(self):
+        """Test that no implant names produces wildcard (*) for IN operator.
+
+        Same behavior as source_ips/target_ips: when empty, the placeholder
+        resolves to * (unquoted) so the IN clause matches everything.
+        """
+        client = self._create_client()
+        criteria = SplunkESSearchCriteria(
+            source_ips=[],
+            target_ips=[],
+            parent_process_names=[],
+            start_date=None,
+            end_date=None,
+        )
+
+        result = client._build_spl_query(criteria)
+
+        assert "url_path IN (*)" in result
+        assert "process_name IN (*)" in result
+        assert 'IN ("*")' not in result
+
+    def test_multiple_implants_quoted_for_in_operator(self):
+        """Test that multiple implant names produce comma-separated quoted values."""
+        client = self._create_client()
+        criteria = SplunkESSearchCriteria(
+            source_ips=[],
+            target_ips=[],
+            parent_process_names=[
+                "oaev-implant-aaaaaaaa-agent-bbbbbbbb",
+                "oaev-implant-cccccccc-agent-dddddddd",
+            ],
+            start_date=None,
+            end_date=None,
+        )
+
+        result = client._build_spl_query(criteria)
+
+        assert '"/oaev-implant-aaaaaaaa-agent-bbbbbbbb/callback"' in result
+        assert '"/oaev-implant-cccccccc-agent-dddddddd/callback"' in result
+        assert '"oaev-implant-aaaaaaaa-agent-bbbbbbbb"' in result
+        assert '"oaev-implant-cccccccc-agent-dddddddd"' in result
+
+    def test_custom_template_with_implant_placeholders(self):
+        """Test a custom template that explicitly uses {implant_urls} and {implant_names}."""
+        custom_template = (
+            "index={alerts_index} (url_path IN ({implant_urls}) OR process_name IN ({implant_names})) "
+            "earliest={start_date} latest={end_date} | table _time | sort -_time"
+        )
+        client = self._create_client(query_template=custom_template)
+        criteria = SplunkESSearchCriteria(
+            source_ips=[],
+            target_ips=[],
+            parent_process_names=["oaev-implant-a1b2c3d4-agent-e5f6a7b8"],
+            start_date=None,
+            end_date=None,
+        )
+
+        result = client._build_spl_query(criteria)
+
+        assert '"/oaev-implant-a1b2c3d4-agent-e5f6a7b8/callback"' in result
+        assert '"oaev-implant-a1b2c3d4-agent-e5f6a7b8"' in result
+
+    def test_implant_url_format_includes_callback_suffix(self):
+        """Test that implant URL has the /{name}/callback format."""
+        client = self._create_client()
+        criteria = SplunkESSearchCriteria(
+            source_ips=[],
+            target_ips=[],
+            parent_process_names=["oaev-implant-12345678-agent-87654321"],
+            start_date=None,
+            end_date=None,
+        )
+
+        result = client._build_spl_query(criteria)
+
+        assert "/oaev-implant-12345678-agent-87654321/callback" in result
+
+    def test_implant_name_with_double_quote_is_escaped(self):
+        """Test that double quotes in implant names are escaped to prevent SPL injection."""
+        client = self._create_client()
+        criteria = SplunkESSearchCriteria(
+            source_ips=[],
+            target_ips=[],
+            parent_process_names=['malicious"name'],
+            start_date=None,
+            end_date=None,
+        )
+
+        result = client._build_spl_query(criteria)
+
+        assert '"malicious\\"name"' in result
+        assert 'malicious"name"' not in result
 
 
 class TestQueryTemplateSecurity:
