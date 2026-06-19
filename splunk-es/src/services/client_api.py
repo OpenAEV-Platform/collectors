@@ -37,16 +37,20 @@ DEFAULT_QUERY_TEMPLATE = (
     "(src_ip IN ({source_ips}) OR src IN ({source_ips}) OR source_ip IN ({source_ips}) OR client_ip IN ({source_ips})) "
     "(dst_ip IN ({target_ips}) OR dest IN ({target_ips}) OR dest_ip IN ({target_ips}) "
     "OR destination_ip IN ({target_ips}) OR server_ip IN ({target_ips})) "
-    "{process_conditions} earliest={start_date} latest={end_date} "
+    "(url_path IN ({implant_urls}) OR url IN ({implant_urls}) OR path IN ({implant_urls}) "
+    "OR query IN ({implant_urls}) OR process_name IN ({implant_names}) OR parent_process_name IN ({implant_names})) "
+    "earliest={start_date} latest={end_date} "
     "| table _time, src_ip, src, source_ip, client_ip, dst_ip, dest, dest_ip, "
     "destination_ip, server_ip, signature, rule_name, event_type, severity, "
-    "url_path, url, path, query, _raw | sort -_time"
+    "url_path, url, path, query, process_name, parent_process_name, _raw | sort -_time"
 )
 
 ALLOWED_PLACEHOLDERS = {
     "alerts_index",
     "source_ips",
     "target_ips",
+    "implant_urls",
+    "implant_names",
     "ip_conditions",
     "process_conditions",
     "time_window",
@@ -594,6 +598,12 @@ class SplunkESClientAPI:
             process_conditions_str = self._build_process_conditions(search_criteria)
             source_ips_str = self._build_ip_list(search_criteria.source_ips)
             target_ips_str = self._build_ip_list(search_criteria.target_ips)
+            implant_urls_str = self._build_implant_url_list(
+                search_criteria.parent_process_names or []
+            )
+            implant_names_str = self._build_implant_name_list(
+                search_criteria.parent_process_names or []
+            )
             time_window_seconds = int(self.time_window.total_seconds())
             earliest_seconds = time_window_seconds + extend_end_seconds
 
@@ -617,6 +627,8 @@ class SplunkESClientAPI:
                 alerts_index=self.alerts_index or "*",
                 source_ips=source_ips_str,
                 target_ips=target_ips_str,
+                implant_urls=implant_urls_str,
+                implant_names=implant_names_str,
                 ip_conditions=ip_conditions_str,
                 process_conditions=process_conditions_str,
                 time_window=earliest_seconds,
@@ -711,3 +723,36 @@ class SplunkESClientAPI:
         if not ips:
             return "*"
         return ",".join(f'"{ip}"' for ip in ips)
+
+    @staticmethod
+    def _build_implant_url_list(parent_process_names: list[str]) -> str:
+        """Build a quoted comma-separated implant callback URL list for Splunk IN operator.
+
+        Each implant named ``oaev-implant-{uuid1}-agent-{uuid2}`` registers a callback
+        at ``/{name}/callback``.
+
+        Args:
+            parent_process_names: List of implant process names.
+
+        Returns:
+            Quoted CSV string for Splunk IN(), or ``'"*"'`` if empty (matches anything).
+
+        """
+        if not parent_process_names:
+            return '"*"'
+        return ",".join(f'"/{name}/callback"' for name in parent_process_names)
+
+    @staticmethod
+    def _build_implant_name_list(parent_process_names: list[str]) -> str:
+        """Build a quoted comma-separated implant process name list for Splunk IN operator.
+
+        Args:
+            parent_process_names: List of implant process names.
+
+        Returns:
+            Quoted CSV string for Splunk IN(), or ``'"*"'`` if empty (matches anything).
+
+        """
+        if not parent_process_names:
+            return '"*"'
+        return ",".join(f'"{name}"' for name in parent_process_names)
