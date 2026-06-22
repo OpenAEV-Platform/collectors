@@ -7,7 +7,7 @@ packages = [{ include = "src" }, { include = "tests" }]
 
 [project]
 name = "SentinelOneCollector"
-version = "2.260619.0"
+version = "2.260622.0"
 description = "Collector for SentinelOne EDR."
 readme = "README.md"
 
@@ -16,7 +16,7 @@ dynamic = ["dependencies"]
 
 [tool.poetry.dependencies]
 pyoaev = [
-    {markers = "extra == 'prod' and extra != 'local' and extra != 'current'",version = "2.260619.0"},
+    {markers = "extra == 'prod' and extra != 'local' and extra != 'current'",version = "2.260622.0"},
     {markers = "extra == 'local' and extra != 'current' and extra != 'prod'",path = "../../client-python", develop = true},
 ]
 pydantic = "^2.11.7"
