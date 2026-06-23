@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List
 
 from requests.exceptions import ConnectionError, RequestException, Timeout
@@ -48,8 +48,10 @@ class AlertFetcher:
             )
 
         try:
-            from_date = start_time.strftime("%Y-%m-%dT%H:%M:%SZ")
-            to_date = end_time.strftime("%Y-%m-%dT%H:%M:%SZ")
+            from_date = start_time.astimezone(timezone.utc).strftime(
+                "%Y-%m-%dT%H:%M:%SZ"
+            )
+            to_date = end_time.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
             all_incidents = self._fetch_all_incidents(from_date, to_date)
 

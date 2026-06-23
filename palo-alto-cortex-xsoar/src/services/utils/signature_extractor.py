@@ -39,8 +39,6 @@ class SignatureExtractor:
                         end_date = datetime.fromisoformat(
                             signature.value.replace("Z", "+00:00")
                         )
-                        if end_date.tzinfo is None:
-                            end_date = end_date.replace(tzinfo=timezone.utc)
                         return end_date
                     except (ValueError, AttributeError):
                         continue

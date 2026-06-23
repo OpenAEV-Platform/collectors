@@ -166,10 +166,6 @@ class ExpectationService:
             if end_time is None:
                 end_time = datetime.now(timezone.utc)
 
-            # Ensure end_time is aware
-            if end_time.tzinfo is None:
-                end_time = end_time.replace(tzinfo=timezone.utc)
-
             start_time = end_time - self.time_window
 
             self.logger.debug(

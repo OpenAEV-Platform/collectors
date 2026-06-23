@@ -66,6 +66,15 @@ class TestSignatureExtractor:
         assert result is not None
         assert result.tzinfo is not None
 
+    def test_extract_end_date_naive(self):
+        exp = DetectionExpectationFactory.create(api_client=MagicMock())
+        for sig in exp.inject_expectation_signatures:
+            if sig.type == SignatureTypes.SIG_TYPE_END_DATE:
+                sig.value = "2026-04-27T12:00:00"
+        result = SignatureExtractor.extract_end_date([exp])
+        assert result is not None
+        assert result.tzinfo is None
+
     def test_group_signatures_no_supported(self):
         """All signatures filtered out when supported list doesn't include them."""
         exp = DetectionExpectationFactory.create(api_client=MagicMock())
