@@ -3,9 +3,9 @@ from typing import Optional
 
 from requests import Session
 from requests.adapters import HTTPAdapter
-from requests.packages.urllib3.util import Retry
 from src.models.authentication import Authentication
 from src.models.incident import XSOARSearchIncidentsResponse
+from urllib3.util import Retry
 
 REQUESTS_TIMEOUT_SECONDS = 60
 

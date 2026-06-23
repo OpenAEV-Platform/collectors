@@ -78,6 +78,9 @@ class CustomFieldsFactory(Factory):
 
 
 class IncidentFactory(Factory):
+    def __new__(cls, *args, **kwargs) -> Incident:
+        return super().__new__(*args, **kwargs)
+
     class Meta:
         model = Incident
 

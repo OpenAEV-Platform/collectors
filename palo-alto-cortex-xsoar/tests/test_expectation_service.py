@@ -48,7 +48,7 @@ class TestInit:
         with pytest.raises(
             PaloAltoCortexXSOARValidationError, match="config cannot be None"
         ):
-            ExpectationService(config=None)
+            ExpectationService(config=None)  # ty:ignore[invalid-argument-type]
 
     def test_none_api_url(self):
         config = MagicMock(spec=ConfigLoader)

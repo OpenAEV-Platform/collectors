@@ -31,7 +31,7 @@ def test_init_none_client():
     with pytest.raises(
         PaloAltoCortexXSOARValidationError, match="client_api cannot be None"
     ):
-        AlertFetcher(client_api=None)
+        AlertFetcher(client_api=None)  # ty:ignore[invalid-argument-type]
 
 
 def test_fetch_alerts_invalid_times(fetcher):
@@ -131,7 +131,7 @@ def test_fetch_alerts_no_alerts(fetcher, mock_client):
 
 
 def test_fetch_alerts_timezone_preservation(fetcher, mock_client):
-    from datetime import timezone, timedelta
+    from datetime import timedelta, timezone
 
     # Use UTC+2
     tz = timezone(timedelta(hours=2))
@@ -162,7 +162,9 @@ def test_fetch_alerts_naive_datetime(fetcher, mock_client):
 
     _, kwargs = mock_client.search_incidents.call_args
     # It should have an offset now (local time)
-    expected_from = start.astimezone().isoformat(timespec="seconds").replace("+00:00", "Z")
+    expected_from = (
+        start.astimezone().isoformat(timespec="seconds").replace("+00:00", "Z")
+    )
     expected_to = end.astimezone().isoformat(timespec="seconds").replace("+00:00", "Z")
     assert kwargs["from_date"] == expected_from
     assert kwargs["to_date"] == expected_to
