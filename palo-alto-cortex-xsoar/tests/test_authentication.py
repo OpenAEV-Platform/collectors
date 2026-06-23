@@ -46,10 +46,7 @@ def test_authentication_advanced(mock_datetime, mock_secrets_choice):
     auth_key = f"{api_key}{nonce}{timestamp}"
     expected_hash = hashlib.sha256(auth_key.encode("utf-8")).hexdigest()
 
-    print(f"Timestamp: {timestamp}")
-    print(f"Expected hash: {expected_hash}")
-    print(f"Actual hash: {headers['Authorization']}")
-
+    # debug prints removed
     assert headers["Authorization"] == expected_hash
     assert headers["x-xdr-auth-id"] == api_key_id
     assert headers["x-xdr-timestamp"] == str(timestamp)
