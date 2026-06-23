@@ -7,7 +7,7 @@ from src.models.authentication import Authentication
 
 def test_authentication_standard():
     api_key = "test-api-key"
-    api_key_id = "test-api-key-id"
+    api_key_id = 12345
     auth = Authentication(
         api_key=api_key, api_key_id=api_key_id, api_key_type="standard"
     )
@@ -15,7 +15,7 @@ def test_authentication_standard():
     headers = auth.get_headers()
 
     assert headers["Authorization"] == api_key
-    assert headers["x-xdr-auth-id"] == api_key_id
+    assert headers["x-xdr-auth-id"] == str(api_key_id)
     assert headers["Content-Type"] == "application/json"
     assert headers["Accept"] == "application/json"
 
@@ -24,7 +24,7 @@ def test_authentication_standard():
 @patch("src.models.authentication.datetime")
 def test_authentication_advanced(mock_datetime, mock_secrets_choice):
     api_key = "test-api-key"
-    api_key_id = "test-api-key-id"
+    api_key_id = 12345
 
     # Mock nonce generation: 64 'a's
     mock_secrets_choice.return_value = "a"
@@ -48,7 +48,7 @@ def test_authentication_advanced(mock_datetime, mock_secrets_choice):
 
     # debug prints removed
     assert headers["Authorization"] == expected_hash
-    assert headers["x-xdr-auth-id"] == api_key_id
+    assert headers["x-xdr-auth-id"] == str(api_key_id)
     assert headers["x-xdr-timestamp"] == str(timestamp)
     assert headers["x-xdr-nonce"] == nonce
     assert headers["Content-Type"] == "application/json"

@@ -1,5 +1,5 @@
 from http.cookiejar import DefaultCookiePolicy
-from typing import Optional
+from typing import Any, Optional
 
 from requests import Session
 from requests.adapters import HTTPAdapter
@@ -49,19 +49,18 @@ class PaloAltoCortexXSOARClientAPI:
         size = search_to - search_from
         page = search_from // size if size > 0 else 0
 
-        body = {
-            "filter": {
-                "page": page,
-                "size": size,
-                "sort": [{"field": "created", "asc": True}],
-            }
+        filter_data: dict[str, Any] = {
+            "page": page,
+            "size": size,
+            "sort": [{"field": "created", "asc": True}],
         }
-
         if from_date:
-            body["filter"]["fromDate"] = from_date
+            filter_data["fromDate"] = from_date
 
         if to_date:
-            body["filter"]["toDate"] = to_date
+            filter_data["toDate"] = to_date
+
+        body = {"filter": filter_data}
 
         response = self.session.post(
             url, headers=headers, json=body, timeout=REQUESTS_TIMEOUT_SECONDS

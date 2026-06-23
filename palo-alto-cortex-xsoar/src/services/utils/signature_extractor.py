@@ -1,7 +1,7 @@
 """Signature extraction utilities for PaloAltoCortexXSOAR expectation processing."""
 
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import TYPE_CHECKING
 
 from pyoaev.signatures.types import SignatureTypes

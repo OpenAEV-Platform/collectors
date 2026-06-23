@@ -5,7 +5,7 @@ for expectation processing. It separates trace concerns from the main expectatio
 """
 
 import logging
-from typing import Any
+from typing import Any, Optional
 
 from pyoaev.client import OpenAEV
 from src.collector.exception import (
@@ -30,7 +30,7 @@ class TraceManager:
         self,
         oaev_api: OpenAEV,
         collector_id: str,
-        trace_service: TraceService,
+        trace_service: Optional[TraceService] = None,
     ) -> None:
         """Initialize trace manager.
 

@@ -76,6 +76,9 @@ class TraceService:
                     )
                     continue
 
+                if result.matched_alerts is None:
+                    continue
+
                 for alert_data in result.matched_alerts:
                     try:
                         trace = self._create_expectation_trace(

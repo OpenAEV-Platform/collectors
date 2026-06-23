@@ -1,14 +1,15 @@
-import pytest
 from unittest.mock import patch
-from src.models.incident import Incident, CustomFields
+
+from src.models.incident import CustomFields, Incident
 from src.services.ioc_extractor import (
-    extract_indicators, 
-    process_item, 
-    extract_from_custom_fields, 
-    IncidentResult,
     ExtractedIOCs,
-    IndicatorResults
+    IncidentResult,
+    IndicatorResults,
+    extract_from_custom_fields,
+    extract_indicators,
+    process_item,
 )
+
 
 def test_extract_indicators_various_types():
     custom_data = {
@@ -18,15 +19,14 @@ def test_extract_indicators_various_types():
         "domain": "malicious.com",
         "hashes": "md5: 5d41402abc4b2a76b9719d911017c592",
         "cmd": "C:\\Windows\\System32\\cmd.exe",
-        "action_field": "Detected (Reported)"
+        "action_field": "Detected (Reported)",
     }
     incident = Incident(
-        id="inc-1",
-        CustomFields=CustomFields(xdralerts=[], **custom_data)
+        id="inc-1", CustomFields=CustomFields(xdralerts=[], **custom_data)
     )
-    
+
     result = extract_indicators(incident)
-    
+
     assert isinstance(result, ExtractedIOCs)
     assert "192.168.1.1" in result.indicators.ipv4
     assert "2001:db8::1" in result.indicators.ipv6
@@ -37,11 +37,13 @@ def test_extract_indicators_various_types():
     assert "C:\\\\Windows\\\\System32\\\\cmd.exe" in result.indicators.command_line
     assert "Detected (Reported)" in result.action
 
+
 def test_process_item_success():
     incident = Incident(id="inc-2", CustomFields=CustomFields(xdralerts=[]))
     result = process_item(incident)
     assert isinstance(result, IncidentResult)
     assert result.id == "inc-2"
+
 
 def test_process_item_failure():
     with patch("src.services.ioc_extractor.extract_indicators") as mock_ext:
@@ -49,6 +51,7 @@ def test_process_item_failure():
         incident = Incident(id="inc-fail", CustomFields=CustomFields(xdralerts=[]))
         result = process_item(incident)
         assert result is None
+
 
 def test_extract_from_custom_fields():
     incidents = [
@@ -59,6 +62,7 @@ def test_extract_from_custom_fields():
     assert len(results) == 2
     assert results[0].id == "1"
     assert results[1].id == "2"
+
 
 def test_extract_from_custom_fields_with_failure():
     incidents = [
@@ -73,10 +77,12 @@ def test_extract_from_custom_fields_with_failure():
         mock_instance.map.side_effect = lambda f, items: map(f, items)
 
         with patch("src.services.ioc_extractor.extract_indicators") as mock_ext:
+
             def side_effect(item):
                 if item.id == "fail":
                     raise Exception("Fail")
                 return ExtractedIOCs(action=[], indicators=IndicatorResults())
+
             mock_ext.side_effect = side_effect
 
             results = extract_from_custom_fields(incidents)

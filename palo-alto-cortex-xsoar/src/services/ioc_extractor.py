@@ -6,7 +6,6 @@ from typing import List, Optional
 
 from msticpy.transform import iocextract
 from pydantic import BaseModel, Field
-
 from src.models.incident import Incident
 
 logger = logging.getLogger(__name__)

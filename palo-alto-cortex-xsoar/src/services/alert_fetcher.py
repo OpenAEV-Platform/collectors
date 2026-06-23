@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import List
 
 from requests.exceptions import ConnectionError, RequestException, Timeout
