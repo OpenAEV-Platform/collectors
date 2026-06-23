@@ -161,5 +161,8 @@ def test_fetch_alerts_naive_datetime(fetcher, mock_client):
     fetcher.fetch_alerts_for_time_window(start, end)
 
     _, kwargs = mock_client.search_incidents.call_args
-    assert kwargs["from_date"] == "2023-01-01T10:00:00"
-    assert kwargs["to_date"] == "2023-01-01T11:00:00"
+    # It should have an offset now (local time)
+    expected_from = start.astimezone().isoformat(timespec="seconds").replace("+00:00", "Z")
+    expected_to = end.astimezone().isoformat(timespec="seconds").replace("+00:00", "Z")
+    assert kwargs["from_date"] == expected_from
+    assert kwargs["to_date"] == expected_to

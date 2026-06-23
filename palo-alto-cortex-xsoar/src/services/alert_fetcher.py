@@ -48,6 +48,11 @@ class AlertFetcher:
             )
 
         try:
+            if start_time.tzinfo is None:
+                start_time = start_time.astimezone()
+            if end_time.tzinfo is None:
+                end_time = end_time.astimezone()
+
             from_date = start_time.isoformat(timespec="seconds").replace("+00:00", "Z")
             to_date = end_time.isoformat(timespec="seconds").replace("+00:00", "Z")
 
