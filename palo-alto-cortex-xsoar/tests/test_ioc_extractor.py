@@ -33,7 +33,8 @@ def test_extract_indicators_various_types():
     assert "550e8400-e29b-41d4-a716-446655440000" in result.indicators.uuid
     assert "2026-06-22T08:00:00Z" in result.indicators.timestamp
     assert "5d41402abc4b2a76b9719d911017c592" in result.indicators.file_hashes
-    assert "C:\\Windows\\System32\\cmd.exe" in result.indicators.command_line
+    # Note: backslashes are double-escaped because of json.dumps in the extractor
+    assert "C:\\\\Windows\\\\System32\\\\cmd.exe" in result.indicators.command_line
     assert "Detected (Reported)" in result.action
 
 def test_process_item_success():
@@ -65,15 +66,20 @@ def test_extract_from_custom_fields_with_failure():
         Incident(id="fail", CustomFields=CustomFields(xdralerts=[])),
         Incident(id="2", CustomFields=CustomFields(xdralerts=[])),
     ]
-    
-    with patch("src.services.ioc_extractor.extract_indicators") as mock_ext:
-        def side_effect(item):
-            if item.id == "fail":
-                raise Exception("Fail")
-            return ExtractedIOCs(action=[], indicators=IndicatorResults())
-        mock_ext.side_effect = side_effect
-        
-        results = extract_from_custom_fields(incidents)
-        assert len(results) == 2
-        assert results[0].id == "1"
-        assert results[1].id == "2"
+
+    with patch("src.services.ioc_extractor.ProcessPoolExecutor") as mock_executor:
+        # Mock executor to run synchronously so we can use mocks
+        mock_instance = mock_executor.return_value.__enter__.return_value
+        mock_instance.map.side_effect = lambda f, items: map(f, items)
+
+        with patch("src.services.ioc_extractor.extract_indicators") as mock_ext:
+            def side_effect(item):
+                if item.id == "fail":
+                    raise Exception("Fail")
+                return ExtractedIOCs(action=[], indicators=IndicatorResults())
+            mock_ext.side_effect = side_effect
+
+            results = extract_from_custom_fields(incidents)
+            assert len(results) == 2
+            assert results[0].id == "1"
+            assert results[1].id == "2"
