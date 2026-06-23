@@ -1,12 +1,15 @@
 import json
+import logging
 import os
 from concurrent.futures import ProcessPoolExecutor
-from typing import List
+from typing import List, Optional
 
 from msticpy.transform import iocextract
 from pydantic import BaseModel, Field
 
 from src.models.incident import Incident
+
+logger = logging.getLogger(__name__)
 
 # Add custom IOC types
 IOC_EXTRACTOR = iocextract.IoCExtract()
@@ -115,21 +118,25 @@ def extract_indicators(item: Incident) -> ExtractedIOCs:
     )
 
 
-def process_item(item: Incident) -> IncidentResult:
+def process_item(item: Incident) -> Optional[IncidentResult]:
     """
     Helper function to process a single item for parallel execution.
-    Returns an IncidentResult model.
+    Returns an IncidentResult model, or None if processing fails.
     """
-    extracted = extract_indicators(item)
+    try:
+        extracted = extract_indicators(item)
 
-    # Create the IncidentResult model to validate the data
-    incident_result = IncidentResult(
-        id=item.id,
-        action=extracted.action,
-        indicators=extracted.indicators,
-    )
+        # Create the IncidentResult model to validate the data
+        incident_result = IncidentResult(
+            id=item.id,
+            action=extracted.action,
+            indicators=extracted.indicators,
+        )
 
-    return incident_result
+        return incident_result
+    except Exception as e:
+        logger.error(f"Error processing incident {item.id}: {e}")
+        return None
 
 
 def extract_from_custom_fields(items: List[Incident]) -> List[IncidentResult]:
@@ -155,4 +162,5 @@ def extract_from_custom_fields(items: List[Incident]) -> List[IncidentResult]:
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
         all_results = list(executor.map(process_item, items))
 
-    return all_results
+    # Filter out None results from failed processing
+    return [res for res in all_results if res is not None]
