@@ -48,10 +48,8 @@ class AlertFetcher:
             )
 
         try:
-            from_date = start_time.astimezone(timezone.utc).strftime(
-                "%Y-%m-%dT%H:%M:%SZ"
-            )
-            to_date = end_time.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            from_date = start_time.isoformat(timespec="seconds").replace("+00:00", "Z")
+            to_date = end_time.isoformat(timespec="seconds").replace("+00:00", "Z")
 
             all_incidents = self._fetch_all_incidents(from_date, to_date)
 

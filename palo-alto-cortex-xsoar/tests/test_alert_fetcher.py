@@ -130,12 +130,13 @@ def test_fetch_alerts_no_alerts(fetcher, mock_client):
     assert result == []
 
 
-def test_fetch_alerts_timezone_conversion(fetcher, mock_client):
+def test_fetch_alerts_timezone_preservation(fetcher, mock_client):
     from datetime import timezone, timedelta
+
     # Use UTC+2
     tz = timezone(timedelta(hours=2))
-    start = datetime(2023, 1, 1, 10, 0, 0, tzinfo=tz)  # 08:00 UTC
-    end = datetime(2023, 1, 1, 11, 0, 0, tzinfo=tz)    # 09:00 UTC
+    start = datetime(2023, 1, 1, 10, 0, 0, tzinfo=tz)
+    end = datetime(2023, 1, 1, 11, 0, 0, tzinfo=tz)
 
     mock_client.search_incidents.return_value = XSOARSearchIncidentsResponse(
         total=0, data=[]
@@ -144,5 +145,21 @@ def test_fetch_alerts_timezone_conversion(fetcher, mock_client):
     fetcher.fetch_alerts_for_time_window(start, end)
 
     _, kwargs = mock_client.search_incidents.call_args
-    assert kwargs["from_date"] == "2023-01-01T08:00:00Z"
-    assert kwargs["to_date"] == "2023-01-01T09:00:00Z"
+    assert kwargs["from_date"] == "2023-01-01T10:00:00+02:00"
+    assert kwargs["to_date"] == "2023-01-01T11:00:00+02:00"
+
+
+def test_fetch_alerts_naive_datetime(fetcher, mock_client):
+    # Naive datetimes (no timezone)
+    start = datetime(2023, 1, 1, 10, 0, 0)
+    end = datetime(2023, 1, 1, 11, 0, 0)
+
+    mock_client.search_incidents.return_value = XSOARSearchIncidentsResponse(
+        total=0, data=[]
+    )
+
+    fetcher.fetch_alerts_for_time_window(start, end)
+
+    _, kwargs = mock_client.search_incidents.call_args
+    assert kwargs["from_date"] == "2023-01-01T10:00:00"
+    assert kwargs["to_date"] == "2023-01-01T11:00:00"
