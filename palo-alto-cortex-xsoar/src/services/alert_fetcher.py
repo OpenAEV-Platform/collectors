@@ -92,10 +92,7 @@ class AlertFetcher:
             )
 
             if response.data:
-                items = [
-                    incident.model_dump(by_alias=True) for incident in response.data
-                ]
-                results = extract_from_custom_fields(items)
+                results = extract_from_custom_fields(response.data)
                 all_incidents.extend(results)
 
             if (

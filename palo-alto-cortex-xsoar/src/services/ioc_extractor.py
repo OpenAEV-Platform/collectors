@@ -6,6 +6,8 @@ from typing import List
 from msticpy.transform import iocextract
 from pydantic import BaseModel, Field
 
+from src.models.incident import Incident
+
 # Add custom IOC types
 IOC_EXTRACTOR = iocextract.IoCExtract()
 IOC_EXTRACTOR.add_ioc_type(
@@ -51,7 +53,16 @@ class IncidentResult(BaseModel):
     indicators: IndicatorResults
 
 
-def extract_indicators(item):
+class ExtractedIOCs(BaseModel):
+    """
+    Pydantic model for the raw extracted indicators and actions.
+    """
+
+    action: List[str] = Field(default_factory=list)
+    indicators: IndicatorResults
+
+
+def extract_indicators(item: Incident) -> ExtractedIOCs:
     """
     Extracts various Indicators of Compromise (IOCs) from a single incident item.
 
@@ -61,68 +72,67 @@ def extract_indicators(item):
     OpenAEV implants.
 
     Args:
-        item (dict): A dictionary representing an XSOAR incident,
-                     containing at least a 'CustomFields' key.
+        item (Incident): An XSOAR incident model.
 
     Returns:
-        dict: A dictionary of raw extracted indicators categorized by type.
+        ExtractedIOCs: A Pydantic model of extracted indicators and actions.
     """
-    iocs = {}
-
     # Target CustomFields and stringify it for bulk analysis
-    custom_fields = item.get("CustomFields", {})
+    custom_fields = item.custom_fields.model_dump() if item.custom_fields else {}
     combined_text = json.dumps(custom_fields)
 
     # 1. Extract using MSTICPy IoCExtract
     found_iocs = IOC_EXTRACTOR.extract(combined_text, include_paths=True)
 
     # Map MSTICPy results to the requested keys
-    iocs["ipv4"] = list(found_iocs.get("ipv4", set()))
-    iocs["ipv6"] = list(found_iocs.get("ipv6", set()))
-    iocs["uuid"] = list(found_iocs.get("uuid", set()))
-    iocs["timestamp"] = list(found_iocs.get("timestamp", set()))
-    iocs["hostname"] = list(found_iocs.get("dns", set()))
+    indicators = {}
+    indicators["ipv4"] = list(found_iocs.get("ipv4", set()))
+    indicators["ipv6"] = list(found_iocs.get("ipv6", set()))
+    indicators["uuid"] = list(found_iocs.get("uuid", set()))
+    indicators["timestamp"] = list(found_iocs.get("timestamp", set()))
+    indicators["hostname"] = list(found_iocs.get("dns", set()))
 
     # File hashes
-    iocs["file_hashes"] = list(
+    indicators["file_hashes"] = list(
         found_iocs.get("md5_hash", set())
         | found_iocs.get("sha1_hash", set())
         | found_iocs.get("sha256_hash", set())
     )
 
     # Command-line fragments (merged windows_path and linux_path)
-    iocs["command_line"] = list(
+    indicators["command_line"] = list(
         found_iocs.get("windows_path", set()) | found_iocs.get("linux_path", set())
     )
 
     # Other indicators
-    iocs["url"] = list(found_iocs.get("url", set()))
-    iocs["oaev_implant"] = list(found_iocs.get("openaev_implant", set()))
-    iocs["action"] = list(found_iocs.get("action", set()))
+    indicators["url"] = list(found_iocs.get("url", set()))
+    indicators["oaev_implant"] = list(found_iocs.get("openaev_implant", set()))
+    action = list(found_iocs.get("action", set()))
 
-    return iocs
+    return ExtractedIOCs(
+        action=action,
+        indicators=IndicatorResults(**indicators),
+    )
 
 
-def process_item(item):
+def process_item(item: Incident) -> IncidentResult:
     """
     Helper function to process a single item for parallel execution.
-    Returns a dictionary matching the IncidentResult model structure.
+    Returns an IncidentResult model.
     """
-    raw_indicators = extract_indicators(item)
-    # Extract action from indicators and move it to top level
-    action = raw_indicators.pop("action", [])
+    extracted = extract_indicators(item)
 
     # Create the IncidentResult model to validate the data
     incident_result = IncidentResult(
-        id=str(item.get("id", "")),
-        action=action,
-        indicators=IndicatorResults(**raw_indicators),
+        id=item.id,
+        action=extracted.action,
+        indicators=extracted.indicators,
     )
 
     return incident_result
 
 
-def extract_from_custom_fields(items) -> List[IncidentResult]:
+def extract_from_custom_fields(items: List[Incident]) -> List[IncidentResult]:
     """
     Extracts IOCs from a list of items using parallel processing.
 
