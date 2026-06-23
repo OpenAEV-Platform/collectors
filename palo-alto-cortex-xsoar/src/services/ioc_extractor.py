@@ -82,7 +82,7 @@ def extract_indicators(item: Incident) -> ExtractedIOCs:
     combined_text = json.dumps(custom_fields)
 
     # 1. Extract using MSTICPy IoCExtract
-    found_iocs = IOC_EXTRACTOR.extract(combined_text, include_paths=True)
+    found_iocs = IOC_EXTRACTOR.extract(combined_text)
 
     # Map MSTICPy results to the requested keys
     indicators = {}
