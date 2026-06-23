@@ -30,6 +30,7 @@ class Alert(BaseModel):
 
 
 class CustomFields(BaseModel):
+    model_config = ConfigDict(extra="allow")
     xdralerts: List[Alert] = Field(default_factory=list)
 
 
