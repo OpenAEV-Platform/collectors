@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from requests.exceptions import ConnectionError, RequestException
 from src.models.incident import (
+    Alert,
     CustomFields,
     Incident,
     XSOARSearchIncidentsResponse,
@@ -88,6 +89,11 @@ def test_fetch_alerts_pagination(fetcher, mock_client):
 
     mock_client.search_incidents.side_effect = [response1, response2]
 
+    # Timestamp within [2023-01-01, 2023-01-02] in ms
+    ts_in_window = int(
+        datetime(2023, 1, 1, 12, 0, 0, tzinfo=timezone.utc).timestamp() * 1000
+    )
+
     with patch("src.services.alert_fetcher.PAGE_SIZE", 1):
         with patch(
             "src.services.alert_fetcher.extract_from_custom_fields"
@@ -100,6 +106,12 @@ def test_fetch_alerts_pagination(fetcher, mock_client):
                         indicators=IndicatorResults(
                             oaev_implant=["oaev-implant-1-agent-1"]
                         ),
+                        alerts=[
+                            Alert(
+                                alert_id="a1",
+                                detection_timestamp=ts_in_window,
+                            )
+                        ],
                     )
                 ],
                 [
@@ -109,6 +121,12 @@ def test_fetch_alerts_pagination(fetcher, mock_client):
                         indicators=IndicatorResults(
                             oaev_implant=["oaev-implant-2-agent-2"]
                         ),
+                        alerts=[
+                            Alert(
+                                alert_id="a2",
+                                detection_timestamp=ts_in_window,
+                            )
+                        ],
                     )
                 ],
             ]

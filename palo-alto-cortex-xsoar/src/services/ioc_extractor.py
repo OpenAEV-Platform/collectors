@@ -6,7 +6,7 @@ from typing import List, Optional
 
 from msticpy.transform import iocextract
 from pydantic import BaseModel, Field
-from src.models.incident import Incident
+from src.models.incident import Alert, Incident
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +53,7 @@ class IncidentResult(BaseModel):
     id: str
     action: List[str] = Field(default_factory=list)
     indicators: IndicatorResults
+    alerts: List[Alert] = Field(default_factory=list)
 
 
 class ExtractedIOCs(BaseModel):
@@ -125,11 +126,11 @@ def process_item(item: Incident) -> Optional[IncidentResult]:
     try:
         extracted = extract_indicators(item)
 
-        # Create the IncidentResult model to validate the data
         incident_result = IncidentResult(
             id=item.id,
             action=extracted.action,
             indicators=extracted.indicators,
+            alerts=item.custom_fields.xdralerts if item.custom_fields else [],
         )
 
         return incident_result

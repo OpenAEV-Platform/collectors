@@ -71,6 +71,7 @@ class ExpectationService:
         return [
             SignatureTypes.SIG_TYPE_PARENT_PROCESS_NAME,
             SignatureTypes.SIG_TYPE_TARGET_HOSTNAME_ADDRESS,
+            SignatureTypes.SIG_TYPE_START_DATE,
             SignatureTypes.SIG_TYPE_END_DATE,
         ]
 
@@ -124,31 +125,58 @@ class ExpectationService:
                 f"Error in handle_expectations: {e}"
             ) from e
 
+    def _extract_date_signatures(
+        self,
+        expectations: list[DetectionExpectation | PreventionExpectation] | None = None,
+    ) -> tuple[datetime | None, datetime | None]:
+        """Extract start_date and end_date from expectation signatures.
+
+        Args:
+            expectations: List of expectations to extract dates from.
+
+        Returns:
+            Tuple of (start_date, end_date) as datetime or None.
+
+        """
+        start_date = self._extract_start_date_from_expectations(expectations)
+        end_date = self._extract_end_date_from_expectations(expectations)
+
+        if start_date or end_date:
+            self.logger.debug(
+                f"{LOG_PREFIX} Extracted date signatures: start_date={start_date}, end_date={end_date}"
+            )
+        return start_date, end_date
+
+    def _extract_start_date_from_expectations(
+        self,
+        expectations: list[DetectionExpectation | PreventionExpectation] | None = None,
+    ) -> datetime | None:
+        """Extract and normalize start_date from expectation signatures."""
+        start_date = SignatureExtractor.extract_start_date(expectations)
+        if start_date and start_date.tzinfo is None:
+            # Keep previous behavior expected by tests: naive date => UTC.
+            start_date = start_date.replace(tzinfo=timezone.utc)
+        return start_date
+
     def _extract_end_date_from_expectations(
         self,
         expectations: list[DetectionExpectation | PreventionExpectation] | None = None,
     ) -> datetime | None:
-        """Extract end_date from expectation signatures.
-
-        Args:
-            expectations: List of expectations to extract end_date from.
-
-        Returns:
-            end_date as datetime or None if no end_date signature found.
-
-        """
+        """Extract and normalize end_date from expectation signatures."""
         end_date = SignatureExtractor.extract_end_date(expectations)
-        if end_date:
-            self.logger.debug(
-                f"{LOG_PREFIX} Extracted end_date from signatures: {end_date}, start_date will be calculated from time_window"
-            )
+        if end_date and end_date.tzinfo is None:
+            # Keep previous behavior expected by tests: naive date => UTC.
+            end_date = end_date.replace(tzinfo=timezone.utc)
         return end_date
 
     def _fetch_alerts_for_time_window(
         self,
         expectations: list[DetectionExpectation | PreventionExpectation] | None = None,
     ) -> List[IncidentResult]:
-        """Fetch all incidents from the configured time window or date signatures.
+        """Fetch all incidents for the expectation time window.
+
+        Uses start_date/end_date from expectation signatures directly when available.
+        Falls back to now() - time_window / now() only when no date signatures exist.
 
         Args:
             expectations: Optional list of expectations to extract date filters from.
@@ -161,15 +189,44 @@ class ExpectationService:
 
         """
         try:
-            end_time = self._extract_end_date_from_expectations(expectations)
+            start_date, end_date = self._extract_date_signatures(expectations)
 
-            if end_time is None:
+            if start_date and end_date:
+                # Use expectation signature dates directly
+                start_time = start_date
+                end_time = end_date
+                self.logger.debug(
+                    f"{LOG_PREFIX} Using expectation date signatures for incident retrieval: "
+                    f"{start_time} to {end_time}"
+                )
+            elif end_date:
+                # Only end_date available, compute start from time_window
+                end_time = end_date
+                start_time = end_time - self.time_window
+                self.logger.debug(
+                    f"{LOG_PREFIX} Using end_date signature with time_window fallback for start: "
+                    f"{start_time} to {end_time}"
+                )
+            elif start_date:
+                # Only start_date available, use now() as end
+                start_time = start_date
                 end_time = datetime.now(timezone.utc)
-
-            start_time = end_time - self.time_window
+                self.logger.debug(
+                    f"{LOG_PREFIX} Using start_date signature with now() as end: "
+                    f"{start_time} to {end_time}"
+                )
+            else:
+                # No date signatures at all — fallback to time_window from now()
+                end_time = datetime.now(timezone.utc)
+                start_time = end_time - self.time_window
+                self.logger.debug(
+                    f"{LOG_PREFIX} No date signatures found, using time_window fallback: "
+                    f"{start_time} to {end_time}"
+                )
 
             self.logger.debug(
-                f"{LOG_PREFIX} Delegating alert fetching to AlertFetcher for time window: {start_time} to {end_time}"
+                f"{LOG_PREFIX} Delegating alert fetching to AlertFetcher for time window: "
+                f"{start_time} to {end_time}"
             )
 
             return self.alert_fetcher.fetch_alerts_for_time_window(
@@ -188,11 +245,20 @@ class ExpectationService:
         incidents: List[IncidentResult],
         detection_helper: Any,
     ) -> list[ExpectationResult]:
-        """Match incidents to expectations and create results.
+        """Match incidents/alerts to expectations and create results.
+
+        Incidents already contain only alerts whose detection_timestamp falls
+        within the expectation time window (filtered by AlertFetcher).
+
+        For each expectation:
+        1. If at least one alert exists in an incident -> is_detected = True.
+        2. Derive is_prevented only from matched alerts' action status.
+        3. IP/ProcessName signatures are used when present but are not mandatory
+           for detection matching.
 
         Args:
             batch: Batch of expectations.
-            incidents: List of IncidentResult containing extracted indicators.
+            incidents: List of IncidentResult with pre-filtered alerts.
             detection_helper: OpenAEV detection helper.
 
         Returns:
@@ -204,44 +270,75 @@ class ExpectationService:
         for expectation in batch:
             try:
                 matched = False
+                is_prevented = False
                 traces = []
 
                 for incident in incidents:
+                    # Alerts are already filtered by timestamp in AlertFetcher.
+                    # Some legacy fixtures still provide incident.action only.
+                    matched_alerts = incident.alerts
+                    has_alert_signal = bool(matched_alerts) or bool(incident.action)
+                    if not has_alert_signal:
+                        continue
+
+                    # Check if IP/ProcessName signatures match (optional, not mandatory)
                     process_names = incident.indicators.oaev_implant
-                    if self._expectation_matches_incident(
+                    has_signature_match = self._expectation_matches_incident(
                         expectation, incident, process_names, detection_helper
+                    )
+
+                    # Detection: at least one alert in the time window is sufficient
+                    # Signature match strengthens confidence but is not mandatory
+                    if has_signature_match or not self._has_matchable_signatures(
+                        expectation
                     ):
+                        # Derive is_prevented from available matched status signals.
+                        incident_prevented = False
+                        for alert in matched_alerts:
+                            action_value = alert.action_pretty or alert.action or ""
+                            if "Prevented" in action_value:
+                                incident_prevented = True
+                                break
+                        if not matched_alerts:
+                            incident_prevented = any(
+                                "Prevented" in action for action in incident.action
+                            )
+
+                        # Preserve previous collector behavior: a prevention expectation
+                        # only matches if the matched signal is actually prevented.
+                        if (
+                            isinstance(expectation, PreventionExpectation)
+                            and not incident_prevented
+                        ):
+                            self.logger.debug(
+                                f"{LOG_PREFIX} Expectation {expectation.inject_expectation_id}: "
+                                f"incident {incident.id} detected but not prevented, continuing search"
+                            )
+                            continue
+
+                        matched = True
+                        is_prevented = incident_prevented
                         api_url = self.client_api.api_url
                         trace = TraceBuilder.create_incident_trace(incident, api_url)
                         traces.append(trace)
 
-                        if isinstance(expectation, PreventionExpectation):
-                            if any("Prevented" in action for action in incident.action):
-                                matched = True
-                                self.logger.debug(
-                                    f"{LOG_PREFIX} Prevention expectation {expectation.inject_expectation_id}: "
-                                    f"incident {incident.id} matched signature and action is prevented -> expectation satisfied"
-                                )
-                                break
-                            self.logger.debug(
-                                f"{LOG_PREFIX} Prevention expectation {expectation.inject_expectation_id}: "
-                                f"incident {incident.id} matched signature but not prevented -> continuing search"
-                            )
-                        else:
-                            if any(
-                                "Detected" in action or "Prevented" in action
-                                for action in incident.action
-                            ):
-                                matched = True
-                                self.logger.debug(
-                                    f"{LOG_PREFIX} Detection expectation {expectation.inject_expectation_id}: "
-                                    f"incident {incident.id} matched signature ({incident.action}) -> expectation satisfied"
-                                )
-                                break
+                        self.logger.debug(
+                            f"{LOG_PREFIX} Expectation {expectation.inject_expectation_id}: "
+                            f"incident {incident.id} has {len(matched_alerts)} alert(s) in time window, "
+                            f"signature_match={has_signature_match}, is_prevented={is_prevented}"
+                        )
+                        break
 
                 if matched:
+                    # For PreventionExpectation, is_valid requires is_prevented
+                    if isinstance(expectation, PreventionExpectation):
+                        is_valid = is_prevented
+                    else:
+                        # DetectionExpectation: at least one alert in window = detected
+                        is_valid = True
+
                     result_dict = {
-                        "is_valid": True,
+                        "is_valid": is_valid,
                         "traces": traces,
                         "expectation_type": (
                             "detection"
@@ -249,7 +346,6 @@ class ExpectationService:
                             else "prevention"
                         ),
                     }
-
                     result = self._convert_dict_to_result(result_dict, expectation)
                     results.append(result)
 
@@ -269,6 +365,25 @@ class ExpectationService:
                 results.append(error_result)
 
         return results
+
+    def _has_matchable_signatures(
+        self,
+        expectation: DetectionExpectation | PreventionExpectation,
+    ) -> bool:
+        """Check if the expectation has non-date signatures that can be matched.
+
+        Args:
+            expectation: The expectation to check.
+
+        Returns:
+            True if there are IP or ProcessName signatures to match against.
+
+        """
+        supported_signatures = self.get_supported_signatures()
+        signature_groups = SignatureExtractor.group_signatures_by_type(
+            expectation, supported_signatures
+        )
+        return len(signature_groups) > 0
 
     def _expectation_matches_incident(
         self,
@@ -312,6 +427,15 @@ class ExpectationService:
             signature_groups = SignatureExtractor.group_signatures_by_type(
                 expectation, supported_signatures
             )
+
+            # If no matchable signatures exist, we can't match by signature
+            if not signature_groups:
+                self.logger.debug(
+                    f"{LOG_PREFIX} No matchable signatures for expectation "
+                    f"{expectation.inject_expectation_id}, skipping signature matching"
+                )
+                return False
+
             self.logger.debug(
                 f"{LOG_PREFIX} Filtered signature groups: {list(signature_groups.keys())}"
             )
@@ -363,7 +487,8 @@ class ExpectationService:
                     return False
 
             self.logger.debug(
-                f"{LOG_PREFIX} All signatures matched for expectation {expectation.inject_expectation_id} vs incident {incident.id}"
+                f"{LOG_PREFIX} All signatures matched for expectation "
+                f"{expectation.inject_expectation_id} vs incident {incident.id}"
             )
             return True
 

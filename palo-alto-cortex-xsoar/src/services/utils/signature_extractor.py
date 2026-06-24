@@ -17,6 +17,34 @@ class SignatureExtractor:
     """Utility class for extracting signatures from expectations."""
 
     @staticmethod
+    def extract_start_date(
+        batch: list["DetectionExpectation | PreventionExpectation"] | None = None,
+    ) -> datetime | None:
+        """Extract start_date from batch signatures.
+
+        Args:
+            batch: List of expectations to extract start_date from. If None, returns None.
+
+        Returns:
+            Parsed start_date as datetime or None if no valid start_date signature found.
+
+        """
+        if not batch:
+            return None
+
+        for expectation in batch:
+            for signature in expectation.inject_expectation_signatures:
+                if signature.type.value == "start_date":
+                    try:
+                        start_date = datetime.fromisoformat(
+                            signature.value.replace("Z", "+00:00")
+                        )
+                        return start_date
+                    except (ValueError, AttributeError):
+                        continue
+        return None
+
+    @staticmethod
     def extract_end_date(
         batch: list["DetectionExpectation | PreventionExpectation"] | None = None,
     ) -> datetime | None:
@@ -60,7 +88,8 @@ class SignatureExtractor:
             Dictionary mapping signature types to lists of signature dictionaries
             in the format expected by detection helper (with 'value' and 'type' keys).
             Only includes signature types that are in the supported list.
-            Excludes end_date as it's only used for query criteria, not matching.
+            Excludes start_date and end_date as they are only used for query/filter
+            criteria, not for detection matching.
 
         """
         supported_types = None
@@ -77,7 +106,8 @@ class SignatureExtractor:
             if supported_types and sig_type not in supported_types:
                 continue
 
-            if sig_type == "end_date":
+            # start_date and end_date are used for time-window filtering, not matching
+            if sig_type in ("end_date", "start_date"):
                 continue
 
             signature_groups[sig_type].append({"type": sig_type, "value": sig.value})

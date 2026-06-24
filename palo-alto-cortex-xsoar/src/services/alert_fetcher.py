@@ -32,10 +32,14 @@ class AlertFetcher:
         start_time: datetime,
         end_time: datetime,
     ) -> List[IncidentResult]:
-        """Fetch all incidents for a given time window.
+        """Fetch all incidents for a given time window and filter alerts by timestamp.
+
+        After retrieving incidents from the API, each incident's alerts are filtered
+        to keep only those whose detection_timestamp falls within [start_time, end_time].
+        Incidents with no matching alerts are discarded.
 
         Returns:
-            List of IncidentResult with extracted indicators.
+            List of IncidentResult with only alerts inside the time window.
         """
         if not isinstance(start_time, datetime) or not isinstance(end_time, datetime):
             raise PaloAltoCortexXSOARValidationError(
@@ -62,11 +66,17 @@ class AlertFetcher:
                 self.logger.info(f"{LOG_PREFIX} No incidents found for time window")
                 return []
 
-            self.logger.info(
-                f"{LOG_PREFIX} Found {len(all_incidents)} incidents with indicators"
+            # Filter alerts within each incident by detection_timestamp
+            filtered_incidents = self._filter_alerts_by_timestamp(
+                all_incidents, start_time, end_time
             )
 
-            return all_incidents
+            self.logger.info(
+                f"{LOG_PREFIX} Found {len(all_incidents)} incidents, "
+                f"{len(filtered_incidents)} have alerts within [{start_time} - {end_time}]"
+            )
+
+            return filtered_incidents
 
         except (ConnectionError, Timeout) as e:
             raise PaloAltoCortexXSOARNetworkError(
@@ -80,6 +90,56 @@ class AlertFetcher:
             raise PaloAltoCortexXSOARAPIError(
                 f"Error fetching incidents for time window: {e}"
             ) from e
+
+    def _filter_alerts_by_timestamp(
+        self,
+        incidents: List[IncidentResult],
+        start_time: datetime,
+        end_time: datetime,
+    ) -> List[IncidentResult]:
+        """Filter each incident's alerts by detection_timestamp within [start, end].
+
+        Uses a functional map/filter approach:
+        - map: produce (original, transformed) incident pairs where transformed keeps
+          only alerts in the time window
+        - filter: keep transformed incidents that either still have alerts OR had no
+          alert details in the original payload (legacy compatibility)
+
+        Args:
+            incidents: List of IncidentResult with raw alerts.
+            start_time: Start of the time window (inclusive).
+            end_time: End of the time window (inclusive).
+
+        Returns:
+            List of IncidentResult with alerts filtered to the time window.
+        """
+        start_ts = int(start_time.timestamp() * 1000)
+        end_ts = int(end_time.timestamp() * 1000)
+
+        def with_filtered_alerts(
+            incident: IncidentResult,
+        ) -> tuple[IncidentResult, IncidentResult]:
+            """Return original+transformed incident with alerts in the time window."""
+            transformed = incident.model_copy(
+                update={
+                    "alerts": [
+                        alert
+                        for alert in incident.alerts
+                        if start_ts <= alert.detection_timestamp <= end_ts
+                    ]
+                }
+            )
+            return incident, transformed
+
+        return list(
+            map(
+                lambda pair: pair[1],
+                filter(
+                    lambda pair: len(pair[1].alerts) > 0 or len(pair[0].alerts) == 0,
+                    map(with_filtered_alerts, incidents),
+                ),
+            )
+        )
 
     def _fetch_all_incidents(
         self, from_date: str, to_date: str
