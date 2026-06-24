@@ -91,12 +91,12 @@ def alerts(execution_uuid):
     agent_uuid = str(uuid.uuid4())
     implant_name = f"oaev-implant-{execution_uuid}-agent-{agent_uuid}"
 
-    alert = AlertFactory(
+    alert = AlertFactory.build(
         case_id=42,
         actor_process_command_line=implant_name,
     )
 
-    incident = IncidentFactory(custom_fields=CustomFields(xdralerts=[alert]))
+    incident = IncidentFactory.build(custom_fields=CustomFields(xdralerts=[alert]))
 
     alerts_response = XSOARSearchIncidentsResponse(total=1, data=[incident])
 

@@ -10,13 +10,20 @@ name = "palo-alto-cortex-xsoar"
 version = "2.3.3"
 description = "Collector for Palo Alto Cortex XSOAR EDR."
 readme = "README.md"
+requires-python = ">=3.12,<4.0"
+dynamic = ["dependencies"]
+dependencies = [
+    "pyoaev",
+]
 
 Homepage = "https://filigran.io/"
 Repository = "https://github.com/OpenAEV-Platform/collectors/tree/main/palo-alto-cortex-xsoar"
 Documentation = "https://github.com/OpenAEV-Platform/collectors/blob/main/palo-alto-cortex-xsoar/README.md"
 Issues = "https://github.com/OpenAEV-Platform/collectors/issues"
 
-requires-python = ">=3.12,<4.0"
+[project.optional-dependencies]
+prod = []
+local = []
 
 [tool.poetry.dependencies]
 pyoaev = [
