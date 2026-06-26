@@ -1,6 +1,6 @@
 """Tests for ExpectationService to improve coverage."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -100,6 +100,30 @@ class TestFetchAlertsForTimeWindow:
         )
         with pytest.raises(PaloAltoCortexXSOARAPIError, match="Error fetching alerts"):
             service._fetch_alerts_for_time_window(expectations=None)
+
+    def test_inverted_date_window_logs_warning_and_applies_fallback(self, service):
+        """When start_date > end_date, a warning is logged and fallback is applied."""
+        service.alert_fetcher.fetch_alerts_for_time_window.return_value = []
+        end_date = datetime(2020, 1, 1, 10, 0, 0, tzinfo=timezone.utc)
+        start_date = datetime(2020, 1, 1, 11, 0, 0, tzinfo=timezone.utc)  # after end
+
+        with patch.object(
+            service,
+            "_extract_date_signatures",
+            return_value=(start_date, end_date),
+        ):
+            with patch.object(service, "logger") as mock_logger:
+                service._fetch_alerts_for_time_window(expectations=[])
+
+        mock_logger.warning.assert_called_once()
+        warning_msg = mock_logger.warning.call_args[0][0]
+        assert "start_date > end_date" in warning_msg
+
+        call_kwargs = (
+            service.alert_fetcher.fetch_alerts_for_time_window.call_args.kwargs
+        )
+        assert call_kwargs["start_time"] == end_date
+        assert call_kwargs["end_time"] > end_date
 
 
 class TestMatchAlertsToExpectations:

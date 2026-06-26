@@ -224,6 +224,14 @@ class ExpectationService:
                     f"{start_time} to {end_time}"
                 )
 
+            if start_time > end_time:
+                self.logger.warning(
+                    f"{LOG_PREFIX} Invalid expectation date window (start_date > end_date): "
+                    f"{start_time} > {end_time}. Applying fallback: start=end_date, end=now()."
+                )
+                start_time = end_time
+                end_time = datetime.now(timezone.utc)
+
             self.logger.debug(
                 f"{LOG_PREFIX} Delegating alert fetching to AlertFetcher for time window: "
                 f"{start_time} to {end_time}"
