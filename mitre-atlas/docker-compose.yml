@@ -1,0 +1,12 @@
+services:
+  collector-mitre-atlas:
+    image: openaev/collector-mitre-atlas:latest
+    environment:
+      - OPENAEV_URL=${OPENAEV_URL}
+      - OPENAEV_TOKEN=${OPENAEV_TOKEN}
+      - OPENAEV_TENANT_ID=${OPENAEV_TENANT_ID}
+      - COLLECTOR_ID=${COLLECTOR_ID}
+      - COLLECTOR_NAME=${COLLECTOR_NAME:-"MITRE ATLAS"}
+      - COLLECTOR_LOG_LEVEL=${COLLECTOR_LOG_LEVEL:-warn}
+      - COLLECTOR_PERIOD=${COLLECTOR_PERIOD:-P7D}
+    restart: unless-stopped

@@ -1,0 +1,18 @@
+{
+  "title": "AI Guardrail",
+  "slug": "openaev_ai_guardrail",
+  "description": "Validate that an AI defense (LLM firewall / guardrail / AI gateway such as Lakera Guard, NVIDIA NeMo Guardrails, Protect AI LLM Guard) detected or prevented AI adversarial injects.",
+  "short_description": "Validate LLM firewall / guardrail detection and prevention",
+  "use_cases": ["Security response"],
+  "verified": true,
+  "last_verified_date": "",
+  "playbook_supported": false,
+  "max_confidence_level": 80,
+  "support_version": "",
+  "subscription_link": "https://genai.owasp.org/",
+  "source_code": "",
+  "manager_supported": true,
+  "container_version": "rolling",
+  "container_image": "openaev/collector-ai-guardrail",
+  "container_type": "COLLECTOR"
+}
