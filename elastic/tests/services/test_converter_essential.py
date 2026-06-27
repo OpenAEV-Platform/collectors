@@ -65,9 +65,7 @@ class TestConverterEssential:
         result in OAEV data with only source IP field populated.
         """
         converter = Converter()
-        alert = ElasticAlertFactory.build(
-            src_ip="192.168.1.100", dst_ip=None, source_ip=None, destination_ip=None
-        )
+        alert = ElasticAlertFactory.build(src_ip="192.168.1.100", dst_ip=None)
 
         result = converter.convert_data_to_oaev_data(alert)
 
@@ -85,9 +83,7 @@ class TestConverterEssential:
         result in OAEV data with only target IP field populated.
         """
         converter = Converter()
-        alert = ElasticAlertFactory.build(
-            src_ip=None, dst_ip="10.0.0.50", source_ip=None, destination_ip=None
-        )
+        alert = ElasticAlertFactory.build(src_ip=None, dst_ip="10.0.0.50")
 
         result = converter.convert_data_to_oaev_data(alert)
 
@@ -103,9 +99,7 @@ class TestConverterEssential:
         and do not appear in the final OAEV data list.
         """
         converter = Converter()
-        alert = ElasticAlertFactory.build(
-            src_ip=None, dst_ip=None, source_ip=None, destination_ip=None
-        )
+        alert = ElasticAlertFactory.build(src_ip=None, dst_ip=None)
 
         result = converter.convert_data_to_oaev_data(alert)
 
@@ -125,10 +119,12 @@ class TestConverterEssential:
 
         result = converter.convert_data_to_oaev_data(alerts)
 
-        # Filter out alerts without IPs - some test alerts may not have IPs
-        assert len(result) >= 2  # noqa: S101
-        # Each result should be a dictionary
+        # Every generated alert carries source/destination IPs, so all convert.
+        assert len(result) == 3  # noqa: S101
+        # Each result should be a dictionary with both IP fields populated.
         assert all(isinstance(item, dict) for item in result)  # noqa: S101
+        assert all("source_ipv4_address" in item for item in result)  # noqa: S101
+        assert all("target_ipv4_address" in item for item in result)  # noqa: S101
 
     def test_convert_invalid_data_handles_gracefully(self):
         """Test converting invalid data handles gracefully.
@@ -143,41 +139,37 @@ class TestConverterEssential:
 
         assert result == []  # noqa: S101
 
-    def test_extract_source_ips_from_multiple_fields(self):
-        """Test extracting source IPs from multiple possible fields.
+    def test_extract_source_ips_from_src_ip(self):
+        """Test extracting source IPs from the alert ``src_ip`` field.
 
-        Verifies that the converter correctly extracts source IPs from
-        both src_ip and source_ip fields, handling duplicates properly.
+        ``ElasticAlert`` exposes the source IP solely through ``src_ip``
+        (populated from ECS ``source.ip`` / ``client.ip`` during parsing), so
+        the converter reads that field and returns a single-item,
+        de-duplicated list.
         """
         converter = Converter()
-        alert = ElasticAlertFactory.build(
-            src_ip="192.168.1.100",
-            source_ip="192.168.1.100",  # Same IP in both fields
-        )
+        alert = ElasticAlertFactory.build(src_ip="192.168.1.100")
 
         source_ips = converter._extract_source_ips(alert)
 
-        # Should have single IP (consolidated field)
         assert len(source_ips) == 1  # noqa: S101
-        assert "192.168.1.100" in source_ips  # noqa: S101
+        assert source_ips == ["192.168.1.100"]  # noqa: S101
 
-    def test_extract_target_ips_from_multiple_fields(self):
-        """Test extracting target IPs from multiple possible fields.
+    def test_extract_target_ips_from_dst_ip(self):
+        """Test extracting target IPs from the alert ``dst_ip`` field.
 
-        Verifies that the converter uses consolidated target IP field,
-        prioritizing dst_ip over destination_ip.
+        ``ElasticAlert`` exposes the target IP solely through ``dst_ip``
+        (populated from ECS ``destination.ip`` / ``server.ip`` during
+        parsing), so the converter reads that field and returns a single-item,
+        de-duplicated list.
         """
         converter = Converter()
-        alert = ElasticAlertFactory.build(
-            dst_ip="10.0.0.50",
-            destination_ip="203.0.113.5",  # Different IP in alternative field
-        )
+        alert = ElasticAlertFactory.build(dst_ip="10.0.0.50")
 
         target_ips = converter._extract_target_ips(alert)
 
-        # Should use consolidated field (dst_ip takes priority)
         assert len(target_ips) == 1  # noqa: S101
-        assert "10.0.0.50" in target_ips  # noqa: S101
+        assert target_ips == ["10.0.0.50"]  # noqa: S101
 
     def test_alert_data_type_detection(self):
         """Test that converter correctly detects ElasticAlert data type.

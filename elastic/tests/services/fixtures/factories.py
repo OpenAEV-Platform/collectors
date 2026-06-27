@@ -121,11 +121,14 @@ class ElasticSearchCriteriaFactory(ModelFactory[ElasticSearchCriteria]):
     source_ips = Use(lambda: ["192.168.1.100", "10.0.0.50"])
     target_ips = Use(lambda: ["172.16.0.10", "203.0.113.5"])
     start_date = Use(
-        lambda: (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat() + "Z"
+        lambda: (datetime.now(timezone.utc) - timedelta(hours=1))
+        .isoformat()
+        .replace("+00:00", "Z")
     )
     end_date = Use(
-        lambda: (datetime.now(timezone.utc) + timedelta(microseconds=1)).isoformat()
-        + "Z"
+        lambda: (datetime.now(timezone.utc) + timedelta(microseconds=1))
+        .isoformat()
+        .replace("+00:00", "Z")
     )
 
 
@@ -138,7 +141,7 @@ class ElasticAlertFactory(ModelFactory[ElasticAlert]):
 
     __check_model__ = False
 
-    time = Use(lambda: datetime.now(timezone.utc).isoformat() + "Z")
+    time = Use(lambda: datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"))
     src_ip = Use(lambda: f"192.168.1.{uuid.uuid4().int % 255}")
     dst_ip = Use(lambda: f"10.0.0.{uuid.uuid4().int % 255}")
     signature = Use(lambda: f"Test Malicious Activity {uuid.uuid4().hex[:8]}")
@@ -178,7 +181,7 @@ class ExpectationTraceFactory(ModelFactory[ExpectationTrace]):
         lambda: f"https://test-elastic.example.com:5601/app/security/alerts?query=test-{uuid.uuid4().hex[:8]}"
     )
     inject_expectation_trace_date = Use(
-        lambda: datetime.now(timezone.utc).isoformat() + "Z"
+        lambda: datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     )
 
 
@@ -385,7 +388,11 @@ def create_test_config(**overrides) -> ConfigLoader:
 
 
 def create_test_elastic_alerts(count: int = 1) -> List[ElasticAlert]:
-    """Create test Elastic Security alerts with varied IP configurations.
+    """Create test Elastic Security alerts with varied IP ranges.
+
+    Every alert is built with the real ``ElasticAlert`` fields ``src_ip`` /
+    ``dst_ip`` (alternating between two distinct IP ranges) so the converter
+    and matching tests exercise alerts that actually carry IPs.
 
     Args:
         count: Number of alerts to create (default 1).
@@ -403,10 +410,8 @@ def create_test_elastic_alerts(count: int = 1) -> List[ElasticAlert]:
             )
         else:
             alert = ElasticAlertFactory.build(
-                source_ip=f"172.16.0.{10 + i}",
-                destination_ip=f"203.0.113.{5 + i}",
-                src_ip=None,
-                dst_ip=None,
+                src_ip=f"172.16.0.{10 + i}",
+                dst_ip=f"203.0.113.{5 + i}",
             )
         alerts.append(alert)
     return alerts
