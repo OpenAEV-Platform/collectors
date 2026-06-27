@@ -42,5 +42,9 @@ poetry run python -m mitre_atlas.openaev_atlas
 > [client-python](https://github.com/OpenAEV-Platform/client-python) alongside this
 > repository and run `poetry install --extras dev` instead.
 
-> Note: as with the other connectors in this repository, the collector icon
-> (`mitre_atlas/img/icon-mitre-atlas.png`) is provided at build/deploy time.
+> Note: the collector icon (`mitre_atlas/img/icon-mitre-atlas.png`) is referenced by
+> `manifest-metadata.json` and `pyproject.toml` and is opened at startup by the
+> collector daemon. As with every other collector in this repository (which commits
+> its icon under `<collector>/img/`), the real MITRE ATLAS logo must be committed
+> before the collector can run from source; adding that binary asset is a tracked
+> pre-ship follow-up.
