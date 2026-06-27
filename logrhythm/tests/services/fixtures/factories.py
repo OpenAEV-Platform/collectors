@@ -470,12 +470,9 @@ def create_test_logrhythm_alerts(count: int = 1) -> List[LogRhythmAlert]:
                 dst_ip=f"10.0.0.{50 + i}",
             )
         else:
-            alert = LogRhythmAlertFactory.build(
-                source_ip=f"172.16.0.{10 + i}",
-                destination_ip=f"203.0.113.{5 + i}",
-                src_ip=None,
-                dst_ip=None,
-            )
+            # Odd alerts intentionally carry no IPs to exercise the
+            # converter's "filter out alerts without IPs" path.
+            alert = LogRhythmAlertFactory.build(src_ip=None, dst_ip=None)
         alerts.append(alert)
     return alerts
 
