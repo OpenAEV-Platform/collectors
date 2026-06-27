@@ -65,9 +65,7 @@ class TestConverterEssential:
         result in OAEV data with only source IP field populated.
         """
         converter = Converter()
-        alert = LogRhythmAlertFactory.build(
-            src_ip="192.168.1.100", dst_ip=None, source_ip=None, destination_ip=None
-        )
+        alert = LogRhythmAlertFactory.build(src_ip="192.168.1.100", dst_ip=None)
 
         result = converter.convert_data_to_oaev_data(alert)
 
@@ -85,9 +83,7 @@ class TestConverterEssential:
         result in OAEV data with only target IP field populated.
         """
         converter = Converter()
-        alert = LogRhythmAlertFactory.build(
-            src_ip=None, dst_ip="10.0.0.50", source_ip=None, destination_ip=None
-        )
+        alert = LogRhythmAlertFactory.build(src_ip=None, dst_ip="10.0.0.50")
 
         result = converter.convert_data_to_oaev_data(alert)
 
@@ -103,9 +99,7 @@ class TestConverterEssential:
         and do not appear in the final OAEV data list.
         """
         converter = Converter()
-        alert = LogRhythmAlertFactory.build(
-            src_ip=None, dst_ip=None, source_ip=None, destination_ip=None
-        )
+        alert = LogRhythmAlertFactory.build(src_ip=None, dst_ip=None)
 
         result = converter.convert_data_to_oaev_data(alert)
 
@@ -143,41 +137,31 @@ class TestConverterEssential:
 
         assert result == []  # noqa: S101
 
-    def test_extract_source_ips_from_multiple_fields(self):
-        """Test extracting source IPs from multiple possible fields.
+    def test_extract_source_ips_returns_single_source_ip(self):
+        """Test extracting the source IP from an alert.
 
-        Verifies that the converter correctly extracts source IPs from
-        both src_ip and source_ip fields, handling duplicates properly.
+        LogRhythmAlert exposes a single source address (src_ip), so the
+        converter returns it as a one-element list.
         """
         converter = Converter()
-        alert = LogRhythmAlertFactory.build(
-            src_ip="192.168.1.100",
-            source_ip="192.168.1.100",  # Same IP in both fields
-        )
+        alert = LogRhythmAlertFactory.build(src_ip="192.168.1.100")
 
         source_ips = converter._extract_source_ips(alert)
 
-        # Should have single IP (consolidated field)
-        assert len(source_ips) == 1  # noqa: S101
-        assert "192.168.1.100" in source_ips  # noqa: S101
+        assert source_ips == ["192.168.1.100"]  # noqa: S101
 
-    def test_extract_target_ips_from_multiple_fields(self):
-        """Test extracting target IPs from multiple possible fields.
+    def test_extract_target_ips_returns_single_target_ip(self):
+        """Test extracting the target IP from an alert.
 
-        Verifies that the converter uses consolidated target IP field,
-        prioritizing dst_ip over destination_ip.
+        LogRhythmAlert exposes a single impacted/destination address
+        (dst_ip), so the converter returns it as a one-element list.
         """
         converter = Converter()
-        alert = LogRhythmAlertFactory.build(
-            dst_ip="10.0.0.50",
-            destination_ip="203.0.113.5",  # Different IP in alternative field
-        )
+        alert = LogRhythmAlertFactory.build(dst_ip="10.0.0.50")
 
         target_ips = converter._extract_target_ips(alert)
 
-        # Should use consolidated field (dst_ip takes priority)
-        assert len(target_ips) == 1  # noqa: S101
-        assert "10.0.0.50" in target_ips  # noqa: S101
+        assert target_ips == ["10.0.0.50"]  # noqa: S101
 
     def test_alert_data_type_detection(self):
         """Test that converter correctly detects LogRhythmAlert data type.
