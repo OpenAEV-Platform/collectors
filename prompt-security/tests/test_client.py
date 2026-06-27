@@ -51,6 +51,18 @@ class TestPromptSecurityClientScan(unittest.TestCase):
         self.assertTrue(verdict.flagged)
         self.assertFalse(verdict.blocked)
 
+    def test_log_action_is_flagged_but_not_blocked(self):
+        # "log" is an enforcement decision that detects (DETECTION) without
+        # preventing: flagged is True, but blocked stays False (only "block"
+        # blocks). With no violations entries, scan() falls back to the default
+        # violation detail. This locks in the action-to-verdict mapping.
+        client = _make_client()
+        client.session.post = MagicMock(return_value=_mock_response({"action": "log"}))
+        verdict = client.scan("prompt")
+        self.assertTrue(verdict.flagged)
+        self.assertFalse(verdict.blocked)
+        self.assertEqual(verdict.detail, "Prompt Security violation")
+
     def test_violations_drive_flag_and_dict_detail(self):
         client = _make_client()
         client.session.post = MagicMock(
