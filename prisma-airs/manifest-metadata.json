@@ -1,0 +1,18 @@
+{
+  "title": "Palo Alto Prisma AIRS",
+  "slug": "openaev_prisma_airs",
+  "description": "Validate that Palo Alto Prisma AIRS (AI Runtime Security) detects or blocks AI adversarial injects by replaying the attack content through the Prisma AIRS Scan API.",
+  "short_description": "Validate Prisma AIRS detection and prevention",
+  "use_cases": ["Security response"],
+  "verified": true,
+  "last_verified_date": "",
+  "playbook_supported": false,
+  "max_confidence_level": 80,
+  "support_version": "",
+  "subscription_link": "https://www.paloaltonetworks.com/prisma/prisma-airs",
+  "source_code": "",
+  "manager_supported": true,
+  "container_version": "rolling",
+  "container_image": "openaev/collector-prisma-airs",
+  "container_type": "COLLECTOR"
+}
