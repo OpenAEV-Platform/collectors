@@ -10,7 +10,10 @@ Registers a `SecurityPlatform` of type `LLM_FIREWALL`.
 2. Fetches each inject's attack content (`GET /api/injects/{injectId}` -> `inject_content.attack_prompt`).
 3. Replays it through the HiddenLayer Interactions endpoint
    (`POST {base_url}/detection/v1/interactions`).
-4. Maps any returned detection -> DETECTION; a block action -> PREVENTION.
+4. Maps the verdict to the expectations: any returned detection satisfies DETECTION, and a
+   block action satisfies PREVENTION. Because prevention implies detection, a block also
+   satisfies DETECTION (the blocked verdict is OR'ed into the detection result), so a blocked
+   attack fills both the DETECTION and PREVENTION expectations.
 
 ## Authentication
 
