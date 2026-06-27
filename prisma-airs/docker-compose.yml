@@ -1,0 +1,16 @@
+services:
+  collector-prisma-airs:
+    image: openaev/collector-prisma-airs:latest
+    environment:
+      - OPENAEV_URL=${OPENAEV_URL}
+      - OPENAEV_TOKEN=${OPENAEV_TOKEN}
+      - OPENAEV_TENANT_ID=${OPENAEV_TENANT_ID}
+      - COLLECTOR_ID=${COLLECTOR_ID}
+      - COLLECTOR_NAME=${COLLECTOR_NAME:-"Palo Alto Prisma AIRS"}
+      - COLLECTOR_PLATFORM=${COLLECTOR_PLATFORM:-LLM_FIREWALL}
+      - COLLECTOR_LOG_LEVEL=${COLLECTOR_LOG_LEVEL:-warn}
+      - COLLECTOR_PERIOD=${COLLECTOR_PERIOD:-PT120S}
+      - COLLECTOR_BASE_URL=${COLLECTOR_BASE_URL:-https://service.api.aisecurity.paloaltonetworks.com}
+      - COLLECTOR_API_KEY=${COLLECTOR_API_KEY}
+      - COLLECTOR_AI_PROFILE=${COLLECTOR_AI_PROFILE}
+    restart: unless-stopped
