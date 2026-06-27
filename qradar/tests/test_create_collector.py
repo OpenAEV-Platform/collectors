@@ -195,6 +195,10 @@ def _then_collector_created_successfully(capfd, mock_env, collector, data) -> No
     assert daemon_config.get("qradar_api_version") == data.get(  # noqa: S101
         "QRADAR_API_VERSION"
     )
+    # search_timeout and poll_interval are real, documented config fields and
+    # must be surfaced in the daemon config hints for schema discovery.
+    assert daemon_config.get("qradar_search_timeout") is not None  # noqa: S101
+    assert daemon_config.get("qradar_poll_interval") is not None  # noqa: S101
     assert daemon_config.get("collector_log_level") == data.get(  # noqa: S101
         "COLLECTOR_LOG_LEVEL"
     )

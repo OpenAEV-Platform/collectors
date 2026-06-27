@@ -1,6 +1,7 @@
 """IBM QRadar API client for running Ariel (AQL) searches."""
 
 import logging
+import math
 import time
 from datetime import timedelta
 from typing import Any
@@ -274,7 +275,10 @@ class QRadarClientAPI:
         where_clause = " OR ".join(conditions) if conditions else "1=1"
 
         window_seconds = int(self.time_window.total_seconds()) + extend_end_seconds
-        minutes = max(1, window_seconds // 60)
+        # Round up to whole minutes so a sub-minute retry extension (e.g. the
+        # default 30s offset) still widens the ``LAST N MINUTES`` clause instead
+        # of being lost to floor division.
+        minutes = max(1, math.ceil(window_seconds / 60))
 
         return (
             f"SELECT {fields} FROM {self.data_source} "

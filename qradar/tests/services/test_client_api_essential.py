@@ -1,5 +1,6 @@
 """Essential tests for IBM QRadar Client API service."""
 
+from datetime import timedelta
 from unittest.mock import Mock, patch
 
 import pytest
@@ -216,6 +217,25 @@ class TestQRadarClientAPIEssential:
         aql2 = client._build_aql(criteria, extend_end_seconds=3600)
 
         assert aql1 != aql2  # noqa: S101
+
+    def test_build_aql_subminute_extension_rounds_up(self):
+        """A sub-minute retry extension still widens the LAST N MINUTES clause.
+
+        Regression test: the window was converted to minutes with floor
+        division, so a sub-minute extension (e.g. the default 30s offset on the
+        first retry) was silently lost. The window is now rounded up, so any
+        non-zero extension adds at least one minute.
+        """
+        config = create_test_config()
+        config.qradar.time_window = timedelta(hours=1)
+        client = QRadarClientAPI(config=config)
+
+        criteria = QRadarSearchCriteria(source_ips=["192.168.1.100"])
+        aql_base = client._build_aql(criteria, extend_end_seconds=0)
+        aql_retry = client._build_aql(criteria, extend_end_seconds=30)
+
+        assert "LAST 60 MINUTES" in aql_base  # noqa: S101
+        assert "LAST 61 MINUTES" in aql_retry  # noqa: S101
 
     def test_build_search_criteria_from_signatures(self):
         """Signatures are extracted into a QRadarSearchCriteria object."""

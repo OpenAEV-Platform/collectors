@@ -164,6 +164,8 @@ class ConfigLoader(ConfigBaseSettings):
                 "qradar_time_window": {"data": self.qradar.time_window},
                 "qradar_max_retry": {"data": self.qradar.max_retry},
                 "qradar_offset": {"data": self.qradar.offset},
+                "qradar_search_timeout": {"data": self.qradar.search_timeout},
+                "qradar_poll_interval": {"data": self.qradar.poll_interval},
                 "qradar_verify_ssl": {"data": self.qradar.verify_ssl},
             },
             config_base_model=self,
