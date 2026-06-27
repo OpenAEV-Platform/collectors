@@ -9,6 +9,8 @@ to tenants; the endpoint path and auth header below reflect the documented shape
 configurable, since the public API surface is still consolidating.
 """
 
+from urllib.parse import urlparse
+
 import requests
 
 
@@ -35,6 +37,13 @@ class CiscoAiDefenseClient:
             raise ValueError(
                 "Cisco AI Defense base_url is not configured; set collector.base_url "
                 "(COLLECTOR_BASE_URL) to the inspection API base URL."
+            )
+        parsed = urlparse(self.base_url)
+        if parsed.scheme not in ("http", "https") or not parsed.netloc:
+            raise ValueError(
+                "Cisco AI Defense base_url must be a valid http(s) URL including a host, "
+                "e.g. https://<region>.api.inspect.aidefense.security.cisco.com; "
+                f"got {self.base_url!r}. Set collector.base_url (COLLECTOR_BASE_URL) accordingly."
             )
         messages = []
         if system_prompt:

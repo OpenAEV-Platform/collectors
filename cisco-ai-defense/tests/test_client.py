@@ -36,6 +36,16 @@ def test_scan_requires_base_url():
         client.scan("payload")
 
 
+@pytest.mark.parametrize(
+    "bad_base_url",
+    ["example.test", "example.test/api", "ftp://example.test", "https://"],
+)
+def test_scan_rejects_base_url_without_valid_scheme(bad_base_url):
+    client = _build_client(cisco_base_url=bad_base_url)
+    with pytest.raises(ValueError, match="http"):
+        client.scan("payload")
+
+
 def test_scan_safe_response_is_not_flagged():
     client = _build_client()
     client.session = _mock_session({"is_safe": True})

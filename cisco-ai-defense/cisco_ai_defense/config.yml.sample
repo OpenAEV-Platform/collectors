@@ -1,7 +1,7 @@
 openaev:
   url: 'http://localhost:3001'
   token: 'ChangeMe'
-# tenant_id: 'ChangeMe'
+  # tenant_id: 'ChangeMe'
 
 collector:
   id: 'ChangeMe'   # unique collector identifier (string; e.g. openaev_cisco_ai_defense)
