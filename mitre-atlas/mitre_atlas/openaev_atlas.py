@@ -36,6 +36,11 @@ ATLAS_TACTIC_ORDER = {
     "impact": 15,
 }
 
+# Tactics absent from ATLAS_TACTIC_ORDER (e.g. introduced by a future ATLAS release) are
+# ordered after all known tactics instead of at the front (order 0), so the canonical
+# ordering of the known phases is preserved.
+UNKNOWN_TACTIC_ORDER = max(ATLAS_TACTIC_ORDER.values()) + 1
+
 
 class OpenAEVAtlas(CollectorDaemon):
     def __init__(
@@ -71,12 +76,20 @@ class OpenAEVAtlas(CollectorDaemon):
                 "phase_shortname": phase_shortname,
                 "phase_name": phase_name,
                 "phase_description": phase_description,
-                "phase_order": ATLAS_TACTIC_ORDER.get(phase_shortname, 0),
+                "phase_order": ATLAS_TACTIC_ORDER.get(
+                    phase_shortname, UNKNOWN_TACTIC_ORDER
+                ),
             }
             kill_chain_phases.append(kill_chain_phase)
         return self.api.kill_chain_phase.upsert(kill_chain_phases)
 
     def _attack_patterns(self, attacks, kill_chain_phases, relationships):
+        # Pre-index subtechnique-of relationships (source -> parent target) so parent
+        # resolution is O(1) per attack pattern instead of scanning the full list.
+        parent_by_source = {
+            relationship["source_ref"]: relationship["target_ref"]
+            for relationship in relationships
+        }
         attack_patterns = []
         for attack in attacks:
             stix_id = attack.get("id")
@@ -95,12 +108,8 @@ class OpenAEVAtlas(CollectorDaemon):
             for external_reference in attack.get("external_references", []):
                 if external_reference.get("source_name") == ATLAS_SOURCE_NAME:
                     attack_pattern_external_id = external_reference.get("external_id")
-            # Find a possible parent in relationships (sub-technique -> parent technique)
-            attack_pattern_parent = None
-            for relationship in relationships:
-                if relationship["source_ref"] == stix_id:  # subtechnique-of
-                    attack_pattern_parent = relationship["target_ref"]
-                    break
+            # Resolve a possible parent (sub-technique -> parent technique).
+            attack_pattern_parent = parent_by_source.get(stix_id)
             attack_pattern_kill_chain_phases_ids = [
                 x.get("phase_id")
                 for x in kill_chain_phases

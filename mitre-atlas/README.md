@@ -34,9 +34,13 @@ adversarial actions can be mapped and the ATLAS coverage matrix can be rendered.
 
 ```bash
 # configure config.yml (see config.yml.sample) or environment variables, then:
-poetry install --extras dev
+poetry install --extras prod
 poetry run python -m mitre_atlas.openaev_atlas
 ```
+
+> For simultaneous development on `pyoaev` and this collector, clone
+> [client-python](https://github.com/OpenAEV-Platform/client-python) alongside this
+> repository and run `poetry install --extras dev` instead.
 
 > Note: as with the other connectors in this repository, the collector icon
 > (`mitre_atlas/img/icon-mitre-atlas.png`) is provided at build/deploy time.
