@@ -1,0 +1,17 @@
+version: "3"
+services:
+  collector-logrhythm:
+    image: openaev/collector-logrhythm:rolling
+    environment:
+      - OPENAEV_URL=http://localhost
+      - OPENAEV_TOKEN=ChangeMe
+      # Optional tenant ID for multi-tenant OpenAEV deployments; uncomment and set a valid UUID
+      # - OPENAEV_TENANT_ID=ChangeMe
+      - COLLECTOR_ID=ChangeMe
+      - LOGRHYTHM_BASE_URL=https://change.me
+      # Authentication: provide LOGRHYTHM_TOKEN (preferred, bearer token) or username/password
+      - LOGRHYTHM_TOKEN=ChangeMe
+      # - LOGRHYTHM_USERNAME=ChangeMe
+      # - LOGRHYTHM_PASSWORD=ChangeMe
+      - LOGRHYTHM_QUERY_EVENT_MANAGER=true
+    restart: always
