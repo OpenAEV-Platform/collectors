@@ -1,6 +1,6 @@
 from datetime import timedelta
 
-from pydantic import Field
+from pydantic import Field, SecretStr
 from pyoaev.configuration import ConfigLoaderCollector
 
 
@@ -27,7 +27,7 @@ class CollectorConfigOverride(ConfigLoaderCollector):
         default="https://service.api.aisecurity.paloaltonetworks.com",
         description="Prisma AIRS region-specific Scan API base URL.",
     )
-    api_key: str | None = Field(
+    api_key: SecretStr | None = Field(
         default=None,
         description="Prisma AIRS API key (sent as the x-pan-token header).",
     )

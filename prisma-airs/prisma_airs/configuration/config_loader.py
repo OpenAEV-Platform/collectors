@@ -23,7 +23,13 @@ class ConfigLoader(SettingsLoader):
                 },
                 "collector_icon_filepath": {"data": self.collector.icon_filepath},
                 "prisma_base_url": {"data": self.collector.base_url},
-                "prisma_api_key": {"data": self.collector.api_key},
+                "prisma_api_key": {
+                    "data": (
+                        self.collector.api_key.get_secret_value()
+                        if self.collector.api_key
+                        else None
+                    )
+                },
                 "prisma_ai_profile": {"data": self.collector.ai_profile},
             },
             config_base_model=self,

@@ -32,7 +32,7 @@ class PrismaAirsClient:
         self.logger = logger
         self.session = requests.Session()
 
-    def scan(self, prompt: str, system_prompt: str | None = None) -> Verdict:
+    def scan(self, prompt: str) -> Verdict:
         if not self.api_key or not self.profile_name:
             raise ValueError(
                 "Prisma AIRS is not fully configured: both api_key and ai_profile "

@@ -49,10 +49,7 @@ class OpenAEVPrismaAirs(CollectorDaemon):
         marker = build_marker(
             inject_id, expectation.get("inject_expectation_agent") or ""
         )
-        return {
-            "prompt": prompt.replace("{marker}", marker),
-            "system_prompt": content.get("system_prompt"),
-        }
+        return prompt.replace("{marker}", marker)
 
     def _process_message(self) -> None:
         expectations = self.api.inject_expectation.ai_expectations_for_source(
@@ -65,17 +62,21 @@ class OpenAEVPrismaAirs(CollectorDaemon):
         for expectation in expectations:
             inject_id = expectation.get("inject_expectation_inject")
             expectation_type = expectation.get("inject_expectation_type")
-            if not inject_id or expectation_type not in (DETECTION, PREVENTION):
+            if expectation_type not in (DETECTION, PREVENTION):
+                continue
+            if not inject_id:
+                self.logger.warning(
+                    "Skipping expectation "
+                    f"{expectation.get('inject_expectation_id')} with no inject id"
+                )
                 continue
             if inject_id not in verdicts:
-                attack = self._attack_for(expectation)
-                if not attack:
+                prompt = self._attack_for(expectation)
+                if not prompt:
                     verdicts[inject_id] = None
                 else:
                     try:
-                        verdicts[inject_id] = self.client.scan(
-                            attack["prompt"], attack.get("system_prompt")
-                        )
+                        verdicts[inject_id] = self.client.scan(prompt)
                     except Exception as exc:  # noqa: BLE001
                         self.logger.error(
                             f"Prisma AIRS scan failed for inject {inject_id}: {exc}"
