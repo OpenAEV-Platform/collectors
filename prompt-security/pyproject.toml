@@ -1,0 +1,31 @@
+[tool.poetry]
+name = "openaev-prompt-security-collector"
+version = "2.260615.0"
+description = "A Collector validating Prompt Security (SentinelOne) detection/prevention of AI adversarial injects"
+authors = ["Filigran <contact@filigran.io>"]
+license = "Apache-2.0"
+readme = "README.md"
+packages = [
+    { include = "prompt_security" }
+]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+requests = "^2.32.0"
+pyoaev = [
+    { markers = "extra == 'prod' and extra != 'dev'", version = "2.260615.0", source = "pypi"  },
+    { markers = "extra == 'dev' and extra != 'prod'", path = "../../client-python", develop = true },
+]
+
+[tool.poetry.extras]
+prod = ["pyoaev"]
+dev = ["pyoaev"]
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.cmw]
+install-command = "poetry install --extras prod"
+config-dump-command = "poetry run python -m prompt_security.openaev_prompt_security --dump-config-schema"
+icon-path = "prompt_security/img/icon-prompt-security.png"
