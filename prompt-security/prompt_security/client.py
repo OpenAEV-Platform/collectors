@@ -34,9 +34,12 @@ class PromptSecurityClient:
                 "Prompt Security base_url is not configured; set collector.base_url "
                 "(config.yml) or COLLECTOR_BASE_URL (Docker environment)."
             )
-        headers = {"Content-Type": "application/json"}
-        if self.app_id:
-            headers[self.auth_header] = self.app_id
+        if not self.app_id:
+            raise ValueError(
+                "Prompt Security app_id is not configured; set collector.app_id "
+                "(config.yml) or COLLECTOR_APP_ID (Docker environment)."
+            )
+        headers = {"Content-Type": "application/json", self.auth_header: self.app_id}
         body = {"prompt": prompt}
         if system_prompt:
             body["system_prompt"] = system_prompt
