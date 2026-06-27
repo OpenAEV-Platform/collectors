@@ -5,7 +5,9 @@ from pyoaev.configuration import ConfigLoaderCollector
 
 
 class CollectorConfigOverride(ConfigLoaderCollector):
-    id: str = Field(default="openaev_prompt_security", description="Collector unique identifier")
+    id: str = Field(
+        default="openaev_prompt_security", description="Collector unique identifier"
+    )
     name: str = Field(default="Prompt Security", description="Collector display name")
     platform: str | None = Field(
         default="LLM_FIREWALL",

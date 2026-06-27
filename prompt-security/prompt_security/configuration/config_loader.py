@@ -1,4 +1,6 @@
-from prompt_security.configuration.collector_config_override import CollectorConfigOverride
+from prompt_security.configuration.collector_config_override import (
+    CollectorConfigOverride,
+)
 from pydantic import Field
 from pyoaev.configuration import ConfigLoaderOAEV, Configuration, SettingsLoader
 

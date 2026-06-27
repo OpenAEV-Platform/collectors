@@ -28,7 +28,12 @@ class PromptSecurityClient:
         self.logger = logger
         self.session = requests.Session()
 
-    def scan(self, prompt: str, system_prompt: str = None) -> Verdict:
+    def scan(self, prompt: str, system_prompt: str | None = None) -> Verdict:
+        if not self.base_url:
+            raise ValueError(
+                "Prompt Security base_url is not configured; set collector.base_url "
+                "(config.yml) or COLLECTOR_BASE_URL (Docker environment)."
+            )
         headers = {"Content-Type": "application/json"}
         if self.app_id:
             headers[self.auth_header] = self.app_id
@@ -48,7 +53,12 @@ class PromptSecurityClient:
         detail = ""
         if violations:
             first = violations[0]
-            detail = first.get("type") or first.get("name", "") if isinstance(first, dict) else str(first)
+            if isinstance(first, dict):
+                detail = first.get("type") or first.get("name", "")
+            else:
+                detail = str(first)
         return Verdict(
-            flagged=flagged, blocked=blocked, detail=detail or "Prompt Security violation"
+            flagged=flagged,
+            blocked=blocked,
+            detail=detail or "Prompt Security violation",
         )
