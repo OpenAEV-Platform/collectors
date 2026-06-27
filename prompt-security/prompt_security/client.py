@@ -60,8 +60,13 @@ class PromptSecurityClient:
                 detail = first.get("type") or first.get("name", "")
             else:
                 detail = str(first)
+        # Only label as a violation when something was actually flagged; a benign
+        # response (action: allow, no violations) keeps a neutral empty detail so
+        # expectation metadata and trace names are not misleading for "Not Detected".
+        if flagged and not detail:
+            detail = "Prompt Security violation"
         return Verdict(
             flagged=flagged,
             blocked=blocked,
-            detail=detail or "Prompt Security violation",
+            detail=detail,
         )

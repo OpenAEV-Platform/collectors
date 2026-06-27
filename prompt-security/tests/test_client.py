@@ -31,6 +31,7 @@ class TestPromptSecurityClientScan(unittest.TestCase):
         self.assertIsInstance(verdict, Verdict)
         self.assertFalse(verdict.flagged)
         self.assertFalse(verdict.blocked)
+        self.assertEqual(verdict.detail, "")
 
     def test_block_action_is_flagged_and_blocked(self):
         client = _make_client()
