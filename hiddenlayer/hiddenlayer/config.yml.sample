@@ -1,0 +1,16 @@
+openaev:
+  url: 'http://localhost:3001'
+  token: 'ChangeMe'
+# tenant_id: 'ChangeMe'
+
+collector:
+  id: 'ChangeMe'   # unique UUIDv4
+  name: 'HiddenLayer AIDR'
+  platform: 'LLM_FIREWALL'
+  period: 'PT120S'
+  log_level: 'error'
+  base_url: 'https://api.us.hiddenlayer.ai'
+  auth_url: 'https://auth.hiddenlayer.ai/oauth2/token'
+  client_id: 'ChangeMe'
+  client_secret: 'ChangeMe'
+# For a self-hosted AIDR container, set base_url to the container and leave client_id/secret empty.
