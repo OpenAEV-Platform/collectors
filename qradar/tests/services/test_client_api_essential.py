@@ -7,7 +7,11 @@ import pytest
 from pydantic import SecretStr
 from requests import Session
 from src.services.client_api import QRadarClientAPI
-from src.services.exception import QRadarAPIError, QRadarAuthenticationError
+from src.services.exception import (
+    QRadarAPIError,
+    QRadarAuthenticationError,
+    QRadarValidationError,
+)
 from src.services.models import QRadarSearchCriteria
 from tests.services.fixtures.factories import TestDataFactory, create_test_config
 
@@ -236,6 +240,44 @@ class TestQRadarClientAPIEssential:
 
         assert "LAST 60 MINUTES" in aql_base  # noqa: S101
         assert "LAST 61 MINUTES" in aql_retry  # noqa: S101
+
+    def test_build_aql_date_only_criteria_raises(self):
+        """Date-only criteria (no concrete search key) fail fast.
+
+        Regression test: an empty condition set previously fell back to
+        ``WHERE (1=1)``, which scanned every event in the window. A criteria
+        with no source/target IP and no parent-process inject path is now
+        rejected with a validation error (so the expectation is marked invalid)
+        instead of building an unbounded query.
+        """
+        config = create_test_config()
+        client = QRadarClientAPI(config=config)
+
+        criteria = QRadarSearchCriteria(
+            start_date="2024-01-01T00:00:00Z",
+            end_date="2024-01-01T23:59:59Z",
+        )
+
+        with pytest.raises(QRadarValidationError):
+            client._build_aql(criteria)
+
+    def test_build_aql_unparsable_parent_process_raises(self):
+        """A parent-process name yielding no UUIDs (and no IPs) fails fast.
+
+        When the only signature is a parent_process_name that does not parse
+        into inject/agent UUIDs, no ``URL LIKE`` condition is added, so the
+        condition set is empty and the query must be rejected rather than
+        falling back to ``WHERE (1=1)``.
+        """
+        config = create_test_config()
+        client = QRadarClientAPI(config=config)
+
+        criteria = QRadarSearchCriteria(
+            parent_process_names=["not-an-oaev-implant-process"]
+        )
+
+        with pytest.raises(QRadarValidationError):
+            client._build_aql(criteria)
 
     def test_build_search_criteria_from_signatures(self):
         """Signatures are extracted into a QRadarSearchCriteria object."""

@@ -255,6 +255,11 @@ class QRadarClientAPI:
         Returns:
             AQL query expression.
 
+        Raises:
+            QRadarValidationError: If the criteria yields no concrete search key
+                (no source/target IP and no parent-process inject path), which
+                would otherwise produce an unbounded ``WHERE (1=1)`` scan.
+
         """
         fields = 'sourceip, destinationip, "URL", qidname, categoryname, starttime'
 
@@ -272,7 +277,23 @@ class QRadarClientAPI:
                 path = f"/api/injects/{inject_uuid}/{agent_uuid}/executable-payload"
                 conditions.append(f"\"URL\" LIKE '%{path}%'")
 
-        where_clause = " OR ".join(conditions) if conditions else "1=1"
+        # Fail fast instead of emitting ``WHERE (1=1)``. A criteria with no
+        # concrete search key (no source/target IP and no parent-process inject
+        # path - e.g. a date-only expectation) would otherwise scan every event
+        # in the window (capped only by MAX_RESULTS), which is heavy and yields
+        # confusing "no match" outcomes unrelated to the expectation. Such an
+        # expectation is invalid rather than retriable, so raise the validation
+        # error here; callers re-raise it without retry and the service layer
+        # marks the expectation invalid (mirrors the netwitness/logrhythm
+        # sibling collectors).
+        if not conditions:
+            raise QRadarValidationError(
+                "Cannot build an AQL query: the search criteria has no usable "
+                "filter conditions (no source/target IP and no parent-process "
+                "inject path). Refusing to scan the entire time window."
+            )
+
+        where_clause = " OR ".join(conditions)
 
         window_seconds = int(self.time_window.total_seconds()) + extend_end_seconds
         # Round up to whole minutes so a sub-minute retry extension (e.g. the
@@ -298,6 +319,8 @@ class QRadarClientAPI:
             List of QRadarAlert objects.
 
         Raises:
+            QRadarValidationError: If the search criteria has no usable filter
+                conditions (re-raised as-is so it is not retried).
             QRadarAuthenticationError: If authentication fails.
             QRadarAPIError: If the API call fails.
             QRadarNetworkError: If a network error occurs.
@@ -312,6 +335,7 @@ class QRadarClientAPI:
             return self._get_results(search_id)
         except (
             QRadarAuthenticationError,
+            QRadarValidationError,
             QRadarAPIError,
             QRadarTimeoutError,
         ):

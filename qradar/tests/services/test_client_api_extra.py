@@ -115,6 +115,30 @@ class TestQRadarClientAPIExtra:
         with pytest.raises(QRadarValidationError):
             client.fetch_with_retry(SIGNATURES, "prevention")
 
+    @patch("src.services.client_api.time.sleep")
+    @patch("requests.Session.post")
+    def test_fetch_with_retry_date_only_fails_fast(self, mock_post, mock_sleep):
+        """Date-only signatures fail fast: no Ariel search and no retry.
+
+        Regression test for the ``WHERE (1=1)`` fallback: a criteria with no
+        concrete search key must raise QRadarValidationError before any query
+        is created, and the error must not be retried (it is re-raised as-is by
+        the retry loop, not wrapped into a retriable QRadarAPIError).
+        """
+        client = QRadarClientAPI(config=create_test_config())
+
+        with pytest.raises(QRadarValidationError):
+            client.fetch_with_retry(
+                [
+                    {"type": "start_date", "value": "2024-01-01T00:00:00Z"},
+                    {"type": "end_date", "value": "2024-01-01T23:59:59Z"},
+                ],
+                "detection",
+            )
+
+        mock_post.assert_not_called()
+        mock_sleep.assert_not_called()
+
     @patch("requests.Session.get")
     @patch("requests.Session.post")
     def test_fetch_with_retry_success(self, mock_post, mock_get):
