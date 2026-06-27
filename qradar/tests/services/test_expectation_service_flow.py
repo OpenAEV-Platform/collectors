@@ -7,7 +7,7 @@ from pyoaev.apis.inject_expectation.model import (
     DetectionExpectation,
     PreventionExpectation,
 )
-from src.services.exception import QRadarNoAlertsFoundError
+from src.services.exception import QRadarMatchingError, QRadarNoAlertsFoundError
 from src.services.expectation_service import QRadarExpectationService
 from tests.services.fixtures.factories import create_test_config
 
@@ -142,6 +142,61 @@ class TestExpectationServiceFlow:
         assert (  # noqa: S101
             service._match_with_detection_helper(signatures, data_item, helper) is True
         )
+
+    def test_match_with_detection_helper_source_ip_only_matches(self):
+        """An IP-only expectation (no parent_process_name) matches on source IP.
+
+        Regression test for the IP-only rejection bug: ``parent_process_match``
+        used to be initialized to ``False``, so the ``if not
+        parent_process_match`` guard rejected every expectation that carried no
+        ``parent_process_name`` signature - i.e. the common IP-only case. The
+        parent-process check must only be enforced when such a signature is
+        actually present.
+        """
+        service = _service()
+        helper = Mock()
+        helper.match_alert_elements.return_value = True
+
+        signatures = [{"type": "source_ipv4_address", "value": "1.2.3.4"}]
+        data_item = {"source_ipv4_address": {"type": "simple", "data": ["1.2.3.4"]}}
+
+        assert (  # noqa: S101
+            service._match_with_detection_helper(signatures, data_item, helper) is True
+        )
+
+    def test_match_with_detection_helper_ip_only_no_match(self):
+        """An IP-only expectation returns False when the IP does not match.
+
+        Companion to the IP-only match test: with no ``parent_process_name``
+        signature and a non-matching IP, the helper must report a clean
+        ``False`` (it must neither raise nor be forced ``True`` by the default).
+        """
+        service = _service()
+        helper = Mock()
+        helper.match_alert_elements.return_value = False
+
+        signatures = [{"type": "source_ipv4_address", "value": "9.9.9.9"}]
+        data_item = {"source_ipv4_address": {"type": "simple", "data": ["1.2.3.4"]}}
+
+        assert (  # noqa: S101
+            service._match_with_detection_helper(signatures, data_item, helper) is False
+        )
+
+    def test_match_reraises_helper_error_with_context(self):
+        """An unexpected matcher error surfaces as QRadarMatchingError with context.
+
+        When the per-item matching helper raises, ``_match`` must re-raise a
+        ``QRadarMatchingError`` carrying the underlying error message so the
+        downstream ``ExpectationResult.error_message`` is actionable, not blank.
+        """
+        service = _service()
+        service._match_with_detection_helper = Mock(side_effect=ValueError("boom"))
+
+        oaev_data = [{"source_ipv4_address": {"type": "simple", "data": ["1.2.3.4"]}}]
+        matching_signatures = [{"type": "source_ipv4_address", "value": "1.2.3.4"}]
+
+        with pytest.raises(QRadarMatchingError, match="boom"):
+            service._match(oaev_data, matching_signatures, Mock(), "detection")
 
     def test_create_error_result_dict(self):
         """_create_error_result builds an error dictionary from a service error."""
