@@ -28,7 +28,9 @@ class HiddenLayerClient:
         self.base_url = (
             config.get("hl_base_url") or "https://api.us.hiddenlayer.ai"
         ).rstrip("/")
-        self.auth_url = config.get("hl_auth_url") or "https://auth.hiddenlayer.ai/oauth2/token"
+        self.auth_url = (
+            config.get("hl_auth_url") or "https://auth.hiddenlayer.ai/oauth2/token"
+        )
         self.client_id = config.get("hl_client_id")
         self.client_secret = config.get("hl_client_secret")
         self.logger = logger
@@ -54,7 +56,7 @@ class HiddenLayerClient:
         self._token_expiry = now + int(data.get("expires_in", 600))
         return self._token
 
-    def scan(self, prompt: str, system_prompt: str = None) -> Verdict:
+    def scan(self, prompt: str, system_prompt: str | None = None) -> Verdict:
         messages = []
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
@@ -82,11 +84,14 @@ class HiddenLayerClient:
         detail = ""
         if isinstance(detections, list) and detections:
             first = detections[0]
-            detail = (
-                first.get("detection") or first.get("type") or first.get("name", "")
-                if isinstance(first, dict)
-                else str(first)
-            )
+            if isinstance(first, dict):
+                detail = (
+                    first.get("detection") or first.get("type") or first.get("name", "")
+                )
+            else:
+                detail = str(first)
         return Verdict(
-            flagged=flagged, blocked=blocked, detail=detail or "HiddenLayer AIDR detection"
+            flagged=flagged,
+            blocked=blocked,
+            detail=detail or "HiddenLayer AIDR detection",
         )

@@ -5,7 +5,9 @@ from pyoaev.configuration import ConfigLoaderCollector
 
 
 class CollectorConfigOverride(ConfigLoaderCollector):
-    id: str = Field(default="openaev_hiddenlayer", description="Collector unique identifier")
+    id: str = Field(
+        default="openaev_hiddenlayer", description="Collector unique identifier"
+    )
     name: str = Field(default="HiddenLayer AIDR", description="Collector display name")
     platform: str | None = Field(
         default="LLM_FIREWALL",
@@ -31,5 +33,6 @@ class CollectorConfigOverride(ConfigLoaderCollector):
         default=None, description="HiddenLayer API client id (omit for self-hosted)."
     )
     client_secret: str | None = Field(
-        default=None, description="HiddenLayer API client secret (omit for self-hosted)."
+        default=None,
+        description="HiddenLayer API client secret (omit for self-hosted).",
     )

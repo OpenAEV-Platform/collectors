@@ -1,6 +1,7 @@
-from hiddenlayer.configuration.collector_config_override import CollectorConfigOverride
 from pydantic import Field
 from pyoaev.configuration import ConfigLoaderOAEV, Configuration, SettingsLoader
+
+from hiddenlayer.configuration.collector_config_override import CollectorConfigOverride
 
 
 class ConfigLoader(SettingsLoader):
