@@ -9,18 +9,27 @@ if TYPE_CHECKING:
     from os import _Environ
 
 
-def mock_env_vars(os_environ: "_Environ[str]", wanted_env: dict[str, str]) -> Any:
+def mock_env_vars(
+    os_environ: "_Environ[str]",
+    wanted_env: dict[str, str],
+    clear: bool = False,
+) -> Any:
     """Fixture to mock environment variables dynamically and clean up after.
 
     Args:
         os_environ: The os.environ object to patch.
         wanted_env: Dictionary of environment variables to mock.
+        clear: When True, replace the environment with ``wanted_env`` only
+            (dropping every ambient variable for the duration of the patch).
+            Use this for config-missing tests so ambient values cannot satisfy
+            validation - notably NETWITNESS_TOKEN, or the OS USERNAME/PASSWORD
+            that the auth fields would otherwise pick up via validate_by_name.
 
     Returns:
         Mock object for environment variable patching.
 
     """
-    mock_env = patch.dict(os_environ, wanted_env)
+    mock_env = patch.dict(os_environ, wanted_env, clear=clear)
     mock_env.start()
 
     return mock_env

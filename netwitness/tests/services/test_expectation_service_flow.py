@@ -7,7 +7,10 @@ from pyoaev.apis.inject_expectation.model import (
     DetectionExpectation,
     PreventionExpectation,
 )
-from src.services.exception import NetWitnessNoAlertsFoundError
+from src.services.exception import (
+    NetWitnessNoAlertsFoundError,
+    NetWitnessNoMatchingAlertsError,
+)
 from src.services.expectation_service import NetWitnessExpectationService
 from tests.services.fixtures.factories import create_test_config
 
@@ -172,6 +175,35 @@ class TestExpectationServiceFlow:
         assert (  # noqa: S101
             service._match_with_detection_helper(signatures, data_item, helper) is False
         )
+
+    def test_match_enforces_parent_process_when_alert_lacks_field(self):
+        """A parent_process_name expectation must not match an alert missing it.
+
+        Regression: ``_match`` used to drop a required parent_process_name
+        signature for any alert whose converted data carried no
+        parent_process_name field, letting the expectation validate on IP-only
+        matching (a false positive). The parent signature must be retained so
+        the failing parent check rejects the alert.
+        """
+        service = _service()
+
+        def _match_present(signatures, data):
+            # The real detection helper cannot match an element absent from the
+            # alert data, so an empty filtered payload never matches.
+            return bool(data)
+
+        helper = Mock()
+        helper.match_alert_elements.side_effect = _match_present
+
+        matching_signatures = [
+            {"type": "source_ipv4_address", "value": "1.2.3.4"},
+            {"type": "parent_process_name", "value": PARENT_VALUE},
+        ]
+        # Alert matches the source IP but carries no parent-process field.
+        oaev_data = [{"source_ipv4_address": {"type": "simple", "data": ["1.2.3.4"]}}]
+
+        with pytest.raises(NetWitnessNoMatchingAlertsError):
+            service._match(oaev_data, matching_signatures, helper, "detection")
 
     def test_create_error_result_dict(self):
         """_create_error_result builds an error dictionary from a service error."""

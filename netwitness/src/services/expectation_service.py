@@ -475,8 +475,18 @@ class NetWitnessExpectationService:
                     f"{LOG_PREFIX} Matching data item {i + 1}/{len(oaev_data)}"
                 )
 
+                # Parent-process signatures must always be evaluated. Without
+                # this, an expectation that requires a parent_process_name would
+                # fall back to IP-only matching (a false positive) whenever the
+                # alert carries no parent-process field, because the signature
+                # would be filtered out before _match_with_detection_helper runs.
+                # IP signatures use OR semantics, so omitting one that is absent
+                # from this alert stays correct.
+                parent_process_type = SignatureTypes.SIG_TYPE_PARENT_PROCESS_NAME.value
                 available_signatures = [
-                    sig for sig in matching_signatures if sig["type"] in data_item
+                    sig
+                    for sig in matching_signatures
+                    if sig["type"] in data_item or sig["type"] == parent_process_type
                 ]
 
                 self.logger.debug(

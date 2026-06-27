@@ -84,11 +84,10 @@ def test_collector_config_missing_required_values() -> None:
         "COLLECTOR_ICON_FILEPATH": "src/img/netwitness-logo.png",
         "COLLECTOR_LOG_LEVEL": "debug",
     }
-    mock_env = _given_setup_config(data)
-
-    # Remove username env var if it was set by factory
-    if "NETWITNESS_USERNAME" in os_environ:
-        del os_environ["NETWITNESS_USERNAME"]
+    # clear=True replaces the environment with ``data`` only, so no ambient
+    # variable can satisfy the auth validator and mask the missing username
+    # (e.g. NETWITNESS_TOKEN, or the OS USERNAME matched via validate_by_name).
+    mock_env = _given_setup_config(data, clear=True)
 
     # Then the collector config should raise a custom ConfigurationException
     with pytest.raises((CollectorConfigError, ValueError)):
@@ -120,11 +119,10 @@ def test_collector_config_missing_password() -> None:
         "COLLECTOR_ICON_FILEPATH": "src/img/netwitness-logo.png",
         "COLLECTOR_LOG_LEVEL": "debug",
     }
-    mock_env = _given_setup_config(data)
-
-    # Remove password env var if it was set by factory
-    if "NETWITNESS_PASSWORD" in os_environ:
-        del os_environ["NETWITNESS_PASSWORD"]
+    # clear=True replaces the environment with ``data`` only, so no ambient
+    # variable can satisfy the auth validator and mask the missing password
+    # (e.g. NETWITNESS_TOKEN, or the OS USERNAME matched via validate_by_name).
+    mock_env = _given_setup_config(data, clear=True)
 
     # Then the collector config should raise a custom ConfigurationException
     with pytest.raises((CollectorConfigError, ValueError)):
@@ -140,17 +138,19 @@ def test_collector_config_missing_password() -> None:
 
 
 # Given setup config
-def _given_setup_config(data: dict[str, str]) -> Any:  # type: ignore
+def _given_setup_config(data: dict[str, str], clear: bool = False) -> Any:  # type: ignore
     """Set up the environment variables for the test.
 
     Args:
         data: Dictionary of environment variables to mock.
+        clear: When True, replace the environment with ``data`` only so ambient
+            variables cannot influence configuration loading.
 
     Returns:
         Mock environment variable patcher object.
 
     """
-    mock_env = mock_env_vars(os_environ, data)
+    mock_env = mock_env_vars(os_environ, data, clear=clear)
     return mock_env
 
 
