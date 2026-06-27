@@ -468,7 +468,6 @@ class QRadarExpectationService:
             )
 
             for i, data_item in enumerate(oaev_data):
-                self.logger.debug(f"{i} data_item: {data_item}")
                 self.logger.debug(
                     f"{LOG_PREFIX} Matching data item {i + 1}/{len(oaev_data)}"
                 )
@@ -611,7 +610,7 @@ class QRadarExpectationService:
                         filtered_data = {ip_type: data_item[ip_type]}
                         if detection_helper.match_alert_elements([sig], filtered_data):
                             self.logger.debug(
-                                f"{LOG_PREFIX} ✓ {ip_type} signature matched: {sig['value']}"
+                                f"{LOG_PREFIX} {ip_type} signature matched: {sig['value']}"
                             )
                             source_ip_match = True
                             break
@@ -631,7 +630,7 @@ class QRadarExpectationService:
                         filtered_data = {ip_type: data_item[ip_type]}
                         if detection_helper.match_alert_elements([sig], filtered_data):
                             self.logger.debug(
-                                f"{LOG_PREFIX} ✓ {ip_type} signature matched: {sig['value']}"
+                                f"{LOG_PREFIX} {ip_type} signature matched: {sig['value']}"
                             )
                             target_ip_match = True
                             break
