@@ -14,8 +14,11 @@ class LogRhythmConfig:
     def __init__(self) -> None:
         """Initialize LogRhythm configuration loader.
 
-        Loads configuration from YAML files, environment variables, and defaults.
-        Sets up logging and validates the configuration structure.
+        Loads configuration from a single source selected in priority order:
+        src/.env, then src/config.yml, then environment variables. The first
+        source found wins and the others are not merged in; field defaults are
+        applied for any values absent from the selected source. Sets up logging
+        and validates the configuration structure.
 
         Raises:
             ValueError: If configuration loading or validation fails.
@@ -29,8 +32,11 @@ class LogRhythmConfig:
     def _load_config(self) -> ConfigLoader:
         """Load configuration with proper error handling and logging.
 
-        Loads configuration from multiple sources and validates the structure.
-        Logs configuration details for debugging purposes.
+        Instantiates ConfigLoader, which selects a single settings source in
+        priority order (src/.env, then src/config.yml, then environment
+        variables; the first one found wins and they are not merged) and
+        applies field defaults for any missing values, then validates the
+        structure. Logs configuration details for debugging purposes.
 
         Returns:
             ConfigLoader instance with validated configuration.
@@ -41,7 +47,8 @@ class LogRhythmConfig:
         """
         try:
             self.logger.debug(
-                f"{LOG_PREFIX} Loading configuration from sources (YAML/ENV/defaults)"
+                f"{LOG_PREFIX} Selecting a single configuration source "
+                f"(src/.env, then src/config.yml, then environment variables)"
             )
             load_settings = ConfigLoader()
 
