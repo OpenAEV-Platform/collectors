@@ -32,15 +32,18 @@ class Converter:
     ) -> list[dict[str, Any]]:
         """Convert Elastic Security data to OAEV format.
 
+        Items that are not ``ElasticAlert`` instances are skipped (logged as
+        unknown) instead of raising; an empty list is returned when no input
+        is provided or when no item yields OAEV data.
+
         Args:
             data: Raw Elastic Security alert data.
 
         Returns:
-            List of OAEV data dictionaries.
+            List of OAEV data dictionaries (empty if nothing converts).
 
         Raises:
-            ElasticValidationError: If data format is invalid.
-            ElasticDataConversionError: If conversion fails.
+            ElasticDataConversionError: If converting a recognized alert fails.
 
         """
         if not data:

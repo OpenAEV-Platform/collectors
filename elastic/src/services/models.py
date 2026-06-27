@@ -34,13 +34,24 @@ def _dig(source: dict[str, Any], dotted: str) -> Optional[Any]:
 
 
 def _first(source: dict[str, Any], dotted_paths: list[str]) -> Optional[str]:
-    """Return the first non-empty value among several dotted ECS paths."""
+    """Return the first present value among several dotted ECS paths.
+
+    A value counts as present when it is not ``None``, not an empty string,
+    and not an empty container. Falsy-but-valid scalars such as ``0`` (e.g.
+    ECS ``event.severity: 0``) or ``False`` are preserved rather than being
+    silently dropped; only genuinely missing values are skipped.
+    """
     for path in dotted_paths:
         value = _dig(source, path)
-        if isinstance(value, list) and value:
+        if isinstance(value, list):
+            if not value:
+                continue
             value = value[0]
-        if value:
-            return str(value)
+        if value is None:
+            continue
+        if isinstance(value, (str, list, dict, set, tuple)) and len(value) == 0:
+            continue
+        return str(value)
     return None
 
 
