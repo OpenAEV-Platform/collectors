@@ -9,4 +9,6 @@ services:
       - COLLECTOR_NAME=${COLLECTOR_NAME:-"MITRE ATLAS"}
       - COLLECTOR_LOG_LEVEL=${COLLECTOR_LOG_LEVEL:-warn}
       - COLLECTOR_PERIOD=${COLLECTOR_PERIOD:-P7D}
+      # Optional: override the ATLAS STIX bundle URL (e.g. air-gapped mirror). Defaults to the official mitre-atlas/atlas-navigator-data export when unset.
+      - COLLECTOR_STIX_URL=${COLLECTOR_STIX_URL:-https://raw.githubusercontent.com/mitre-atlas/atlas-navigator-data/main/dist/stix-atlas.json}
     restart: unless-stopped
