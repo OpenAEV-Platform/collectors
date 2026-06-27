@@ -32,6 +32,10 @@ class Converter:
     ) -> list[dict[str, Any]]:
         """Convert NetWitness data to OAEV format.
 
+        Items whose type is not a recognized NetWitness alert are skipped with a
+        warning rather than raising; only the per-item conversion of a recognized
+        alert can raise.
+
         Args:
             data: Raw NetWitness alert data.
 
@@ -39,8 +43,8 @@ class Converter:
             List of OAEV data dictionaries.
 
         Raises:
-            NetWitnessValidationError: If data format is invalid.
-            NetWitnessDataConversionError: If conversion fails.
+            NetWitnessDataConversionError: If converting an individual alert item
+                fails (per-item conversion failures are wrapped in this error).
 
         """
         if not data:

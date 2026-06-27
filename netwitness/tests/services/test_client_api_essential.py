@@ -203,6 +203,34 @@ class TestNetWitnessClientAPIEssential:
         with pytest.raises(NetWitnessValidationError):
             client._build_query(criteria)
 
+    def test_build_query_skips_invalid_ips(self):
+        """Invalid IP values are skipped; valid IPs still produce NWQL clauses."""
+        config = create_test_config()
+        client = NetWitnessClientAPI(config=config)
+
+        criteria = NetWitnessSearchCriteria(
+            source_ips=["192.168.1.100", "not-an-ip", "10.0.0.1 || ip.dst exists"],
+            target_ips=["10.0.0.50", ""],
+        )
+        query = client._build_query(criteria)
+
+        assert "ip.src=192.168.1.100" in query  # noqa: S101
+        assert "ip.dst=10.0.0.50" in query  # noqa: S101
+        assert "not-an-ip" not in query  # noqa: S101
+        assert "ip.dst exists" not in query  # noqa: S101
+
+    def test_build_query_all_invalid_ips_raises(self):
+        """When every IP is invalid and nothing else resolves, building fails fast."""
+        config = create_test_config()
+        client = NetWitnessClientAPI(config=config)
+
+        criteria = NetWitnessSearchCriteria(
+            source_ips=["bogus"], target_ips=["also-bad"]
+        )
+
+        with pytest.raises(NetWitnessValidationError):
+            client._build_query(criteria)
+
     def test_build_search_criteria_from_signatures(self):
         """Signatures are extracted into a NetWitnessSearchCriteria object."""
         config = create_test_config()

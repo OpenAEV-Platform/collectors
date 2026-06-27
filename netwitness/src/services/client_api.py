@@ -1,5 +1,6 @@
 """NetWitness API client for querying the Core SDK with NWQL."""
 
+import ipaddress
 import logging
 import time
 from datetime import datetime, timedelta, timezone
@@ -235,6 +236,33 @@ class NetWitnessClientAPI:
             end_date=end_date,
         )
 
+    def _normalize_query_ips(self, ips: list[str] | None) -> list[str]:
+        """Validate IP values before they are interpolated into the NWQL query.
+
+        Source/target IPs originate from expectation signatures and are embedded
+        directly into the NWQL query string (``ip.src=`` / ``ip.dst=``). Each value
+        is validated with the stdlib ``ipaddress`` module as defense-in-depth: any
+        value that is not a valid IPv4/IPv6 address is skipped (with a warning)
+        rather than interpolated, guarding against malformed queries and query
+        injection via unexpected characters.
+
+        Args:
+            ips: Candidate IP address strings from the search criteria.
+
+        Returns:
+            The valid IP addresses, normalized to their canonical string form.
+
+        """
+        valid_ips: list[str] = []
+        for ip in ips or []:
+            try:
+                valid_ips.append(str(ipaddress.ip_address(ip)))
+            except ValueError:
+                self.logger.warning(
+                    f"{LOG_PREFIX} Skipping invalid IP value from signature: {ip!r}"
+                )
+        return valid_ips
+
     def _build_query(
         self, search_criteria: NetWitnessSearchCriteria, extend_end_seconds: int = 0
     ) -> str:
@@ -251,9 +279,9 @@ class NetWitnessClientAPI:
         fields = "time,ip.src,ip.dst,url,service,alert"
 
         conditions: list[str] = []
-        for ip in search_criteria.source_ips or []:
+        for ip in self._normalize_query_ips(search_criteria.source_ips):
             conditions.append(f"ip.src={ip}")
-        for ip in search_criteria.target_ips or []:
+        for ip in self._normalize_query_ips(search_criteria.target_ips):
             conditions.append(f"ip.dst={ip}")
         for parent_process_name in search_criteria.parent_process_names or []:
             uuids = self.parent_process_parser.extract_uuids_from_parent_process_name(
