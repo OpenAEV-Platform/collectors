@@ -44,7 +44,12 @@ class _ConfigLoaderElastic(ConfigBaseSettings):
     kibana_url: Optional[str] = Field(
         alias="ELASTIC_KIBANA_URL",
         default=None,
-        description="Kibana base URL used to build trace links (defaults to base_url on port 5601).",
+        description=(
+            "Kibana base URL used to build trace links. When unset, base_url "
+            "is reused with its port rewritten to 5601; set this explicitly "
+            "when Kibana is not reachable at that location (e.g. behind a "
+            "reverse proxy or with no port in base_url)."
+        ),
     )
     time_window: Optional[timedelta] = Field(
         alias="ELASTIC_TIME_WINDOW",

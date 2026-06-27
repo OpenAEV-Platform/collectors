@@ -109,6 +109,68 @@ class TestElasticTraceService:
             "https://kibana.example.com:5601"
         )
 
+    def test_derive_kibana_base_url_uses_configured_url(self):
+        """A configured kibana_url is used verbatim (trailing slash trimmed)."""
+        config = create_test_config()
+        config.elastic.kibana_url = "https://kibana.example.com:5601/"
+        service = ElasticTraceService(config=config)
+
+        assert (  # noqa: S101
+            service._derive_kibana_base_url() == "https://kibana.example.com:5601"
+        )
+
+    def test_derive_kibana_base_url_rewrites_9200_to_5601(self):
+        """Without kibana_url, the Elasticsearch :9200 port becomes Kibana :5601."""
+        config = create_test_config()
+        config.elastic.kibana_url = None
+        config.elastic.base_url = "https://es.example.com:9200"
+        service = ElasticTraceService(config=config)
+
+        assert (  # noqa: S101
+            service._derive_kibana_base_url() == "https://es.example.com:5601"
+        )
+
+    def test_derive_kibana_base_url_rewrites_non_default_port(self):
+        """Any explicit port (not only 9200) is rewritten to Kibana :5601."""
+        config = create_test_config()
+        config.elastic.kibana_url = None
+        config.elastic.base_url = "https://es.example.com:443"
+        service = ElasticTraceService(config=config)
+
+        assert (  # noqa: S101
+            service._derive_kibana_base_url() == "https://es.example.com:5601"
+        )
+
+    def test_derive_kibana_base_url_without_port_falls_back(self):
+        """With no explicit port the Elasticsearch URL is returned unchanged.
+
+        The heuristic must not silently invent a :5601 port when base_url has
+        none (e.g. a host behind a reverse proxy); the operator is expected to
+        set ELASTIC_KIBANA_URL instead.
+        """
+        config = create_test_config()
+        config.elastic.kibana_url = None
+        config.elastic.base_url = "https://es.example.com"
+        service = ElasticTraceService(config=config)
+
+        assert (  # noqa: S101
+            service._derive_kibana_base_url() == "https://es.example.com"
+        )
+
+    def test_create_traces_heuristic_link_uses_5601(self):
+        """End to end, a :9200 base_url without kibana_url yields a :5601 link."""
+        config = create_test_config()
+        config.elastic.kibana_url = None
+        config.elastic.base_url = "https://es.example.com:9200"
+        service = ElasticTraceService(config=config)
+        result = _make_result({"source_ipv4_address": {"data": "1.2.3.4"}})
+
+        traces = service.create_traces_from_results([result], "elastic--collector")
+
+        assert traces[0].inject_expectation_trace_alert_link.startswith(  # noqa: S101
+            "https://es.example.com:5601/app/security/alerts"
+        )
+
     def test_get_service_info(self):
         """The service exposes detection-only metadata."""
         service = ElasticTraceService(config=create_test_config())

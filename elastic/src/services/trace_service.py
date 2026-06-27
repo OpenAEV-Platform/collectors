@@ -7,7 +7,7 @@ from processing results.
 import logging
 from datetime import datetime
 from typing import Any
-from urllib.parse import quote
+from urllib.parse import quote, urlparse, urlunparse
 
 from pyoaev.apis.inject_expectation.model import (  # type: ignore[import-untyped]
     DetectionExpectation,
@@ -230,6 +230,54 @@ class ElasticTraceService:
             )
             return "Elastic Security Detection Alert"
 
+    def _derive_kibana_base_url(self) -> str:
+        """Derive the Kibana base URL used to build trace links.
+
+        Resolution order:
+
+        1. When ``elastic.kibana_url`` is configured, it is used directly (with
+           any trailing slash trimmed).
+        2. Otherwise a best-effort rewrite of ``elastic.base_url`` is performed:
+           Elasticsearch and Kibana conventionally share a host with Kibana on
+           port 5601, so an explicit port in ``base_url`` is rewritten to 5601
+           regardless of its value (not only the Elasticsearch default 9200).
+        3. When ``base_url`` carries no explicit port (for example a hostname
+           behind a reverse proxy), the Kibana location cannot be inferred
+           reliably, so the Elasticsearch URL is returned unchanged and a
+           warning is logged rather than silently emitting a wrong link. Set
+           ``ELASTIC_KIBANA_URL`` to control the trace link in that case.
+
+        Returns:
+            The Kibana base URL without a trailing slash.
+
+        """
+        kibana_url = getattr(self.config.elastic, "kibana_url", None)
+        if kibana_url:
+            return str(kibana_url).rstrip("/")
+
+        base_url = str(self.config.elastic.base_url).rstrip("/")
+        parsed = urlparse(base_url)
+        if parsed.port is not None:
+            host = parsed.hostname or ""
+            if ":" in host:  # bracket IPv6 literals
+                host = f"[{host}]"
+            userinfo = ""
+            if parsed.username:
+                userinfo = parsed.username
+                if parsed.password:
+                    userinfo = f"{userinfo}:{parsed.password}"
+                userinfo = f"{userinfo}@"
+            return urlunparse(parsed._replace(netloc=f"{userinfo}{host}:5601")).rstrip(
+                "/"
+            )
+
+        self.logger.warning(
+            f"{LOG_PREFIX} Cannot derive a Kibana base URL from '{base_url}': "
+            "no explicit port to rewrite to 5601. Set ELASTIC_KIBANA_URL for "
+            "correct trace links; using the Elasticsearch base URL as-is."
+        )
+        return base_url
+
     def _build_trace_url_from_expectation(
         self, expectation: DetectionExpectation | PreventionExpectation
     ) -> str:
@@ -259,12 +307,7 @@ class ElasticTraceService:
                 )
                 return ""
 
-            kibana_url = getattr(self.config.elastic, "kibana_url", None)
-            if kibana_url:
-                web_base_url = str(kibana_url).rstrip("/")
-            else:
-                base_url = str(self.config.elastic.base_url).rstrip("/")
-                web_base_url = base_url.replace(":9200", ":5601")
+            web_base_url = self._derive_kibana_base_url()
             self.logger.debug(f"{LOG_PREFIX} Using Kibana base URL: {web_base_url}")
 
             search_signatures = []
