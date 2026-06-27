@@ -243,9 +243,13 @@ class ElasticTraceService:
            regardless of its value (not only the Elasticsearch default 9200).
         3. When ``base_url`` carries no explicit port (for example a hostname
            behind a reverse proxy), the Kibana location cannot be inferred
-           reliably, so the Elasticsearch URL is returned unchanged and a
-           warning is logged rather than silently emitting a wrong link. Set
+           reliably, so the Elasticsearch host is returned and a warning is
+           logged rather than silently emitting a wrong link. Set
            ``ELASTIC_KIBANA_URL`` to control the trace link in that case.
+
+        In every derived (non-configured) case the URL is rebuilt from the
+        scheme, host and port only; any userinfo/credentials present in
+        ``base_url`` are never propagated into the trace link or the logs.
 
         Returns:
             The Kibana base URL without a trailing slash.
@@ -257,26 +261,25 @@ class ElasticTraceService:
 
         base_url = str(self.config.elastic.base_url).rstrip("/")
         parsed = urlparse(base_url)
-        if parsed.port is not None:
-            host = parsed.hostname or ""
-            if ":" in host:  # bracket IPv6 literals
-                host = f"[{host}]"
-            userinfo = ""
-            if parsed.username:
-                userinfo = parsed.username
-                if parsed.password:
-                    userinfo = f"{userinfo}:{parsed.password}"
-                userinfo = f"{userinfo}@"
-            return urlunparse(parsed._replace(netloc=f"{userinfo}{host}:5601")).rstrip(
-                "/"
-            )
+        host = parsed.hostname or ""
+        if ":" in host:  # bracket IPv6 literals
+            host = f"[{host}]"
 
+        # Always rebuild from scheme/host(/port) only, dropping any userinfo:
+        # credentials in base_url (https://user:pass@host) must never leak into
+        # a stored trace link or into the warning logged below.
+        if parsed.port is not None and host:
+            return urlunparse(parsed._replace(netloc=f"{host}:5601")).rstrip("/")
+
+        sanitized = (
+            urlunparse(parsed._replace(netloc=host)).rstrip("/") if host else base_url
+        )
         self.logger.warning(
-            f"{LOG_PREFIX} Cannot derive a Kibana base URL from '{base_url}': "
+            f"{LOG_PREFIX} Cannot derive a Kibana base URL from '{sanitized}': "
             "no explicit port to rewrite to 5601. Set ELASTIC_KIBANA_URL for "
             "correct trace links; using the Elasticsearch base URL as-is."
         )
-        return base_url
+        return sanitized
 
     def _build_trace_url_from_expectation(
         self, expectation: DetectionExpectation | PreventionExpectation

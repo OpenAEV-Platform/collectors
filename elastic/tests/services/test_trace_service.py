@@ -157,6 +157,29 @@ class TestElasticTraceService:
             service._derive_kibana_base_url() == "https://es.example.com"
         )
 
+    def test_derive_kibana_base_url_strips_credentials(self):
+        """Userinfo in base_url must never leak into the derived Kibana URL."""
+        config = create_test_config()
+        config.elastic.kibana_url = None
+        config.elastic.base_url = "https://user:secret@es.example.com:9200"
+        service = ElasticTraceService(config=config)
+
+        derived = service._derive_kibana_base_url()
+        assert derived == "https://es.example.com:5601"  # noqa: S101
+        assert "secret" not in derived  # noqa: S101
+        assert "user" not in derived  # noqa: S101
+
+    def test_derive_kibana_base_url_strips_credentials_without_port(self):
+        """Credentials are stripped even on the no-port fallback path."""
+        config = create_test_config()
+        config.elastic.kibana_url = None
+        config.elastic.base_url = "https://user:secret@es.example.com"
+        service = ElasticTraceService(config=config)
+
+        derived = service._derive_kibana_base_url()
+        assert derived == "https://es.example.com"  # noqa: S101
+        assert "secret" not in derived  # noqa: S101
+
     def test_create_traces_heuristic_link_uses_5601(self):
         """End to end, a :9200 base_url without kibana_url yields a :5601 link."""
         config = create_test_config()
