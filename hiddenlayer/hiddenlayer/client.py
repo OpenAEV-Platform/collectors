@@ -39,8 +39,22 @@ class HiddenLayerClient:
         self._token_expiry = 0.0
 
     def _bearer(self):
-        if not self.client_id or not self.client_secret:
-            return None  # self-hosted, unauthenticated
+        has_id = bool(self.client_id)
+        has_secret = bool(self.client_secret)
+        # Both empty -> self-hosted AIDR container, no OAuth2 (unauthenticated).
+        if not has_id and not has_secret:
+            return None
+        # Exactly one set is a misconfiguration: fail fast naming the missing half
+        # instead of silently running unauthenticated and only failing later on a
+        # 401 from the scan call.
+        if not has_id or not has_secret:
+            missing = "client id" if not has_id else "client secret"
+            raise ValueError(
+                f"Incomplete HiddenLayer OAuth2 configuration: the {missing} is not "
+                "set. Provide both the client id and client secret for SaaS "
+                "authentication, or leave both empty to target a self-hosted AIDR "
+                "container."
+            )
         now = time.time()
         if self._token and now < self._token_expiry - 30:
             return self._token
@@ -57,7 +71,17 @@ class HiddenLayerClient:
         )
         resp.raise_for_status()
         data = resp.json()
-        self._token = data.get("access_token")
+        access_token = data.get("access_token")
+        # A 2xx status is not sufficient: an error payload or unexpected schema
+        # could omit the token. Returning None here would leave the scan request
+        # silently unauthenticated, so surface the failure clearly instead.
+        if not access_token:
+            raise ValueError(
+                "HiddenLayer OAuth2 token endpoint returned a 2xx response without "
+                "an 'access_token'; cannot authenticate. Verify the auth URL and "
+                "client credentials."
+            )
+        self._token = access_token
         self._token_expiry = now + int(data.get("expires_in", 600))
         return self._token
 
