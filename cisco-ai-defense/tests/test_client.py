@@ -91,6 +91,16 @@ def test_scan_uses_rules_fallback_for_detail():
     assert verdict.detail == "jailbreak"
 
 
+def test_scan_handles_non_dict_classification_entries():
+    client = _build_client()
+    client.session = _mock_session({"is_safe": False, "classifications": ["jailbreak"]})
+
+    verdict = client.scan("payload")
+
+    assert verdict.flagged is True
+    assert verdict.detail == "jailbreak"
+
+
 def test_scan_default_detail_when_no_classification():
     client = _build_client()
     client.session = _mock_session({"is_safe": False})

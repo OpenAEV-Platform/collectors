@@ -62,13 +62,14 @@ class CiscoAiDefenseClient:
         detail = ""
         if isinstance(classifications, list) and classifications:
             first = classifications[0]
-            detail = (
-                first.get("classification")
-                or first.get("name")
-                or first.get("rule_name", "")
-                if isinstance(first, dict)
-                else str(first)
-            )
+            if isinstance(first, dict):
+                detail = (
+                    first.get("classification")
+                    or first.get("name")
+                    or first.get("rule_name", "")
+                )
+            else:
+                detail = str(first)
         return Verdict(
             flagged=flagged,
             blocked=blocked,
