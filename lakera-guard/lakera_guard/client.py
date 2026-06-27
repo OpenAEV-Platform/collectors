@@ -25,6 +25,10 @@ class LakeraClient:
         ).rstrip("/")
         self.api_key = config.get("lakera_api_key")
         self.project_id = config.get("lakera_project_id")
+        blocking_policy = config.get("lakera_blocking_policy")
+        self.blocking_policy = (
+            True if blocking_policy is None else bool(blocking_policy)
+        )
         self.logger = logger
         self.session = requests.Session()
 
@@ -55,9 +59,11 @@ class LakeraClient:
             if item.get("detected"):
                 detail = item.get("detector_type") or item.get("detector_id") or ""
                 break
-        # Lakera Guard is a detection gate: under a blocking policy a flagged prompt is blocked.
+        # Lakera Guard returns only a detection decision (`flagged`); enforcing the
+        # block/allow action is the policy's responsibility, so a flagged prompt counts
+        # as blocked only when the collector targets a blocking Lakera policy.
         return Verdict(
             flagged=flagged,
-            blocked=flagged,
+            blocked=flagged and self.blocking_policy,
             detail=detail or "Lakera Guard flagged",
         )

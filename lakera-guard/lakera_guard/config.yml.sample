@@ -4,11 +4,12 @@ openaev:
 # tenant_id: 'ChangeMe'
 
 collector:
-  id: 'ChangeMe'   # unique UUIDv4
+  id: 'ChangeMe'   # unique collector identifier
   name: 'Lakera Guard'
   platform: 'LLM_FIREWALL'
   period: 'PT120S'
   log_level: 'error'
   base_url: 'https://api.lakera.ai/v2'
   api_key: 'ChangeMe'
+  blocking_policy: true   # set false for detect/monitor-only Lakera policies
 # project_id: 'project-XXXX'

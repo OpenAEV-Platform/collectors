@@ -21,7 +21,8 @@ Lakera to be inline in the test path.
 ## Configuration
 
 See `lakera_guard/config.yml.sample` / `.env.sample`: `base_url`, `api_key`, optional `project_id`,
-`platform` (`LLM_FIREWALL` or `AI_GATEWAY`).
+`platform` (`LLM_FIREWALL` or `AI_GATEWAY`), and `blocking_policy` (default `true`; set `false` for
+detect/monitor-only Lakera policies so a flagged prompt is not counted as PREVENTION).
 
 ## Dependency
 

@@ -30,3 +30,10 @@ class CollectorConfigOverride(ConfigLoaderCollector):
         default=None,
         description="Optional Lakera project id selecting the policy to apply.",
     )
+    blocking_policy: bool = Field(
+        default=True,
+        description=(
+            "Whether the targeted Lakera policy blocks flagged prompts. When true a "
+            "flagged prompt counts as PREVENTION; set false for detect/monitor-only policies."
+        ),
+    )

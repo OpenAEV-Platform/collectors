@@ -29,7 +29,12 @@ class OpenAEVLakeraGuard(CollectorDaemon):
         self.client = LakeraClient(
             {
                 k: self._configuration.get(k)
-                for k in ("lakera_base_url", "lakera_api_key", "lakera_project_id")
+                for k in (
+                    "lakera_base_url",
+                    "lakera_api_key",
+                    "lakera_project_id",
+                    "lakera_blocking_policy",
+                )
             },
             self.logger,
         )

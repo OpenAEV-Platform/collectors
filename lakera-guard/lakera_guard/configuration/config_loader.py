@@ -25,6 +25,7 @@ class ConfigLoader(SettingsLoader):
                 "lakera_base_url": {"data": self.collector.base_url},
                 "lakera_api_key": {"data": self.collector.api_key},
                 "lakera_project_id": {"data": self.collector.project_id},
+                "lakera_blocking_policy": {"data": self.collector.blocking_policy},
             },
             config_base_model=self,
         )
