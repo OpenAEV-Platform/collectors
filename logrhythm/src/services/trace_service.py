@@ -93,6 +93,15 @@ class LogRhythmTraceService:
                     )
                     continue
 
+                # ExpectationResult.expectation is optional; the trace URL is
+                # built from its signatures, so skip (rather than crash the whole
+                # batch) when it is absent.
+                if result.expectation is None:
+                    self.logger.warning(
+                        f"{LOG_PREFIX} Skipping result {i} - missing expectation object"
+                    )
+                    continue
+
                 self.logger.debug(
                     f"{LOG_PREFIX} Creating trace {i}/{len(valid_results)} for expectation {expectation_id}"
                 )

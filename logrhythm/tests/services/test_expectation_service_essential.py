@@ -7,6 +7,7 @@ from pyoaev.signatures.types import SignatureTypes
 from src.collector.models import ExpectationResult
 from src.services.exception import (
     LogRhythmExpectationError,
+    LogRhythmMatchingError,
     LogRhythmNoAlertsFoundError,
     LogRhythmNoMatchingAlertsError,
     LogRhythmValidationError,
@@ -218,6 +219,30 @@ class TestLogRhythmExpectationServiceEssential:
         )
 
         with pytest.raises(LogRhythmNoMatchingAlertsError):
+            service._match(
+                oaev_data, matching_signatures, mock_detection_helper, "detection"
+            )
+
+    def test_match_internal_error_surfaces_as_matching_error(self):
+        """Test that an unexpected matching error is not downgraded.
+
+        An unexpected exception while matching a data item must surface as a
+        LogRhythmMatchingError rather than being reported as a clean
+        LogRhythmNoMatchingAlertsError ("no match") outcome.
+        """
+        config = create_test_config()
+        service = LogRhythmExpectationService(config=config)
+
+        oaev_data = TestDataFactory.create_oaev_detection_data()
+        matching_signatures = [
+            {"type": "source_ipv4_address", "value": "192.168.1.100"}
+        ]
+        mock_detection_helper = MockObjectsFactory.create_mock_detection_helper()
+
+        # Force an unexpected failure inside the per-item match.
+        service._match_with_detection_helper = Mock(side_effect=RuntimeError("boom"))
+
+        with pytest.raises(LogRhythmMatchingError):
             service._match(
                 oaev_data, matching_signatures, mock_detection_helper, "detection"
             )

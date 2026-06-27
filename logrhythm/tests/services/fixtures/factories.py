@@ -1,9 +1,11 @@
 """Essential polyfactory factories for LogRhythm models and test fixtures."""
 
+import contextlib
 import os
 import uuid
+from collections.abc import Iterator, Mapping
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from unittest.mock import Mock
 
 from polyfactory import Use
@@ -13,6 +15,43 @@ from src.models.configs.collector_configs import _ConfigLoaderOAEV
 from src.models.configs.config_loader import ConfigLoader, ConfigLoaderCollector
 from src.models.configs.logrhythm_configs import _ConfigLoaderLogRhythm
 from src.services.models import LogRhythmAlert, LogRhythmSearchCriteria
+
+
+@contextlib.contextmanager
+def _temporary_env(
+    updates: Mapping[str, str], remove: Optional[list[str]] = None
+) -> Iterator[None]:
+    """Temporarily set/unset environment variables, restoring prior state.
+
+    The factories must populate the environment while the settings-based models
+    are constructed (the parent ``ConfigLoader`` rebuilds its nested settings
+    from the environment), but they must not leak that state to other tests.
+    This snapshots every affected key and restores it on exit so factory
+    ``build()`` calls are side-effect free and not order-dependent.
+
+    Args:
+        updates: Mapping of environment variable names to values to set.
+        remove: Optional list of environment variable names to unset.
+
+    Yields:
+        None.
+
+    """
+    remove = list(remove or [])
+    affected = set(updates) | set(remove)
+    saved = {key: os.environ.get(key) for key in affected}
+    try:
+        for key, value in updates.items():
+            os.environ[key] = value
+        for key in remove:
+            os.environ.pop(key, None)
+        yield
+    finally:
+        for key, previous in saved.items():
+            if previous is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = previous
 
 
 class ConfigLoaderOAEVFactory(ModelFactory[_ConfigLoaderOAEV]):
@@ -35,9 +74,13 @@ class ConfigLoaderOAEVFactory(ModelFactory[_ConfigLoaderOAEV]):
             _ConfigLoaderOAEV instance with test configuration.
 
         """
-        os.environ["OPENAEV_URL"] = "https://test-openaev.example.com"
-        os.environ["OPENAEV_TOKEN"] = "test-openaev-token-12345"  # noqa: S105
-        return super().build(**kwargs)
+        with _temporary_env(
+            {
+                "OPENAEV_URL": "https://test-openaev.example.com",
+                "OPENAEV_TOKEN": "test-openaev-token-12345",  # noqa: S105
+            }
+        ):
+            return super().build(**kwargs)
 
 
 class ConfigLoaderLogRhythmFactory(ModelFactory[_ConfigLoaderLogRhythm]):
@@ -71,17 +114,23 @@ class ConfigLoaderLogRhythmFactory(ModelFactory[_ConfigLoaderLogRhythm]):
             _ConfigLoaderLogRhythm instance with test configuration.
 
         """
-        os.environ["LOGRHYTHM_BASE_URL"] = "https://test-logrhythm.example.com"
-        os.environ["LOGRHYTHM_TOKEN"] = "test-token"  # noqa: S105
-        os.environ["LOGRHYTHM_API_VERSION"] = "20.0"
-        os.environ["LOGRHYTHM_MAX_RETRY"] = "1"
-        os.environ["LOGRHYTHM_OFFSET"] = "PT0S"
-        os.environ["LOGRHYTHM_POLL_INTERVAL"] = "PT0S"
-        os.environ["LOGRHYTHM_SEARCH_TIMEOUT"] = "PT5S"
-        os.environ.pop("LOGRHYTHM_USERNAME", None)
-        os.environ.pop("LOGRHYTHM_PASSWORD", None)
-        os.environ.pop("LOGRHYTHM_CONSOLE_URL", None)
-        return super().build(**kwargs)
+        with _temporary_env(
+            {
+                "LOGRHYTHM_BASE_URL": "https://test-logrhythm.example.com",
+                "LOGRHYTHM_TOKEN": "test-token",  # noqa: S105
+                "LOGRHYTHM_API_VERSION": "20.0",
+                "LOGRHYTHM_MAX_RETRY": "1",
+                "LOGRHYTHM_OFFSET": "PT0S",
+                "LOGRHYTHM_POLL_INTERVAL": "PT0S",
+                "LOGRHYTHM_SEARCH_TIMEOUT": "PT5S",
+            },
+            remove=[
+                "LOGRHYTHM_USERNAME",
+                "LOGRHYTHM_PASSWORD",
+                "LOGRHYTHM_CONSOLE_URL",
+            ],
+        ):
+            return super().build(**kwargs)
 
 
 class ConfigLoaderCollectorFactory(ModelFactory[ConfigLoaderCollector]):
@@ -109,6 +158,44 @@ class ConfigLoaderFactory(ModelFactory[ConfigLoader]):
     openaev = Use(ConfigLoaderOAEVFactory.build)
     collector = Use(ConfigLoaderCollectorFactory.build)
     logrhythm = Use(ConfigLoaderLogRhythmFactory.build)
+
+    @classmethod
+    def build(cls, **kwargs):
+        """Build the full config with required env vars set during construction.
+
+        The parent ``ConfigLoader`` rebuilds its nested ``openaev`` / ``logrhythm``
+        settings from the environment (see the ``disable_config_yml`` fixture in
+        ``tests/conftest.py``), so the environment must stay populated for the
+        whole build - the sub-factory restores only roll back to the values set
+        here. This wrapper restores the original environment on exit so no state
+        leaks across tests.
+
+        Args:
+            **kwargs: Additional keyword arguments for model creation.
+
+        Returns:
+            ConfigLoader instance with test configuration.
+
+        """
+        with _temporary_env(
+            {
+                "OPENAEV_URL": "https://test-openaev.example.com",
+                "OPENAEV_TOKEN": "test-openaev-token-12345",  # noqa: S105
+                "LOGRHYTHM_BASE_URL": "https://test-logrhythm.example.com",
+                "LOGRHYTHM_TOKEN": "test-token",  # noqa: S105
+                "LOGRHYTHM_API_VERSION": "20.0",
+                "LOGRHYTHM_MAX_RETRY": "1",
+                "LOGRHYTHM_OFFSET": "PT0S",
+                "LOGRHYTHM_POLL_INTERVAL": "PT0S",
+                "LOGRHYTHM_SEARCH_TIMEOUT": "PT5S",
+            },
+            remove=[
+                "LOGRHYTHM_USERNAME",
+                "LOGRHYTHM_PASSWORD",
+                "LOGRHYTHM_CONSOLE_URL",
+            ],
+        ):
+            return super().build(**kwargs)
 
 
 class LogRhythmSearchCriteriaFactory(ModelFactory[LogRhythmSearchCriteria]):

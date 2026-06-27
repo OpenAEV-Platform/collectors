@@ -32,6 +32,10 @@ class Converter:
     ) -> list[dict[str, Any]]:
         """Convert LogRhythm data to OAEV format.
 
+        Items that are not ``LogRhythmAlert`` instances are skipped (logged as a
+        warning), and an empty list is returned when ``data`` is falsy or holds no
+        convertible items.
+
         Args:
             data: Raw LogRhythm alert data.
 
@@ -39,8 +43,7 @@ class Converter:
             List of OAEV data dictionaries.
 
         Raises:
-            LogRhythmValidationError: If data format is invalid.
-            LogRhythmDataConversionError: If conversion fails.
+            LogRhythmDataConversionError: If converting a recognized alert item fails.
 
         """
         if not data:
