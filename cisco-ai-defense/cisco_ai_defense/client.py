@@ -45,13 +45,19 @@ class CiscoAiDefenseClient:
                 "e.g. https://<region>.api.inspect.aidefense.security.cisco.com; "
                 f"got {self.base_url!r}. Set collector.base_url (COLLECTOR_BASE_URL) accordingly."
             )
+        if not self.api_key:
+            raise ValueError(
+                "Cisco AI Defense api_key is not configured; set collector.api_key "
+                "(COLLECTOR_API_KEY) so requests to the inspection API are authenticated."
+            )
         messages = []
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
         messages.append({"role": "user", "content": prompt})
-        headers = {"Content-Type": "application/json"}
-        if self.api_key:
-            headers[self.auth_header] = self.api_key
+        headers = {
+            "Content-Type": "application/json",
+            self.auth_header: self.api_key,
+        }
         body = {"messages": messages}
         resp = self.session.post(
             f"{self.base_url}/api/v1/inspect/prompt",

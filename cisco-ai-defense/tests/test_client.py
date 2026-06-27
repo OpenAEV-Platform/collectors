@@ -46,6 +46,13 @@ def test_scan_rejects_base_url_without_valid_scheme(bad_base_url):
         client.scan("payload")
 
 
+@pytest.mark.parametrize("missing_api_key", [None, ""])
+def test_scan_requires_api_key(missing_api_key):
+    client = _build_client(cisco_api_key=missing_api_key)
+    with pytest.raises(ValueError, match="api_key"):
+        client.scan("payload")
+
+
 def test_scan_safe_response_is_not_flagged():
     client = _build_client()
     client.session = _mock_session({"is_safe": True})
