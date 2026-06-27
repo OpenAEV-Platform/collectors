@@ -1,5 +1,6 @@
 """Essential tests for NetWitness Client API service."""
 
+import ipaddress
 from unittest.mock import Mock, patch
 
 import pytest
@@ -230,6 +231,35 @@ class TestNetWitnessClientAPIEssential:
 
         with pytest.raises(NetWitnessValidationError):
             client._build_query(criteria)
+
+    def test_normalize_query_ips_skips_none_value(self):
+        """A None entry is skipped without raising; valid IPs are still kept."""
+        config = create_test_config()
+        client = NetWitnessClientAPI(config=config)
+
+        result = client._normalize_query_ips([None, "192.168.1.100"])
+
+        assert result == ["192.168.1.100"]  # noqa: S101
+
+    def test_normalize_query_ips_skips_type_error(self):
+        """A value that makes ip_address raise TypeError is skipped, not propagated."""
+        config = create_test_config()
+        client = NetWitnessClientAPI(config=config)
+
+        real_ip_address = ipaddress.ip_address
+
+        def _raise_type_error_for_none(value):
+            if value is None:
+                raise TypeError("ip_address received an unsupported type")
+            return real_ip_address(value)
+
+        with patch(
+            "src.services.client_api.ipaddress.ip_address",
+            side_effect=_raise_type_error_for_none,
+        ):
+            result = client._normalize_query_ips([None, "192.168.1.100"])
+
+        assert result == ["192.168.1.100"]  # noqa: S101
 
     def test_build_search_criteria_from_signatures(self):
         """Signatures are extracted into a NetWitnessSearchCriteria object."""

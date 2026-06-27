@@ -242,9 +242,12 @@ class NetWitnessClientAPI:
         Source/target IPs originate from expectation signatures and are embedded
         directly into the NWQL query string (``ip.src=`` / ``ip.dst=``). Each value
         is validated with the stdlib ``ipaddress`` module as defense-in-depth: any
-        value that is not a valid IPv4/IPv6 address is skipped (with a warning)
-        rather than interpolated, guarding against malformed queries and query
-        injection via unexpected characters.
+        value that does not parse as a valid IPv4/IPv6 address - including ``None``
+        or other unexpected non-string types - is skipped (with a warning) rather
+        than interpolated, guarding against malformed queries and query injection
+        via unexpected characters. ``ipaddress.ip_address`` signals a rejected value
+        with ``ValueError`` (malformed string) or ``TypeError`` (unsupported type),
+        so both are caught.
 
         Args:
             ips: Candidate IP address strings from the search criteria.
@@ -257,7 +260,7 @@ class NetWitnessClientAPI:
         for ip in ips or []:
             try:
                 valid_ips.append(str(ipaddress.ip_address(ip)))
-            except ValueError:
+            except (ValueError, TypeError):
                 self.logger.warning(
                     f"{LOG_PREFIX} Skipping invalid IP value from signature: {ip!r}"
                 )
