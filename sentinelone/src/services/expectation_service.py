@@ -465,7 +465,6 @@ class SentinelOneExpectationService:
                         traces.append(trace)
 
                         if isinstance(expectation, PreventionExpectation):
-                            # breakpoint()
                             if threat.is_mitigated:
                                 matched = True
                                 self.logger.debug(
@@ -570,7 +569,6 @@ class SentinelOneExpectationService:
                 )
 
                 if oaev_implant_names:
-                    # breakpoint()
                     oaev_data["parent_process_name"] = {
                         "type": "fuzzy",
                         "data": oaev_implant_names,
@@ -608,7 +606,19 @@ class SentinelOneExpectationService:
                 f"{LOG_PREFIX} Filtered OAEV data: {list(filtered_oaev_data.keys())}"
             )
 
+            matched_count = 0
+            skipped_count = 0
             for sig_type, signatures in signature_groups.items():
+                if sig_type not in filtered_oaev_data:
+                    self.logger.debug(
+                        f"{LOG_PREFIX} Expectation {expectation.inject_expectation_id} requires "
+                        f"'{sig_type}' but threat {threat.threat_id} has no data for it "
+                        f"(available: {list(filtered_oaev_data.keys())}). "
+                        f"Skipping this signature check."
+                    )
+                    skipped_count += 1
+                    continue
+
                 filtered_data = {sig_type: filtered_oaev_data[sig_type]}
                 self.logger.debug(
                     f"{LOG_PREFIX} Detection helper input - sig_type: {sig_type}"
@@ -620,7 +630,6 @@ class SentinelOneExpectationService:
                     f"{LOG_PREFIX} Detection helper input - filtered_data: {filtered_data}"
                 )
 
-                # breakpoint()
                 match_result = detection_helper.match_alert_elements(
                     signatures, filtered_data
                 )
@@ -635,13 +644,28 @@ class SentinelOneExpectationService:
                     )
                     return False
 
+                matched_count += 1
+
+            if matched_count == 0:
+                self.logger.debug(
+                    f"{LOG_PREFIX} No signature types could be verified for expectation "
+                    f"{expectation.inject_expectation_id} vs threat {threat.threat_id} "
+                    f"(all {len(signature_groups)} signature types had no available data)"
+                )
+                return False
+
             self.logger.debug(
-                f"{LOG_PREFIX} All signatures matched for expectation {expectation.inject_expectation_id} vs threat {threat.threat_id}"
+                f"{LOG_PREFIX} Expectation {expectation.inject_expectation_id} matched threat "
+                f"{threat.threat_id}: {matched_count} verified, {skipped_count} skipped (no data)"
             )
             return True
 
         except Exception as e:
-            self.logger.warning(f"{LOG_PREFIX} Error in expectation matching: {e}")
+            self.logger.warning(
+                f"{LOG_PREFIX} Error in expectation matching for "
+                f"{expectation.inject_expectation_id} vs {threat.threat_id}: {e}",
+                exc_info=True,
+            )
             return False
 
     def _create_error_result_object(
