@@ -7,9 +7,7 @@ from pyoaev.daemons import CollectorDaemon
 # ATT&CK-compatible STIX representation (x-mitre-tactic objects, attack-pattern objects with
 # kill_chain_phases, and subtechnique-of relationships) so the same ingestion logic as the
 # mitre-attack collector applies - only the kill chain name and source name differ.
-DEFAULT_ATLAS_STIX_URI = (
-    "https://raw.githubusercontent.com/mitre-atlas/atlas-navigator-data/main/dist/stix-atlas.json"
-)
+DEFAULT_ATLAS_STIX_URI = "https://raw.githubusercontent.com/mitre-atlas/atlas-navigator-data/main/dist/stix-atlas.json"
 
 KILL_CHAIN_NAME = "mitre-atlas"
 ATLAS_SOURCE_NAME = "mitre-atlas"
@@ -51,7 +49,8 @@ class OpenAEVAtlas(CollectorDaemon):
         )
         self.session = requests.Session()
         self.stix_url = (
-            self._configuration.get("collector_atlas_stix_url") or DEFAULT_ATLAS_STIX_URI
+            self._configuration.get("collector_atlas_stix_url")
+            or DEFAULT_ATLAS_STIX_URI
         )
 
     def _kill_chain_phases(self, tactics):
@@ -122,7 +121,8 @@ class OpenAEVAtlas(CollectorDaemon):
         self.api.attack_pattern.upsert(attack_patterns)
 
     def _process_message(self) -> None:
-        response = self.session.get(url=self.stix_url)
+        response = self.session.get(url=self.stix_url, timeout=60)
+        response.raise_for_status()
         self.logger.debug(str.format("Response headers: {}", response.headers))
         self.logger.debug(str.format("Response raw: {}", response.text[:200]))
 
