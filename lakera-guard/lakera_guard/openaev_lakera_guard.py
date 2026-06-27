@@ -47,14 +47,18 @@ class OpenAEVLakeraGuard(CollectorDaemon):
         prompt = content.get("attack_prompt")
         if not prompt:
             return None
-        marker = build_marker(inject_id, expectation.get("inject_expectation_agent") or "")
+        marker = build_marker(
+            inject_id, expectation.get("inject_expectation_agent") or ""
+        )
         return {
             "prompt": prompt.replace("{marker}", marker),
             "system_prompt": content.get("system_prompt"),
         }
 
     def _process_message(self) -> None:
-        expectations = self.api.inject_expectation.ai_expectations_for_source(self.collector_id)
+        expectations = self.api.inject_expectation.ai_expectations_for_source(
+            self.collector_id
+        )
         if not expectations:
             return
         traces = []
@@ -62,7 +66,7 @@ class OpenAEVLakeraGuard(CollectorDaemon):
         for expectation in expectations:
             inject_id = expectation.get("inject_expectation_inject")
             expectation_type = expectation.get("inject_expectation_type")
-            if expectation_type not in (DETECTION, PREVENTION):
+            if not inject_id or expectation_type not in (DETECTION, PREVENTION):
                 continue
             if inject_id not in verdicts:
                 attack = self._attack_for(expectation)
@@ -74,7 +78,9 @@ class OpenAEVLakeraGuard(CollectorDaemon):
                             attack["prompt"], attack.get("system_prompt")
                         )
                     except Exception as exc:  # noqa: BLE001
-                        self.logger.error(f"Lakera scan failed for inject {inject_id}: {exc}")
+                        self.logger.error(
+                            f"Lakera scan failed for inject {inject_id}: {exc}"
+                        )
                         verdicts[inject_id] = None
             verdict = verdicts[inject_id]
             if verdict is None:
@@ -97,9 +103,12 @@ class OpenAEVLakeraGuard(CollectorDaemon):
             if is_success:
                 traces.append(
                     {
-                        "inject_expectation_trace_expectation": expectation["inject_expectation_id"],
+                        "inject_expectation_trace_expectation": expectation[
+                            "inject_expectation_id"
+                        ],
                         "inject_expectation_trace_source_id": self.collector_id,
-                        "inject_expectation_trace_alert_name": verdict.detail or "Lakera Guard",
+                        "inject_expectation_trace_alert_name": verdict.detail
+                        or "Lakera Guard",
                         "inject_expectation_trace_alert_link": verdict.link or "",
                         "inject_expectation_trace_date": _now(),
                     }

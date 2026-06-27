@@ -7,7 +7,7 @@ expectations. Registers a `SecurityPlatform` of type `LLM_FIREWALL`.
 ## How it works (re-scan / replay model)
 
 1. Polls agentless DETECTION/PREVENTION expectations for this collector
-   (`GET /api/injects/expectations/ai/{collectorId}`).
+   (`GET /api/injects/expectations/ai/{sourceId}`).
 2. For each expectation, fetches the inject's attack content (`GET /api/injects/{injectId}` ->
    `inject_content.attack_prompt`) and substitutes the per-inject marker.
 3. Replays the attack content through the Lakera screening API

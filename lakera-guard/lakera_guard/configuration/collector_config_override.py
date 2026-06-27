@@ -5,7 +5,9 @@ from pyoaev.configuration import ConfigLoaderCollector
 
 
 class CollectorConfigOverride(ConfigLoaderCollector):
-    id: str = Field(default="openaev_lakera_guard", description="Collector unique identifier")
+    id: str = Field(
+        default="openaev_lakera_guard", description="Collector unique identifier"
+    )
     name: str = Field(default="Lakera Guard", description="Collector display name")
     platform: str | None = Field(
         default="LLM_FIREWALL",
@@ -25,5 +27,6 @@ class CollectorConfigOverride(ConfigLoaderCollector):
     )
     api_key: str | None = Field(default=None, description="Lakera Guard API key.")
     project_id: str | None = Field(
-        default=None, description="Optional Lakera project id selecting the policy to apply."
+        default=None,
+        description="Optional Lakera project id selecting the policy to apply.",
     )

@@ -20,13 +20,19 @@ class Verdict:
 
 class LakeraClient:
     def __init__(self, config: dict, logger=None):
-        self.base_url = (config.get("lakera_base_url") or "https://api.lakera.ai/v2").rstrip("/")
+        self.base_url = (
+            config.get("lakera_base_url") or "https://api.lakera.ai/v2"
+        ).rstrip("/")
         self.api_key = config.get("lakera_api_key")
         self.project_id = config.get("lakera_project_id")
         self.logger = logger
         self.session = requests.Session()
 
-    def scan(self, prompt: str, system_prompt: str = None) -> Verdict:
+    def scan(self, prompt: str, system_prompt: str | None = None) -> Verdict:
+        if not self.api_key:
+            raise ValueError(
+                "Lakera Guard is not configured: api_key is required (set COLLECTOR_API_KEY)."
+            )
         messages = []
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
