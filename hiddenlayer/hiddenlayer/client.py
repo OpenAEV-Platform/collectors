@@ -79,8 +79,10 @@ class HiddenLayerClient:
         data = resp.json()
         detections = data.get("detections") or data.get("results") or []
         action = str(data.get("action", "")).lower()
-        flagged = bool(detections) or bool(data.get("flagged"))
         blocked = action in ("block", "blocked") or bool(data.get("blocked"))
+        # A block inherently means the attack was detected (prevention implies
+        # detection), so a blocked verdict also counts as flagged.
+        flagged = bool(detections) or bool(data.get("flagged")) or blocked
         detail = ""
         if isinstance(detections, list) and detections:
             first = detections[0]
