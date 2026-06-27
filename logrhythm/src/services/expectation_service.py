@@ -468,7 +468,9 @@ class LogRhythmExpectationService:
             )
 
             for i, data_item in enumerate(oaev_data):
-                self.logger.debug(f"{i} data_item: {data_item}")
+                self.logger.debug(
+                    f"{LOG_PREFIX} Data item {i + 1} content: {data_item}"
+                )
                 self.logger.debug(
                     f"{LOG_PREFIX} Matching data item {i + 1}/{len(oaev_data)}"
                 )
@@ -670,8 +672,11 @@ class LogRhythmExpectationService:
             return result
 
         except Exception as e:
+            # Surface unexpected matching failures to _match(), which wraps them
+            # as LogRhythmMatchingError. Swallowing them here and returning False
+            # would mis-report a real internal error as a benign "no match".
             self.logger.error(f"{LOG_PREFIX} Error in detection_helper matching: {e}")
-            return False
+            raise
 
     def _create_error_result(
         self,

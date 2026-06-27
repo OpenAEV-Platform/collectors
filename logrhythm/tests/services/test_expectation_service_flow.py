@@ -173,6 +173,26 @@ class TestExpectationServiceFlow:
             service._match_with_detection_helper(signatures, data_item, helper) is False
         )
 
+    def test_match_with_detection_helper_propagates_internal_error(self):
+        """An unexpected error inside the helper propagates instead of False.
+
+        Previously the helper caught every exception and returned False, which
+        silently downgraded a real internal failure into a benign "no match".
+        It must now let unexpected errors propagate so _match() can classify
+        them as a LogRhythmMatchingError.
+        """
+        service = _service()
+        helper = Mock()
+        helper.match_alert_elements.side_effect = RuntimeError("boom")
+
+        signatures = [{"type": "source_ipv4_address", "value": "1.2.3.4"}]
+        data_item = {
+            "source_ipv4_address": {"type": "simple", "data": ["1.2.3.4"]},
+        }
+
+        with pytest.raises(RuntimeError):
+            service._match_with_detection_helper(signatures, data_item, helper)
+
     def test_create_error_result_dict(self):
         """_create_error_result builds an error dictionary from a service error."""
         service = _service()

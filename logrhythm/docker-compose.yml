@@ -5,7 +5,8 @@ services:
     environment:
       - OPENAEV_URL=http://localhost
       - OPENAEV_TOKEN=ChangeMe
-      - OPENAEV_TENANT_ID=ChangeMe
+      # Optional tenant ID for multi-tenant OpenAEV deployments; uncomment and set a valid UUID
+      # - OPENAEV_TENANT_ID=ChangeMe
       - COLLECTOR_ID=ChangeMe
       - LOGRHYTHM_BASE_URL=https://change.me
       # Authentication: provide LOGRHYTHM_TOKEN (preferred, bearer token) or username/password
