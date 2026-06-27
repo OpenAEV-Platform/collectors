@@ -44,9 +44,14 @@ class HiddenLayerClient:
         now = time.time()
         if self._token and now < self._token_expiry - 30:
             return self._token
+        # RFC 6749 (4.4.2): client-credentials token parameters go in the
+        # form-encoded request body (application/x-www-form-urlencoded), not the
+        # query string. requests sets that Content-Type automatically for a dict
+        # passed as ``data``. Client auth stays as HTTP Basic via ``auth`` (the
+        # form HiddenLayer's token endpoint accepts).
         resp = self.session.post(
             self.auth_url,
-            params={"grant_type": "client_credentials"},
+            data={"grant_type": "client_credentials"},
             auth=(self.client_id, self.client_secret),
             timeout=30,
         )
@@ -92,8 +97,15 @@ class HiddenLayerClient:
                 )
             else:
                 detail = str(first)
+        # Only surface a detection detail when something was actually detected or
+        # blocked; otherwise keep it neutral so a "Not Detected" verdict is not
+        # labelled with a misleading detection string in the expectation metadata.
+        if flagged:
+            detail = detail or "HiddenLayer AIDR detection"
+        else:
+            detail = "No detection"
         return Verdict(
             flagged=flagged,
             blocked=blocked,
-            detail=detail or "HiddenLayer AIDR detection",
+            detail=detail,
         )
