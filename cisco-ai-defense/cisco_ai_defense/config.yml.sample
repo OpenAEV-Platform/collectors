@@ -4,7 +4,7 @@ openaev:
 # tenant_id: 'ChangeMe'
 
 collector:
-  id: 'ChangeMe'   # unique UUIDv4
+  id: 'ChangeMe'   # unique collector identifier (string; e.g. openaev_cisco_ai_defense)
   name: 'Cisco AI Defense'
   platform: 'LLM_FIREWALL'
   period: 'PT120S'

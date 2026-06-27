@@ -24,11 +24,18 @@ class CiscoAiDefenseClient:
     def __init__(self, config: dict, logger=None):
         self.base_url = (config.get("cisco_base_url") or "").rstrip("/")
         self.api_key = config.get("cisco_api_key")
-        self.auth_header = config.get("cisco_auth_header") or "X-Cisco-AI-Defense-Api-Key"
+        self.auth_header = (
+            config.get("cisco_auth_header") or "X-Cisco-AI-Defense-Api-Key"
+        )
         self.logger = logger
         self.session = requests.Session()
 
-    def scan(self, prompt: str, system_prompt: str = None) -> Verdict:
+    def scan(self, prompt: str, system_prompt: str | None = None) -> Verdict:
+        if not self.base_url:
+            raise ValueError(
+                "Cisco AI Defense base_url is not configured; set collector.base_url "
+                "(COLLECTOR_BASE_URL) to the inspection API base URL."
+            )
         messages = []
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
@@ -38,23 +45,32 @@ class CiscoAiDefenseClient:
             headers[self.auth_header] = self.api_key
         body = {"messages": messages}
         resp = self.session.post(
-            f"{self.base_url}/api/v1/inspect/prompt", headers=headers, json=body, timeout=30
+            f"{self.base_url}/api/v1/inspect/prompt",
+            headers=headers,
+            json=body,
+            timeout=30,
         )
         resp.raise_for_status()
         data = resp.json()
         is_safe = data.get("is_safe")
         classifications = data.get("classifications") or data.get("rules") or []
         action = str(data.get("action", "")).lower()
-        flagged = (is_safe is False) or bool(classifications) or action in ("block", "blocked")
-        blocked = (is_safe is False) or action in ("block", "blocked")
+        # PREVENTION is only satisfied by an explicit block action; an unsafe verdict or a
+        # classification without a block maps to DETECTION only.
+        blocked = action in ("block", "blocked")
+        flagged = (is_safe is False) or bool(classifications) or blocked
         detail = ""
         if isinstance(classifications, list) and classifications:
             first = classifications[0]
             detail = (
-                first.get("classification") or first.get("name") or first.get("rule_name", "")
+                first.get("classification")
+                or first.get("name")
+                or first.get("rule_name", "")
                 if isinstance(first, dict)
                 else str(first)
             )
         return Verdict(
-            flagged=flagged, blocked=blocked, detail=detail or "Cisco AI Defense classification"
+            flagged=flagged,
+            blocked=blocked,
+            detail=detail or "Cisco AI Defense classification",
         )

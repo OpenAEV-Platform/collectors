@@ -1,4 +1,6 @@
-from cisco_ai_defense.configuration.collector_config_override import CollectorConfigOverride
+from cisco_ai_defense.configuration.collector_config_override import (
+    CollectorConfigOverride,
+)
 from pydantic import Field
 from pyoaev.configuration import ConfigLoaderOAEV, Configuration, SettingsLoader
 

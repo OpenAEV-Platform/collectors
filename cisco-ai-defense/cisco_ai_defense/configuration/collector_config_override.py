@@ -5,7 +5,9 @@ from pyoaev.configuration import ConfigLoaderCollector
 
 
 class CollectorConfigOverride(ConfigLoaderCollector):
-    id: str = Field(default="openaev_cisco_ai_defense", description="Collector unique identifier")
+    id: str = Field(
+        default="openaev_cisco_ai_defense", description="Collector unique identifier"
+    )
     name: str = Field(default="Cisco AI Defense", description="Collector display name")
     platform: str | None = Field(
         default="LLM_FIREWALL",

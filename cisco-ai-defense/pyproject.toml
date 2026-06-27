@@ -21,9 +21,15 @@ pyoaev = [
 prod = ["pyoaev"]
 dev = ["pyoaev"]
 
+[tool.poetry.group.test.dependencies]
+pytest = "^9.0.2"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
 
 [tool.cmw]
 install-command = "poetry install --extras prod"

@@ -46,14 +46,18 @@ class OpenAEVCiscoAiDefense(CollectorDaemon):
         prompt = content.get("attack_prompt")
         if not prompt:
             return None
-        marker = build_marker(inject_id, expectation.get("inject_expectation_agent") or "")
+        marker = build_marker(
+            inject_id, expectation.get("inject_expectation_agent") or ""
+        )
         return {
             "prompt": prompt.replace("{marker}", marker),
             "system_prompt": content.get("system_prompt"),
         }
 
     def _process_message(self) -> None:
-        expectations = self.api.inject_expectation.ai_expectations_for_source(self.collector_id)
+        expectations = self.api.inject_expectation.ai_expectations_for_source(
+            self.collector_id
+        )
         if not expectations:
             return
         traces = []
@@ -98,9 +102,12 @@ class OpenAEVCiscoAiDefense(CollectorDaemon):
             if is_success:
                 traces.append(
                     {
-                        "inject_expectation_trace_expectation": expectation["inject_expectation_id"],
+                        "inject_expectation_trace_expectation": expectation[
+                            "inject_expectation_id"
+                        ],
                         "inject_expectation_trace_source_id": self.collector_id,
-                        "inject_expectation_trace_alert_name": verdict.detail or "Cisco AI Defense",
+                        "inject_expectation_trace_alert_name": verdict.detail
+                        or "Cisco AI Defense",
                         "inject_expectation_trace_alert_link": verdict.link or "",
                         "inject_expectation_trace_date": _now(),
                     }
