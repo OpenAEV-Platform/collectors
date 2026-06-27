@@ -1,3 +1,5 @@
+import logging
+
 import requests
 from mitre_atlas.configuration.config_loader import ConfigLoader
 from pyoaev.configuration import Configuration
@@ -132,8 +134,11 @@ class OpenAEVAtlas(CollectorDaemon):
     def _process_message(self) -> None:
         response = self.session.get(url=self.stix_url, timeout=60)
         response.raise_for_status()
-        self.logger.debug(str.format("Response headers: {}", response.headers))
-        self.logger.debug(str.format("Response raw: {}", response.text[:200]))
+        # response.text decodes the entire (large) STIX bundle, so only do the
+        # debug formatting/body decode when DEBUG logging is actually enabled.
+        if self.logger.local_logger.isEnabledFor(logging.DEBUG):
+            self.logger.debug(str.format("Response headers: {}", response.headers))
+            self.logger.debug(str.format("Response raw: {}", response.text[:200]))
 
         atlas = response.json()
         objects = atlas.get("objects", [])
