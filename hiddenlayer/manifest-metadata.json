@@ -1,0 +1,18 @@
+{
+  "title": "HiddenLayer AIDR",
+  "slug": "openaev_hiddenlayer",
+  "description": "Validate that HiddenLayer AI Runtime Security (AIDR) detects or blocks AI adversarial injects by replaying the attack content through the HiddenLayer Interactions endpoint.",
+  "short_description": "Validate HiddenLayer AIDR detection and prevention",
+  "use_cases": ["Security response"],
+  "verified": true,
+  "last_verified_date": "",
+  "playbook_supported": false,
+  "max_confidence_level": 80,
+  "support_version": "",
+  "subscription_link": "https://hiddenlayer.com/",
+  "source_code": "",
+  "manager_supported": true,
+  "container_version": "rolling",
+  "container_image": "openaev/collector-hiddenlayer",
+  "container_type": "COLLECTOR"
+}
