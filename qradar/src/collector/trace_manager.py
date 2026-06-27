@@ -106,7 +106,9 @@ class TraceManager:
             traces: List of trace objects to submit.
 
         Raises:
-            TraceSubmissionError: If trace submission fails.
+            TraceSubmissionError: If bulk submission fails and the individual
+                trace-creation fallback also fails. If the fallback succeeds,
+                no error is raised so the processing cycle can complete.
 
         """
         try:
@@ -146,7 +148,15 @@ class TraceManager:
                 self.logger.error(
                     f"{LOG_PREFIX} Fallback trace creation also failed: {fallback_error}"
                 )
-            raise TraceSubmissionError(f"Error submitting traces: {e}") from e
+                raise TraceSubmissionError(
+                    f"Error submitting traces: bulk submission failed ({e}) and "
+                    f"individual fallback failed ({fallback_error})"
+                ) from fallback_error
+            else:
+                self.logger.info(
+                    f"{LOG_PREFIX} Bulk submission failed but individual fallback "
+                    f"succeeded; traces were created, not raising"
+                )
 
     def _fallback_individual_trace_creation(self, traces: list[Any]) -> None:
         """Fallback method to create traces individually if bulk creation fails.

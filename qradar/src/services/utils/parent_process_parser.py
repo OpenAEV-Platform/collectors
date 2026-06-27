@@ -60,7 +60,7 @@ class ParentProcessParser:
                 )
                 return (inject_uuid, agent_uuid)
             else:
-                self.logger.warning(
+                self.logger.debug(
                     f"{LOG_PREFIX} No UUIDs found in parent process name: {parent_process_name}"
                 )
                 return None
@@ -141,7 +141,7 @@ class ParentProcessParser:
                 )
                 return (inject_uuid, agent_uuid)
             else:
-                self.logger.warning(
+                self.logger.debug(
                     f"{LOG_PREFIX} No UUIDs found in URL path: {url_path}"
                 )
                 return None

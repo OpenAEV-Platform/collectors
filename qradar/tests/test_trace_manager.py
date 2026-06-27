@@ -47,17 +47,31 @@ class TestTraceManager:
         api.inject_expectation_trace.bulk_create.assert_not_called()
 
     def test_bulk_failure_falls_back_to_individual(self):
-        """A bulk failure triggers individual creation and raises TracingError."""
+        """A bulk failure triggers individual creation; a successful fallback does not raise."""
         api = Mock()
         api.inject_expectation_trace.bulk_create.side_effect = RuntimeError("bulk")
         trace_service = Mock()
         trace_service.create_traces_from_results.return_value = [_trace()]
         manager = TraceManager(api, "collector-id", trace_service=trace_service)
 
-        with pytest.raises(TracingError):
-            manager.create_and_submit_traces([Mock()])
+        # Bulk submission fails but the per-trace fallback succeeds, so the
+        # processing cycle must complete without raising - the traces were
+        # still created individually.
+        manager.create_and_submit_traces([Mock()])
 
         api.inject_expectation_trace.create.assert_called()
+
+    def test_bulk_failure_with_successful_fallback_does_not_raise(self):
+        """Regression: bulk fails, individual fallback succeeds -> no raise, every trace created."""
+        api = Mock()
+        api.inject_expectation_trace.bulk_create.side_effect = RuntimeError("bulk")
+        trace_service = Mock()
+        trace_service.create_traces_from_results.return_value = [_trace(), _trace()]
+        manager = TraceManager(api, "collector-id", trace_service=trace_service)
+
+        manager.create_and_submit_traces([Mock()])
+
+        assert api.inject_expectation_trace.create.call_count == 2  # noqa: S101
 
     def test_bulk_and_individual_failure(self):
         """When both bulk and individual creation fail, TracingError is raised."""
