@@ -190,6 +190,19 @@ class TestNetWitnessClientAPIEssential:
 
         assert query1 != query2  # noqa: S101
 
+    def test_build_query_without_filters_raises(self):
+        """Date-only criteria fail fast instead of issuing a broad 'exists' query."""
+        config = create_test_config()
+        client = NetWitnessClientAPI(config=config)
+
+        criteria = NetWitnessSearchCriteria(
+            start_date="2024-01-01T00:00:00Z",
+            end_date="2024-01-01T23:59:59Z",
+        )
+
+        with pytest.raises(NetWitnessValidationError):
+            client._build_query(criteria)
+
     def test_build_search_criteria_from_signatures(self):
         """Signatures are extracted into a NetWitnessSearchCriteria object."""
         config = create_test_config()

@@ -264,7 +264,15 @@ class NetWitnessClientAPI:
                 path = f"/api/injects/{inject_uuid}/{agent_uuid}/executable-payload"
                 conditions.append(f"url contains '{path}'")
 
-        match_clause = " || ".join(conditions) if conditions else "ip.src exists"
+        if not conditions:
+            raise NetWitnessValidationError(
+                "No usable NetWitness query filters could be derived from the "
+                "expectation signatures (at least one source/target IP, or a "
+                "parent_process_name that resolves to an inject path, is required). "
+                "Refusing to issue an unbounded 'ip.src exists' query over the whole "
+                "time window."
+            )
+        match_clause = " || ".join(conditions)
 
         end = datetime.now(timezone.utc)
         window = self.time_window + timedelta(seconds=extend_end_seconds)
@@ -323,7 +331,11 @@ class NetWitnessClientAPI:
             )
             return netwitness_response.results
 
-        except (NetWitnessAuthenticationError, NetWitnessAPIError):
+        except (
+            NetWitnessAuthenticationError,
+            NetWitnessAPIError,
+            NetWitnessValidationError,
+        ):
             raise
         except (ConnectionError, Timeout) as e:
             raise NetWitnessNetworkError(f"Network error during query: {e}") from e

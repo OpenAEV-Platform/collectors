@@ -71,7 +71,7 @@ class NetWitnessTraceService:
             raise NetWitnessValidationError("results must be a list")
 
         try:
-            valid_results = [r for r in results if r.is_valid and r.matched_alerts]
+            valid_results = self._filter_traceable_results(results)
 
             if not valid_results:
                 self.logger.info(
@@ -127,6 +127,40 @@ class NetWitnessTraceService:
             raise NetWitnessDataConversionError(
                 f"Unexpected error creating traces from results: {e}"
             ) from e
+
+    def _filter_traceable_results(
+        self, results: list[ExpectationResult]
+    ) -> list[ExpectationResult]:
+        """Return valid, matched results that carry an attached expectation.
+
+        ``_create_expectation_trace`` derives the Investigate link from the
+        expectation signatures, so a valid result without an attached
+        expectation is skipped (with a warning) rather than allowed to raise and
+        abort the whole trace batch.
+
+        Args:
+            results: Expectation processing results to filter.
+
+        Returns:
+            Results that are valid, have matched alerts, and carry an expectation.
+
+        """
+        traceable = [
+            r
+            for r in results
+            if r.is_valid and r.matched_alerts and r.expectation is not None
+        ]
+        skipped = [
+            r
+            for r in results
+            if r.is_valid and r.matched_alerts and r.expectation is None
+        ]
+        if skipped:
+            self.logger.warning(
+                f"{LOG_PREFIX} Skipped {len(skipped)} valid result(s) with matches "
+                f"but no attached expectation (cannot build a trace link without it)"
+            )
+        return traceable
 
     def _create_expectation_trace(
         self, result: ExpectationResult, expectation_id: str, collector_id: str

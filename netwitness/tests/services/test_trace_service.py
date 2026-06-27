@@ -96,6 +96,20 @@ class TestNetWitnessTraceService:
         )
         assert service.create_traces_from_results([invalid], "c") == []  # noqa: S101
 
+    def test_create_traces_skips_result_without_expectation(self):
+        """A valid match without an attached expectation is skipped, not fatal."""
+        service = NetWitnessTraceService(config=create_test_config())
+        result = ExpectationResult(
+            expectation_id="exp-3",
+            is_valid=True,
+            expectation=None,
+            matched_alerts=[{"source_ipv4_address": {"data": "1.2.3.4"}}],
+        )
+
+        traces = service.create_traces_from_results([result], "netwitness--collector")
+
+        assert traces == []  # noqa: S101
+
     def test_create_traces_console_url_used(self):
         """When console_url is configured it is used for the trace link."""
         config = create_test_config()
