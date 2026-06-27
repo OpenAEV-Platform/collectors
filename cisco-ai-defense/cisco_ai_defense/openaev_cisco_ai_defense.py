@@ -65,7 +65,7 @@ class OpenAEVCiscoAiDefense(CollectorDaemon):
         for expectation in expectations:
             inject_id = expectation.get("inject_expectation_inject")
             expectation_type = expectation.get("inject_expectation_type")
-            if expectation_type not in (DETECTION, PREVENTION):
+            if not inject_id or expectation_type not in (DETECTION, PREVENTION):
                 continue
             if inject_id not in verdicts:
                 attack = self._attack_for(expectation)
