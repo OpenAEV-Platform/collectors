@@ -32,7 +32,12 @@ class PrismaAirsClient:
         self.logger = logger
         self.session = requests.Session()
 
-    def scan(self, prompt: str, system_prompt: str = None) -> Verdict:
+    def scan(self, prompt: str, system_prompt: str | None = None) -> Verdict:
+        if not self.api_key or not self.profile_name:
+            raise ValueError(
+                "Prisma AIRS is not fully configured: both api_key and ai_profile "
+                "are required (set COLLECTOR_API_KEY and COLLECTOR_AI_PROFILE)."
+            )
         headers = {"x-pan-token": self.api_key, "Content-Type": "application/json"}
         body = {
             "tr_id": str(uuid.uuid4()),
@@ -40,14 +45,19 @@ class PrismaAirsClient:
             "contents": [{"prompt": prompt}],
         }
         resp = self.session.post(
-            f"{self.base_url}/v1/scan/sync/request", headers=headers, json=body, timeout=30
+            f"{self.base_url}/v1/scan/sync/request",
+            headers=headers,
+            json=body,
+            timeout=30,
         )
         resp.raise_for_status()
         data = resp.json()
         action = str(data.get("action", "")).lower()
         category = str(data.get("category", "")).lower()
         prompt_detected = data.get("prompt_detected") or {}
-        detected = category == "malicious" or any(bool(v) for v in prompt_detected.values())
+        detected = category == "malicious" or any(
+            bool(v) for v in prompt_detected.values()
+        )
         flagged = detected or action == "block"
         blocked = action == "block"
         detail = ", ".join(k for k, v in prompt_detected.items() if v) or (
