@@ -518,7 +518,9 @@ class LogRhythmExpectationService:
                         self.logger.error(
                             f"{LOG_PREFIX} Error during matching for data item {i + 1}: {e}"
                         )
-                        raise LogRhythmNoMatchingAlertsError() from e
+                        raise LogRhythmMatchingError(
+                            f"Error matching data item {i + 1}: {e}"
+                        ) from e
                 else:
                     self.logger.debug(
                         f"{LOG_PREFIX} Data item {i + 1} has no available signatures to match against"

@@ -312,6 +312,12 @@ class LogRhythmClientAPI:
         if url_values:
             filter_items.append(self._build_filter_item(URL_FILTER_TYPE, url_values))
 
+        # The expectation start_date/end_date carried on search_criteria are
+        # intentionally not used to bound the query. Like the sibling SIEM
+        # collectors (e.g. splunk-es), LogRhythm searches a relative window
+        # (time_window, widened by extend_end_seconds on retries) so that
+        # late-ingested events are still captured. Switching to absolute
+        # expectation bounds should be a fleet-wide change, not a one-off here.
         window_seconds = int(self.time_window.total_seconds()) + extend_end_seconds
         minutes = max(1, window_seconds // 60)
 
