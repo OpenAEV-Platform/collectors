@@ -1,0 +1,23 @@
+openaev:
+  url: "http://change.me"
+  token: "ChangeMe"
+# tenant_id: "ChangeMe"
+
+collector:
+  id: "ChangeMe"
+  name: "Elastic Security"
+  period: 'PT1M'
+  log_level: "error"
+
+elastic:
+  base_url: "https://elastic.company.com:9200"
+  # Authentication: provide an API key (preferred) OR a username/password pair.
+  # api_key: "ChangeMe"
+  username: "ChangeMe"
+  password: "ChangeMe"
+  alerts_index: ".alerts-security.alerts-*"
+  # kibana_url: "https://kibana.company.com:5601"
+  verify_ssl: true
+  time_window: "PT1H"
+  offset: "PT30S"
+  max_retry: 3

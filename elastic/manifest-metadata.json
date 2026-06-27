@@ -1,0 +1,18 @@
+{
+  "title": "Elastic Security",
+  "slug": "openaev_elastic",
+  "description": "Collect responses from Elastic Security",
+  "short_description": "Collect responses from Elastic Security",
+  "use_cases": ["Security response"],
+  "verified": false,
+  "last_verified_date": "",
+  "playbook_supported": false,
+  "max_confidence_level": 80,
+  "support_version": "",
+  "subscription_link": "https://www.elastic.co/security",
+  "source_code": "",
+  "manager_supported": true,
+  "container_version": "rolling",
+  "container_image": "openaev/collector-elastic",
+  "container_type": "COLLECTOR"
+}
