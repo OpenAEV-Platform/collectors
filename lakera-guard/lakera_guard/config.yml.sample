@@ -1,0 +1,15 @@
+openaev:
+  url: 'http://localhost:3001'
+  token: 'ChangeMe'
+# tenant_id: 'ChangeMe'
+
+collector:
+  id: 'ChangeMe'   # unique collector identifier
+  name: 'Lakera Guard'
+  platform: 'LLM_FIREWALL'
+  period: 'PT120S'
+  log_level: 'error'
+  base_url: 'https://api.lakera.ai/v2'
+  api_key: 'ChangeMe'
+  blocking_policy: true   # set false for detect/monitor-only Lakera policies
+# project_id: 'project-XXXX'

@@ -8,13 +8,13 @@ A Splunk Enterprise Security (ES) integration for OpenAEV that validates securit
 
 This collector validates OpenAEV expectations by querying your Splunk ES environment for matching security alerts via the Splunk REST API. When OpenAEV runs security exercises, this collector automatically checks if the expected security threats were actually detected in your SIEM, providing visibility into your detection capabilities.
 
-The collector uses Splunk's notable events and security alerts to validate detection expectations, with support for IP-based matching and parent process tracking through URL path analysis.
+The collector uses Splunk's notable events and security alerts to validate detection expectations, with support for IP-based matching, implant URL/process name tracking, and parent process detection.
 
 ## Features
 
 - **Detection Validation**: Queries Splunk ES notable events to verify security detections
 - **IP-based Matching**: Supports both source and destination IPv4/IPv6 address matching
-- **Parent Process Tracking**: Extracts and matches parent process names from URL paths
+- **Implant Detection**: Matches implant callback URL paths and process names (`{implant_urls}`, `{implant_names}`) including `parent_process_name`
 - **Retry Mechanism**: Built-in retry logic with configurable delays to handle alert ingestion latency
 - **Trace Generation**: Creates detailed traces with links back to Splunk ES search results
 - **Flexible Configuration**: Support for YAML, environment variables, and multiple deployment scenarios
@@ -89,6 +89,44 @@ Below are the parameters you'll need to set for the collector:
 | Time Window  | splunk_es.time_window  | `SPLUNKES_TIME_WINDOW`      | PT1H                    | No        | Default search time window when no date signatures are provided (ISO 8601 format)       |
 | Offset       | splunk_es.offset       | `SPLUNKES_OFFSET`           | PT30S                   | No        | Delay between retry attempts to account for alert ingestion latency (ISO 8601 format)   |
 | Max Retry    | splunk_es.max_retry    | `SPLUNKES_MAX_RETRY`        | 3                       | No        | Maximum number of retry attempts after the initial API call fails or returns no results |
+| Query        | splunk_es.query_template | `SPLUNKES_QUERY_TEMPLATE`   | *(see below)*           | No        | Custom SPL query template with placeholders (leave empty for default)                   |
+
+### Query Customization
+
+The `SPLUNKES_QUERY_TEMPLATE` field allows you to customize the SPL query used to fetch security alerts from Splunk ES. The query supports **placeholders** that are resolved at runtime:
+
+| Placeholder | Description | Example resolved value |
+|---|---|---|
+| `{alerts_index}` | The configured Splunk index (`SPLUNKES_ALERTS_INDEX`) | `main` |
+| `{source_ips}` | Source IP values quoted for Splunk IN operator | `"10.0.0.1","10.0.0.2"` |
+| `{target_ips}` | Target IP values quoted for Splunk IN operator | `"192.168.1.1"` |
+| `{implant_urls}` | Implant callback URL paths quoted for Splunk IN operator (`*` if none) | `"/oaev-implant-a1b2c3d4-agent-e5f6a7b8/callback"` |
+| `{implant_names}` | Implant process names quoted for Splunk IN operator (`*` if none) | `"oaev-implant-a1b2c3d4-agent-e5f6a7b8"` |
+| `{start_date}` | Start date from signatures, or relative time fallback | `2026-06-12T08:00:00Z` or `-3600s` |
+| `{end_date}` | End date from signatures, or `now` fallback | `2026-06-12T09:00:00Z` or `now` |
+| `{process_conditions}` | Legacy: auto-generated URL path / process filter | `(url_path=*uuid* ...)` |
+| `{ip_conditions}` | Legacy: auto-generated IP filter (source + destination) | `(src_ip=10.0.0.1 OR src=10.0.0.1 ...)` |
+| `{time_window}` | Legacy: computed earliest time in seconds | `3600` |
+
+**Default query template:**
+```spl
+index={alerts_index} (src_ip IN ({source_ips}) OR src IN ({source_ips}) OR source_ip IN ({source_ips}) OR client_ip IN ({source_ips})) (dst_ip IN ({target_ips}) OR dest IN ({target_ips}) OR dest_ip IN ({target_ips}) OR destination_ip IN ({target_ips}) OR server_ip IN ({target_ips})) (url_path IN ({implant_urls}) OR url IN ({implant_urls}) OR path IN ({implant_urls}) OR query IN ({implant_urls}) OR process_name IN ({implant_names}) OR parent_process_name IN ({implant_names})) earliest={start_date} latest={end_date} | table _time, src_ip, src, source_ip, client_ip, dst_ip, dest, dest_ip, destination_ip, server_ip, signature, rule_name, event_type, severity, url_path, url, path, query, process_name, parent_process_name, _raw | sort -_time
+```
+
+> ⚠️ **Important**: The query **must** include `| table _time` for proper alert parsing. Required fields for detection matching: `_time`, `src_ip`, `dst_ip`, `signature`, `rule_name`, `severity`.
+
+**Example — resolved query with real values:**
+
+Given an exercise with source IP `10.0.0.5`, target IP `192.168.1.100`, and an implant named `oaev-implant-a1b2c3d4-agent-e5f6a7b8`, the default template resolves to:
+
+```spl
+index=_notable (src_ip IN ("10.0.0.5") OR src IN ("10.0.0.5") OR source_ip IN ("10.0.0.5") OR client_ip IN ("10.0.0.5")) (dst_ip IN ("192.168.1.100") OR dest IN ("192.168.1.100") OR dest_ip IN ("192.168.1.100") OR destination_ip IN ("192.168.1.100") OR server_ip IN ("192.168.1.100")) (url_path IN ("/oaev-implant-a1b2c3d4-agent-e5f6a7b8/callback") OR url IN ("/oaev-implant-a1b2c3d4-agent-e5f6a7b8/callback") OR path IN ("/oaev-implant-a1b2c3d4-agent-e5f6a7b8/callback") OR query IN ("/oaev-implant-a1b2c3d4-agent-e5f6a7b8/callback") OR process_name IN ("oaev-implant-a1b2c3d4-agent-e5f6a7b8") OR parent_process_name IN ("oaev-implant-a1b2c3d4-agent-e5f6a7b8")) earliest=2026-06-12T08:00:00Z latest=2026-06-12T09:00:00Z | table _time, src_ip, src, source_ip, client_ip, dst_ip, dest, dest_ip, destination_ip, server_ip, signature, rule_name, event_type, severity, url_path, url, path, query, process_name, parent_process_name, _raw | sort -_time
+```
+
+**Example — adding a sourcetype filter:**
+```spl
+index={alerts_index} sourcetype=notable (src_ip IN ({source_ips}) OR src IN ({source_ips})) (dst_ip IN ({target_ips}) OR dest IN ({target_ips})) (url_path IN ({implant_urls}) OR process_name IN ({implant_names})) earliest={start_date} latest={end_date} | table _time, src_ip, src, source_ip, client_ip, dst_ip, dest, dest_ip, destination_ip, server_ip, signature, rule_name, event_type, severity, url_path, url, path, query, process_name, parent_process_name, _raw | sort -_time
+```
 
 ### Example Configuration Files
 

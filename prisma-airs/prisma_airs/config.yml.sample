@@ -1,0 +1,14 @@
+openaev:
+  url: 'http://localhost:3001'
+  token: 'ChangeMe'
+# tenant_id: 'ChangeMe'
+
+collector:
+  id: 'ChangeMe'
+  name: 'Palo Alto Prisma AIRS'
+  platform: 'LLM_FIREWALL'
+  period: 'PT120S'
+  log_level: 'error'
+  base_url: 'https://service.api.aisecurity.paloaltonetworks.com'
+  api_key: 'ChangeMe'
+  ai_profile: 'ChangeMe'
