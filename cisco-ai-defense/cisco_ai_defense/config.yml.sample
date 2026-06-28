@@ -1,0 +1,14 @@
+openaev:
+  url: 'http://localhost:3001'
+  token: 'ChangeMe'
+  # tenant_id: 'ChangeMe'
+
+collector:
+  id: 'ChangeMe'   # unique collector identifier (string; e.g. openaev_cisco_ai_defense)
+  name: 'Cisco AI Defense'
+  platform: 'LLM_FIREWALL'
+  period: 'PT120S'
+  log_level: 'error'
+  base_url: 'ChangeMe'   # Cisco AI Defense inspection API base URL (region/tenant specific)
+  api_key: 'ChangeMe'
+  auth_header: 'X-Cisco-AI-Defense-Api-Key'
