@@ -18,6 +18,7 @@ from ..collector.models import ExpectationResult, ExpectationTrace
 from ..models.configs.config_loader import ConfigLoader
 from .client_api import ElasticClientAPI
 from .exception import ElasticDataConversionError, ElasticValidationError
+from .utils.url import redact_userinfo
 
 LOG_PREFIX = "[ElasticTraceService]"
 
@@ -267,13 +268,13 @@ class ElasticTraceService:
 
         # Always rebuild from scheme/host(/port) only, dropping any userinfo:
         # credentials in base_url (https://user:pass@host) must never leak into
-        # a stored trace link or into the warning logged below.
+        # a stored trace link or into the warning logged below. The no-port
+        # fallback reuses the shared redact_userinfo helper so the credential
+        # stripping is defined in exactly one place (see services/utils/url.py).
         if parsed.port is not None and host:
             return urlunparse(parsed._replace(netloc=f"{host}:5601")).rstrip("/")
 
-        sanitized = (
-            urlunparse(parsed._replace(netloc=host)).rstrip("/") if host else base_url
-        )
+        sanitized = redact_userinfo(base_url).rstrip("/")
         self.logger.warning(
             f"{LOG_PREFIX} Cannot derive a Kibana base URL from '{sanitized}': "
             "no explicit port to rewrite to 5601. Set ELASTIC_KIBANA_URL for "

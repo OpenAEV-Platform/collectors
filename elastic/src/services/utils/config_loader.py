@@ -4,6 +4,7 @@ import logging
 
 from pydantic import ValidationError
 from src.models import ConfigLoader
+from src.services.utils.url import redact_userinfo
 
 LOG_PREFIX = "[CollectorConfig]"
 
@@ -60,7 +61,8 @@ class ElasticConfig:
             )
             self.logger.debug(f"{LOG_PREFIX} OpenAEV URL: {load_settings.openaev.url}")
             self.logger.debug(
-                f"{LOG_PREFIX} Elastic Security base URL: {load_settings.elastic.base_url}"
+                f"{LOG_PREFIX} Elastic Security base URL: "
+                f"{redact_userinfo(str(load_settings.elastic.base_url))}"
             )
 
             return load_settings
