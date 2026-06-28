@@ -1,0 +1,18 @@
+{
+  "title": "MITRE ATLAS",
+  "slug": "openaev_mitre_atlas",
+  "description": "Collect MITRE ATLAS (Adversarial Threat Landscape for AI Systems) tactics and techniques library",
+  "short_description": "Collect MITRE ATLAS AI adversarial tactics and techniques",
+  "use_cases": ["Data collection"],
+  "verified": true,
+  "last_verified_date": "",
+  "playbook_supported": false,
+  "max_confidence_level": 80,
+  "support_version": "",
+  "subscription_link": "https://atlas.mitre.org/",
+  "source_code": "",
+  "manager_supported": true,
+  "container_version": "rolling",
+  "container_image": "openaev/collector-mitre-atlas",
+  "container_type": "COLLECTOR"
+}
