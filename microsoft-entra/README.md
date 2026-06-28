@@ -1,135 +1,174 @@
 # OpenAEV Microsoft Entra Collector
 
-Table of Contents
+The Microsoft Entra collector imports your [Microsoft Entra ID](https://www.microsoft.com/security/business/microsoft-entra)
+directory into OpenAEV as players and teams. On each run it queries Microsoft Graph for groups and their members and
+creates or updates the matching OpenAEV teams and players (users), so your simulation audience stays aligned with your
+directory. This collector imports identity data only and does not validate detection or prevention expectations.
+
+## Table of Contents
 
 - [OpenAEV Microsoft Entra Collector](#openaev-microsoft-entra-collector)
-    - [Configuration variables](#configuration-variables)
-        - [OpenAEV environment variables](#openaev-environment-variables)
-        - [Base collector environment variables](#base-collector-environment-variables)
-        - [Collector extra parameters environment variables](#collector-extra-parameters-environment-variables)
-    - [Deployment](#deployment)
-        - [Docker Deployment](#docker-deployment)
-        - [Manual Deployment](#manual-deployment)
-    - [Behavior](#behavior)
+  - [Table of Contents](#table-of-contents)
+  - [Introduction](#introduction)
+  - [Requirements](#requirements)
+  - [Configuration variables](#configuration-variables)
+    - [OpenAEV environment variables](#openaev-environment-variables)
+    - [Base collector environment variables](#base-collector-environment-variables)
+    - [Microsoft Entra collector environment variables](#microsoft-entra-collector-environment-variables)
+  - [Deployment](#deployment)
+    - [Docker Deployment](#docker-deployment)
+    - [Manual Deployment](#manual-deployment)
+  - [Usage](#usage)
+  - [Behavior](#behavior)
+  - [Required permissions and API endpoints](#required-permissions-and-api-endpoints)
+  - [Debugging](#debugging)
+  - [Additional information](#additional-information)
 
+## Introduction
 
-## Required API Permissions
+OpenAEV (Breach and Attack Simulation) runs social-engineering and awareness simulations against players, who can be
+organized into teams. To build that audience, OpenAEV needs to know your people and their group memberships. This
+collector authenticates to Microsoft Entra ID with an application (client credentials), calls the Microsoft Graph API to
+read groups and their members, and registers them in OpenAEV as teams and players (users). It performs a full directory
+synchronization on every run: teams and players are upserted (created or updated) so existing records are kept current.
 
-The Microsoft Entra collector requires:
-- Application with delegated permissions for directory read access (e.g., Directory.Read.All).
+## Requirements
 
-See [Microsoft Graph permissions reference](https://learn.microsoft.com/en-us/graph/permissions-reference).
+- OpenAEV Platform >= 1.19.0
+- A Microsoft Entra ID tenant
+- A Microsoft Entra ID application registration (client ID + client secret) granted the `Directory.Read.All` application
+  permission (with admin consent)
+- For a manual (non-Docker) deployment: Python >= 3.11 and [Poetry](https://python-poetry.org/) >= 2.1
 
 ## Configuration variables
 
-There are a number of configuration options, which are set either in `docker-compose.yml` (for Docker) or
-in `config.yml` (for manual deployment).
+The collector is configured either through environment variables (recommended, read from `docker-compose.yml` / the
+`.env` file for a Docker deployment) or through a `config.yml` file (for a manual deployment). Copy the provided
+`.env.sample` / `config.yml.sample` and fill in the values flagged with `ChangeMe`.
 
 ### OpenAEV environment variables
 
-Below are the parameters you'll need to set for OpenAEV:
-
-| Parameter         | config.yml | Docker environment variable | Mandatory | Description                                          |
-|-------------------|------------|-----------------------------|-----------|------------------------------------------------------|
-| OpenAEV URL       | url        | `OPENAEV_URL`               | Yes       | The URL of the OpenAEV platform.                     |
-| OpenAEV Token     | token      | `OPENAEV_TOKEN`             | Yes       | The default admin token set in the OpenAEV platform. |
-| OpenAEV Tenant ID | tenant_id  | `OPENAEV_TENANT_ID`         | No        | Identifier of the tenant within the OpenAEV platform. |
-
-> ⚠️ Warning ⚠️
->
-> The `tenant_id` parameter is a new configuration option. A period of backward compatibility is ensured: if this key is not defined,
-> existing configurations will not be affected, and the default value will be `None`. However, if a value is provided, it will be
-> validated by Pydantic and must conform to a valid UUID format, otherwise, a validation error will be returned.
+| Parameter         | config.yml          | Docker environment variable | Mandatory | Description                                                                         |
+|-------------------|---------------------|-----------------------------|-----------|-------------------------------------------------------------------------------------|
+| OpenAEV URL       | `openaev.url`       | `OPENAEV_URL`               | Yes       | The URL of the OpenAEV platform. Must be reachable from where the collector runs.   |
+| OpenAEV Token     | `openaev.token`     | `OPENAEV_TOKEN`             | Yes       | The administrator token of the OpenAEV platform.                                    |
+| OpenAEV Tenant ID | `openaev.tenant_id` | `OPENAEV_TENANT_ID`         | No        | Tenant identifier for multi-tenant deployments. When set, it must be a valid UUID.  |
 
 ### Base collector environment variables
 
-Below are the parameters you'll need to set for running the collector properly:
+| Parameter        | config.yml            | Docker environment variable | Default          | Mandatory | Description                                                                  |
+|------------------|-----------------------|-----------------------------|------------------|-----------|------------------------------------------------------------------------------|
+| Collector ID     | `collector.id`        | `COLLECTOR_ID`              | /                | Yes       | A unique `UUIDv4` identifier for this collector instance.                     |
+| Collector Name   | `collector.name`      | `COLLECTOR_NAME`            | Microsoft Entra  | No        | The name of the collector as shown in OpenAEV.                                |
+| Collector Period | `collector.period`    | `COLLECTOR_PERIOD`          | PT1H             | No        | Interval between two runs, as an ISO 8601 duration (e.g. `PT1H` = 1 hour).    |
+| Log Level        | `collector.log_level` | `COLLECTOR_LOG_LEVEL`       | error            | No        | Verbosity of the logs. One of `debug`, `info`, `warn`, `error`.              |
 
-| Parameter        | config.yml          | Docker environment variable  | Default         | Mandatory | Description                                                                            |
-|------------------|---------------------|------------------------------|-----------------|-----------|----------------------------------------------------------------------------------------|
-| Collector ID     | collector.id        | `COLLECTOR_ID`               |                 | Yes       | A unique `UUIDv4` identifier for this collector instance.                              |
-| Collector Name   | collector.name      | `COLLECTOR_NAME`             | Microsoft Entra | No        | Name of the collector.                                                                 |
-| Collector Period | collector.period    | `COLLECTOR_PERIOD`           | PT1H            | No        | The time interval at which your collector will run (ISO 8601 period expression, e.g. 'PT1M': 1 minute).                     |
-| Log Level        | collector.log_level | `COLLECTOR_LOG_LEVEL`        | error           | No        | Determines the verbosity of the logs. Options are `debug`, `info`, `warn`, or `error`. |
+### Microsoft Entra collector environment variables
 
-### Collector extra parameters environment variables
-
-Below are the parameters you'll need to set for the collector:
-
-| Parameter                 | config.yml                              | Docker environment variable               | Default | Mandatory | Description                               |
-|---------------------------|-----------------------------------------|-------------------------------------------|---------|-----------|-------------------------------------------|
-| Application Tenant ID     | collector.microsoft_entra_tenant_id     | `COLLECTOR_MICROSOFT_ENTRA_TENANT_ID`     |         | Yes       |                                           |
-| Application Client ID     | collector.microsoft_entra_client_id     | `COLLECTOR_MICROSOFT_ENTRA_CLIENT_ID`     |         | Yes       |                                           |
-| Application Client Secret | collector.microsoft_entra_client_secret | `COLLECTOR_MICROSOFT_ENTRA_CLIENT_SECRET` |         | Yes       |                                           |
-| Include external user     | collector.include_external              | `COLLECTOR_INCLUDE_EXTERNAL`              | False   | No        | Include user with #EXT# in principal name |
-
-## API Permissions and Endpoints Used
-
-- **API Permissions Required:** Directory read access (e.g., `Directory.Read.All`)
-  - **Type:** Application with delegated permissions
-- **API Endpoints Used:**
-  - `GET /users`
-  - `GET /groups`
-- **Reference:** [Microsoft Graph permissions reference](https://learn.microsoft.com/en-us/graph/permissions-reference)
-
-> **Warning** _(as of April 14, 2026)_: The required permissions and endpoints listed above are based on the current code and documentation. Microsoft may change API requirements or endpoints at any time. **Always check the [official documentation](https://learn.microsoft.com/en-us/graph/permissions-reference) for the latest requirements before deploying.**
+| Parameter           | config.yml                             | Docker environment variable              | Default | Mandatory | Description                                                                              |
+|---------------------|----------------------------------------|------------------------------------------|---------|-----------|-----------------------------------------------------------------------------------------|
+| Entra Tenant ID     | `collector.microsoft_entra_tenant_id`     | `COLLECTOR_MICROSOFT_ENTRA_TENANT_ID`     | /       | Yes       | The Microsoft Entra ID (Azure AD) tenant ID used for authentication.                     |
+| Entra Client ID     | `collector.microsoft_entra_client_id`     | `COLLECTOR_MICROSOFT_ENTRA_CLIENT_ID`     | /       | Yes       | The application (client) ID of the Entra ID app registration.                             |
+| Entra Client Secret | `collector.microsoft_entra_client_secret` | `COLLECTOR_MICROSOFT_ENTRA_CLIENT_SECRET` | /       | Yes       | The client secret of the Entra ID app registration.                                      |
+| Include External    | `collector.include_external`              | `COLLECTOR_INCLUDE_EXTERNAL`              | false   | No        | Whether guest users (those with `#EXT#` in their user principal name) are imported.       |
 
 ## Deployment
 
 ### Docker Deployment
 
-Build a Docker Image using the provided `Dockerfile`.
-
-Example:
+Build the Docker image (or use the published `openaev/collector-microsoft-entra` image):
 
 ```shell
-# Replace the IMAGE NAME with the appropriate value
-docker build . -t [IMAGE NAME]
+docker build . -t openaev/collector-microsoft-entra:latest
 ```
 
-Make sure to replace the environment variables in `docker-compose.yml` with the appropriate configurations for your
-environment. Then, start the docker container with the provided docker-compose.yml
+Create a `.env` file from `.env.sample` and fill in your values, then start the collector with the provided
+`docker-compose.yml` (which reads those variables):
 
 ```shell
 docker compose up -d
-# -d for detached
 ```
 
 ### Manual Deployment
 
-Create a file `config.yml` based on the provided `config.yml.sample`.
+Create a `config.yml` file from `config.yml.sample` and fill in your values, then install and run the collector:
 
-Replace the configuration variables with the appropriate configurations for
-you environment.
-
-Install the environment:
-> [!NOTE]
-> For Windows hosts: as of writing, the [msgraph-python-sdk has the following note](https://github.com/microsoftgraph/msgraph-sdk-python/blob/65d88850202e9ea75477583e76e75dfbf6d75859/README.md#1-installation):
-> > * The Microsoft Graph SDK for Python is a fairly large package. It may take a few minutes for the initial installation to complete.
-> > * Enable long paths in your environment if you receive a Could not install packages due to an OSError. For details, see [Enable Long Paths in Windows 10, Version 1607, and Later](https://learn.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation?tabs=powershell#enable-long-paths-in-windows-10-version-1607-and-later).
-> 
-> Follow these instructions if not already enabled on your system.
-
-**Production**:
 ```shell
-# production environment
 poetry install --extras prod
-```
-
-**Development** (note that you should also clone the [pyoaev](OpenAEV-Platform/client-python) repository [according to
-these instructions](../README.md#simultaneous-development-on-pyoaev-and-a-collector))
-```shell
-# development environment
-poetry install --extras dev
-```
-
-Then, start the collector:
-
-```shell
 poetry run python -m microsoft_entra.openaev_microsoft_entra
 ```
 
+> For local development against a checkout of [client-python](https://github.com/OpenAEV-Platform/client-python)
+> (cloned next to this repository), use `poetry install --extras dev` instead.
+
+## Usage
+
+Once started, the collector registers itself in OpenAEV and then runs automatically every `COLLECTOR_PERIOD`. No manual
+interaction is required: on each run it performs a full directory synchronization of your Microsoft Entra ID groups and
+members into OpenAEV teams and players. Because the period defaults to one hour (`PT1H`), directory changes are reflected
+at the next scheduled run.
+
 ## Behavior
 
-This collector retrieves your users and teams from your Microsoft Entra instance and import them into your OpenAEV
-instance.
+```mermaid
+flowchart LR
+    subgraph Microsoft Graph
+        T[Entra ID token endpoint]
+        G[groups]
+        M[group members]
+    end
+    C(Microsoft Entra collector)
+    subgraph OpenAEV
+        P[Players]
+        TE[Teams]
+    end
+    C -->|client credentials| T
+    C -->|list groups| G
+    G -->|groups| C
+    C -->|list members per group| M
+    M -->|users| C
+    C -->|upsert teams| TE
+    C -->|upsert players + tags| P
+```
+
+On each run, the collector:
+
+1. Authenticates to Microsoft Entra ID with the application client credentials (`ClientSecretCredential`) and builds a
+   Microsoft Graph client scoped to `https://graph.microsoft.com/.default`.
+2. Lists all groups (`/groups`, paginated) and upserts each as an OpenAEV team.
+3. For each group, lists its members (`/groups/{id}/members`, paginated) and keeps only user objects
+   (`#microsoft.graph.user`) that have a mail address.
+4. Applies the `include_external` toggle: guest users (those with `#EXT#` in their user principal name) are imported only
+   when `include_external` is `true`.
+5. Upserts each retained user as an OpenAEV player (email, first name, last name) attached to its team, and attaches tags
+   derived from the directory data (source, user type internal/external, department and job title).
+
+The synchronization is incremental from the platform's point of view: teams and players are created or updated
+(upserted), so a record seen in a previous run is refreshed rather than duplicated.
+
+## Required permissions and API endpoints
+
+- Authentication: Microsoft Entra ID application (client credentials) - tenant ID, application (client) ID and client
+  secret.
+- Required Microsoft Graph application permission (admin consent required): `Directory.Read.All`, which allows reading
+  groups, group members and user profiles.
+- API endpoints used:
+  - `POST https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token` (OAuth2 client-credentials authentication)
+  - `GET /groups` (list groups)
+  - `GET /groups/{id}/members` (list group members)
+- Reference: [Microsoft Graph - List groups](https://learn.microsoft.com/en-us/graph/api/group-list)
+
+## Debugging
+
+Set `COLLECTOR_LOG_LEVEL=debug` to get verbose logs, including each team and player upsert. Common issues:
+
+- Authentication failures: confirm the tenant ID, client ID and client secret, and that the secret has not expired.
+- No players imported: confirm that admin consent was granted for `Directory.Read.All`, and remember that only members
+  of a group are imported. Guest users are skipped unless `include_external` is set to `true`.
+
+## Additional information
+
+- The collector performs a full directory synchronization on every run; it does not delete OpenAEV teams or players when
+  a group or user disappears from Microsoft Entra ID.
+- The required Microsoft Graph permissions and endpoints reflect the current implementation. Microsoft may change its
+  API over time, so always confirm against the official documentation before deploying.

@@ -5,6 +5,10 @@ openaev:
 
 collector:
   id: "Palo Alto Cortex XDR"
+  name: 'Palo Alto Cortex XDR'
+  platform: 'EDR'
+  period: 'PT2M'
+  log_level: 'error'
 
 palo_alto_cortex_xdr:
   fqdn: "ChangeMe"

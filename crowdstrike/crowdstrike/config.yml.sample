@@ -6,9 +6,9 @@ openaev:
 collector:
   id: 'ChangeMe'
   name: 'CrowdStrike Endpoint Security'
+  platform: 'EDR'
   period: 'PT1M'
   log_level: 'error'
-  platform: 'EDR'
 
 crowdstrike:
   api_base_url: 'https://api.us-2.crowdstrike.com'
