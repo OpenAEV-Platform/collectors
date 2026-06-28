@@ -46,6 +46,22 @@ def test_scan_rejects_base_url_without_valid_scheme(bad_base_url):
         client.scan("payload")
 
 
+@pytest.mark.parametrize(
+    "bad_base_url",
+    [
+        "https://example.test/api",
+        "https://example.test/api/v1/inspect",
+        "https://example.test/api?x=1",
+        "https://example.test?x=1",
+        "https://example.test/#frag",
+    ],
+)
+def test_scan_rejects_base_url_with_path_query_or_fragment(bad_base_url):
+    client = _build_client(cisco_base_url=bad_base_url)
+    with pytest.raises(ValueError, match="base_url"):
+        client.scan("payload")
+
+
 @pytest.mark.parametrize("missing_api_key", [None, ""])
 def test_scan_requires_api_key(missing_api_key):
     client = _build_client(cisco_api_key=missing_api_key)

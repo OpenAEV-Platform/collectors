@@ -45,6 +45,19 @@ class CiscoAiDefenseClient:
                 "e.g. https://<region>.api.inspect.aidefense.security.cisco.com; "
                 f"got {self.base_url!r}. Set collector.base_url (COLLECTOR_BASE_URL) accordingly."
             )
+        if (
+            parsed.path not in ("", "/")
+            or parsed.params
+            or parsed.query
+            or parsed.fragment
+        ):
+            raise ValueError(
+                "Cisco AI Defense base_url must be the scheme + host only, with no path, "
+                "query, or fragment, e.g. "
+                "https://<region>.api.inspect.aidefense.security.cisco.com; "
+                f"got {self.base_url!r}. The collector appends /api/v1/inspect/prompt itself, "
+                "so set collector.base_url (COLLECTOR_BASE_URL) to the host only."
+            )
         if not self.api_key:
             raise ValueError(
                 "Cisco AI Defense api_key is not configured; set collector.api_key "
