@@ -5,9 +5,10 @@ openaev:
 
 collector:
   id: "ChangeMe"
-  name: "IBM QRadar"
+  name: 'IBM QRadar'
+  platform: 'SIEM'
   period: 'PT1M'
-  log_level: "error"
+  log_level: 'error'
 
 qradar:
   base_url: "https://qradar.company.com"

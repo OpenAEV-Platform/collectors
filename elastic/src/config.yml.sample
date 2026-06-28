@@ -5,9 +5,10 @@ openaev:
 
 collector:
   id: "ChangeMe"
-  name: "Elastic Security"
+  name: 'Elastic Security'
+  platform: 'SIEM'
   period: 'PT1M'
-  log_level: "error"
+  log_level: 'error'
 
 elastic:
   base_url: "https://elastic.company.com:9200"

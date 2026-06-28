@@ -2,8 +2,8 @@ openaev:
   url: 'http://localhost:3001'
   token: 'ChangeMe'
 # tenant_id: 'ChangeMe'
-  url_prefix: False
-  import_only_native: "https://raw.githubusercontent.com/OpenAEV-Platform/payloads/refs/heads/main/"
+  url_prefix: 'https://raw.githubusercontent.com/OpenAEV-Platform/payloads/refs/heads/main/'
+  import_only_native: false
 
 collector:
   id: 'ChangeMe'

@@ -5,6 +5,10 @@ openaev:
 
 collector:
   id: "ChangeMe"
+  name: 'SentinelOne'
+  platform: 'EDR'
+  period: 'PT2M'
+  log_level: 'error'
 
 sentinelone:
   base_url: "http://change.me"

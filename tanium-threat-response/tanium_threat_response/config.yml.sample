@@ -5,6 +5,7 @@ openaev:
 collector:
   id: 'ChangeMe'
   name: 'Tanium Threat Response'
+  platform: 'EDR'
   period: 'PT1M'
   log_level: 'error'
   tanium_url: ''

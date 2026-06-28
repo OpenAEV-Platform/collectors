@@ -1,272 +1,180 @@
-# OpenAEV Amazon Web Services
+# OpenAEV Amazon Web Services Resources Collector
 
-## Description
+The Amazon Web Services Resources collector imports your [Amazon EC2](https://aws.amazon.com/ec2/) instances into OpenAEV
+as agentless endpoints. On each run it lists the EC2 instances visible to the configured AWS credentials and creates or
+updates a matching OpenAEV asset (endpoint) for every instance, so your simulation scope stays aligned with your AWS
+inventory. This collector imports inventory only and does not validate detection or prevention expectations.
 
-This collector enables OpenAEV to import EC2 instances from AWS accounts as endpoints.
+## Table of Contents
 
-## Features
+- [OpenAEV Amazon Web Services Resources Collector](#openaev-amazon-web-services-resources-collector)
+  - [Table of Contents](#table-of-contents)
+  - [Introduction](#introduction)
+  - [Requirements](#requirements)
+  - [Configuration variables](#configuration-variables)
+    - [OpenAEV environment variables](#openaev-environment-variables)
+    - [Base collector environment variables](#base-collector-environment-variables)
+    - [Amazon Web Services collector environment variables](#amazon-web-services-collector-environment-variables)
+  - [Deployment](#deployment)
+    - [Docker Deployment](#docker-deployment)
+    - [Manual Deployment](#manual-deployment)
+  - [Usage](#usage)
+  - [Behavior](#behavior)
+  - [Required permissions and API endpoints](#required-permissions-and-api-endpoints)
+  - [Debugging](#debugging)
+  - [Additional information](#additional-information)
 
-- Collects EC2 instances from specified AWS regions or all available regions
-- Automatically identifies instance operating system (Windows/Linux)
-- Captures instance network configuration including private and public IPs
-- Supports AWS tags for asset categorization
-- Supports multiple authentication methods (IAM user, instance role, assume role)
-- Uses AWS EC2 API for instance discovery
+## Introduction
 
-
-## Required API Permissions
-
-The AWS Resources collector requires:
-- IAM user or role with the following permissions:
-  - ec2:DescribeInstances
-  - ec2:DescribeRegions
-  - ec2:DescribeInstanceTypes
-
-See [AWS EC2 IAM Policies](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/iam-policies-ec2-console.html).
+OpenAEV (Breach and Attack Simulation) executes injects (simulated attacks) against assets. To run those simulations
+against your cloud fleet, OpenAEV needs to know which machines exist. This collector connects to AWS using the EC2 API,
+enumerates the EC2 instances across the selected regions, and registers each one as an agentless endpoint in OpenAEV
+(name, hostname, platform, architecture, IP addresses, cloud metadata and tags). It performs a full inventory
+synchronization on every run: instances are upserted (created or updated) so existing assets are kept current.
 
 ## Requirements
 
-- AWS Account with appropriate permissions
-- Python 3.11 or higher
+- OpenAEV Platform >= 1.19.0
+- An AWS account with EC2 instances and a way to authenticate (IAM user access keys, an EC2 instance role, or an IAM
+  role to assume)
+- IAM permissions allowing `ec2:DescribeInstances` and `ec2:DescribeRegions` (plus `sts:AssumeRole` when using
+  AssumeRole)
+- For a manual (non-Docker) deployment: Python >= 3.11 and [Poetry](https://python-poetry.org/) >= 2.1
 
-## Configuration
+## Configuration variables
 
-### AWS Setup
+The collector is configured either through environment variables (recommended, read from `docker-compose.yml` / the
+`.env` file for a Docker deployment) or through a `config.yml` file (for a manual deployment). Copy the provided
+`.env.sample` / `config.yml.sample` and fill in the values flagged with `ChangeMe`.
 
-#### Option 1: Using IAM User Access Keys
+### OpenAEV environment variables
 
-1. **Create an IAM User:**
-   - Go to AWS Console → IAM → Users
-   - Click "Add users"
-   - Enter a username (e.g., "openaev-collector")
-   - Select "Programmatic access" for Access type
-   - Click "Next: Permissions"
+| Parameter         | config.yml          | Docker environment variable | Mandatory | Description                                                                         |
+|-------------------|---------------------|-----------------------------|-----------|-------------------------------------------------------------------------------------|
+| OpenAEV URL       | `openaev.url`       | `OPENAEV_URL`               | Yes       | The URL of the OpenAEV platform. Must be reachable from where the collector runs.   |
+| OpenAEV Token     | `openaev.token`     | `OPENAEV_TOKEN`             | Yes       | The administrator token of the OpenAEV platform.                                    |
+| OpenAEV Tenant ID | `openaev.tenant_id` | `OPENAEV_TENANT_ID`         | No        | Tenant identifier for multi-tenant deployments. When set, it must be a valid UUID.  |
 
-2. **Attach Permissions:**
-   - Select "Attach existing policies directly"
-   - Search for and select `AmazonEC2ReadOnlyAccess`
-   - Or create a custom policy with minimal permissions (see below)
-   - Click "Next: Tags" → "Next: Review" → "Create user"
+### Base collector environment variables
 
-3. **Save Access Keys:**
-   - Copy the Access Key ID
-   - Copy the Secret Access Key (won't be shown again)
+| Parameter        | config.yml            | Docker environment variable | Default              | Mandatory | Description                                                                  |
+|------------------|-----------------------|-----------------------------|----------------------|-----------|------------------------------------------------------------------------------|
+| Collector ID     | `collector.id`        | `COLLECTOR_ID`              | /                    | Yes       | A unique `UUIDv4` identifier for this collector instance.                     |
+| Collector Name   | `collector.name`      | `COLLECTOR_NAME`            | Amazon Web Services  | No        | The name of the collector as shown in OpenAEV.                                |
+| Collector Period | `collector.period`    | `COLLECTOR_PERIOD`          | PT1H                 | No        | Interval between two runs, as an ISO 8601 duration (e.g. `PT1H` = 1 hour).    |
+| Log Level        | `collector.log_level` | `COLLECTOR_LOG_LEVEL`       | error                | No        | Verbosity of the logs. One of `debug`, `info`, `warn`, `error`.              |
 
-#### Option 2: Using Instance Role (for EC2-hosted collector)
+### Amazon Web Services collector environment variables
 
-1. **Create an IAM Role:**
-   - Go to AWS Console → IAM → Roles
-   - Click "Create role"
-   - Select "AWS service" → "EC2"
-   - Attach `AmazonEC2ReadOnlyAccess` policy
-   - Name the role (e.g., "OpenAEVCollectorRole")
+| Parameter             | config.yml                     | Docker environment variable          | Default | Mandatory | Description                                                                                       |
+|-----------------------|--------------------------------|--------------------------------------|---------|-----------|--------------------------------------------------------------------------------------------------|
+| AWS Access Key ID     | `collector.aws_access_key_id`     | `COLLECTOR_AWS_ACCESS_KEY_ID`     | /       | No        | AWS access key ID. Optional if the collector uses an EC2 instance role or AssumeRole.             |
+| AWS Secret Access Key | `collector.aws_secret_access_key` | `COLLECTOR_AWS_SECRET_ACCESS_KEY` | /       | No        | AWS secret access key. Optional if the collector uses an EC2 instance role or AssumeRole.         |
+| AWS Session Token     | `collector.aws_session_token`     | `COLLECTOR_AWS_SESSION_TOKEN`     | /       | No        | AWS session token. Optional, used only for temporary credentials.                                |
+| AWS Assume Role ARN   | `collector.aws_assume_role_arn`   | `COLLECTOR_AWS_ASSUME_ROLE_ARN`   | /       | No        | ARN of an IAM role to assume after the initial authentication. Optional.                          |
+| AWS Regions           | `collector.aws_regions`           | `COLLECTOR_AWS_REGIONS`           | /       | No        | Comma-separated list of AWS regions to scan. Leave empty to auto-discover and scan all regions.   |
 
-2. **Attach Role to EC2 Instance:**
-   - Launch or modify your EC2 instance
-   - Attach the created IAM role
+## Deployment
 
-#### Option 3: Using AssumeRole for Cross-Account Access
+### Docker Deployment
 
-1. **Create a Role in Target Account:**
-   - Create an IAM role with EC2 read permissions
-   - Configure trust relationship to allow assuming from source account
+Build the Docker image (or use the published `openaev/collector-aws-resources` image):
 
-2. **Configure Collector:**
-   - Provide base credentials (IAM user or instance role)
-   - Specify the role ARN to assume
-
-### Minimal IAM Policy
-
-For security best practices, create a custom policy with only required permissions:
-
-```json
-{
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Effect": "Allow",
-            "Action": [
-                "ec2:DescribeInstances",
-                "ec2:DescribeRegions",
-                "ec2:DescribeInstanceTypes",
-                "ec2:DescribeInstanceStatus",
-                "ec2:DescribeNetworkInterfaces",
-                "ec2:DescribeTags"
-            ],
-            "Resource": "*"
-        }
-    ]
-}
+```shell
+docker build . -t openaev/collector-aws-resources:latest
 ```
 
-### OpenAEV Configuration
+Create a `.env` file from `.env.sample` and fill in your values, then start the collector with the provided
+`docker-compose.yml` (which reads those variables):
 
-Create or update `config.yml`:
-
-```yaml
-openaev:
-  url: 'http://your-openaev-url:3001'
-  token: 'your-openaev-token'
-# tenant_id: 'ChangeMe'
-
-collector:
-  id: 'openaev_aws_resources'
-  name: 'AWS Resources'
-  period: 'PT1H'  # Collection period in ISO 8601
-  log_level: 'error'
-  aws_access_key_id: 'your-access-key-id'  # Optional if using instance role
-  aws_secret_access_key: 'your-secret-access-key'  # Optional if using instance role
-  aws_session_token: ''  # Optional, for temporary credentials
-  aws_assume_role_arn: ''  # Optional, ARN of role to assume
-  aws_regions: 'us-east-1,eu-west-1'  # Comma-separated, leave empty for all regions
+```shell
+docker compose up -d
 ```
 
-## Installation
+### Manual Deployment
 
-### Using Docker
+Create a `config.yml` file from `config.yml.sample` and fill in your values, then install and run the collector:
 
-1. Build the Docker image:
-```bash
-docker build -t openaev-aws-resources-collector .
+```shell
+poetry install --extras prod
+poetry run python -m aws_resources.openaev_aws_resources
 ```
 
-2. Run with docker-compose:
-```bash
-docker-compose up -d
+> For local development against a checkout of [client-python](https://github.com/OpenAEV-Platform/client-python)
+> (cloned next to this repository), use `poetry install --extras dev` instead.
+
+## Usage
+
+Once started, the collector registers itself in OpenAEV and then runs automatically every `COLLECTOR_PERIOD`. No manual
+interaction is required: on each run it performs a full inventory synchronization of your EC2 instances into OpenAEV
+assets. Because the period defaults to one hour (`PT1H`), newly created or removed EC2 instances are reflected at the
+next scheduled run.
+
+## Behavior
+
+```mermaid
+flowchart LR
+    subgraph AWS
+        S[STS AssumeRole]
+        R[EC2 DescribeRegions]
+        I[EC2 DescribeInstances]
+    end
+    C(AWS Resources collector)
+    O[OpenAEV agentless endpoints]
+    C -->|authenticate / optional assume role| S
+    C -->|discover regions when none set| R
+    C -->|per region, paginated| I
+    I -->|EC2 instances| C
+    C -->|upsert assets + tags| O
 ```
 
-### Manual Installation
+On each run, the collector:
 
-1. Install dependencies:
-```bash
-pip install poetry
-poetry install
-```
+1. Initializes an AWS session from the provided access keys, falls back to the default credential chain (for example an
+   EC2 instance role) when no keys are set, and optionally assumes `aws_assume_role_arn` via STS.
+2. Determines the regions to scan: the configured `aws_regions` list, or every enabled region discovered through
+   `ec2:DescribeRegions` when the list is empty.
+3. Lists all EC2 instances per region using `ec2:DescribeInstances` (paginated), including stopped instances.
+4. Skips terminated instances and instances without any IP address.
+5. Derives the platform (`Windows` / `Linux`) and architecture (`x86_64` / `arm64` / `arm` / `x86`), and collects the
+   private and public IP addresses from the instance and its network interfaces.
+6. Upserts each instance as an OpenAEV agentless endpoint, using the AWS instance ID as the external reference and
+   setting the asset category to `HOST`, cloud provider `AWS`, cloud native type `ec2_instance` and the cloud region.
+7. Creates and attaches tags derived from the instance metadata (source, region, instance type, availability zone,
+   state and the instance's native AWS tags).
 
-2. Configure the collector by creating `config.yml` from `config.yml.sample`
+The synchronization is incremental from the platform's point of view: assets are created or updated (upserted), so an
+instance seen in a previous run is refreshed rather than duplicated.
 
-3. Run the collector:
-```bash
-poetry run python aws_resources/openaev_aws_resources.py
-```
+## Required permissions and API endpoints
 
-## Environment Variables
-
-All configuration can be provided via environment variables:
-
-- `OPENAEV_URL`: OpenAEV platform URL
-- `OPENAEV_TOKEN`: OpenAEV API token
-- `OPENAEV_TENANT_ID`: Identifier of the tenant within the OpenAEV platform
-- `COLLECTOR_ID`: Unique collector identifier
-- `COLLECTOR_NAME`: Display name for the collector
-- `COLLECTOR_PERIOD`: Collection interval as ISO 8601 period expression, e.g. PT1M: 1 minute
-- `COLLECTOR_LOG_LEVEL`: Logging level (debug, info, warn, error)
-- `COLLECTOR_AWS_ACCESS_KEY_ID`: AWS Access Key ID
-- `COLLECTOR_AWS_SECRET_ACCESS_KEY`: AWS Secret Access Key
-- `COLLECTOR_AWS_SESSION_TOKEN`: AWS Session Token (for temporary credentials)
-- `COLLECTOR_AWS_ASSUME_ROLE_ARN`: ARN of IAM role to assume
-- `COLLECTOR_AWS_REGIONS`: Comma-separated list of AWS regions
-
-> ⚠️ Warning ⚠️
->
-> The `tenant_id` parameter is a new configuration option. A period of backward compatibility is ensured: if this key is not defined,
-> existing configurations will not be affected, and the default value will be `None`. However, if a value is provided, it will be
-> validated by Pydantic and must conform to a valid UUID format, otherwise, a validation error will be returned.
-
-
-## API Permissions and Endpoints Used
-
-- **API Permissions Required:** IAM user or role with EC2 read permissions (see [AWS EC2 IAM Policies](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/iam-policies-ec2-console.html))
-- **API Endpoints Used:**
+- Authentication options (any one of):
+  - IAM user access keys (`aws_access_key_id` + `aws_secret_access_key`, optionally `aws_session_token`).
+  - An EC2 instance role / the default credential chain (leave the access keys empty).
+  - An IAM role to assume (`aws_assume_role_arn`), which additionally requires `sts:AssumeRole` on the caller and a
+    matching trust policy on the target role.
+- Required IAM permissions:
+  - `ec2:DescribeInstances` (list instances per region)
+  - `ec2:DescribeRegions` (only when `aws_regions` is empty and regions are auto-discovered)
+  - `sts:AssumeRole` (only when `aws_assume_role_arn` is set)
+- AWS API endpoints used:
   - `ec2:DescribeInstances`
   - `ec2:DescribeRegions`
-  - `ec2:DescribeInstanceTypes`
-  - `ec2:DescribeInstanceStatus`
-  - `ec2:DescribeNetworkInterfaces`
-  - `ec2:DescribeTags`
-- **Reference:** [AWS EC2 IAM Policies](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/iam-policies-ec2-console.html)
+  - `sts:AssumeRole`
+- Reference: [Amazon EC2 API - DescribeInstances](https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DescribeInstances.html)
 
-> **Warning** _(as of April 14, 2026)_: The required permissions and endpoints listed above are based on the current code and documentation. AWS may change API requirements or endpoints at any time. **Always check the [official documentation](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/iam-policies-ec2-console.html) for the latest requirements before deploying.**
+## Debugging
 
-## Data Collected
+Set `COLLECTOR_LOG_LEVEL=debug` to get verbose logs, including the AWS session initialization, the regions scanned, the
+number of instances found per region, and each endpoint upsert. Common issues:
 
-For each EC2 instance, the collector captures:
+- "No AWS credentials found": provide access keys, attach an instance role, or configure AssumeRole.
+- No instances imported: confirm the credentials can reach the expected regions, that the instances are not terminated,
+  and that they have at least one IP address (instances without IPs are skipped).
 
-- **Instance Name**: From Name tag or Instance ID as fallback
-- **Instance ID**: AWS instance identifier (external reference)
-- **Platform**: Operating system type (Windows/Linux)
-- **Architecture**: Based on instance architecture (x86_64/arm64/arm)
-- **IP Addresses**: Both private and public IPs from all network interfaces
-- **Instance Type**: EC2 instance type (e.g., t2.micro, m5.large)
-- **Region**: AWS region where instance is located
-- **Availability Zone**: Specific AZ within the region
-- **State**: Current instance state (running, stopped, etc.)
-- **Tags**: AWS tags for categorization
+## Additional information
 
-## Supported Regions
-
-The collector can work with:
-- Specific regions listed in configuration
-- All available regions (auto-discovery when no regions specified)
-- Common regions fallback if discovery fails
-
-## Authentication Priority
-
-The collector tries authentication methods in this order:
-1. Explicit credentials (access key + secret key)
-2. Temporary credentials (with session token)
-3. AssumeRole (if role ARN provided)
-4. Instance role (if running on EC2)
-5. Default credential chain
-
-## Troubleshooting
-
-### Authentication Issues
-
-If you encounter authentication errors:
-1. Verify AWS credentials are correct
-2. Check IAM permissions include EC2 read access
-3. For instance roles, ensure role is attached to the EC2 instance
-4. For AssumeRole, verify trust relationship is configured
-
-### Permission Issues
-
-If instances are not being discovered:
-1. Verify IAM user/role has `ec2:DescribeInstances` permission
-2. Check if region-specific permissions are needed
-3. Ensure credentials have access to the specified regions
-
-### Network Issues
-
-If unable to connect to AWS:
-1. Check internet connectivity
-2. Verify no proxy/firewall is blocking AWS endpoints
-3. For VPC endpoints, ensure proper routing is configured
-
-### No Instances Found
-
-If collector runs but finds no instances:
-1. Verify instances exist in the specified regions
-2. Check instance state (terminated instances are skipped)
-3. Ensure region names are spelled correctly
-4. Try without region filter to scan all regions
-
-## Performance Considerations
-
-- **Region Selection**: Specifying regions improves performance
-- **API Throttling**: AWS may throttle API calls for large deployments
-- **Pagination**: Collector handles pagination for large instance lists
-- **Collection Period**: Adjust based on instance change frequency
-
-## Security Best Practices
-
-1. **Use Minimal Permissions**: Only grant required EC2 read permissions
-2. **Rotate Access Keys**: Regularly rotate IAM access keys
-3. **Use Instance Roles**: When running on EC2, prefer instance roles
-4. **Enable CloudTrail**: Monitor API calls made by the collector
-5. **Restrict by Region**: Limit collector to required regions only
-6. **Use AssumeRole**: For cross-account access, use temporary credentials
-
-## Support
-
-For issues or questions, please open an issue in the OpenAEV GitHub repository.
+- The collector performs a full inventory synchronization on every run; it does not delete OpenAEV assets when an
+  instance disappears from AWS.
+- The required AWS permissions and endpoints reflect the current implementation. AWS may change its API over time, so
+  always confirm against the official documentation before deploying.

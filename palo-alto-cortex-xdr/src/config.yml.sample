@@ -1,13 +1,17 @@
 openaev:
   url: 'http://localhost:8081'
   token: "ChangeMe"
-  tenant_id: "ChangeMe"
+# tenant_id: "ChangeMe"
 
 collector:
-  id: "Palo Alto Cortex XDR"
+  id: "ChangeMe"
+  name: 'Palo Alto Cortex XDR'
+  platform: 'EDR'
+  period: 'PT2M'
+  log_level: 'error'
 
 palo_alto_cortex_xdr:
   fqdn: "ChangeMe"
   api_key: "ChangeMe"
-  api_key_id: 1
+  api_key_id: 1  # ChangeMe (numeric API Key ID)
   #api_key_type: "standard"

@@ -1,187 +1,175 @@
 # OpenAEV SentinelOne Collector
 
-A SentinelOne EDR integration for OpenAEV that validates security expectations by querying SentinelOne's Deep Visibility and Threats APIs.
+The SentinelOne collector validates OpenAEV detection and prevention expectations against
+[SentinelOne](https://www.sentinelone.com/), SentinelOne's autonomous endpoint detection and response (EDR/XDR)
+platform. After OpenAEV agents execute attacks, the collector polls the SentinelOne Threats API (and, optionally, Deep
+Visibility) and correlates the resulting threats with the related injects to confirm whether the activity was detected
+and/or prevented.
 
-**Note**: Requires access to a SentinelOne Management Console with appropriate API permissions.
+## Table of Contents
 
-**⚠️ Deep Visibility License Warning**: All static engine alerts rely on Deep Visibility, which is only compatible with Complete licenses. However, behavioral detection will be properly handled even with Core or Control licenses. The `enable_deep_visibility_search` configuration option (defaulted to False) allows you to enable this feature when you have the appropriate license.
+- [OpenAEV SentinelOne Collector](#openaev-sentinelone-collector)
+  - [Table of Contents](#table-of-contents)
+  - [Introduction](#introduction)
+  - [Requirements](#requirements)
+  - [Configuration variables](#configuration-variables)
+    - [OpenAEV environment variables](#openaev-environment-variables)
+    - [Base collector environment variables](#base-collector-environment-variables)
+    - [SentinelOne collector environment variables](#sentinelone-collector-environment-variables)
+  - [Deployment](#deployment)
+    - [Docker Deployment](#docker-deployment)
+    - [Manual Deployment](#manual-deployment)
+  - [Usage](#usage)
+  - [Behavior](#behavior)
+  - [Required permissions and API endpoints](#required-permissions-and-api-endpoints)
+  - [Debugging](#debugging)
+  - [Additional information](#additional-information)
 
-## Overview
+## Introduction
 
-This collector validates OpenAEV expectations by querying your SentinelOne environment for threat data via the SentinelOne API. When OpenAEV runs security exercises, this collector automatically checks if the expected security threats were detected in your EDR by matching threat information and associated events, providing visibility into your detection capabilities.
-
-The collector uses SentinelOne's Threats API to fetch threat data and correlates it with threat events to validate expectations.
-
-## Features
-
-- **Threat-Based Validation**: Queries SentinelOne Threats API to validate security expectations against detected threats
-- **Batch Processing**: Processes expectations in configurable batches for improved performance
-- **Event Correlation**: Correlates threat data with threat events to extract process execution details
-- **Trace Generation**: Creates detailed traces with links back to SentinelOne console
-- **Flexible Configuration**: Support for YAML, environment variables, and multiple deployment scenarios
-
-
-## Required API Permissions
-
-The SentinelOne collector requires:
-- API token with "Threats" and "Threat Events" permissions.
-  - See [SentinelOne API documentation](https://developer.sentinelone.com/reference).
+OpenAEV (Breach and Attack Simulation) raises "expectations" each time it executes an inject (a simulated attack) on an
+endpoint: a DETECTION expectation (the security product should raise an alert) and/or a PREVENTION expectation (the
+security product should block the action). This collector connects to the SentinelOne Management Console, registers a
+`SecurityPlatform` of type `EDR`, and periodically reconciles those expectations with the threats produced by
+SentinelOne, marking each expectation as detected/not detected and prevented/not prevented and attaching a trace that
+links back to the originating SentinelOne threat.
 
 ## Requirements
 
-- OpenAEV Platform
-- SentinelOne Management Console with API access
-- Python 3.12+ (for manual deployment)
-
-## Configuration
+- OpenAEV Platform >= 1.19.0
+- A SentinelOne Management Console with API access
+- A SentinelOne API token with the `Threats` and `Threat Events` permissions (Deep Visibility and a Complete license are
+  additionally required to validate static-engine detections)
+- For a manual (non-Docker) deployment: Python >= 3.11 and [Poetry](https://python-poetry.org/) >= 2.1
 
 ## Configuration variables
 
-There are a number of configuration options, which are set either in `docker-compose.yml` (for Docker) or
-in `config.yml` (for manual deployment).
-
-The collector supports multiple configuration sources in order of precedence:
-1. `.env` file (if present in src directory)
-2. YAML configuration file (`src/config.yml`, if present)
-3. Environment variables (fallback)
+The collector is configured either through environment variables (recommended, read from `docker-compose.yml` for a
+Docker deployment) or through a `config.yml` file (for a manual deployment). Copy the provided `src/.env.sample` /
+`src/config.yml.sample` and fill in the values flagged with `ChangeMe`.
 
 ### OpenAEV environment variables
 
-Below are the parameters you'll need to set for OpenAEV:
-
-| Parameter         | config.yml        | Docker environment variable | Mandatory | Description                                           |
-|-------------------|-------------------|-----------------------------|-----------|-------------------------------------------------------|
-| OpenAEV URL       | openaev.url       | `OPENAEV_URL`               | Yes       | The URL of the OpenAEV platform.                      |
-| OpenAEV Token     | openaev.token     | `OPENAEV_TOKEN`             | Yes       | The default admin token set in the OpenAEV platform.  |
-| OpenAEV Tenant ID | openaev.tenant_id | `OPENAEV_TENANT_ID`         | No        | Identifier of the tenant within the OpenAEV platform. |
-
-> ⚠️ Warning ⚠️
->
-> The `tenant_id` parameter is a new configuration option. A period of backward compatibility is ensured: if this key is not defined,
-> existing configurations will not be affected, and the default value will be `None`. However, if a value is provided, it will be
-> validated by Pydantic and must conform to a valid UUID format, otherwise, a validation error will be returned.
+| Parameter         | config.yml          | Docker environment variable | Mandatory | Description                                                                              |
+|-------------------|---------------------|-----------------------------|-----------|------------------------------------------------------------------------------------------|
+| OpenAEV URL       | `openaev.url`       | `OPENAEV_URL`               | Yes       | The URL of the OpenAEV platform. Must be reachable from where the collector runs.        |
+| OpenAEV Token     | `openaev.token`     | `OPENAEV_TOKEN`             | Yes       | The administrator token of the OpenAEV platform.                                         |
+| OpenAEV Tenant ID | `openaev.tenant_id` | `OPENAEV_TENANT_ID`         | No        | Tenant identifier for multi-tenant deployments. When set, it must be a valid UUID.       |
 
 ### Base collector environment variables
 
-Below are the parameters you'll need to set for running the collector properly:
+| Parameter        | config.yml            | Docker environment variable | Default     | Mandatory | Description                                                                                  |
+|------------------|-----------------------|-----------------------------|-------------|-----------|----------------------------------------------------------------------------------------------|
+| Collector ID     | `collector.id`        | `COLLECTOR_ID`              | /           | Yes       | A unique `UUIDv4` identifier for this collector instance.                                     |
+| Collector Name   | `collector.name`      | `COLLECTOR_NAME`            | SentinelOne | No        | The name of the collector as shown in OpenAEV.                                                |
+| Collector Period | `collector.period`    | `COLLECTOR_PERIOD`          | PT2M        | No        | Interval between two runs, as an ISO 8601 duration (e.g. `PT2M` = 2 minutes).                 |
+| Log Level        | `collector.log_level` | `COLLECTOR_LOG_LEVEL`       | error       | No        | Verbosity of the logs. One of `debug`, `info`, `warn`, `error`.                               |
+| Platform         | `collector.platform`  | `COLLECTOR_PLATFORM`        | EDR         | No        | The `SecurityPlatform` type registered in OpenAEV. One of `EDR`, `XDR`, `SIEM`, `SOAR`, `NDR`, `ISPM`. |
 
-| Parameter        | config.yml              | Docker environment variable | Default                                           | Mandatory | Description                                                                                   |
-|------------------|-------------------------|-----------------------------|---------------------------------------------------|-----------|-----------------------------------------------------------------------------------------------|
-| Collector ID     | collector.id            | `COLLECTOR_ID`              | sentinelone--0b13e3f7-5c9e-46f5-acc4-33032e9b4921 | Yes       | A unique `UUIDv4` identifier for this collector instance.                                     |
-| Collector Name   | collector.name          | `COLLECTOR_NAME`            | SentinelOne                                       | No        | Name of the collector.                                                                        |
-| Collector Period | collector.period        | `COLLECTOR_PERIOD`          | PT2M                                              | No        | Collection interval (ISO 8601 format).                                                        |
-| Log Level        | collector.log_level     | `COLLECTOR_LOG_LEVEL`       | error                                             | No        | Determines the verbosity of the logs. Options are `debug`, `info`, `warn`, or `error`.        |
-| Platform         | collector.platform      | `COLLECTOR_PLATFORM`        | EDR                                               | No        | Type of security platform this collector works for. One of: `EDR, XDR, SIEM, SOAR, NDR, ISPM` |
-| Icon Filepath    | collector.icon_filepath | `COLLECTOR_ICON_FILEPATH`   | src/img/sentinelone-logo.png                      | No        | Path to the icon file of the collector.                                                       |
+### SentinelOne collector environment variables
 
-### Collector extra parameters environment variables
-
-Below are the parameters you'll need to set for the collector:
-
-| Parameter                | config.yml                                | Docker environment variable                 | Default                     | Mandatory | Description                                                                             |
-|--------------------------|-------------------------------------------|---------------------------------------------|-----------------------------|-----------|-----------------------------------------------------------------------------------------|
-| Base URL                 | sentinelone.base_url                      | `SENTINELONE_BASE_URL`                      | https://api.sentinelone.com | No        | SentinelOne Management Console URL                                                      |
-| API Key                  | sentinelone.api_key                       | `SENTINELONE_API_KEY`                       |                             | Yes       | SentinelOne API token with Threats and Threat Events permissions                        |
-| Time Window              | sentinelone.time_window                   | `SENTINELONE_TIME_WINDOW`                   | PT1H                        | No        | Default search time window when no date signatures are provided (ISO 8601 format)       |
-| Expectation Batch Size   | sentinelone.expectation_batch_size        | `SENTINELONE_EXPECTATION_BATCH_SIZE`        | 50                          | No        | Number of expectations to process in each batch for batch-based processing              |
-| Enable Deep Visibility   | sentinelone.enable_deep_visibility_search | `SENTINELONE_ENABLE_DEEP_VISIBILITY_SEARCH` | false                       | No        | Enable Deep Visibility search for advanced threat detection (requires Complete license) |
-| Disable Strict End Date  | sentinelone.disable_strict_end_date       | `SENTINELONE_DISABLE_STRICT_END_DATE`       | false                       | No        | Disable ignoring OpenAEV expectations provided without an end date (may strongly impact API use) |
-
-### Example Configuration Files
-
-#### YAML Configuration (`src/config.yml`)
-```yaml
-openaev:
-  url: "https://your-openaev-instance.com"
-  token: "your-openaev-token"
-# tenant_id: "ChangeMe"
-
-collector:
-  id: "sentinelone--your-unique-uuid"
-  name: "SentinelOne Production"
-  period: "PT10M"
-  log_level: "error"
-
-sentinelone:
-  base_url: "https://your-sentinelone-console.sentinelone.net"
-  api_key: "your-sentinelone-api-token"
-  time_window: "PT1H"
-  expectation_batch_size: 50
-  enable_deep_visibility_search: false
-  disable_strict_end_date: false
-```
-
-#### Environment Variables
-```bash
-export OPENAEV_URL="https://your-openaev-instance.com"
-export OPENAEV_TOKEN="your-openaev-token"
-export OPENAEV_TENANT_ID="ChangeMe"
-export COLLECTOR_ID="sentinelone--your-unique-uuid"
-export SENTINELONE_BASE_URL="https://your-sentinelone-console.sentinelone.net"
-export SENTINELONE_API_KEY="your-sentinelone-api-token"
-export SENTINELONE_ENABLE_DEEP_VISIBILITY_SEARCH="false"
-```
+| Parameter | config.yml             | Docker environment variable | Default                       | Mandatory | Description                                                                |
+|-----------|------------------------|-----------------------------|-------------------------------|-----------|----------------------------------------------------------------------------|
+| Base URL  | `sentinelone.base_url` | `SENTINELONE_BASE_URL`      | `https://api.sentinelone.com` | No        | The SentinelOne Management Console API base URL.                           |
+| API Key   | `sentinelone.api_key`  | `SENTINELONE_API_KEY`       | /                             | Yes       | The SentinelOne API token with `Threats` and `Threat Events` permissions.  |
 
 ## Deployment
 
-### Manual Deployment with Poetry
-
-1. **Clone and Install Dependencies**:
-   ```bash
-   git clone <repository-url>
-   cd sentinelone
-   poetry install --extras local
-   ```
-
-2. **Configure the Collector**:
-   - Copy `src/config.yml.sample` to `src/config.yml`
-   - Update configuration values or set environment variables
-
-3. **Run the Collector**:
-   ```bash
-   # Using Poetry
-   poetry run python -m src
-
-   # Or direct execution after installation
-   SentinelOneCollector
-   ```
-
 ### Docker Deployment
 
-```bash
-# Build the container
-docker build -t openaev-sentinelone-collector .
+Build the Docker image (or use the published `openaev/collector-sentinelone` image):
 
-# Run with environment variables
-docker run -d \
-  -e OPENAEV_URL="https://your-openaev-instance.com" \
-  -e OPENAEV_TOKEN="your-token" \
-  -e OPENAEV_TENANT_ID="your-tenant-id" \
-  -e COLLECTOR_ID="sentinelone--your-uuid" \
-  -e SENTINELONE_BASE_URL="https://your-console.sentinelone.net" \
-  -e SENTINELONE_API_KEY="your-api-key" \
-  openaev-sentinelone-collector
-
-# Or run with configuration file mounted
-docker run -d \
-  -v /path/to/config.yml:/app/src/config.yml:ro \
-  openaev-sentinelone-collector
+```shell
+docker build . -t openaev/collector-sentinelone:latest
 ```
 
-## API Permissions and Endpoints Used
+Set your values in the `environment` section of the provided `docker-compose.yml`, then start the collector:
 
-- **API Permissions Required:**
-  - Threats: Read access to query threat information
-  - Threat Events: Read access to retrieve threat event details
-  - Console Access: General API access to the Management Console
-  - Deep Visibility (Optional): Required when `enable_deep_visibility_search` is enabled, needs Complete license
-- **API Endpoints Used:**
-  - `GET /web/api/v2.1/threats`
-  - `GET /web/api/v2.1/threat-events`
-  - Deep Visibility endpoints (when enabled):
-    - `POST /web/api/v2.1/dv/init-query`
-    - `GET /web/api/v2.1/dv/query-status`
-    - `GET /web/api/v2.1/dv/events`
-- **Reference:** [SentinelOne API documentation](https://developer.sentinelone.com/reference)
+```shell
+docker compose up -d
+```
 
-> **Warning** _(as of April 14, 2026)_: The required permissions and endpoints listed above are based on the current code and documentation. SentinelOne may change API requirements or endpoints at any time. **Always check the [official documentation](https://developer.sentinelone.com/reference) for the latest requirements before deploying.**
+### Manual Deployment
+
+Create a `src/config.yml` file from `src/config.yml.sample` and fill in your values, then install and run the collector:
+
+```shell
+poetry install --extras prod
+poetry run python -m src
+```
+
+> For local development against a checkout of [client-python](https://github.com/OpenAEV-Platform/client-python)
+> (cloned next to this repository), use `poetry install --extras local` instead.
+
+## Usage
+
+Once started, the collector registers itself (and its `SecurityPlatform`) in OpenAEV and then runs automatically every
+`COLLECTOR_PERIOD`. No manual interaction is required: as soon as injects produce expectations bound to this collector,
+they are reconciled on the next run.
+
+## Behavior
+
+```mermaid
+flowchart LR
+    subgraph OpenAEV
+        E[Detection / Prevention expectations]
+        R[Updated expectations + traces]
+    end
+    subgraph SentinelOne
+        T[Threats API]
+        V[Deep Visibility - optional]
+    end
+    C(SentinelOne collector)
+    E -->|poll unfilled expectations| C
+    C -->|query threats in time window| T
+    C -->|static-engine threats| V
+    T -->|threats + events| C
+    C -->|match on parent process / hostname| R
+```
+
+On each run, the collector:
+
+1. Fetches the unfilled expectations assigned to this collector from OpenAEV and groups them into batches.
+2. Determines the search window from the expectation `end_date` signature (falling back to now when absent); the window
+   spans `end_date - time_window` to `end_date` (default `time_window` is 1 hour). Expectations without an `end_date`
+   signature are skipped by default.
+3. Queries the SentinelOne Threats API for that window. Behavioral (non-static) threats are enriched with their threat
+   events; static-engine threats are enriched through Deep Visibility when that search is enabled (requires a Complete
+   license).
+4. Matches threats to expectations using these signatures: `parent_process_name` (fuzzy, score 95, on the
+   `oaev-implant-*` process names found in events / Deep Visibility), `target_hostname_address`, and `end_date` (used to
+   scope the query, not for matching).
+5. Updates each matched expectation:
+   - DETECTION: marked `Detected` when a threat matches the signatures, otherwise `Not Detected` once the expectation
+     expires.
+   - PREVENTION: marked `Prevented` when the matching threat additionally reports `is_mitigated`, otherwise
+     `Not Prevented`.
+6. Creates an expectation trace for each match, including the threat details and a link back to the SentinelOne console.
+
+## Required permissions and API endpoints
+
+- Required permissions: a SentinelOne API token with **`Threats`** and **`Threat Events`** read access. Static-engine
+  validation additionally requires **Deep Visibility** (Complete license).
+- API endpoints used:
+  - `GET /web/api/v2.1/threats` (list threats in the time window)
+  - `GET /web/api/v2.1/threat-events` (fetch threat events for behavioral threats)
+  - Deep Visibility (when enabled): `POST /web/api/v2.1/dv/init-query`, `GET /web/api/v2.1/dv/query-status`,
+    `GET /web/api/v2.1/dv/events`
+  - Authentication uses the `Authorization: ApiToken <api_key>` header.
+- Reference: [SentinelOne API documentation](https://developer.sentinelone.com/reference)
+
+## Debugging
+
+Set `COLLECTOR_LOG_LEVEL=debug` to get verbose logs, including expectation batching, the threats fetched per window, and
+the matching decisions. Common causes of "nothing detected": a `base_url` pointing at the wrong console, an API token
+missing the `Threats` / `Threat Events` permissions, expectations skipped because they carry no `end_date` signature, or
+static-engine detections that require Deep Visibility (Complete license).
+
+## Additional information
+
+- The search window is anchored on the inject `end_date` and defaults to one hour; the collector is designed to validate
+  expectations shortly after an inject runs, not to back-fill historical data.
+- Static-engine (static AI) detections rely on Deep Visibility, which requires a Complete license; behavioral detections
+  are validated on Core and Control licenses as well.
+- The required SentinelOne permissions and endpoints reflect the current implementation. SentinelOne may change its API
+  over time, so always confirm against the official documentation before deploying.

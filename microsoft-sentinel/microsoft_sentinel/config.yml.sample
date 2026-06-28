@@ -6,6 +6,7 @@ openaev:
 collector:
   id: 'ChangeMe'
   name: 'Microsoft Sentinel'
+  platform: 'SIEM'
   period: 'PT1M'
   log_level: 'error'
   microsoft_sentinel_tenant_id: ''

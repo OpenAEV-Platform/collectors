@@ -5,9 +5,10 @@ openaev:
 
 collector:
   id: "ChangeMe"
-  name: "LogRhythm"
+  name: 'LogRhythm'
+  platform: 'SIEM'
   period: 'PT1M'
-  log_level: "error"
+  log_level: 'error'
 
 logrhythm:
   base_url: "https://logrhythm.company.com:8501"

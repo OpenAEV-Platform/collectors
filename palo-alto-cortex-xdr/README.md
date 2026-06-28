@@ -1,187 +1,167 @@
-# Palo Alto Cortex XDR Collector
+# OpenAEV Palo Alto Cortex XDR Collector
 
-A collector for fetching security alerts and incidents from Palo Alto Cortex XDR and converting them to OpenAEV format for correlation and analysis.
+The Palo Alto Cortex XDR collector validates OpenAEV detection and prevention expectations against
+[Palo Alto Cortex XDR](https://www.paloaltonetworks.com/cortex/cortex-xdr), Palo Alto Networks' extended detection and
+response (XDR) platform. After OpenAEV agents execute attacks, the collector pulls the matching Cortex XDR alerts and
+correlates them with the related injects to confirm whether the activity was detected and/or prevented.
 
-## How It Works
+## Table of Contents
 
-The Cortex XDR collector integrates with the Palo Alto Cortex XDR API to retrieve security alerts and convert them into OpenAEV format for downstream processing.
+- [OpenAEV Palo Alto Cortex XDR Collector](#openaev-palo-alto-cortex-xdr-collector)
+  - [Table of Contents](#table-of-contents)
+  - [Introduction](#introduction)
+  - [Requirements](#requirements)
+  - [Configuration variables](#configuration-variables)
+    - [OpenAEV environment variables](#openaev-environment-variables)
+    - [Base collector environment variables](#base-collector-environment-variables)
+    - [Palo Alto Cortex XDR collector environment variables](#palo-alto-cortex-xdr-collector-environment-variables)
+  - [Deployment](#deployment)
+    - [Docker Deployment](#docker-deployment)
+    - [Manual Deployment](#manual-deployment)
+  - [Usage](#usage)
+  - [Behavior](#behavior)
+  - [Required permissions and API endpoints](#required-permissions-and-api-endpoints)
+  - [Debugging](#debugging)
+  - [Additional information](#additional-information)
+
+## Introduction
+
+OpenAEV (Breach and Attack Simulation) raises "expectations" each time it executes an inject (a simulated attack) on an
+endpoint: a DETECTION expectation (the security product should raise an alert) and/or a PREVENTION expectation (the
+security product should block the action). This collector connects to the Palo Alto Cortex XDR API, registers a
+`SecurityPlatform` of type `EDR`, and periodically reconciles those expectations with the alerts produced by Cortex XDR,
+marking each expectation as detected/not detected and prevented/not prevented and attaching a trace that links back to
+the originating Cortex XDR alert.
+
+## Requirements
+
+- OpenAEV Platform >= 1.19.0
+- A Palo Alto Cortex XDR tenant
+- A Cortex XDR API key (Standard or Advanced) with read access to alerts, together with its API Key ID and the tenant
+  FQDN (for example `api-example.xdr.us.paloaltonetworks.com`)
+- For a manual (non-Docker) deployment: Python >= 3.12 and [Poetry](https://python-poetry.org/) >= 2.1
+
+## Configuration variables
+
+The collector is configured either through environment variables (recommended, set in `docker-compose.yml` for a Docker
+deployment) or through a `config.yml` file (for a manual deployment). Copy the provided `src/config.yml.sample` and fill
+in the values flagged with `ChangeMe`.
+
+### OpenAEV environment variables
+
+| Parameter         | config.yml          | Docker environment variable | Mandatory | Description                                                                              |
+|-------------------|---------------------|-----------------------------|-----------|------------------------------------------------------------------------------------------|
+| OpenAEV URL       | `openaev.url`       | `OPENAEV_URL`               | Yes       | The URL of the OpenAEV platform. Must be reachable from where the collector runs.        |
+| OpenAEV Token     | `openaev.token`     | `OPENAEV_TOKEN`             | Yes       | The administrator token of the OpenAEV platform.                                         |
+| OpenAEV Tenant ID | `openaev.tenant_id` | `OPENAEV_TENANT_ID`         | No        | Tenant identifier for multi-tenant deployments. When set, it must be a valid UUID.       |
+
+### Base collector environment variables
+
+| Parameter        | config.yml            | Docker environment variable | Default              | Mandatory | Description                                                                                  |
+|------------------|-----------------------|-----------------------------|----------------------|-----------|----------------------------------------------------------------------------------------------|
+| Collector ID     | `collector.id`        | `COLLECTOR_ID`              | /                    | Yes       | A unique `UUIDv4` identifier for this collector instance.                                     |
+| Collector Name   | `collector.name`      | `COLLECTOR_NAME`            | Palo Alto Cortex XDR | No        | The name of the collector as shown in OpenAEV.                                                |
+| Collector Period | `collector.period`    | `COLLECTOR_PERIOD`          | PT2M                 | No        | Interval between two runs, as an ISO 8601 duration (e.g. `PT2M` = 2 minutes).                 |
+| Log Level        | `collector.log_level` | `COLLECTOR_LOG_LEVEL`       | error                | No        | Verbosity of the logs. One of `debug`, `info`, `warn`, `error`.                               |
+| Platform         | `collector.platform`  | `COLLECTOR_PLATFORM`        | EDR                  | No        | The `SecurityPlatform` type registered in OpenAEV. One of `EDR`, `XDR`, `SIEM`, `SOAR`, `NDR`, `ISPM`. |
+
+### Palo Alto Cortex XDR collector environment variables
+
+| Parameter    | config.yml                          | Docker environment variable        | Default  | Mandatory | Description                                                          |
+|--------------|-------------------------------------|------------------------------------|----------|-----------|---------------------------------------------------------------------|
+| FQDN         | `palo_alto_cortex_xdr.fqdn`         | `PALO_ALTO_CORTEX_XDR_FQDN`        | /        | Yes       | The unique host/domain name of your Cortex XDR tenant.              |
+| API Key      | `palo_alto_cortex_xdr.api_key`      | `PALO_ALTO_CORTEX_XDR_API_KEY`     | /        | Yes       | The Cortex XDR API key used in the `Authorization` header.          |
+| API Key ID   | `palo_alto_cortex_xdr.api_key_id`   | `PALO_ALTO_CORTEX_XDR_API_KEY_ID`  | /        | Yes       | The Cortex XDR API key ID that identifies the API key.              |
+| API Key Type | `palo_alto_cortex_xdr.api_key_type` | `PALO_ALTO_CORTEX_XDR_API_KEY_TYPE`| standard | No        | The API key type, either `standard` or `advanced`.                  |
+
+## Deployment
+
+### Docker Deployment
+
+Build the Docker image (or use the published `openaev/collector-palo-alto-cortex-xdr` image):
+
+```shell
+docker build . -t openaev/collector-palo-alto-cortex-xdr:latest
+```
+
+Set your values in the `environment` section of the provided `docker-compose.yml`, then start the collector:
+
+```shell
+docker compose up -d
+```
+
+### Manual Deployment
+
+Create a `src/config.yml` file from `src/config.yml.sample` and fill in your values, then install and run the collector:
+
+```shell
+poetry install --extras prod
+poetry run python -m src
+```
+
+> For local development against a checkout of [client-python](https://github.com/OpenAEV-Platform/client-python)
+> (cloned next to this repository), use `poetry install --extras local` instead.
+
+## Usage
+
+Once started, the collector registers itself (and its `SecurityPlatform`) in OpenAEV and then runs automatically every
+`COLLECTOR_PERIOD`. No manual interaction is required: as soon as injects produce expectations bound to this collector,
+they are reconciled on the next run.
+
+## Behavior
 
 ```mermaid
-sequenceDiagram
-    participant Collector
-    participant OpenAEV API
-    participant AlertFetcher
-    participant Cortex XDR API
-    participant Converter
-
-    Note over Collector: Initialization
-    Collector->>OpenAEV API: Register collector & get expectations
-    OpenAEV API-->>Collector: Return expectations (time windows)
-
-    Note over Collector: Processing Loop
-    loop For each expectation
-        Collector->>AlertFetcher: Fetch alerts for time window
-        AlertFetcher->>Cortex XDR API: POST /public_api/v1/alerts/get_alerts
-        Note right of Cortex XDR API: Filters by creation_time<br/>(start_time to end_time)
-        Cortex XDR API-->>AlertFetcher: Return alerts
-        AlertFetcher-->>Collector: List of Alert objects
-
-        Collector->>Converter: Convert alerts to OpenAEV format
-        Converter-->>Collector: OpenAEV formatted data
-
-        Collector->>OpenAEV API: Send traces/detections
-        OpenAEV API-->>Collector: Acknowledgement
+flowchart LR
+    subgraph OpenAEV
+        E[Detection / Prevention expectations]
+        R[Updated expectations + traces]
     end
+    subgraph Cortex XDR
+        A[Alerts API]
+    end
+    C(Cortex XDR collector)
+    E -->|poll unfilled expectations| C
+    C -->|get alerts in time window| A
+    A -->|alerts| C
+    C -->|match on parent process / hostname| R
 ```
 
-### Data Flow Details
+On each run, the collector:
 
-#### Input from OpenAEV
-The collector receives **expectations** from OpenAEV, which are:
-- Time windows to fetch alerts for (start_time, end_time)
-- Signature types to process (e.g., "alert_id")
+1. Fetches the unfilled expectations assigned to this collector from OpenAEV.
+2. Determines the search window from the expectation `end_date` signature (falling back to now when absent); the window
+   spans `end_date - time_window` to `end_date` (default `time_window` is 1 hour).
+3. Pulls alerts from the Cortex XDR `get_alerts_multi_events` endpoint (paginated, 100 per page), filtered by
+   `creation_time`. It keeps only alerts that reference an `oaev-implant-*` process - either directly from the alert
+   events, or after enriching alerts through the `get_original_alerts` endpoint.
+4. Matches alerts to expectations using these signatures: `parent_process_name` (simple, score 95, on the implant
+   process names), `target_hostname_address`, and `end_date` (used to scope the query, not for matching).
+5. Updates each matched expectation:
+   - DETECTION: marked `Detected` when the matching alert's `action_pretty` contains `Detected` or `Prevented`,
+     otherwise `Not Detected` once the expectation expires.
+   - PREVENTION: marked `Prevented` when the matching alert's `action_pretty` contains `Prevented`, otherwise
+     `Not Prevented`.
+6. Creates an expectation trace for each match, including the alert details and a link back to the Cortex XDR console.
 
-#### API Calls to Cortex XDR
-The collector makes the following API calls:
+## Required permissions and API endpoints
 
-**Endpoint:** `POST https://{FQDN}/public_api/v1/alerts/get_alerts`
+- Required permission: a Cortex XDR API key (Standard or Advanced) with read access to alerts, plus its API Key ID.
+- API endpoints used:
+  - `POST /public_api/v1/alerts/get_alerts_multi_events` (list alerts in the time window)
+  - `POST /public_api/v1/alerts/get_original_alerts` (enrich alerts to extract implant process names)
+  - Authentication uses the `x-xdr-auth-id` and `Authorization` headers (Standard), with `x-xdr-timestamp` /
+    `x-xdr-nonce` and a SHA-256 hashed authorization added for Advanced keys.
+- Reference: [Cortex XDR API documentation](https://docs.paloaltonetworks.com/cortex/cortex-xdr/cortex-xdr-api)
 
-**Request Body:**
-```json
-{
-  "request_data": {
-    "filters": [
-      {
-        "field": "creation_time",
-        "operator": "gte",
-        "value": <start_timestamp>
-      },
-      {
-        "field": "creation_time",
-        "operator": "lte",
-        "value": <end_timestamp>
-      }
-    ]
-  }
-}
-```
+## Debugging
 
-**Response:** List of alerts with fields including:
-- `alert_id` - Unique identifier for the alert
-- `creation_time` - When the alert was created
-- Other alert metadata (severity, description, etc.)
+Set `COLLECTOR_LOG_LEVEL=debug` to get verbose logs, including expectation polling, the number of alerts fetched and
+enriched, and the matching decisions. Common causes of "nothing detected": an incorrect `FQDN`, an API key / API key ID
+mismatch, the wrong `api_key_type` (Standard vs Advanced), or alerts that do not reference an `oaev-implant-*` process.
 
-#### Output to OpenAEV
-The collector sends data to OpenAEV in the following format:
+## Additional information
 
-**OAEV Detection Format:**
-```json
-{
-  "alert_id": {
-    "type": "simple",
-    "data": ["<alert_id>"],
-    "score": 95
-  }
-}
-```
-
-Each alert is converted to an OpenAEV detection containing:
-- **Signature type:** `alert_id`
-- **Data:** The Cortex XDR alert ID
-- **Score:** Confidence score (95) for correlation
-
-## Prerequisites
-
-- Python 3.11+
-- Cortex XDR API credentials (API Key ID and API Key)
-- Poetry or uv (for dependency management)
-- Docker (optional, for containerized deployment)
-
-## Installation
-
-### Using Poetry
-
-```bash
-poetry install
-```
-
-### Using uv
-
-```bash
-uv sync
-```
-
-## Configuration
-
-Set the following environment variables:
-
-- `CORTEX_XDR_API_KEY_ID`: Your Cortex XDR API Key ID
-- `CORTEX_XDR_API_KEY`: Your Cortex XDR API Key
-- `CORTEX_XDR_FQDN`: Your Cortex XDR FQDN (e.g., `api-example.xdr.us.paloaltonetworks.com`)
-
-## Running the Collector
-
-### Manually with Poetry
-
-```bash
-poetry run python -m palo_alto_cortex_xdr.main
-```
-
-### Manually with uv
-
-```bash
-uv run python -m palo_alto_cortex_xdr.main
-```
-
-### Using Docker
-
-Build the Docker image:
-
-```bash
-docker build -t palo-alto-cortex-xdr-collector .
-```
-
-Run the container:
-
-```bash
-docker run -e CORTEX_XDR_API_KEY_ID=your_key_id \
-           -e CORTEX_XDR_API_KEY=your_api_key \
-           -e CORTEX_XDR_FQDN=your_fqdn \
-           palo-alto-cortex-xdr-collector
-```
-
-
-## API Permissions and Endpoints Used
-
-- **API Permissions Required:** API Key ID and API Key with read access to alerts.
-- **API Endpoints Used:**
-  - `POST /public_api/v1/alerts/get_alerts`
-  - `POST /public_api/v1/incidents/get_incident_extra_data` (for incident details, if used)
-- **Reference:** [Cortex XDR API Documentation](https://docs.paloaltonetworks.com/cortex/cortex-xdr/1-6/cortex-xdr-api)
-
-> **Warning** _(as of April 14, 2026)_: The required permissions and endpoints listed above are based on the current code and documentation. Palo Alto Networks may change API requirements or endpoints at any time. **Always check the [official documentation](https://docs.paloaltonetworks.com/cortex/cortex-xdr/1-6/cortex-xdr-api) for the latest requirements before deploying.**
-
-
-## Testing
-
-### Run tests with Poetry
-
-```bash
-poetry run pytest
-```
-
-### Run tests with uv
-
-```bash
-uv run pytest
-```
-
-### Run tests with coverage
-
-```bash
-# With Poetry
-poetry run pytest --cov=palo_alto_cortex_xdr --cov-report=term-missing
-
-# With uv
-uv run pytest --cov=palo_alto_cortex_xdr --cov-report=term-missing
-```
+- The search window is anchored on the inject `end_date` and defaults to one hour; the collector is designed to validate
+  expectations shortly after an inject runs, not to back-fill historical data.
+- The required Cortex XDR permissions and endpoints reflect the current implementation. Palo Alto Networks may change its
+  API over time, so always confirm against the official documentation before deploying.

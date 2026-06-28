@@ -5,9 +5,10 @@ openaev:
 
 collector:
   id: "ChangeMe"
-  name: "NetWitness"
+  name: 'NetWitness'
+  platform: 'SIEM'
   period: 'PT1M'
-  log_level: "error"
+  log_level: 'error'
 
 netwitness:
   base_url: "https://netwitness.company.com:50103"

@@ -5,9 +5,10 @@ openaev:
 
 collector:
   id: "ChangeMe"
-  name: "Splunk ES"
+  name: 'Splunk ES'
+  platform: 'SIEM'
   period: 'PT1M'
-  log_level: "error"
+  log_level: 'error'
 
 splunk_es:
   base_url: "https://splunk.company.com:8089"

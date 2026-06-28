@@ -1,155 +1,182 @@
 # OpenAEV Microsoft Intune Collector
 
-## Description
+The Microsoft Intune collector imports your [Microsoft Intune](https://www.microsoft.com/security/business/microsoft-intune)
+managed devices into OpenAEV as agentless endpoints. On each run it queries Microsoft Graph for the devices enrolled in
+Intune and creates or updates a matching OpenAEV asset (endpoint) for every device, so your simulation scope stays
+aligned with your managed device inventory. This collector imports inventory only and does not validate detection or
+prevention expectations.
 
-This collector enables OpenAEV to import managed devices from Microsoft Intune as endpoints. It uses the Microsoft Graph API to retrieve device information and synchronizes it with OpenAEV.
+## Table of Contents
 
-## Features
+- [OpenAEV Microsoft Intune Collector](#openaev-microsoft-intune-collector)
+  - [Table of Contents](#table-of-contents)
+  - [Introduction](#introduction)
+  - [Requirements](#requirements)
+  - [Configuration variables](#configuration-variables)
+    - [OpenAEV environment variables](#openaev-environment-variables)
+    - [Base collector environment variables](#base-collector-environment-variables)
+    - [Microsoft Intune collector environment variables](#microsoft-intune-collector-environment-variables)
+  - [Deployment](#deployment)
+    - [Docker Deployment](#docker-deployment)
+    - [Manual Deployment](#manual-deployment)
+  - [Usage](#usage)
+  - [Behavior](#behavior)
+  - [Required permissions and API endpoints](#required-permissions-and-api-endpoints)
+  - [Debugging](#debugging)
+  - [Additional information](#additional-information)
 
-- Collects all managed devices from Microsoft Intune
-- Automatically identifies device operating systems (Windows, iOS, Android, macOS, Linux)
-- Captures device compliance status and metadata
-- Supports filtering devices using OData query syntax
-- Maps device properties to OpenAEV endpoint structure
-- Includes device tags for compliance state, encryption status, and management details
+## Introduction
+
+OpenAEV (Breach and Attack Simulation) executes injects (simulated attacks) against assets. To run those simulations
+against your managed fleet, OpenAEV needs to know which devices exist. This collector authenticates to Microsoft Entra ID
+with an application (client credentials), calls the Microsoft Graph API to enumerate the devices managed by Intune, and
+registers each one as an agentless endpoint in OpenAEV (name, hostname, platform, architecture, MAC addresses and tags).
+It performs a full inventory synchronization on every run: devices are upserted (created or updated) so existing assets
+are kept current.
 
 ## Requirements
 
-- Microsoft Intune subscription
-- Azure Active Directory application with appropriate permissions
-- Python 3.11 or higher
+- OpenAEV Platform >= 1.19.0
+- A Microsoft Intune tenant with managed devices
+- A Microsoft Entra ID application registration (client ID + client secret) granted the
+  `DeviceManagementManagedDevices.Read.All` application permission (with admin consent)
+- For a manual (non-Docker) deployment: Python >= 3.11 and [Poetry](https://python-poetry.org/) >= 2.1
 
-## Configuration
+## Configuration variables
 
-### Azure AD Setup
+The collector is configured either through environment variables (recommended, read from `docker-compose.yml` / the
+`.env` file for a Docker deployment) or through a `config.yml` file (for a manual deployment). Copy the provided
+`.env.sample` / `config.yml.sample` and fill in the values flagged with `ChangeMe`.
 
-1. **Create an Azure AD Application:**
-   - Go to Azure Portal → Azure Active Directory → App registrations
-   - Click "New registration"
-   - Name your application (e.g., "OpenAEV Intune Collector")
-   - Select supported account types (single tenant recommended)
-   - Click "Register"
+### OpenAEV environment variables
 
-2. **Create Client Secret:**
-   - In your app registration, go to "Certificates & secrets"
-   - Click "New client secret"
-   - Add a description and set expiration
-   - Copy the secret value immediately (it won't be shown again)
+| Parameter         | config.yml          | Docker environment variable | Mandatory | Description                                                                         |
+|-------------------|---------------------|-----------------------------|-----------|-------------------------------------------------------------------------------------|
+| OpenAEV URL       | `openaev.url`       | `OPENAEV_URL`               | Yes       | The URL of the OpenAEV platform. Must be reachable from where the collector runs.   |
+| OpenAEV Token     | `openaev.token`     | `OPENAEV_TOKEN`             | Yes       | The administrator token of the OpenAEV platform.                                    |
+| OpenAEV Tenant ID | `openaev.tenant_id` | `OPENAEV_TENANT_ID`         | No        | Tenant identifier for multi-tenant deployments. When set, it must be a valid UUID.  |
 
-3. **Grant Microsoft Graph API Permissions:**
-   - In your app registration, go to "API permissions"
-   - Click "Add a permission" → "Microsoft Graph" → "Application permissions"
-   - Add the following permissions:
-     - `DeviceManagementManagedDevices.Read.All` - Read all managed devices
-     - `Group.Read.All` - Read all groups (required if using device group filtering)
-     - `Device.Read.All` - Read all devices (optional, for Azure AD device info)
-   - Click "Grant admin consent" for your organization
+### Base collector environment variables
 
-4. **Collect Required Information:**
-   - Tenant ID: Azure Active Directory → Properties → Directory ID
-   - Client ID: Your app registration → Overview → Application (client) ID
-   - Client Secret: The secret you created earlier
+| Parameter        | config.yml            | Docker environment variable | Default           | Mandatory | Description                                                                  |
+|------------------|-----------------------|-----------------------------|-------------------|-----------|------------------------------------------------------------------------------|
+| Collector ID     | `collector.id`        | `COLLECTOR_ID`              | /                 | Yes       | A unique `UUIDv4` identifier for this collector instance.                     |
+| Collector Name   | `collector.name`      | `COLLECTOR_NAME`            | Microsoft Intune  | No        | The name of the collector as shown in OpenAEV.                                |
+| Collector Period | `collector.period`    | `COLLECTOR_PERIOD`          | PT1H              | No        | Interval between two runs, as an ISO 8601 duration (e.g. `PT1H` = 1 hour).    |
+| Log Level        | `collector.log_level` | `COLLECTOR_LOG_LEVEL`       | error             | No        | Verbosity of the logs. One of `debug`, `info`, `warn`, `error`.              |
 
-### OpenAEV Configuration
+### Microsoft Intune collector environment variables
 
-Create or update `config.yml`:
+| Parameter            | config.yml                              | Docker environment variable               | Default | Mandatory | Description                                                                                                          |
+|----------------------|-----------------------------------------|-------------------------------------------|---------|-----------|--------------------------------------------------------------------------------------------------------------------|
+| Intune Tenant ID     | `collector.microsoft_intune_tenant_id`     | `COLLECTOR_MICROSOFT_INTUNE_TENANT_ID`     | /       | Yes       | The Microsoft Entra ID (Azure AD) tenant ID used for authentication.                                                |
+| Intune Client ID     | `collector.microsoft_intune_client_id`     | `COLLECTOR_MICROSOFT_INTUNE_CLIENT_ID`     | /       | Yes       | The application (client) ID of the Entra ID app registration.                                                        |
+| Intune Client Secret | `collector.microsoft_intune_client_secret` | `COLLECTOR_MICROSOFT_INTUNE_CLIENT_SECRET` | /       | Yes       | The client secret of the Entra ID app registration.                                                                 |
+| Intune Device Filter | `collector.microsoft_intune_device_filter` | `COLLECTOR_MICROSOFT_INTUNE_DEVICE_FILTER` | /       | No        | Optional OData `$filter` applied to managed devices, e.g. `operatingSystem eq 'Windows'`. Leave empty for all devices. |
+| Intune Device Groups | `collector.microsoft_intune_device_groups` | `COLLECTOR_MICROSOFT_INTUNE_DEVICE_GROUPS` | /       | No        | Optional comma-separated list of device group names or IDs to restrict the import. Leave empty for all devices.      |
 
-```yaml
-openaev:
-  url: 'http://your-openaev-url:3001'
-  token: 'your-openaev-token'
-# tenant_id: 'ChangeMe'
+## Deployment
 
-collector:
-  id: 'unique-collector-id'
-  name: 'Microsoft Intune'
-  period: 'PT1H'  # Collection period in ISO 8601
-  log_level: 'error'
-  microsoft_intune_tenant_id: 'your-tenant-id'
-  microsoft_intune_client_id: 'your-client-id'
-  microsoft_intune_client_secret: 'your-client-secret'
-  microsoft_intune_device_filter: ''  # Optional OData filter
-  microsoft_intune_device_groups: ''  # Comma-separated device groups
+### Docker Deployment
+
+Build the Docker image (or use the published `openaev/collector-microsoft-intune` image):
+
+```shell
+docker build . -t openaev/collector-microsoft-intune:latest
 ```
 
-### Device Filtering
+Create a `.env` file from `.env.sample` and fill in your values, then start the collector with the provided
+`docker-compose.yml` (which reads those variables):
 
-You can filter devices in two ways:
-
-#### 1. OData Filter (device properties)
-Use the `microsoft_intune_device_filter` parameter with OData syntax:
-- Windows devices only: `operatingSystem eq 'Windows'`
-- Compliant devices: `complianceState eq 'compliant'`
-- Encrypted devices: `isEncrypted eq true`
-- Specific manufacturer: `manufacturer eq 'Microsoft Corporation'`
-- Combined filters: `operatingSystem eq 'Windows' and complianceState eq 'compliant'`
-
-#### 2. Device Groups (Azure AD groups)
-Use the `microsoft_intune_device_groups` parameter to filter by group membership:
-- Single group: `IT Department Devices`
-- Multiple groups: `IT Devices,Sales Laptops,Executive Phones`
-- By group ID: `a1b2c3d4-e5f6-7890-abcd-ef1234567890`
-- Mix names and IDs: `IT Devices,a1b2c3d4-e5f6-7890-abcd-ef1234567890`
-
-Leave both filters empty to collect all devices.
-
-## Installation
-
-### Using Docker
-
-1. Build the Docker image:
-```bash
-docker build -t openaev-microsoft-intune-collector .
+```shell
+docker compose up -d
 ```
 
-2. Run with docker-compose:
-```bash
-docker-compose up -d
+### Manual Deployment
+
+Create a `config.yml` file from `config.yml.sample` and fill in your values, then install and run the collector:
+
+```shell
+poetry install --extras prod
+poetry run python -m microsoft_intune.openaev_microsoft_intune
 ```
 
-### Manual Installation
+> For local development against a checkout of [client-python](https://github.com/OpenAEV-Platform/client-python)
+> (cloned next to this repository), use `poetry install --extras dev` instead.
 
-1. Install dependencies:
-```bash
-pip install poetry
-poetry install
+## Usage
+
+Once started, the collector registers itself in OpenAEV and then runs automatically every `COLLECTOR_PERIOD`. No manual
+interaction is required: on each run it performs a full inventory synchronization of your Intune managed devices into
+OpenAEV assets. Because the period defaults to one hour (`PT1H`), newly enrolled or removed devices are reflected at the
+next scheduled run.
+
+## Behavior
+
+```mermaid
+flowchart LR
+    subgraph Microsoft Graph
+        T[Entra ID token endpoint]
+        G[groups + members]
+        D[deviceManagement managedDevices]
+    end
+    C(Microsoft Intune collector)
+    O[OpenAEV agentless endpoints]
+    C -->|client credentials| T
+    C -->|optional group filter| G
+    C -->|list managed devices| D
+    D -->|devices| C
+    C -->|upsert assets + tags| O
 ```
 
-2. Configure the collector by creating `config.yml` from `config.yml.sample`
+On each run, the collector:
 
-3. Run the collector:
-```bash
-poetry run python microsoft_intune/openaev_microsoft_intune.py
-```
+1. Acquires an access token from Microsoft Entra ID using the application client credentials (MSAL), scoped to Microsoft
+   Graph (`https://graph.microsoft.com/.default`).
+2. When `microsoft_intune_device_groups` is set, resolves those groups (by display name or ID) through
+   `/groups`, reads their device members through `/groups/{id}/members`, and keeps only devices in those groups.
+3. Lists managed devices through `/deviceManagement/managedDevices` (paginated), applying the optional
+   `microsoft_intune_device_filter` OData filter when provided.
+4. Derives the platform (`Windows` / `Android` / `iOS` / `MacOS` / `Linux` / `Generic`) and an architecture hint
+   (`arm64` / `x86_64`), and collects the Wi-Fi and Ethernet MAC addresses.
+5. Upserts each device as an OpenAEV agentless endpoint, using the Intune device ID as the external reference, mapping
+   mobile platforms (`iOS` / `Android`) to the `MOBILE_DEVICE` asset category and everything else to `HOST`, and adding
+   a description built from model, manufacturer, compliance, serial number and enrollment / last-sync dates.
+6. Creates and attaches tags derived from the device metadata (source, compliance state, management agent, enrollment
+   type, device category, manufacturer, model, OS, and encryption / supervision flags).
 
-## Environment Variables
+The synchronization is incremental from the platform's point of view: assets are created or updated (upserted), so a
+device seen in a previous run is refreshed rather than duplicated.
 
-All configuration can be provided via environment variables:
+## Required permissions and API endpoints
 
-- `OPENAEV_URL`: OpenAEV platform URL
-- `OPENAEV_TOKEN`: OpenAEV API token
-- `OPENAEV_TENANT_ID`: Identifier of the tenant within the OpenAEV platform.
-- `COLLECTOR_ID`: Unique collector identifier
-- `COLLECTOR_NAME`: Display name for the collector
-- `COLLECTOR_PERIOD`: Collection interval as ISO 8601 period expression, e.g. PT1M: 1 minute
-- `COLLECTOR_LOG_LEVEL`: Logging level (debug, info, warn, error)
-- `COLLECTOR_MICROSOFT_INTUNE_TENANT_ID`: Azure AD tenant ID
-- `COLLECTOR_MICROSOFT_INTUNE_CLIENT_ID`: Azure application client ID
-- `COLLECTOR_MICROSOFT_INTUNE_CLIENT_SECRET`: Azure application client secret
-- `COLLECTOR_MICROSOFT_INTUNE_DEVICE_FILTER`: OData filter for device selection (optional)
-- `COLLECTOR_MICROSOFT_INTUNE_DEVICE_GROUPS`: Comma-separated list of device group names or IDs (optional)
+- Authentication: Microsoft Entra ID application (client credentials) - tenant ID, application (client) ID and client
+  secret.
+- Required Microsoft Graph application permissions (admin consent required):
+  - `DeviceManagementManagedDevices.Read.All` - read the Intune managed devices (always required).
+  - When device-group filtering is used (`microsoft_intune_device_groups`), the application additionally needs to read
+    groups and their members, for example `GroupMember.Read.All` (or `Group.Read.All` / `Directory.Read.All`).
+- API endpoints used:
+  - `POST https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token` (OAuth2 client-credentials authentication via
+    MSAL)
+  - `GET /deviceManagement/managedDevices` (list managed devices)
+  - `GET /groups` (only when device-group filtering is used)
+  - `GET /groups/{id}/members` (only when device-group filtering is used)
+- Reference: [Microsoft Graph - List managedDevices](https://learn.microsoft.com/en-us/graph/api/intune-devices-manageddevice-list)
 
+## Debugging
 
-## API Permissions and Endpoints Used
+Set `COLLECTOR_LOG_LEVEL=debug` to get verbose logs, including the authentication result, the number of devices found,
+and each endpoint upsert. Common issues:
 
-- **API Permissions Required:**
-  - `DeviceManagementManagedDevices.Read.All` (Application)
-  - `Group.Read.All` (Application, required for device group filtering)
-  - `Device.Read.All` (optional, for Azure AD device info)
-  - `User.Read.All` (optional, for device-user association)
-- **API Endpoints Used:**
-  - `GET /deviceManagement/managedDevices`
-  - `GET /groups`
-- **Reference:** [Microsoft Graph API Permissions](https://learn.microsoft.com/en-us/graph/permissions-reference)
+- Authentication failures: confirm the tenant ID, client ID and client secret, and that the secret has not expired.
+- No devices imported: confirm that admin consent was granted for `DeviceManagementManagedDevices.Read.All`, that the
+  optional `microsoft_intune_device_filter` is a valid OData filter, and that any `microsoft_intune_device_groups`
+  values match existing group names or IDs.
 
-> **Warning** _(as of April 14, 2026)_: The required permissions and endpoints listed above are based on the current code and documentation. Microsoft may change API requirements or endpoints at any time. **Always check the [official documentation](https://learn.microsoft.com/en-us/graph/permissions-reference) for the latest requirements before deploying.**
+## Additional information
+
+- The collector performs a full inventory synchronization on every run; it does not delete OpenAEV assets when a device
+  disappears from Intune.
+- The required Microsoft Graph permissions and endpoints reflect the current implementation. Microsoft may change its
+  API over time, so always confirm against the official documentation before deploying.
