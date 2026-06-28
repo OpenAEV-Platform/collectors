@@ -1,0 +1,16 @@
+services:
+  collector-cisco-ai-defense:
+    image: openaev/collector-cisco-ai-defense:latest
+    environment:
+      - OPENAEV_URL=${OPENAEV_URL}
+      - OPENAEV_TOKEN=${OPENAEV_TOKEN}
+      - OPENAEV_TENANT_ID=${OPENAEV_TENANT_ID}
+      - COLLECTOR_ID=${COLLECTOR_ID}
+      - COLLECTOR_NAME=${COLLECTOR_NAME:-"Cisco AI Defense"}
+      - COLLECTOR_PLATFORM=${COLLECTOR_PLATFORM:-LLM_FIREWALL}
+      - COLLECTOR_LOG_LEVEL=${COLLECTOR_LOG_LEVEL:-warn}
+      - COLLECTOR_PERIOD=${COLLECTOR_PERIOD:-PT120S}
+      - COLLECTOR_BASE_URL=${COLLECTOR_BASE_URL}
+      - COLLECTOR_API_KEY=${COLLECTOR_API_KEY}
+      - COLLECTOR_AUTH_HEADER=${COLLECTOR_AUTH_HEADER:-X-Cisco-AI-Defense-Api-Key}
+    restart: unless-stopped
