@@ -548,21 +548,40 @@ class LogRhythmExpectationService:
         data_item: dict[str, Any],
         detection_helper: OpenAEVDetectionHelper,
     ) -> bool:
-        """Match signatures using detection_helper with proper OR logic.
+        """Match a single data item against its available expectation signatures.
 
         Args:
-            signatures: List of signature dictionaries.
+            signatures: Signature dictionaries whose types are present on
+                ``data_item``. Always non-empty: ``_match`` only calls this
+                helper with the signatures it actually found on the item, and an
+                expectation carrying no usable signatures is rejected upstream
+                by ``LogRhythmClientAPI._validate_inputs``.
             data_item: OAEV data item to match against.
             detection_helper: OpenAEV detection helper instance.
 
         Returns:
-            True if matching succeeds, False otherwise.
+            True if the data item matches, False otherwise.
 
-        Logic:
-        1. Parent process: MUST match exactly (if present) - stop if False
-        2. Source IPs: Call detection_helper for each IP individually, stop at first match (OR logic)
-        3. Target IPs: Call detection_helper for each IP individually, stop at first match (OR logic)
-        4. Must have parent_process=True AND (at least one src_ip=True OR at least one dst_ip=True)
+        Matching rules (each category constrains the result only when a
+        signature of that category is present for this item):
+        1. Parent process: when a ``parent_process_name`` signature is present
+           it MUST match - a mismatch is an immediate non-match. When absent the
+           parent check is not enforced (``parent_process_match`` defaults to
+           True) so IP-only expectations are not rejected.
+        2. Source IPs: each ``source_ipv4/ipv6_address`` signature is tested
+           individually; the group matches on the first hit (OR logic).
+        3. Target IPs: each ``target_ipv4/ipv6_address`` signature is tested
+           individually; the group matches on the first hit (OR logic).
+        4. Final result, once the parent check has passed (or was absent):
+           - source AND target signatures present -> source_ip OR target_ip
+           - only source signatures present        -> source_ip match
+           - only target signatures present        -> target_ip match
+           - no IP signatures present              -> match. This branch is
+             reachable only when a ``parent_process_name`` signature was present
+             and matched (otherwise the signature set would be empty), i.e. a
+             deliberate parent-process-only detection - never a zero-signature
+             match. The parent value encodes an inject/agent-specific URL, so it
+             is itself a sufficient detection signal.
 
         """
         try:

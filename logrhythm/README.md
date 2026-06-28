@@ -67,11 +67,13 @@ Below are the parameters you'll need to set for running the collector properly:
 
 | Parameter        | config.yml          | Docker environment variable | Default                                        | Mandatory | Description                                                                                   |
 |------------------|---------------------|-----------------------------|------------------------------------------------|-----------|-----------------------------------------------------------------------------------------------|
-| Collector ID     | collector.id        | `COLLECTOR_ID`              | logrhythm--0b13e3f7-5c9e-46f5-acc4-33032e9b... | Yes       | A unique `UUIDv4` identifier for this collector instance.                                     |
+| Collector ID     | collector.id        | `COLLECTOR_ID`              | logrhythm--0b13e3f7-5c9e-46f5-acc4-33032e9b... | No\*      | A unique `UUIDv4` identifier for this collector instance. A default is provided; override it per deployment (see note below).                  |
 | Collector Name   | collector.name      | `COLLECTOR_NAME`            | LogRhythm                                      | No        | Name of the collector.                                                                        |
 | Collector Period | collector.period    | `COLLECTOR_PERIOD`          | PT1M                                           | No        | Collection interval (ISO 8601 format).                                                        |
 | Log Level        | collector.log_level | `COLLECTOR_LOG_LEVEL`       | error                                          | No        | Determines the verbosity of the logs. Options are `debug`, `info`, `warn`, or `error`.        |
 | Platform         | collector.platform  | `COLLECTOR_PLATFORM`        | SIEM                                           | No        | Type of security platform this collector works for. One of: `EDR, XDR, SIEM, SOAR, NDR, ISPM` |
+
+> \* `COLLECTOR_ID` is not strictly required - a built-in default lets the collector start out of the box - but every collector instance MUST use a unique `UUIDv4`. Override the default (via `COLLECTOR_ID` or `collector.id`) for each deployment: if two collectors share the same id they report under the same `source_id` and collide in OpenAEV.
 
 ### Collector extra parameters environment variables
 

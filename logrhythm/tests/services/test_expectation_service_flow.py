@@ -103,6 +103,26 @@ class TestExpectationServiceFlow:
             service._match_with_detection_helper(signatures, data_item, helper) is False
         )
 
+    def test_match_with_detection_helper_parent_only_match(self):
+        """A parent-process-only expectation matches on the parent signal alone.
+
+        The expectation carries only a ``parent_process_name`` signature (no IP
+        signatures). When that parent signature matches, the helper reaches the
+        no-IP-signatures branch and returns True. This locks in the documented
+        parent-process-only behavior and proves the branch is only reachable
+        after a parent match, not for a zero-signature item.
+        """
+        service = _service()
+        helper = Mock()
+        helper.match_alert_elements.return_value = True
+
+        signatures = [{"type": "parent_process_name", "value": PARENT_VALUE}]
+        data_item = {"parent_process_name": {"type": "simple", "data": PARENT_VALUE}}
+
+        assert (  # noqa: S101
+            service._match_with_detection_helper(signatures, data_item, helper) is True
+        )
+
     def test_match_with_detection_helper_target_only(self):
         """A target-IP match (with parent) returns True."""
         service = _service()
