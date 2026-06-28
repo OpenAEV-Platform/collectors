@@ -1,6 +1,6 @@
-# OpenAEV Library Collector
+# OpenAEV Datasets Collector
 
-The OpenAEV Library collector imports the official OpenAEV payload library
+The OpenAEV Datasets collector imports the official OpenAEV payload library
 ([OpenAEV-Platform/payloads](https://github.com/OpenAEV-Platform/payloads) on GitHub) into the platform. On each run it
 downloads the published payload manifest and upserts the payloads, their tags, attack patterns, and any attached
 documents, so an OpenAEV instance can be seeded and kept up to date with the curated payloads maintained by Filigran.
@@ -9,7 +9,7 @@ expectations.
 
 ## Table of Contents
 
-- [OpenAEV Library Collector](#openaev-library-collector)
+- [OpenAEV Datasets Collector](#openaev-datasets-collector)
   - [Table of Contents](#table-of-contents)
   - [Introduction](#introduction)
   - [Requirements](#requirements)
@@ -112,7 +112,7 @@ flowchart LR
     subgraph OpenAEV payloads repository
         M["manifest.json + document archives"]
     end
-    C(OpenAEV Library collector)
+    C(OpenAEV Datasets collector)
     subgraph OpenAEV
         P[Payloads]
         D[Documents]
