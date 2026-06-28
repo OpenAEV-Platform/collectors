@@ -241,6 +241,19 @@ jobs:
             docker save -o ~/openaev/images/collector-elastic openaev/collector-elastic:${CIRCLE_SHA1}
             docker save -o ~/openaev/images/collector-elastic-ubi9 openaev/collector-elastic:${CIRCLE_SHA1}-ubi9
       - run:
+          working_directory: ~/openaev/qradar
+          name: Build Docker image openaev/collector-qradar
+          command: |
+            if [[ "${CIRCLE_BRANCH}" == "main" ]]; then
+              docker build --pull --progress=plain -t openaev/collector-qradar:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
+              docker build --pull --progress=plain -t openaev/collector-qradar:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
+            else 
+              docker build --pull --progress=plain -t openaev/collector-qradar:${CIRCLE_SHA1} .
+              docker build --pull --progress=plain -t openaev/collector-qradar:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 .
+            fi
+            docker save -o ~/openaev/images/collector-qradar openaev/collector-qradar:${CIRCLE_SHA1}
+            docker save -o ~/openaev/images/collector-qradar-ubi9 openaev/collector-qradar:${CIRCLE_SHA1}-ubi9
+      - run:
           working_directory: ~/openaev/openaev
           name: Build Docker image openaev/collector-openaev
           command: |
@@ -433,6 +446,12 @@ jobs:
             docker image load < collector-elastic-ubi9
             docker tag openaev/collector-elastic:${CIRCLE_SHA1}-ubi9 openaev/collector-elastic:${IMAGETAG}-ubi9
             docker tag openaev/collector-elastic:${CIRCLE_SHA1}-ubi9 openbas/collector-elastic:${IMAGETAG}-ubi9
+            docker image load < collector-qradar
+            docker tag openaev/collector-qradar:${CIRCLE_SHA1} openaev/collector-qradar:${IMAGETAG}
+            docker tag openaev/collector-qradar:${CIRCLE_SHA1} openbas/collector-qradar:${IMAGETAG}
+            docker image load < collector-qradar-ubi9
+            docker tag openaev/collector-qradar:${CIRCLE_SHA1}-ubi9 openaev/collector-qradar:${IMAGETAG}-ubi9
+            docker tag openaev/collector-qradar:${CIRCLE_SHA1}-ubi9 openbas/collector-qradar:${IMAGETAG}-ubi9
             
             docker image load < collector-openaev
             docker tag openaev/collector-openaev:${CIRCLE_SHA1} openaev/collector-openaev:${IMAGETAG}
@@ -521,6 +540,10 @@ jobs:
             docker push openaev/collector-elastic:${IMAGETAG}-ubi9
             docker push openbas/collector-elastic:${IMAGETAG}
             docker push openbas/collector-elastic:${IMAGETAG}-ubi9
+            docker push openaev/collector-qradar:${IMAGETAG}
+            docker push openaev/collector-qradar:${IMAGETAG}-ubi9
+            docker push openbas/collector-qradar:${IMAGETAG}
+            docker push openbas/collector-qradar:${IMAGETAG}-ubi9
             docker push openaev/collector-openaev:${IMAGETAG}
             docker push openaev/collector-openaev:${IMAGETAG}-ubi9
             docker push openbas/collector-openbas:${IMAGETAG}
@@ -570,6 +593,8 @@ jobs:
               docker tag openaev/collector-splunk-es:${IMAGETAG} openbas/collector-splunk-es:latest
               docker tag openaev/collector-elastic:${IMAGETAG} openaev/collector-elastic:latest
               docker tag openaev/collector-elastic:${IMAGETAG} openbas/collector-elastic:latest
+              docker tag openaev/collector-qradar:${IMAGETAG} openaev/collector-qradar:latest
+              docker tag openaev/collector-qradar:${IMAGETAG} openbas/collector-qradar:latest
               docker tag openaev/collector-openaev:${IMAGETAG} openaev/collector-openaev:latest
               docker tag openaev/collector-openaev:${IMAGETAG} openbas/collector-openbas:latest
               docker tag openaev/collector-microsoft-azure:${IMAGETAG} openaev/collector-microsoft-azure:latest
@@ -605,6 +630,8 @@ jobs:
               docker push openbas/collector-splunk-es:latest
               docker push openaev/collector-elastic:latest
               docker push openbas/collector-elastic:latest
+              docker push openaev/collector-qradar:latest
+              docker push openbas/collector-qradar:latest
               docker push openaev/collector-openaev:latest
               docker push openbas/collector-openbas:latest
               docker push openaev/collector-microsoft-azure:latest

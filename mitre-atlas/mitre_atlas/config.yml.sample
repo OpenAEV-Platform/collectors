@@ -1,0 +1,11 @@
+openaev:
+  url: 'http://localhost:3001'
+  token: 'ChangeMe'
+  # tenant_id: 'ChangeMe'
+
+collector:
+  id: 'ChangeMe'
+  name: 'MITRE ATLAS'
+  period: 'P7D'
+  log_level: 'error'
+  # stix_url: 'https://raw.githubusercontent.com/mitre-atlas/atlas-navigator-data/main/dist/stix-atlas.json'

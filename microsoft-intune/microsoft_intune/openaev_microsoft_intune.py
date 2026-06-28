@@ -367,6 +367,11 @@ class OpenAEVMicrosoftIntune(CollectorDaemon):
                         f"Last Sync: {last_sync[:10]}"
                     )  # Just date part
 
+                # Mobile platforms map to the MOBILE_DEVICE asset category, everything else to HOST.
+                asset_category = (
+                    "MOBILE_DEVICE" if platform in ("iOS", "Android") else "HOST"
+                )
+
                 # Create endpoint object
                 endpoint = {
                     "asset_name": device_name,
@@ -374,6 +379,7 @@ class OpenAEVMicrosoftIntune(CollectorDaemon):
                     "endpoint_hostname": device.get("deviceName", device_name),
                     "endpoint_platform": platform,
                     "endpoint_arch": arch,
+                    "asset_category": asset_category,
                     "asset_description": ", ".join(description_parts),
                 }
 

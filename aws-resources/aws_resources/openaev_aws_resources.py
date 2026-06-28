@@ -299,6 +299,10 @@ class OpenAEVAWSResources(CollectorDaemon):
                     "endpoint_hostname": instance_name,
                     "endpoint_platform": platform,
                     "endpoint_arch": architecture,
+                    "asset_category": "HOST",
+                    "asset_cloud_provider": "AWS",
+                    "asset_cloud_native_type": "ec2_instance",
+                    "asset_cloud_region": region,
                     "endpoint_ips": ips,
                     "asset_description": f"AWS EC2 Instance - Type: {instance_type}, Region: {region}, AZ: {availability_zone}, State: {state}",
                 }

@@ -149,8 +149,8 @@ class TestSplunkESClientAPIEssential:
         query = client._build_spl_query(search_criteria)
 
         assert "index=_notable" in query  # noqa: S101
-        assert "src_ip=192.168.1.100" in query  # noqa: S101
-        assert "dst_ip=10.0.0.50" in query  # noqa: S101
+        assert 'src_ip IN ("192.168.1.100")' in query  # noqa: S101
+        assert 'dst_ip IN ("10.0.0.50")' in query  # noqa: S101
         assert "earliest=-" in query  # noqa: S101
         assert "url_path" in query  # noqa: S101
 
@@ -285,11 +285,13 @@ class TestSplunkESClientAPIEssential:
         query = client._build_spl_query(search_criteria)
 
         assert "index=_notable" in query  # noqa: S101
-        assert "src_ip=192.168.1.100" in query  # noqa: S101
-        assert "AND" in query  # noqa: S101
-        assert "url_path" in query  # noqa: S101
-        assert "/api/injects/" in query  # noqa: S101
-        assert "executable-payload" in query  # noqa: S101
+        assert 'src_ip IN ("192.168.1.100")' in query  # noqa: S101
+        # IP and process conditions are both present (implicit AND in SPL)
+        assert "url_path IN" in query  # noqa: S101
+        assert (
+            "/oaev-implant-12345678-1234-1234-1234-123456789abc-agent-87654321-4321-4321-4321-cba987654321/callback"
+            in query
+        )  # noqa: S101
 
     def test_build_spl_query_time_window_format(self):
         """Test SPL query time window format.
@@ -366,9 +368,12 @@ class TestSplunkESClientAPIEssential:
         call_args = mock_post.call_args
         query_str = str(call_args)
         assert "url_path" in query_str  # noqa: S101
-        assert "/api/injects/" in query_str  # noqa: S101
-        assert "executable-payload" in query_str  # noqa: S101
-        assert "AND" in query_str  # noqa: S101
+        assert (
+            "/oaev-implant-12345678-1234-1234-1234-123456789abc-agent-87654321-4321-4321-4321-cba987654321/callback"
+            in query_str
+        )  # noqa: S101
+        # IP and process conditions are both present (implicit AND in SPL)
+        assert 'src_ip IN ("192.168.1.100")' in query_str  # noqa: S101
 
     def test_parent_process_uuid_extraction(self):
         """Test UUID extraction from parent process names.
@@ -424,15 +429,17 @@ class TestSplunkESClientAPIEssential:
 
         query = client._build_spl_query(search_criteria)
 
-        # Verify AND logic structure
-        assert "AND" in query  # noqa: S101
-        # Verify IP OR conditions are grouped
-        assert "src_ip=192.168.1.100 OR" in query  # noqa: S101
-        assert "src_ip=10.0.0.1" in query  # noqa: S101
-        assert "dst_ip=172.16.0.1" in query  # noqa: S101
-        # Verify URL path conditions
-        assert "url_path=" in query  # noqa: S101
-        assert "/api/injects/" in query  # noqa: S101
+        # Verify both condition groups are present (implicit AND in SPL)
+        # Verify IP IN conditions use new format
+        assert '"192.168.1.100","10.0.0.1"' in query  # noqa: S101
+        assert "src_ip IN" in query  # noqa: S101
+        assert 'dst_ip IN ("172.16.0.1")' in query  # noqa: S101
+        # Verify URL path conditions use new IN format with callback suffix
+        assert "url_path IN" in query  # noqa: S101
+        assert (
+            "/oaev-implant-12345678-1234-1234-1234-123456789abc-agent-87654321-4321-4321-4321-cba987654321/callback"
+            in query
+        )  # noqa: S101
 
     def test_build_spl_query_retry_time_extension(self):
         """Test SPL query time extension for retries.

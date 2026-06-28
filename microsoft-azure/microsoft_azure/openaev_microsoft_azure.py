@@ -294,6 +294,10 @@ class OpenAEVMicrosoftAzure(CollectorDaemon):
                         if "64" in vm_size or platform != "Generic"
                         else "Unknown"
                     ),
+                    "asset_category": "HOST",
+                    "asset_cloud_provider": "AZURE",
+                    "asset_cloud_native_type": "virtual_machine",
+                    "asset_cloud_region": vm_location,
                     "endpoint_ips": ips,
                     "asset_description": f"Azure VM - Size: {vm_size}, Location: {vm_location}",
                 }
