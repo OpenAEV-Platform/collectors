@@ -1,0 +1,24 @@
+openaev:
+  url: "http://change.me"
+  token: "ChangeMe"
+# tenant_id: "ChangeMe"
+
+collector:
+  id: "ChangeMe"
+  name: "NetWitness"
+  period: 'PT1M'
+  log_level: "error"
+
+netwitness:
+  base_url: "https://netwitness.company.com:50103"
+  # Authentication: provide a username/password pair (Core SDK, primary)
+  # OR a bearer token (NetWitness Platform API).
+  username: "ChangeMe"
+  password: "ChangeMe"
+  # token: "ChangeMe"
+  max_results: 100
+  # console_url: "https://netwitness.company.com"
+  verify_ssl: true
+  time_window: "PT1H"
+  offset: "PT30S"
+  max_retry: 3

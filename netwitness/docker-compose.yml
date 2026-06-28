@@ -1,0 +1,16 @@
+version: "3"
+services:
+  collector-netwitness:
+    image: openaev/collector-netwitness:rolling
+    environment:
+      - OPENAEV_URL=http://localhost
+      - OPENAEV_TOKEN=ChangeMe
+      - OPENAEV_TENANT_ID=ChangeMe
+      - COLLECTOR_ID=ChangeMe
+      - NETWITNESS_BASE_URL=https://change.me:50103
+      # Authentication: provide username/password (Core SDK) or NETWITNESS_TOKEN (bearer)
+      - NETWITNESS_USERNAME=ChangeMe
+      - NETWITNESS_PASSWORD=ChangeMe
+      # - NETWITNESS_TOKEN=ChangeMe
+      - NETWITNESS_MAX_RESULTS=100
+    restart: always
