@@ -4,7 +4,7 @@ openaev:
   tenant_id: "ChangeMe"
 
 collector:
-  id: "Palo Alto Cortex XDR"
+  id: "ChangeMe"
   name: 'Palo Alto Cortex XDR'
   platform: 'EDR'
   period: 'PT2M'
