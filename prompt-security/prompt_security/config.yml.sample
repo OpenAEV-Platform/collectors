@@ -1,0 +1,14 @@
+openaev:
+  url: 'http://localhost:3001'
+  token: 'ChangeMe'
+# tenant_id: 'ChangeMe'
+
+collector:
+  id: 'ChangeMe'   # unique UUIDv4
+  name: 'Prompt Security'
+  platform: 'LLM_FIREWALL'
+  period: 'PT120S'
+  log_level: 'error'
+  base_url: 'https://ChangeMe.prompt.security'
+  app_id: 'ChangeMe'
+  auth_header: 'APP-ID'
