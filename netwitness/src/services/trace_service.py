@@ -5,7 +5,7 @@ from processing results.
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 from urllib.parse import quote
 
@@ -203,8 +203,8 @@ class NetWitnessTraceService:
             trace_link = self._build_trace_url_from_expectation(result.expectation)
             self.logger.debug(f"{LOG_PREFIX} Generated trace link: {trace_link}")
 
-            trace_date = datetime.utcnow().replace(microsecond=0)
-            date_str = trace_date.isoformat() + "Z"
+            trace_date = datetime.now(timezone.utc).replace(microsecond=0)
+            date_str = trace_date.strftime("%Y-%m-%dT%H:%M:%SZ")
             self.logger.debug(f"{LOG_PREFIX} Generated trace date: {date_str}")
 
             trace = ExpectationTrace(

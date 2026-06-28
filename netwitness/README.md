@@ -13,7 +13,7 @@ The collector builds an NWQL query from the attack signatures, executes it again
 ## Features
 
 - **Detection Validation**: Runs NetWitness Core SDK queries to verify detections
-- **IP-based Matching**: Supports both source and destination IPv4 / IPv6 address matching (`ip.src` / `ip.dst`)
+- **IP-based Matching**: Supports both source and destination IPv4 address matching (`ip.src` / `ip.dst`)
 - **Parent Process Tracking**: Extracts inject/agent identifiers from parent process names and matches them against the `url` meta
 - **Flexible Authentication**: HTTP basic authentication (Core SDK) or a bearer token (NetWitness Platform API)
 - **Retry Mechanism**: Built-in retry logic with a configurable offset to handle ingestion latency

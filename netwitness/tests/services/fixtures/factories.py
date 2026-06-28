@@ -204,11 +204,14 @@ class NetWitnessSearchCriteriaFactory(ModelFactory[NetWitnessSearchCriteria]):
     source_ips = Use(lambda: ["192.168.1.100", "10.0.0.50"])
     target_ips = Use(lambda: ["172.16.0.10", "203.0.113.5"])
     start_date = Use(
-        lambda: (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat() + "Z"
+        lambda: (datetime.now(timezone.utc) - timedelta(hours=1))
+        .isoformat()
+        .replace("+00:00", "Z")
     )
     end_date = Use(
-        lambda: (datetime.now(timezone.utc) + timedelta(microseconds=1)).isoformat()
-        + "Z"
+        lambda: (datetime.now(timezone.utc) + timedelta(microseconds=1))
+        .isoformat()
+        .replace("+00:00", "Z")
     )
 
 
@@ -221,7 +224,7 @@ class NetWitnessAlertFactory(ModelFactory[NetWitnessAlert]):
 
     __check_model__ = False
 
-    time = Use(lambda: datetime.now(timezone.utc).isoformat() + "Z")
+    time = Use(lambda: datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"))
     src_ip = Use(lambda: f"192.168.1.{uuid.uuid4().int % 255}")
     dst_ip = Use(lambda: f"10.0.0.{uuid.uuid4().int % 255}")
     signature = Use(lambda: f"Test Malicious Activity {uuid.uuid4().hex[:8]}")
@@ -261,7 +264,7 @@ class ExpectationTraceFactory(ModelFactory[ExpectationTrace]):
         lambda: f"https://test-netwitness.example.com:5601/app/security/alerts?query=test-{uuid.uuid4().hex[:8]}"
     )
     inject_expectation_trace_date = Use(
-        lambda: datetime.now(timezone.utc).isoformat() + "Z"
+        lambda: datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     )
 
 
