@@ -228,6 +228,19 @@ jobs:
             docker save -o ~/openaev/images/collector-splunk-es openaev/collector-splunk-es:${CIRCLE_SHA1}
             docker save -o ~/openaev/images/collector-splunk-es-ubi9 openaev/collector-splunk-es:${CIRCLE_SHA1}-ubi9
       - run:
+          working_directory: ~/openaev/elastic
+          name: Build Docker image openaev/collector-elastic
+          command: |
+            if [[ "${CIRCLE_BRANCH}" == "main" ]]; then
+              docker build --pull --progress=plain -t openaev/collector-elastic:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
+              docker build --pull --progress=plain -t openaev/collector-elastic:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
+            else 
+              docker build --pull --progress=plain -t openaev/collector-elastic:${CIRCLE_SHA1} .
+              docker build --pull --progress=plain -t openaev/collector-elastic:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 .
+            fi
+            docker save -o ~/openaev/images/collector-elastic openaev/collector-elastic:${CIRCLE_SHA1}
+            docker save -o ~/openaev/images/collector-elastic-ubi9 openaev/collector-elastic:${CIRCLE_SHA1}-ubi9
+      - run:
           working_directory: ~/openaev/netwitness
           name: Build Docker image openaev/collector-netwitness
           command: |
@@ -440,6 +453,12 @@ jobs:
             docker tag openaev/collector-splunk-es:${CIRCLE_SHA1}-ubi9 openaev/collector-splunk-es:${IMAGETAG}-ubi9
             docker tag openaev/collector-splunk-es:${CIRCLE_SHA1}-ubi9 openbas/collector-splunk-es:${IMAGETAG}-ubi9
             
+            docker image load < collector-elastic
+            docker tag openaev/collector-elastic:${CIRCLE_SHA1} openaev/collector-elastic:${IMAGETAG}
+            docker tag openaev/collector-elastic:${CIRCLE_SHA1} openbas/collector-elastic:${IMAGETAG}
+            docker image load < collector-elastic-ubi9
+            docker tag openaev/collector-elastic:${CIRCLE_SHA1}-ubi9 openaev/collector-elastic:${IMAGETAG}-ubi9
+            docker tag openaev/collector-elastic:${CIRCLE_SHA1}-ubi9 openbas/collector-elastic:${IMAGETAG}-ubi9
             docker image load < collector-netwitness
             docker tag openaev/collector-netwitness:${CIRCLE_SHA1} openaev/collector-netwitness:${IMAGETAG}
             docker tag openaev/collector-netwitness:${CIRCLE_SHA1} openbas/collector-netwitness:${IMAGETAG}
@@ -536,6 +555,10 @@ jobs:
             docker push openaev/collector-splunk-es:${IMAGETAG}-ubi9
             docker push openbas/collector-splunk-es:${IMAGETAG}
             docker push openbas/collector-splunk-es:${IMAGETAG}-ubi9
+            docker push openaev/collector-elastic:${IMAGETAG}
+            docker push openaev/collector-elastic:${IMAGETAG}-ubi9
+            docker push openbas/collector-elastic:${IMAGETAG}
+            docker push openbas/collector-elastic:${IMAGETAG}-ubi9
             docker push openaev/collector-netwitness:${IMAGETAG}
             docker push openaev/collector-netwitness:${IMAGETAG}-ubi9
             docker push openbas/collector-netwitness:${IMAGETAG}
@@ -591,6 +614,8 @@ jobs:
               docker tag openaev/collector-sentinelone:${IMAGETAG} openbas/collector-sentinelone:latest
               docker tag openaev/collector-splunk-es:${IMAGETAG} openaev/collector-splunk-es:latest
               docker tag openaev/collector-splunk-es:${IMAGETAG} openbas/collector-splunk-es:latest
+              docker tag openaev/collector-elastic:${IMAGETAG} openaev/collector-elastic:latest
+              docker tag openaev/collector-elastic:${IMAGETAG} openbas/collector-elastic:latest
               docker tag openaev/collector-netwitness:${IMAGETAG} openaev/collector-netwitness:latest
               docker tag openaev/collector-netwitness:${IMAGETAG} openbas/collector-netwitness:latest
               docker tag openaev/collector-qradar:${IMAGETAG} openaev/collector-qradar:latest
@@ -628,6 +653,8 @@ jobs:
               docker push openbas/collector-sentinelone:latest
               docker push openaev/collector-splunk-es:latest
               docker push openbas/collector-splunk-es:latest
+              docker push openaev/collector-elastic:latest
+              docker push openbas/collector-elastic:latest
               docker push openaev/collector-netwitness:latest
               docker push openbas/collector-netwitness:latest
               docker push openaev/collector-qradar:latest

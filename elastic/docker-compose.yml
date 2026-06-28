@@ -1,0 +1,16 @@
+version: "3"
+services:
+  collector-elastic:
+    image: openaev/collector-elastic:rolling
+    environment:
+      - OPENAEV_URL=http://localhost
+      - OPENAEV_TOKEN=ChangeMe
+      - OPENAEV_TENANT_ID=ChangeMe
+      - COLLECTOR_ID=ChangeMe
+      - ELASTIC_BASE_URL=https://change.me
+      # Authentication: provide ELASTIC_API_KEY (preferred) or username/password
+      # - ELASTIC_API_KEY=ChangeMe
+      - ELASTIC_USERNAME=ChangeMe
+      - ELASTIC_PASSWORD=ChangeMe
+      - ELASTIC_ALERTS_INDEX=.alerts-security.alerts-*
+    restart: always
