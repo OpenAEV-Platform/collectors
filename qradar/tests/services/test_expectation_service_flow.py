@@ -182,6 +182,27 @@ class TestExpectationServiceFlow:
             service._match_with_detection_helper(signatures, data_item, helper) is False
         )
 
+    def test_match_with_detection_helper_propagates_internal_error(self):
+        """An unexpected error inside the helper propagates instead of False.
+
+        Previously the helper caught every exception and returned False, which
+        silently downgraded a real internal failure (e.g. ``match_alert_elements``
+        raising) into a benign "no match". It must now let unexpected errors
+        propagate so ``_match`` can classify them as a QRadarMatchingError
+        instead of masking them as a clean no-match verdict.
+        """
+        service = _service()
+        helper = Mock()
+        helper.match_alert_elements.side_effect = RuntimeError("boom")
+
+        signatures = [{"type": "source_ipv4_address", "value": "1.2.3.4"}]
+        data_item = {
+            "source_ipv4_address": {"type": "simple", "data": ["1.2.3.4"]},
+        }
+
+        with pytest.raises(RuntimeError):
+            service._match_with_detection_helper(signatures, data_item, helper)
+
     def test_match_reraises_helper_error_with_context(self):
         """An unexpected matcher error surfaces as QRadarMatchingError with context.
 

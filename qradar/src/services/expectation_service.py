@@ -669,8 +669,11 @@ class QRadarExpectationService:
             return result
 
         except Exception as e:
+            # Surface unexpected matching failures to _match(), which wraps them
+            # as QRadarMatchingError. Swallowing them here and returning False
+            # would mis-report a real internal error as a benign "no match".
             self.logger.error(f"{LOG_PREFIX} Error in detection_helper matching: {e}")
-            return False
+            raise
 
     def _create_error_result(
         self,
