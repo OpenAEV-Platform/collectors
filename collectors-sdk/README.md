@@ -74,7 +74,7 @@ Never import from private submodules:
 from collectors_sdk._core.engine.engine import BasicCollectorEngine
 ```
 
-The 39 symbols in `__all__` are the stable public API. Everything under `_core/` is an implementation detail.
+The 40 symbols in `__all__` are the stable public API. Everything under `_core/` is an implementation detail.
 
 ## Documentation
 
