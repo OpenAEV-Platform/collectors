@@ -46,7 +46,7 @@ collector._setup()
 
 ## Module Map
 
-39 public symbols in `collectors_sdk`:
+40 public symbols in `collectors_sdk`:
 
 | Group | Symbols | What it provides |
 |---|---|---|
@@ -57,6 +57,7 @@ collector._setup()
 | Type Aliases | `CustomConfig`, `ExpectationsList`, `SignatureGroups`, `BulkData`, `PrepareBulkFunction`, `BulkUploadFunction`, `UnpackBulkFunction`, `IndividualUploadFunction` | Typed aliases for function signatures and data shapes |
 | Engine | `BasicCollectorEngine` | 7-step expectation processing pipeline |
 | Base | `BaseCollector` | Lifecycle class wiring source, handler, engine, and config |
+| Daemon | `DaemonProtocol` | Behavioral contract for the daemon runtime (re-exported from xtm-oaev-sdk) |
 
 ## Import Convention
 

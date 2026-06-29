@@ -4,6 +4,9 @@ __version__ = "0.1.0"
 
 # --- Errors ---
 # --- Base ---
+# --- Daemon protocol (re-exported from xtm-oaev-sdk) ---
+from xtm_oaev_sdk import DaemonProtocol
+
 from collectors_sdk._core.base import BaseCollector
 
 # --- Config ---
@@ -109,4 +112,6 @@ __all__ = [
     "BasicCollectorEngine",
     # Base (1)
     "BaseCollector",
+    # Daemon protocol (1, re-exported from xtm-oaev-sdk)
+    "DaemonProtocol",
 ]
