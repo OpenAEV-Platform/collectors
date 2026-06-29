@@ -295,10 +295,13 @@ class ExpectationService:
                         expectation, incident, process_names, detection_helper
                     )
 
-                    # Detection: at least one alert in the time window is sufficient
-                    # Signature match strengthens confidence but is not mandatory
-                    if has_signature_match or not self._has_matchable_signatures(
-                        expectation
+                    # Detection: at least one alert in the time window is sufficient.
+                    # Signature match (IP/ProcessName) is optional — used when present
+                    # to strengthen confidence, but never required to mark detected.
+                    if (
+                        bool(matched_alerts)
+                        or has_signature_match
+                        or not self._has_matchable_signatures(expectation)
                     ):
                         # Derive is_prevented from available matched status signals.
                         incident_prevented = False

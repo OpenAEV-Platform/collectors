@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
 import pytest
+from src.models.incident import Alert
 from src.models.settings.config_loader import ConfigLoader
 from src.services.exception import (
     PaloAltoCortexXSOARAPIError,
@@ -188,3 +189,50 @@ class TestErrorResultAndConvert:
         info = service.get_service_info()
         assert info["service_name"] == "PaloAltoCortexXSOARExpectationService"
         assert info["flow_type"] == "all_at_once"
+
+
+class TestDetectionWithoutImplantMatch:
+    """Detection must succeed on alert presence alone, even without implant_id match.
+
+    Scenario: the API is queried with fromDate=2026-06-25T12:00:00Z /
+    toDate=2026-06-29T12:00:00Z and returns an incident with many alerts.
+    The expectation window is 2026-06-26 05:40 → 06:44:35 UTC.
+    The incident carries no recognisable implant_id (oaev_implant=[]),
+    so _expectation_matches_incident returns False.
+    Despite the failed signature match the result must be is_valid=True because
+    at least one alert exists in the time window.
+    """
+
+    def test_detected_even_when_implant_id_not_matched(self, service):
+        # Alert whose detection_timestamp falls inside [start_time, end_time]
+        alert_ts = int(
+            datetime(2026, 6, 26, 6, 0, 0, tzinfo=timezone.utc).timestamp() * 1000
+        )
+        alert = Alert(
+            alert_id="alert-1",
+            detection_timestamp=alert_ts,
+            action_pretty="Detected (Reported)",
+        )
+
+        # Incident has that alert but no implant identifier
+        incident = IncidentResult(
+            id="incident-1",
+            action=["Detected (Reported)"],
+            indicators=IndicatorResults(oaev_implant=[]),
+            alerts=[alert],
+        )
+
+        exp = DetectionExpectationFactory.create(api_client=MagicMock())
+        detection_helper = MagicMock()
+
+        # Signature matching fails (implant_id not recognised in the incident)
+        with patch.object(service, "_expectation_matches_incident", return_value=False):
+            results = service._match_alerts_to_expectations(
+                [exp], [incident], detection_helper
+            )
+
+        assert len(results) == 1, "Expected exactly one result"
+        assert results[0].is_valid is True, (
+            f"Expected is_valid=True but got {results[0].is_valid}; "
+            f"alerts in window are sufficient for detection"
+        )
