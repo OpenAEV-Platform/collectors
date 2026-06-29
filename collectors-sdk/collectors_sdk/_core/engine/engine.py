@@ -251,6 +251,9 @@ class BasicCollectorEngine:
                 f"{self.current_summary.invalid} invalid"
             )
 
+            # Upload results back to OpenAEV
+            self._upload_results(results)
+
         except (KeyboardInterrupt, SystemExit):
             self.logger.info(f"{LOG_PREFIX} Collector stopping...")
             os._exit(0)
@@ -265,3 +268,107 @@ class BasicCollectorEngine:
         self.logger.info(
             f"{LOG_PREFIX} Processing cycle completed: {self.current_summary}"
         )
+
+    def _upload_results(self, results: list[ExpectationResult]) -> None:
+        """Upload expectation results and traces back to OpenAEV.
+
+        Uses pyoaev bulk_update API with individual fallback (same pattern
+        as sentinelone's GenericExpectationManager._bulk_update_expectations).
+        """
+        if not results:
+            return
+
+        # 1. Bulk update expectation statuses
+        self.logger.debug(f"{LOG_PREFIX} Updating {len(results)} expectations...")
+        bulk_data = self._prepare_bulk_update_data(results)
+        if bulk_data:
+            try:
+                self.oaev_api.inject_expectation.bulk_update(
+                    inject_expectation_input_by_id=bulk_data
+                )
+                self.logger.info(
+                    f"{LOG_PREFIX} Successfully bulk updated "
+                    f"{len(bulk_data)} expectations"
+                )
+            except Exception as bulk_err:
+                self.logger.warning(
+                    f"{LOG_PREFIX} Bulk update failed, "
+                    f"falling back to individual: {bulk_err}"
+                )
+                self._fallback_individual_updates(bulk_data)
+
+        # 2. Submit traces
+        traces = self._collect_traces(results)
+        if traces:
+            try:
+                self.oaev_api.inject_expectation_trace.bulk_create(
+                    payload={"expectation_traces": traces}
+                )
+                self.logger.info(
+                    f"{LOG_PREFIX} Successfully submitted {len(traces)} traces"
+                )
+            except Exception as trace_err:
+                self.logger.warning(
+                    f"{LOG_PREFIX} Trace submission failed: {trace_err}"
+                )
+
+    def _prepare_bulk_update_data(
+        self, results: list[ExpectationResult]
+    ) -> dict[str, dict[str, Any]]:
+        """Prepare bulk data dict for pyoaev inject_expectation.bulk_update."""
+        bulk_data: dict[str, dict[str, Any]] = {}
+        for result in results:
+            if not result.expectation_id:
+                continue
+            expectation = result.expectation
+            if expectation is None:
+                continue
+
+            is_detection = type(expectation).__name__ == "DetectionExpectation"
+            base_text = "Detected" if is_detection else "Prevented"
+            result_text = base_text if result.is_valid else f"Not {base_text}"
+
+            bulk_data[result.expectation_id] = {
+                "collector_id": self.collector_id,
+                "result": result_text,
+                "is_success": result.is_valid,
+            }
+        return bulk_data
+
+    def _fallback_individual_updates(
+        self, bulk_data: dict[str, dict[str, Any]]
+    ) -> None:
+        """Fallback to individual expectation updates when bulk fails."""
+        success = 0
+        errors = 0
+        for exp_id, update_data in bulk_data.items():
+            try:
+                self.oaev_api.inject_expectation.update(
+                    inject_expectation_id=exp_id,
+                    inject_expectation=update_data,
+                )
+                success += 1
+            except Exception as err:
+                errors += 1
+                self.logger.error(
+                    f"{LOG_PREFIX} Failed to update expectation {exp_id}: {err}"
+                )
+        self.logger.info(
+            f"{LOG_PREFIX} Individual updates: {success} ok, {errors} failed"
+        )
+
+    def _collect_traces(self, results: list[ExpectationResult]) -> list[dict[str, Any]]:
+        """Collect trace dicts from results that have matched alerts."""
+        traces: list[dict[str, Any]] = []
+        for result in results:
+            if not result.is_valid or not result.matched_alerts:
+                continue
+            for alert in result.matched_alerts:
+                trace = {
+                    "inject_expectation_trace_expectation": result.expectation_id,
+                    "inject_expectation_trace_source_id": self.collector_id,
+                }
+                if isinstance(alert, dict):
+                    trace.update(alert)
+                traces.append(trace)
+        return traces
