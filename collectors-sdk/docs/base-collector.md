@@ -177,12 +177,13 @@ class MyCustomConfig(ConfigLoaderCustom):
 | Concern | Owner | Why |
 |---|---|---|
 | BaseCollector lifecycle | `collectors-sdk` | Shared by all collectors |
+| DaemonProtocol (start, set_callback, get_id) | `xtm-oaev-sdk` (re-exported) | Shared behavioral contract for daemon runtimes |
 | 4 Protocols | `collectors-sdk` | Behavioral contracts |
 | Data models (OAEVData, TraceData, etc.) | `collectors-sdk` | Pipeline data shapes |
 | Error hierarchy | `collectors-sdk` | Exception handling contract |
 | Config base classes | `collectors-sdk` | Common settings structure |
 | BasicCollectorEngine | `collectors-sdk` | Reusable processing pipeline |
 | ResilientUploader | `collectors-sdk` (internal) | Upload strategy |
-| CollectorDaemon | `pyoaev` | Platform runtime |
+| CollectorDaemon (concrete) | `pyoaev` | Platform runtime, API client, PingAlive |
 | Concrete ConfigLoader | Per-collector | Tool-specific config sources |
 | Tool-specific data fetchers | Per-collector | Integration code |
