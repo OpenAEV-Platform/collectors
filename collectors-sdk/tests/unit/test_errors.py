@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-
 from collectors_sdk import (
     APIError,
     BulkPreparationError,
@@ -20,7 +19,6 @@ from collectors_sdk import (
     TraceSubmissionError,
     TracingError,
 )
-
 
 ALL_ERRORS = [
     CollectorError,

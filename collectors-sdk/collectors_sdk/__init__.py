@@ -2,4 +2,111 @@
 
 __version__ = "0.1.0"
 
-__all__: list[str] = []
+# --- Errors ---
+# --- Base ---
+from collectors_sdk._core.base import BaseCollector
+
+# --- Config ---
+from collectors_sdk._core.config.settings import (
+    ConfigBaseSettings,
+    ConfigLoaderCollector,
+    ConfigLoaderCustom,
+    ConfigLoaderOAEV,
+)
+
+# --- Engine ---
+from collectors_sdk._core.engine.engine import BasicCollectorEngine
+from collectors_sdk._core.errors import (
+    APIError,
+    BulkPreparationError,
+    BulkUploadError,
+    CollectorConfigError,
+    CollectorEngineConfigError,
+    CollectorError,
+    CollectorProcessingError,
+    CollectorSetupError,
+    ExpectationHandlerError,
+    ExpectationProcessingError,
+    ExpectationUpdateError,
+    TraceCreationError,
+    TraceSubmissionError,
+    TracingError,
+)
+
+# --- Data models ---
+from collectors_sdk._core.models.data import OAEVData, TraceData
+from collectors_sdk._core.models.expectations import (
+    ExpectationResult,
+    ExpectationSummary,
+    ExpectationTrace,
+)
+from collectors_sdk._core.models.source import Source, SourceHandler
+
+# --- Protocols ---
+from collectors_sdk._core.protocols import (
+    CollectorEngineProtocol,
+    DataFetcherProtocol,
+    SourceDataProtocol,
+    SourceHandlerProtocol,
+)
+
+# --- Type aliases ---
+from collectors_sdk._core.types import (
+    BulkData,
+    BulkUploadFunction,
+    CustomConfig,
+    ExpectationsList,
+    IndividualUploadFunction,
+    PrepareBulkFunction,
+    SignatureGroups,
+    UnpackBulkFunction,
+)
+
+__all__ = [
+    # Errors (14)
+    "CollectorError",
+    "CollectorConfigError",
+    "CollectorEngineConfigError",
+    "CollectorSetupError",
+    "CollectorProcessingError",
+    "ExpectationHandlerError",
+    "ExpectationProcessingError",
+    "ExpectationUpdateError",
+    "BulkUploadError",
+    "BulkPreparationError",
+    "APIError",
+    "TracingError",
+    "TraceSubmissionError",
+    "TraceCreationError",
+    # Protocols (4)
+    "CollectorEngineProtocol",
+    "DataFetcherProtocol",
+    "SourceDataProtocol",
+    "SourceHandlerProtocol",
+    # Data models (7)
+    "OAEVData",
+    "TraceData",
+    "Source",
+    "SourceHandler",
+    "ExpectationResult",
+    "ExpectationTrace",
+    "ExpectationSummary",
+    # Config (4)
+    "ConfigBaseSettings",
+    "ConfigLoaderOAEV",
+    "ConfigLoaderCollector",
+    "ConfigLoaderCustom",
+    # Type aliases (8)
+    "CustomConfig",
+    "ExpectationsList",
+    "SignatureGroups",
+    "BulkData",
+    "PrepareBulkFunction",
+    "BulkUploadFunction",
+    "UnpackBulkFunction",
+    "IndividualUploadFunction",
+    # Engine (1)
+    "BasicCollectorEngine",
+    # Base (1)
+    "BaseCollector",
+]
