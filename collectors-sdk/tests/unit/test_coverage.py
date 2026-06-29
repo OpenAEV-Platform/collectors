@@ -59,13 +59,13 @@ def _make_source() -> Source:
 class TestBaseCollectorLifecycle:
     def test_init_with_defaults(self) -> None:
         source = _make_source()
-        collector = BaseCollector(name="test", source=source)
+        collector = BaseCollector(name="test", source=source, oaev_api=MagicMock())
         assert collector.name == "test"
         assert isinstance(collector.source_handler, SourceHandler)
 
     def test_init_invalid_source_type(self) -> None:
         with pytest.raises(CollectorConfigError, match="not of type Source"):
-            BaseCollector(name="test", source="not a source")  # type: ignore[arg-type]
+            BaseCollector(name="test", source="not a source", oaev_api=MagicMock())  # type: ignore[arg-type]
 
     def test_init_invalid_engine_model(self) -> None:
         source = _make_source()
@@ -74,7 +74,7 @@ class TestBaseCollectorLifecycle:
             pass
 
         with pytest.raises(CollectorConfigError, match="CollectorEngineProtocol"):
-            BaseCollector(name="test", source=source, engine_model=BadEngine)  # type: ignore[arg-type]
+            BaseCollector(name="test", source=source, engine_model=BadEngine, oaev_api=MagicMock())  # type: ignore[arg-type]
 
     def test_init_invalid_source_handler_model(self) -> None:
         source = _make_source()
@@ -83,7 +83,7 @@ class TestBaseCollectorLifecycle:
             pass
 
         with pytest.raises(CollectorConfigError, match="SourceHandlerProtocol"):
-            BaseCollector(name="test", source=source, source_handler_model=BadHandler)  # type: ignore[arg-type]
+            BaseCollector(name="test", source=source, source_handler_model=BadHandler, oaev_api=MagicMock())  # type: ignore[arg-type]
 
     def test_engine_config_failure(self) -> None:
         source = _make_source()
@@ -96,23 +96,23 @@ class TestBaseCollectorLifecycle:
             def run_engine(self) -> None: ...
 
         with pytest.raises(CollectorEngineConfigError, match="engine init fail"):
-            BaseCollector(name="test", source=source, engine_model=FailEngine)
+            BaseCollector(name="test", source=source, engine_model=FailEngine, oaev_api=MagicMock())
 
     def test_setup_configures_engine(self) -> None:
         source = _make_source()
-        collector = BaseCollector(name="test", source=source, config=MagicMock())
+        collector = BaseCollector(name="test", source=source, config=MagicMock(), oaev_api=MagicMock())
         collector._setup(batching=False)
         assert collector.engine.configured is True
 
     def test_setup_with_batching(self) -> None:
         source = _make_source()
-        collector = BaseCollector(name="test", source=source, config=MagicMock())
+        collector = BaseCollector(name="test", source=source, config=MagicMock(), oaev_api=MagicMock())
         collector._setup(batching=True)
         assert collector.engine.batching is True
 
     def test_setup_failure(self) -> None:
         source = _make_source()
-        collector = BaseCollector(name="test", source=source)
+        collector = BaseCollector(name="test", source=source, oaev_api=MagicMock())
         collector.engine.configure_engine = MagicMock(  # type: ignore[method-assign]
             side_effect=RuntimeError("setup fail")
         )

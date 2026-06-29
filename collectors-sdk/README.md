@@ -26,14 +26,23 @@ source = Source(
     signatures=SUPPORTED_SIGNATURES,
 )
 
+# Auto-wires pyoaev API client from config.yml / env vars
 collector = BaseCollector(
     name="My Collector",
     source=source,
-    config=my_config,
+)
+collector.start()
+```
+
+When `oaev_api` is not passed, `BaseCollector` auto-creates the pyoaev client from `config.yml` (expects `openaev.url` and `openaev.token` sections) or from environment variables (`OPENAEV_URL`, `OPENAEV_TOKEN`). You can still pass explicit values:
+
+```python
+collector = BaseCollector(
+    name="My Collector",
+    source=source,
     collector_id="my-collector-uuid",
     oaev_api=oaev_client,
 )
-collector._setup()
 ```
 
 ## Features

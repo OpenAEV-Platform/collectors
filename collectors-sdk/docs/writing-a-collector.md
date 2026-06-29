@@ -184,6 +184,7 @@ def main() -> None:
             source_data_model=MySourceData,
             signatures=SUPPORTED_SIGNATURES,
         )
+        # Auto-wires pyoaev API client from config.yml or env vars
         collector = BaseCollector(
             name="My Vendor Collector",
             source=source,
@@ -206,7 +207,32 @@ if __name__ == "__main__":
     main()
 ```
 
-## Step 6: Detection Matching (Optional)
+## Step 6: Configuration (config.yml)
+
+Create a `config.yml` next to your package (auto-discovered by the SDK):
+
+```yaml
+openaev:
+  url: "http://localhost:8080"
+  token: "your-api-token"
+
+collector:
+  id: "my-collector-uuid"
+  name: "My Vendor Collector"
+  log_level: "info"
+
+# Custom section matching your ConfigLoaderCustom fields
+custom:
+  base_url: "https://vendor-api.example.com"
+  api_key: "your-vendor-key"
+  time_window: "PT1H"
+```
+
+Alternatively, use environment variables: `OPENAEV_URL`, `OPENAEV_TOKEN`, `COLLECTOR_ID`, etc.
+
+Provide `.env.sample` and `config.yml.sample` files for documentation.
+
+## Step 7: Detection Matching (Optional)
 
 If your collector needs fuzzy matching between expectation signatures and alert data, use `SignatureMatcher`:
 
@@ -234,20 +260,6 @@ is_fuzzy_match = matcher.match_fuzzy(
     fuzzy_scoring=80,
 )
 ```
-
-## Step 7: Environment Configuration
-
-The collector daemon expects these base environment variables (handled by `ConfigLoaderCollector` + `ConfigLoaderOAEV`):
-
-| Variable | Description |
-|----------|-------------|
-| `OAEV_URL` | OpenAEV platform API URL |
-| `OAEV_TOKEN` | Authentication token |
-| `COLLECTOR_ID` | Collector identifier |
-| `COLLECTOR_PERIOD` | Collection interval (seconds) |
-| `COLLECTOR_LOG_LEVEL` | Logging level (DEBUG/INFO/WARN/ERROR) |
-
-Your custom config adds vendor-specific vars with the `CUSTOM_` prefix.
 
 ## Step 8: Running
 
