@@ -11,6 +11,7 @@ dependencies = [
     "pydantic>=2.0,<3.0",
     "pydantic-settings>=2.0,<3.0",
     "python-slugify[unidecode]>=8.0,<9.0",
+    "thefuzz>=0.22,<1.0",
 ]
 
 [dependency-groups]

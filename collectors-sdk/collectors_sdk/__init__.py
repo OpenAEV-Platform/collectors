@@ -65,6 +65,13 @@ from collectors_sdk._core.types import (
     UnpackBulkFunction,
 )
 
+# --- Detection ---
+from collectors_sdk._core.detection import (
+    SignatureMatcher,
+    _decode_value,
+    _is_base64_encoded,
+)
+
 __all__ = [
     # Errors (14)
     "CollectorError",
@@ -114,4 +121,8 @@ __all__ = [
     "BaseCollector",
     # Daemon protocol (1, re-exported from xtm-oaev-sdk)
     "DaemonProtocol",
+    # Detection (3)
+    "SignatureMatcher",
+    "_decode_value",
+    "_is_base64_encoded",
 ]
