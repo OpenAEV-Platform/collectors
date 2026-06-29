@@ -6,6 +6,7 @@ source handler, and configuration together.
 
 from __future__ import annotations
 
+import argparse
 import logging
 from typing import Any
 
@@ -113,6 +114,21 @@ class BaseCollector:
         self.logger.info(
             f"{LOG_PREFIX} {self.name} Collector initialized successfully"
         )
+
+    def start(self) -> None:
+        """Start the collector daemon lifecycle.
+
+        Runs setup, then enters the main execution loop calling the engine
+        on each cycle. Mirrors the CollectorDaemon.start() contract.
+        """
+        parser = argparse.ArgumentParser(description="collector daemon options")
+        parser.add_argument("--dump-config-schema", action="store_true")
+        args = parser.parse_args()
+        if args.dump_config_schema:
+            return
+
+        self._setup()
+        self.engine.run_engine()
 
     def _setup(self, batching: bool = False) -> None:
         """Set up the collector and configure the engine.
