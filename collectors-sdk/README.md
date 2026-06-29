@@ -46,7 +46,7 @@ collector._setup()
 
 ## Module Map
 
-40 public symbols in `collectors_sdk`:
+43 public symbols in `collectors_sdk`:
 
 | Group | Symbols | What it provides |
 |---|---|---|
@@ -58,6 +58,7 @@ collector._setup()
 | Engine | `BasicCollectorEngine` | 7-step expectation processing pipeline |
 | Base | `BaseCollector` | Lifecycle class wiring source, handler, engine, and config |
 | Daemon | `DaemonProtocol` | Behavioral contract for the daemon runtime (re-exported from xtm-oaev-sdk) |
+| Detection | `SignatureMatcher`, `_decode_value`, `_is_base64_encoded` | Signature-to-alert matching engine for detection/prevention collectors |
 
 ## Import Convention
 
@@ -74,7 +75,7 @@ Never import from private submodules:
 from collectors_sdk._core.engine.engine import BasicCollectorEngine
 ```
 
-The 40 symbols in `__all__` are the stable public API. Everything under `_core/` is an implementation detail.
+The 43 symbols in `__all__` are the stable public API. Everything under `_core/` is an implementation detail.
 
 ## Documentation
 
