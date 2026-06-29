@@ -3,6 +3,7 @@
 import logging
 from datetime import datetime, timezone
 from typing import Any
+from urllib.parse import urlsplit
 
 from src.services.ioc_extractor import IncidentResult
 
@@ -26,6 +27,22 @@ def _extract_incident_url(incident: IncidentResult) -> str:
     return ""
 
 
+def _build_incident_link(api_url: str, incident_id: str) -> str:
+    """Build a SOAR console incident URL in the form: <base>/incident/<id>.
+
+    If the host starts with ``api-``, remove that prefix to produce a console URL.
+    """
+    parts = urlsplit(api_url)
+    hostname = parts.hostname or ""
+    if hostname.startswith("api-"):
+        hostname = hostname[len("api-") :]
+
+    if parts.scheme and hostname:
+        port = f":{parts.port}" if parts.port else ""
+        return f"{parts.scheme}://{hostname}{port}/incident/{incident_id}"
+    return ""
+
+
 class TraceBuilder:
     """Utility class for building trace information."""
 
@@ -38,7 +55,7 @@ class TraceBuilder:
 
         Args:
             incident: IncidentResult object.
-            api_url: API URL for PaloAltoCortexXSOAR instance (unused, kept for compatibility).
+            api_url: API URL for PaloAltoCortexXSOAR instance.
 
         Returns:
             Dictionary containing trace information with incident name, link, date,
@@ -49,13 +66,19 @@ class TraceBuilder:
         incident_link = ""
 
         try:
-            incident_link = _extract_incident_url(incident)
+            incident_link = _build_incident_link(api_url, incident.id)
             if incident_link:
                 logger.debug(f"{LOG_PREFIX} Found incident URL: {incident_link}")
             else:
-                logger.warning(
-                    f"{LOG_PREFIX} No PaloAlto URL found in incident {incident.id} indicators"
-                )
+                incident_link = _extract_incident_url(incident)
+                if incident_link:
+                    logger.debug(
+                        f"{LOG_PREFIX} Falling back to incident indicator URL: {incident_link}"
+                    )
+                else:
+                    logger.warning(
+                        f"{LOG_PREFIX} Could not build incident URL for incident {incident.id}"
+                    )
         except Exception as e:
             logger.error(f"{LOG_PREFIX} Error extracting URL: {e}")
             incident_link = ""
