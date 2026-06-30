@@ -1,0 +1,15 @@
+"""RED tests for BaseCollector."""
+
+from __future__ import annotations
+
+from collectors_second_sdk import BaseCollector
+
+
+class TestBaseCollector:
+    """BaseCollector lifecycle tests."""
+
+    def test_importable(self) -> None:
+        assert BaseCollector is not None
+
+    def test_has_setup_method(self) -> None:
+        assert hasattr(BaseCollector, "_setup")
