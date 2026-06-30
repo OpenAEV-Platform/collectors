@@ -19,7 +19,7 @@ class TestResilientUploader:
         unpack: Any = None,
         individual: Any = None,
     ) -> Any:
-        from collectors_sdk._core.engine.uploader import ResilientUploader
+        from collectors_sdk._core.base_collector.internals.resilient_uploader import ResilientUploader
 
         return ResilientUploader(
             data_name="test",

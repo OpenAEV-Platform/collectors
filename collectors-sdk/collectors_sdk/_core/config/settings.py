@@ -10,18 +10,10 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, Field, HttpUrl, PlainSerializer
 from pydantic_settings import (
     BaseSettings,
-    DotEnvSettingsSource,
     PydanticBaseSettingsSource,
     YamlConfigSettingsSource,
 )
 from xtm_oaev_sdk import SettingsLoader
-
-__all__ = [
-    "ConfigBaseSettings",
-    "ConfigLoaderOAEV",
-    "ConfigLoaderCollector",
-    "ConfigLoaderCustom",
-]
 
 LogLevelToLower = Annotated[
     Literal["debug", "info", "warn", "error"],
@@ -35,57 +27,35 @@ TimedeltaInSeconds = Annotated[
 
 
 class ConfigLoaderOAEV(BaseModel):
-    """OpenAEV platform connection settings (nested under 'openaev:' in config.yml)."""
+    """OpenAEV platform connection settings."""
 
     url: HttpUrlToString = Field(description="The OpenAEV platform URL.")
     token: str = Field(description="The token for the OpenAEV platform.")
 
 
 class ConfigLoaderCollector(BaseModel):
-    """Collector identity settings (nested under 'collector:' in config.yml)."""
+    """Collector identity settings."""
 
     id: str = Field(description="Unique identifier for this collector instance.")
     name: str = Field(description="Name of the collector.")
-    platform: str | None = Field(
-        default="EDR",
-        description="Platform type (e.g., EDR, SIEM).",
-    )
-    log_level: LogLevelToLower | None = Field(
-        default="error",
-        description="Log verbosity level.",
-    )
-    period: timedelta | None = Field(
-        default=timedelta(minutes=2),
-        description="Duration between scheduled runs (ISO 8601).",
-    )
-    icon_filepath: str | None = Field(
-        default="src/img/template-logo.png",
-        description="Path to the collector icon file.",
-    )
+    platform: str | None = Field(default="EDR", description="Platform type.")
+    log_level: LogLevelToLower | None = Field(default="error", description="Log verbosity level.")
+    period: timedelta | None = Field(default=timedelta(minutes=2), description="Duration between scheduled runs.")
+    icon_filepath: str | None = Field(default="src/img/template-logo.png", description="Path to collector icon.")
 
 
 class ConfigLoaderCustom(BaseModel):
     """Custom integration configuration — subclass for your collector's needs."""
 
-    key: str | None = Field(
-        default="value",
-        description="Example key-value configuration.",
-    )
-    time_window: timedelta = Field(
-        default=timedelta(hours=1),
-        description="Time window for threat searches (ISO 8601).",
-    )
-    expectation_batch_size: int = Field(
-        default=50,
-        description="Expectations per batch.",
-    )
+    key: str | None = Field(default="value", description="Example key-value configuration.")
+    time_window: timedelta = Field(default=timedelta(hours=1), description="Time window for threat searches.")
+    expectation_batch_size: int = Field(default=50, description="Expectations per batch.")
 
 
 class ConfigBaseSettings(SettingsLoader):
     """Top-level config loader reading env vars + config.yml.
 
     Loads nested YAML sections into typed sub-models.
-    Subclass this in your collector to add custom config sections.
     """
 
     openaev: ConfigLoaderOAEV = Field(description="OpenAEV platform connection.")
@@ -100,7 +70,6 @@ class ConfigBaseSettings(SettingsLoader):
         dotenv_settings: PydanticBaseSettingsSource,
         file_secret_settings: PydanticBaseSettingsSource,
     ) -> tuple[PydanticBaseSettingsSource, ...]:
-        """Resolution priority: init kwargs > env vars > YAML > .env > defaults."""
         _main_path = os.curdir
 
         settings_cls.model_config["env_file"] = f"{_main_path}/../.env"
@@ -121,9 +90,5 @@ class ConfigBaseSettings(SettingsLoader):
 
         env_file_path = settings_cls.model_config.get("env_file") or ""
         if Path(env_file_path).is_file():
-            return (
-                init_settings,
-                env_settings,
-                dotenv_settings,
-            )
+            return (init_settings, env_settings, dotenv_settings)
         return (init_settings, env_settings)

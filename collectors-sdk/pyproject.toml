@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "collectors-sdk"
 version = "0.1.0"
-description = "OpenAEV Collectors SDK — Base collector, engine, and extension framework"
+description = "OpenAEV Collectors SDK (DDD + Light Hex Architecture) — Base collector, engine, and extension framework"
 requires-python = ">=3.12"
 dependencies = [
     "pydantic>=2.0,<3.0",
@@ -31,15 +31,16 @@ line-length = 100
 src = ["collectors_sdk"]
 
 [tool.ruff.lint]
-select = ["E", "F", "I"]
-
-[tool.mypy]
-strict = true
-python_version = "3.12"
-packages = ["collectors_sdk"]
-plugins = ["pydantic.mypy"]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "--strict-markers -v"
-markers = ["integration: marks tests as integration tests"]
+pythonpath = ["."]
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+
+[tool.coverage.run]
+source = ["collectors_sdk"]
