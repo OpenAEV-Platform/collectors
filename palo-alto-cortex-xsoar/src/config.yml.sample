@@ -1,0 +1,12 @@
+openaev:
+  url: 'http://localhost:8081'
+  token: "ChangeMe"
+
+collector:
+  id: "palo-alto-cortex-xsoar--b16138ae-97fe-42a2-8bde-8c41de179312"
+
+palo_alto_cortex_xsoar:
+  api_url: "https://api-soar-tenant.crtx.fa.paloaltonetworks.com"
+  api_key: "ChangeMe"
+  api_key_id: 1
+  api_key_type: "standard" # standard or advanced
