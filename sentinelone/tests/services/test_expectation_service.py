@@ -187,6 +187,94 @@ def test_match_threats_to_expectations():
     _then_match_succeeds_without_mitigation_requirement(matches)
 
 
+# Scenario: Static threat matches on hostname when parent_process_name unavailable
+def test_static_threat_matches_on_hostname_without_process_name():
+    """Scenario: A static threat (dropper) should match on hostname even without DV events.
+
+    Regression test for #415: when DV is disabled and a static threat has no events,
+    parent_process_name data is unavailable. The matcher should gracefully skip that
+    signature check and match on the available hostname signature instead of failing.
+    """
+    # Given: An initialized expectation service
+    service = _given_initialized_expectation_service()
+
+    # Given: A static threat that matches the hostname but has no events
+    threat = SentinelOneThreat(
+        threat_id="static_dropper_1",
+        hostname="target-host.example.com",
+        is_mitigated=False,
+        is_static=True,
+        sha1="deadbeef" * 5,
+    )
+
+    # Given: An expectation with both hostname AND parent_process_name signatures
+    hostname_sig = _create_mock_signature(
+        SignatureTypes.SIG_TYPE_TARGET_HOSTNAME_ADDRESS, "target-host.example.com"
+    )
+    process_sig = _create_mock_signature(
+        SignatureTypes.SIG_TYPE_PARENT_PROCESS_NAME, "oaev-implant-test.exe"
+    )
+    expectation = _create_mock_expectation(
+        expectation_id="static_detection_1",
+        signatures=[hostname_sig, process_sig],
+    )
+
+    # Given: A detection helper that validates hostname matching
+    detection_helper = Mock()
+    detection_helper.match_alert_elements = Mock(return_value=True)
+
+    # When: I check if the expectation matches the threat (with no events)
+    result = service._expectation_matches_threat_data(
+        expectation, threat, [], detection_helper
+    )
+
+    # Then: The match should succeed based on hostname alone
+    assert result is True  # noqa: S101
+    # Then: detection_helper was called for hostname but not parent_process_name
+    detection_helper.match_alert_elements.assert_called_once()
+
+
+# Scenario: No match when ALL signature data is unavailable
+def test_no_match_when_all_signature_data_unavailable():
+    """Scenario: If no signature type can be verified, the match should fail.
+
+    Ensures we don't produce false positives when the threat provides
+    zero data matching any expected signature type.
+    """
+    # Given: An initialized expectation service
+    service = _given_initialized_expectation_service()
+
+    # Given: A threat with NO hostname (None)
+    threat = SentinelOneThreat(
+        threat_id="unknown_threat_1",
+        hostname=None,
+        is_mitigated=False,
+        is_static=True,
+    )
+
+    # Given: An expectation requiring parent_process_name (no hostname sig)
+    process_sig = _create_mock_signature(
+        SignatureTypes.SIG_TYPE_PARENT_PROCESS_NAME, "oaev-implant-test.exe"
+    )
+    expectation = _create_mock_expectation(
+        expectation_id="no_data_test_1",
+        signatures=[process_sig],
+    )
+
+    # Given: A detection helper
+    detection_helper = Mock()
+
+    # When: I check if the expectation matches the threat (no events, no hostname)
+    result = service._expectation_matches_threat_data(
+        expectation, threat, [], detection_helper
+    )
+
+    # Then: The match should fail (no signature could be verified)
+    assert result is False  # noqa: S101
+    # Then: detection_helper was never called (no data to match against)
+    detection_helper.match_alert_elements.assert_not_called()
+
+
 # --------
 # Given Methods
 # --------
