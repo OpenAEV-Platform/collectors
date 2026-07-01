@@ -22,7 +22,7 @@ from collectors_sdk._core.base_collector.models.exception import (
 from collectors_sdk._core.base_collector.models.source import Source, SourceHandler
 from collectors_sdk._core.base_collector.protocols.engine import CollectorEngineProtocol
 from collectors_sdk._core.base_collector.protocols.source_handler import SourceHandlerProtocol
-from pyoaev.utils import setup_logging_config
+from pyoaev.utils import PingAlive, setup_logging_config
 
 LOG_PREFIX = "[Collector]"
 
@@ -193,6 +193,15 @@ class BaseCollector:
             f"{LOG_PREFIX} Supported signatures: "
             f"{[s.value for s in self.source.signatures]}"
         )
+        pingalive_config = {
+            "collector_id": self.collector_id,
+            "collector_name": self.name,
+            "collector_type": self._settings.collector.platform or "collector",
+            "collector_period": self._get_period_seconds(),
+        }
+        pingalive = PingAlive(self.oaev_api, pingalive_config, self.logger, "collector")
+        self.logger.info(f"{LOG_PREFIX} Starting PingAlive thread...")
+        pingalive.start()
 
         period = self._get_period_seconds()
         scheduler = sched.scheduler(time.time, time.sleep)
