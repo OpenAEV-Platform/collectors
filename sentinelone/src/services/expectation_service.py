@@ -245,16 +245,8 @@ class SentinelOneExpectationService:
                 f"{LOG_PREFIX} Batch {batch_idx}: Fetched {len(threats)} threats from time window"
             )
 
-            static_threats = [threat for threat in threats if threat.is_static]
-            non_static_threats = [threat for threat in threats if not threat.is_static]
-
-            self.logger.debug(
-                f"{LOG_PREFIX} Batch {batch_idx}: Processing {len(static_threats)} static threats "
-                f"and {len(non_static_threats)} non-static threats"
-            )
-
             threat_events = {}
-            for threat in non_static_threats:
+            for threat in threats:
                 try:
                     events = self.threat_events_fetcher.fetch_events_for_threat(
                         threat, process_names
@@ -262,23 +254,23 @@ class SentinelOneExpectationService:
                     if events:
                         threat_events[threat.threat_id] = events
                         self.logger.debug(
-                            f"{LOG_PREFIX} Batch {batch_idx}: Non-static threat {threat.threat_id} has {len(events)} threat events"
+                            f"{LOG_PREFIX} Batch {batch_idx}: threat {threat.threat_id} has {len(events)} threat events"
                         )
                     else:
                         self.logger.debug(
-                            f"{LOG_PREFIX} Batch {batch_idx}: Non-static threat {threat.threat_id} - no threat events found"
+                            f"{LOG_PREFIX} Batch {batch_idx}: threat {threat.threat_id} - no threat events found"
                         )
                 except Exception as e:
                     self.logger.error(
-                        f"{LOG_PREFIX} Batch {batch_idx}: Error fetching threat events for non-static threat {threat.threat_id}: {e}"
+                        f"{LOG_PREFIX} Batch {batch_idx}: Error fetching threat events for threat {threat.threat_id}: {e}"
                     )
 
-            if static_threats and self.enable_deep_visibility_search:
+            if self.enable_deep_visibility_search:
                 try:
                     sha1_to_threat = {}
                     unique_sha1s = []
 
-                    for threat in static_threats:
+                    for threat in threats:
                         if threat.sha1:
                             if threat.sha1 not in sha1_to_threat:
                                 sha1_to_threat[threat.sha1] = threat
@@ -295,7 +287,7 @@ class SentinelOneExpectationService:
                         start_time = end_time - self.client_api.time_window
 
                         self.logger.debug(
-                            f"{LOG_PREFIX} Batch {batch_idx}: Fetching DV events for {len(unique_sha1s)} unique SHA1s (from {len(static_threats)} static threats) in single query for time window: {start_time} to {end_time}"
+                            f"{LOG_PREFIX} Batch {batch_idx}: Fetching DV events for {len(unique_sha1s)} unique SHA1s (from {len(threats)} threats) in single query for time window: {start_time} to {end_time}"
                         )
 
                         sha1_to_events = (
@@ -318,16 +310,16 @@ class SentinelOneExpectationService:
                                     )
 
                         self.logger.info(
-                            f"{LOG_PREFIX} Batch {batch_idx}: Processed {len(static_threats)} static threats with single DV query for {len(unique_sha1s)} unique SHA1s"
+                            f"{LOG_PREFIX} Batch {batch_idx}: Processed {len(threats)} threats with single DV query for {len(unique_sha1s)} unique SHA1s"
                         )
                     else:
                         self.logger.debug(
-                            f"{LOG_PREFIX} Batch {batch_idx}: No valid SHA1s found for static threats"
+                            f"{LOG_PREFIX} Batch {batch_idx}: No valid SHA1s found for threats"
                         )
 
                 except Exception as e:
                     self.logger.error(
-                        f"{LOG_PREFIX} Batch {batch_idx}: Error fetching DV events for static threats batch: {e}"
+                        f"{LOG_PREFIX} Batch {batch_idx}: Error fetching DV events for threats batch: {e}"
                     )
 
             results = self._match_threats_to_expectations(
@@ -545,28 +537,38 @@ class SentinelOneExpectationService:
             oaev_data = oaev_data_list[0]
 
             if events:
-                if threat.is_static:
-                    parent_process_names = (
-                        SentinelOneThreat.get_parent_process_name_from_dv_events(events)
-                    )
-                else:
-                    parent_process_names = (
-                        SentinelOneThreat.get_parent_process_name_from_events(events)
-                    )
-                oaev_implant_names = [
+                dv_parent_process_names = (
+                    SentinelOneThreat.get_parent_process_name_from_dv_events(events)
+                )
+                dv_oaev_implant_names = [
                     name
-                    for name in parent_process_names
+                    for name in dv_parent_process_names
                     if name.startswith("oaev-implant-")
                 ]
+                self.logger.debug(
+                    f"{LOG_PREFIX} Threat {threat.threat_id}: Found {len(dv_parent_process_names)} "
+                    f"process names from DV events (parentProcessName + processName), {len(dv_oaev_implant_names)} with oaev-implant- prefix"
+                )
 
-                if threat.is_static:
-                    event_source = "DV events (parentProcessName + processName)"
-                else:
-                    event_source = "threat events"
+                classic_parent_process_names = (
+                    SentinelOneThreat.get_parent_process_name_from_events(events)
+                )
+                classic_oaev_implant_names = [
+                    name
+                    for name in classic_parent_process_names
+                    if name.startswith("oaev-implant-")
+                ]
+                self.logger.debug(
+                    f"{LOG_PREFIX} Threat {threat.threat_id}: Found {len(classic_parent_process_names)} "
+                    f"process names from threat events, {len(classic_oaev_implant_names)} with oaev-implant- prefix"
+                )
+
+                oaev_implant_names = list(
+                    set(dv_oaev_implant_names + classic_oaev_implant_names)
+                )
 
                 self.logger.debug(
-                    f"{LOG_PREFIX} Threat {threat.threat_id}: Found {len(parent_process_names)} "
-                    f"process names from {event_source}, {len(oaev_implant_names)} with oaev-implant- prefix"
+                    f"{LOG_PREFIX} Threat {threat.threat_id}: Found a total of {len(oaev_implant_names)} unique processes with oaev-implant- prefix"
                 )
 
                 if oaev_implant_names:
