@@ -1,4 +1,4 @@
-"""SentinelOne Deep Visibility Fetcher for static threat analysis."""
+"""SentinelOne Deep Visibility Fetcher for threat analysis."""
 
 import logging
 import re
@@ -21,7 +21,7 @@ MAX_STATUS_POLL_ATTEMPTS = 30
 
 
 class FetcherDeepVisibility:
-    """Fetcher for SentinelOne Deep Visibility data for static threats."""
+    """Fetcher for SentinelOne Deep Visibility data for threats."""
 
     def __init__(self, client_api: SentinelOneClientAPI):
         """Initialize the Deep Visibility fetcher.
