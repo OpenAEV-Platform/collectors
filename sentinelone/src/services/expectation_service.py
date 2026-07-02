@@ -1,6 +1,7 @@
 """SentinelOne Expectation Service with batch-based processing."""
 
 import logging
+from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Any
 
@@ -73,6 +74,9 @@ class SentinelOneExpectationService:
         self.deep_visibility_fetcher: FetcherDeepVisibility = FetcherDeepVisibility(
             self.client_api
         )
+
+        self.failure_tracker: defaultdict = defaultdict(int)
+        self.max_failure = 5  # TODO
 
         self.logger.info(
             f"{LOG_PREFIX} Service initialized with batch size: {self.batch_size}"
@@ -325,6 +329,20 @@ class SentinelOneExpectationService:
             results = self._match_threats_to_expectations(
                 batch, threats, threat_events, detection_helper
             )
+
+            # TODO better
+            nope = []
+            for result in results:
+                if (
+                    not result.is_valid
+                    and self.failure_tracker[result.expectation_id] < self.max_failure
+                ):
+                    self.failure_tracker[result.expectation_id] += 1
+                    nope.append(result)
+                elif result.expectation_id in self.failure_tracker:
+                    del self.failure_tracker[result.expectation_id]
+
+            results = [result for result in results if not result in nope]
 
             return results
 
