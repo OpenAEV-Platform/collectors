@@ -1,31 +1,50 @@
 [tool.poetry]
 name = "collectors"
-version = "2.260623.0"
+version = "2.260703.1"
 description = "A collection of Collectors for interfacing with security software"
-authors = ["Filigran <contact@filigran.io>"]
+authors = [
+    "Filigran <contact@filigran.io>",
+]
 license = "Apache-2.0"
 readme = "README.md"
 package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.11"
-openaev-atomic-red-team-collector = { path = "./atomic-red-team" }
-openaev-crowdstrike-collector = { path = "./crowdstrike" }
-openaev-microsoft-defender-collector = { path = "./microsoft-defender" }
-openaev-microsoft-entra-collector = { path = "./microsoft-entra" }
-openaev-microsoft-sentinel-collector = { path = "./microsoft-sentinel" }
-openaev-mitre-attack-collector = { path = "./mitre-attack" }
-openaev-nvd-nist-cve-collector = { path = "./nvd-nist-cve" }
-openaev-tanium-threat-response-collector = { path = "./tanium-threat-response" }
-# install pyoaev explicitly to force getting the dep from the local path in dev mode
 pyoaev = [
-    { markers = "extra != 'dev'", version = "2.260623.0", source = "pypi"  },
+    { markers = "extra != 'dev'", version = "2.260703.1", source = "pypi" },
     { markers = "extra == 'dev'", path = "../client-python", develop = true },
 ]
+
+[tool.poetry.dependencies.openaev-atomic-red-team-collector]
+path = "./atomic-red-team"
+
+[tool.poetry.dependencies.openaev-crowdstrike-collector]
+path = "./crowdstrike"
+
+[tool.poetry.dependencies.openaev-microsoft-defender-collector]
+path = "./microsoft-defender"
+
+[tool.poetry.dependencies.openaev-microsoft-entra-collector]
+path = "./microsoft-entra"
+
+[tool.poetry.dependencies.openaev-microsoft-sentinel-collector]
+path = "./microsoft-sentinel"
+
+[tool.poetry.dependencies.openaev-mitre-attack-collector]
+path = "./mitre-attack"
+
+[tool.poetry.dependencies.openaev-nvd-nist-cve-collector]
+path = "./nvd-nist-cve"
+
+[tool.poetry.dependencies.openaev-tanium-threat-response-collector]
+path = "./tanium-threat-response"
 
 [tool.poetry.extras]
 dev = []
 
 [build-system]
-requires = ["poetry-core"]
+requires = [
+    "poetry-core",
+]
 build-backend = "poetry.core.masonry.api"

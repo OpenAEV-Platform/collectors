@@ -1,32 +1,46 @@
 [tool.poetry]
 name = "openaev-microsoft-intune-collector"
-version = "2.260623.0"
+version = "2.260703.1"
 description = "A Collector for Microsoft Intune managed devices"
-authors = ["Filigran <contact@filigran.io>"]
+authors = [
+    "Filigran <contact@filigran.io>",
+]
 license = "Apache-2.0"
 readme = "README.md"
 packages = [
-    { include = "microsoft_intune" }
+    { include = "microsoft_intune" },
 ]
 
 [tool.poetry.dependencies]
 python = "^3.11"
-pyoaev = [
-    { markers = "extra == 'prod' and extra != 'dev'", version = "2.260623.0", source = "pypi"  },
-    { markers = "extra == 'dev' and extra != 'prod'", path = "../../client-python", develop = true },
-]
 msal = "1.31.1"
 requests = "~2.33.0"
 
-[tool.poetry.extras]
-prod = ["pyoaev"]
-dev = ["pyoaev"]
+[[tool.poetry.dependencies.pyoaev]]
+markers = "extra == 'prod' and extra != 'dev'"
+version = "2.260703.1"
+source = "pypi"
 
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+[[tool.poetry.dependencies.pyoaev]]
+markers = "extra == 'dev' and extra != 'prod'"
+path = "../../client-python"
+develop = true
+
+[tool.poetry.extras]
+prod = [
+    "pyoaev",
+]
+dev = [
+    "pyoaev",
+]
 
 [tool.cmw]
 install-command = "poetry install --extras prod"
 config-dump-command = "poetry run python -m microsoft_intune.openaev_microsoft_intune --dump-config-schema"
 icon-path = "microsoft_intune/img/icon-microsoft-intune.png"
+
+[build-system]
+requires = [
+    "poetry-core",
+]
+build-backend = "poetry.core.masonry.api"

@@ -1,31 +1,45 @@
 [tool.poetry]
 name = "openaev-lakera-guard-collector"
-version = "2.260623.0"
+version = "2.260703.1"
 description = "A Collector validating Lakera Guard (Check Point AI Security) detection/prevention of AI adversarial injects"
-authors = ["Filigran <contact@filigran.io>"]
+authors = [
+    "Filigran <contact@filigran.io>",
+]
 license = "Apache-2.0"
 readme = "README.md"
 packages = [
-    { include = "lakera_guard" }
+    { include = "lakera_guard" },
 ]
 
 [tool.poetry.dependencies]
 python = "^3.11"
 requests = "^2.32.0"
-pyoaev = [
-    { markers = "extra == 'prod' and extra != 'dev'", version = "2.260623.0", source = "pypi"  },
-    { markers = "extra == 'dev' and extra != 'prod'", path = "../../client-python", develop = true },
-]
+
+[[tool.poetry.dependencies.pyoaev]]
+markers = "extra == 'prod' and extra != 'dev'"
+version = "2.260703.1"
+source = "pypi"
+
+[[tool.poetry.dependencies.pyoaev]]
+markers = "extra == 'dev' and extra != 'prod'"
+path = "../../client-python"
+develop = true
 
 [tool.poetry.extras]
-prod = ["pyoaev"]
-dev = ["pyoaev"]
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+prod = [
+    "pyoaev",
+]
+dev = [
+    "pyoaev",
+]
 
 [tool.cmw]
 install-command = "poetry install --extras prod"
 config-dump-command = "poetry run python -m lakera_guard.openaev_lakera_guard --dump-config-schema"
 icon-path = "lakera_guard/img/icon-lakera-guard.png"
+
+[build-system]
+requires = [
+    "poetry-core",
+]
+build-backend = "poetry.core.masonry.api"

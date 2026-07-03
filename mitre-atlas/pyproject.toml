@@ -1,30 +1,44 @@
 [tool.poetry]
 name = "openaev-mitre-atlas-collector"
-version = "2.260623.0"
+version = "2.260703.1"
 description = "A Collector for fetching MITRE ATLAS taxonomies; https://atlas.mitre.org/"
-authors = ["Filigran <contact@filigran.io>"]
+authors = [
+    "Filigran <contact@filigran.io>",
+]
 license = "Apache-2.0"
 readme = "README.md"
 packages = [
-    { include = "mitre_atlas" }
+    { include = "mitre_atlas" },
 ]
 
 [tool.poetry.dependencies]
 python = "^3.11"
-pyoaev = [
-    { markers = "extra == 'prod' and extra != 'dev'", version = "2.260623.0", source = "pypi"  },
-    { markers = "extra == 'dev' and extra != 'prod'", path = "../../client-python", develop = true },
-]
+
+[[tool.poetry.dependencies.pyoaev]]
+markers = "extra == 'prod' and extra != 'dev'"
+version = "2.260703.1"
+source = "pypi"
+
+[[tool.poetry.dependencies.pyoaev]]
+markers = "extra == 'dev' and extra != 'prod'"
+path = "../../client-python"
+develop = true
 
 [tool.poetry.extras]
-prod = ["pyoaev"]
-dev = ["pyoaev"]
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+prod = [
+    "pyoaev",
+]
+dev = [
+    "pyoaev",
+]
 
 [tool.cmw]
 install-command = "poetry install --extras prod"
 config-dump-command = "poetry run python -m mitre_atlas.openaev_atlas --dump-config-schema"
 icon-path = "mitre_atlas/img/icon-mitre-atlas.png"
+
+[build-system]
+requires = [
+    "poetry-core",
+]
+build-backend = "poetry.core.masonry.api"

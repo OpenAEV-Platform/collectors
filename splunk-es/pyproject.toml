@@ -1,31 +1,36 @@
 [build-system]
-requires = ["poetry-core"]
+requires = [
+    "poetry-core",
+]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
-packages = [{ include = "src" }, { include = "tests" }]
-
-[project]
-name = "SplunkESCollector"
-version = "2.260623.0"
-description = "Collector for Splunk Enterprise Security."
-readme = "README.md"
-
-requires-python = ">=3.11,<3.14"
-dynamic = ["dependencies"]
+packages = [
+    { include = "src" },
+    { include = "tests" },
+]
 
 [tool.poetry.dependencies]
-pyoaev = [
-    {markers = "extra == 'prod' and extra != 'local' and extra != 'current'",version = "2.260623.0"},
-    {markers = "extra == 'local' and extra != 'current' and extra != 'prod'",path = "../../client-python", develop = true},
-]
 pydantic = "^2.11.7"
 pydantic-settings = "^2.11.0"
 requests = "~2.33.0"
 
+[[tool.poetry.dependencies.pyoaev]]
+markers = "extra == 'prod' and extra != 'local' and extra != 'current'"
+version = "2.260703.1"
+
+[[tool.poetry.dependencies.pyoaev]]
+markers = "extra == 'local' and extra != 'current' and extra != 'prod'"
+path = "../../client-python"
+develop = true
+
 [tool.poetry.extras]
-prod = ["pyoaev"]
-local = ["pyoaev"]
+prod = [
+    "pyoaev",
+]
+local = [
+    "pyoaev",
+]
 
 [tool.poetry.group.dev.dependencies]
 isort = "^6.0.1"
@@ -40,11 +45,10 @@ pre-commit = "^4.3.0"
 pytest = "^9.0.0"
 polyfactory = "^2.22.2"
 
-[project.scripts]
-SplunkESCollector = "src.__main__:main"
-
 [tool.pytest.ini_options]
-testpaths = ["./tests"]
+testpaths = [
+    "./tests",
+]
 
 [tool.ruff]
 exclude = [
@@ -74,21 +78,9 @@ exclude = [
     "site-packages",
     "venv",
 ]
-
 target-version = "py312"
 
 [tool.ruff.lint]
-# Never enforce `I001` (unsorted import). Already handle with isort
-# Never enforce `E501` (line length violations). Already handle with black
-# Never enforce `F821` (Undefined name `null`). incorrect issue with notebook
-# Never enforce `D213` (Multi-line docstring summary should start at the second line) conflict with our docstring convention
-# Never enforce `D211` (NoBlankLinesBeforeClass)`
-# Never enforce `G004` (logging-f-string) Logging statement uses f-string
-# Never enforce `TRY003`() Avoid specifying long messages outside the exception class not useful
-# Never enforce `D104` (Missing docstring in public package)
-# Never enforce `D407` (Missing dashed underline after section)
-# Never enforce `D408` (Section underline should be in the line following the section's name)
-# Never enforce `D409` (Section underline should match the length of its name)
 ignore = [
     "I001",
     "D203",
@@ -104,24 +96,50 @@ ignore = [
     "D408",
     "D409",
 ]
-select = ["E", "F", "W", "D", "G", "T", "B", "C", "N", "I", "S"]
+select = [
+    "E",
+    "F",
+    "W",
+    "D",
+    "G",
+    "T",
+    "B",
+    "C",
+    "N",
+    "I",
+    "S",
+]
 
 [tool.mypy]
 strict = true
 exclude = [
-    '^tests',
-    '^docs',
-    '^build',
-    '^dist',
-    '^venv',
-    '^site-packages',
-    '^__pypackages__',
-    '^.venv',
+    "^tests",
+    "^docs",
+    "^build",
+    "^dist",
+    "^venv",
+    "^site-packages",
+    "^__pypackages__",
+    "^.venv",
 ]
-plugins = ["pydantic.mypy"]
+plugins = [
+    "pydantic.mypy",
+]
 
 [tool.cmw]
 install-command = "poetry install --extras local"
 config-dump-command = "poetry run python src --dump-config-schema"
 icon-path = "src/img/splunk-logo.png"
 
+[project]
+name = "SplunkESCollector"
+version = "2.260703.1"
+description = "Collector for Splunk Enterprise Security."
+readme = "README.md"
+requires-python = ">=3.11,<3.14"
+dynamic = [
+    "dependencies",
+]
+
+[project.scripts]
+SplunkESCollector = "src.__main__:main"
