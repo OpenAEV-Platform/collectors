@@ -17,7 +17,7 @@ requests = "~2.33.0"
 
 [[tool.poetry.dependencies.pyoaev]]
 markers = "extra == 'prod' and extra != 'local' and extra != 'current'"
-version = "2.260703.1"
+version = "2.260703.2"
 
 [[tool.poetry.dependencies.pyoaev]]
 markers = "extra == 'local' and extra != 'current' and extra != 'prod'"
@@ -133,7 +133,7 @@ icon-path = "src/img/qradar-logo.png"
 
 [project]
 name = "QRadarCollector"
-version = "2.260703.1"
+version = "2.260703.2"
 description = "Collector for IBM QRadar."
 readme = "README.md"
 requires-python = ">=3.11,<3.14"

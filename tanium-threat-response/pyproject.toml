@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "openaev-tanium-threat-response-collector"
-version = "2.260703.1"
+version = "2.260703.2"
 description = "A Collector for Tanium Threat Response security suite"
 authors = [
     "Filigran <contact@filigran.io>",
@@ -17,7 +17,7 @@ thefuzz = "^0.22.1"
 
 [[tool.poetry.dependencies.pyoaev]]
 markers = "extra == 'prod' and extra != 'dev'"
-version = "2.260703.1"
+version = "2.260703.2"
 source = "pypi"
 
 [[tool.poetry.dependencies.pyoaev]]
