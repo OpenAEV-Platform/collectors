@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "openaev-microsoft-azure-collector"
-version = "2.260703.2"
+version = "2.260704.0"
 description = "A Collector for Microsoft Azure Virtual Machines"
 authors = [
     "Filigran <contact@filigran.io>",
@@ -18,7 +18,7 @@ requests = "~2.33.0"
 
 [[tool.poetry.dependencies.pyoaev]]
 markers = "extra == 'prod' and extra != 'dev'"
-version = "2.260703.2"
+version = "2.260704.0"
 source = "pypi"
 
 [[tool.poetry.dependencies.pyoaev]]

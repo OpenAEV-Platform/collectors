@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "collectors"
-version = "2.260703.2"
+version = "2.260704.0"
 description = "A collection of Collectors for interfacing with security software"
 authors = [
     "Filigran <contact@filigran.io>",
@@ -12,7 +12,7 @@ package-mode = false
 [tool.poetry.dependencies]
 python = "^3.11"
 pyoaev = [
-    { markers = "extra != 'dev'", version = "2.260703.2", source = "pypi" },
+    { markers = "extra != 'dev'", version = "2.260704.0", source = "pypi" },
     { markers = "extra == 'dev'", path = "../client-python", develop = true },
 ]
 
