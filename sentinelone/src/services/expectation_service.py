@@ -76,7 +76,7 @@ class SentinelOneExpectationService:
         )
 
         self.failure_tracker: defaultdict = defaultdict(int)
-        self.max_failure = 5  # TODO
+        self.max_failure = 5
 
         self.logger.info(
             f"{LOG_PREFIX} Service initialized with batch size: {self.batch_size}"
@@ -238,6 +238,23 @@ class SentinelOneExpectationService:
 
         """
         try:
+            now = datetime.now(timezone.utc)
+            if any(
+                str(expectation.inject_expectation_id) in self.failure_tracker
+                for expectation in batch
+            ):
+                for expectation in batch:
+                    for signature in expectation.inject_expectation_signatures:
+                        if signature.type.value == "end_date":
+                            end_date = datetime.fromisoformat(
+                                signature.value.replace("Z", "+00:00")
+                            )
+                            if end_date < now:
+                                signature.value = str(now)
+                                self.logger.warning(
+                                    f"end_date changed to {str(now)} for {expectation.inject_expectation_id}"
+                                )
+
             process_names = self._extract_process_names_from_batch(batch)
 
             self.logger.debug(
@@ -249,14 +266,14 @@ class SentinelOneExpectationService:
                 f"{LOG_PREFIX} Batch {batch_idx}: Fetched {len(threats)} threats from time window"
             )
 
-            threat_events = {}
+            threat_events = defaultdict(list)
             for threat in threats:
                 try:
                     events = self.threat_events_fetcher.fetch_events_for_threat(
                         threat, process_names
                     )
                     if events:
-                        threat_events[threat.threat_id] = events
+                        threat_events[threat.threat_id].extend(events)
                         self.logger.debug(
                             f"{LOG_PREFIX} Batch {batch_idx}: threat {threat.threat_id} has {len(events)} threat events"
                         )
@@ -304,13 +321,13 @@ class SentinelOneExpectationService:
                             if sha1 in sha1_to_threat:
                                 threat = sha1_to_threat[sha1]
                                 if events:
-                                    threat_events[threat.threat_id] = events
+                                    threat_events[threat.threat_id].extend(events)
                                     self.logger.debug(
-                                        f"{LOG_PREFIX} Batch {batch_idx}: Static threat {threat.threat_id} has {len(events)} DV events"
+                                        f"{LOG_PREFIX} Batch {batch_idx}: threat {threat.threat_id} has {len(events)} DV events"
                                     )
                                 else:
                                     self.logger.debug(
-                                        f"{LOG_PREFIX} Batch {batch_idx}: Static threat {threat.threat_id} - no DV events found"
+                                        f"{LOG_PREFIX} Batch {batch_idx}: threat {threat.threat_id} - no DV events found"
                                     )
 
                         self.logger.info(
@@ -330,19 +347,18 @@ class SentinelOneExpectationService:
                 batch, threats, threat_events, detection_helper
             )
 
-            # TODO better
-            nope = []
+            retry_results = []
             for result in results:
                 if (
                     not result.is_valid
                     and self.failure_tracker[result.expectation_id] < self.max_failure
                 ):
                     self.failure_tracker[result.expectation_id] += 1
-                    nope.append(result)
+                    retry_results.append(result)
                 elif result.expectation_id in self.failure_tracker:
-                    del self.failure_tracker[result.expectation_id]
+                    self.failure_tracker.pop(result.expectation_id, None)
 
-            results = [result for result in results if not result in nope]
+            results = [result for result in results if not result in retry_results]
 
             return results
 
@@ -475,7 +491,6 @@ class SentinelOneExpectationService:
                         traces.append(trace)
 
                         if isinstance(expectation, PreventionExpectation):
-                            # breakpoint()
                             if threat.is_mitigated:
                                 matched = True
                                 self.logger.debug(
@@ -590,7 +605,6 @@ class SentinelOneExpectationService:
                 )
 
                 if oaev_implant_names:
-                    # breakpoint()
                     oaev_data["parent_process_name"] = {
                         "type": "fuzzy",
                         "data": oaev_implant_names,
@@ -640,7 +654,6 @@ class SentinelOneExpectationService:
                     f"{LOG_PREFIX} Detection helper input - filtered_data: {filtered_data}"
                 )
 
-                # breakpoint()
                 match_result = detection_helper.match_alert_elements(
                     signatures, filtered_data
                 )
@@ -661,7 +674,9 @@ class SentinelOneExpectationService:
             return True
 
         except Exception as e:
-            self.logger.warning(f"{LOG_PREFIX} Error in expectation matching: {e}")
+            self.logger.warning(
+                f"{LOG_PREFIX} Error in expectation matching: {type(e)} - {e}"
+            )
             return False
 
     def _create_error_result_object(
