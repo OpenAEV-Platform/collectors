@@ -220,6 +220,43 @@ class SentinelOneExpectationService:
         )
         return batches, skipped_count
 
+    def _update_failures(
+        self, results: list[ExpectationResult]
+    ) -> list[ExpectationResult]:
+        """Update the failure tracker and return the relevant results for further process"""
+        retry_results = []
+        for result in results:
+            if (
+                not result.is_valid
+                and self.failure_tracker[result.expectation_id] < self.max_failure
+            ):
+                self.failure_tracker[result.expectation_id] += 1
+                retry_results.append(result)
+            elif result.expectation_id in self.failure_tracker:
+                self.failure_tracker.pop(result.expectation_id, None)
+
+        results = [result for result in results if not result in retry_results]
+        return results
+
+    def _update_date_in_case_of_failures(self, batch):
+        """Update the dates of a batch if a tracked failed expectation is found in it"""
+        now = datetime.now(timezone.utc)
+        if any(
+            str(expectation.inject_expectation_id) in self.failure_tracker
+            for expectation in batch
+        ):
+            for expectation in batch:
+                for signature in expectation.inject_expectation_signatures:
+                    if signature.type.value == "end_date":
+                        end_date = datetime.fromisoformat(
+                            signature.value.replace("Z", "+00:00")
+                        )
+                        if end_date < now:
+                            signature.value = str(now)
+                            self.logger.warning(
+                                f"end_date changed to {str(now)} for {expectation.inject_expectation_id}"
+                            )
+
     def _process_expectation_batch(
         self,
         batch: list[DetectionExpectation | PreventionExpectation],
@@ -238,22 +275,7 @@ class SentinelOneExpectationService:
 
         """
         try:
-            now = datetime.now(timezone.utc)
-            if any(
-                str(expectation.inject_expectation_id) in self.failure_tracker
-                for expectation in batch
-            ):
-                for expectation in batch:
-                    for signature in expectation.inject_expectation_signatures:
-                        if signature.type.value == "end_date":
-                            end_date = datetime.fromisoformat(
-                                signature.value.replace("Z", "+00:00")
-                            )
-                            if end_date < now:
-                                signature.value = str(now)
-                                self.logger.warning(
-                                    f"end_date changed to {str(now)} for {expectation.inject_expectation_id}"
-                                )
+            self._update_date_in_case_of_failures(batch)
 
             process_names = self._extract_process_names_from_batch(batch)
 
@@ -346,19 +368,7 @@ class SentinelOneExpectationService:
             results = self._match_threats_to_expectations(
                 batch, threats, threat_events, detection_helper
             )
-
-            retry_results = []
-            for result in results:
-                if (
-                    not result.is_valid
-                    and self.failure_tracker[result.expectation_id] < self.max_failure
-                ):
-                    self.failure_tracker[result.expectation_id] += 1
-                    retry_results.append(result)
-                elif result.expectation_id in self.failure_tracker:
-                    self.failure_tracker.pop(result.expectation_id, None)
-
-            results = [result for result in results if not result in retry_results]
+            results = self._update_failures(results)
 
             return results
 
