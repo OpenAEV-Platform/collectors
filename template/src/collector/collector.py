@@ -45,7 +45,7 @@ class BaseCollector(CollectorDaemon):
 
             super().__init__(
                 configuration=self.config.to_daemon_config(),
-                collector_type=f"openaev_{slugify(self.name)}",
+                collector_type=f"openaev_{slugify(self.name, separator="_")}",
             )
 
             self.logger.info(
