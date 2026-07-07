@@ -9,7 +9,7 @@ from src.collector.models.data import OAEVData, TraceData
 from src.collector.protocols.data_fetcher import DataFetcherProtocol
 from src.collector.protocols.source_data import SourceDataProtocol
 from src.collector.protocols.source_handler import SourceHandlerProtocol
-from src.collector.types.collector import CustomConfig, SignatureGroups
+from src.collector.types.collector import SignatureGroups, SourceConfig
 
 
 class Source(BaseModel):
@@ -38,9 +38,9 @@ class SourceHandler(SourceHandlerProtocol):
     - how to match an expectation and the source data to check for detection/prevention
     """
 
-    def __init__(self, config: CustomConfig) -> None:
+    def __init__(self, config: SourceConfig) -> None:
         """
-        attach the source handler object the custom config provided through the base collector
+        attach the source handler object the source config provided through the base collector
         """
         self.config = config
 

@@ -17,11 +17,11 @@ Under `src/source` the minimal expectations are the following:
 - a list of supported signature types (e.g. `src/source/template_signatures.py`)
 A source (from `src/collector/models/source.py`) will be built from those three elements in the `src/templateçcollector.py` (from point number 2 in the list earlier). Protocols can be found under `src/collector/protocols/` for more details.
 
-As of now, outside of `src/collector` (generic) and `src/source` (custom) there is still a mixed codebase of generic and custom elements under `src/models/settings`. In rder to forward custom parameters to your source elements, the `src/models/custom_configs.py` is available. Note that elements added to `custom_configs.py` must be reflected in `config_loader.py` too.
+As of now, outside of `src/collector` (generic) and `src/source` (custom) there is still a mixed codebase of generic and custom elements under `src/models/settings`. In order to forward custom parameters to your source elements, the `src/models/source_configs.py` is available. Note that elements added to `source_configs.py` must be reflected in `config_loader.py` too.
 
-Your custom configuration will be propagated through the source handler to the `__init__.py` of you data fetcher object as a `custom_config` parameter. From there, it can be used at your convenience.
+Your custom configuration will be propagated through the source handler to the `__init__.py` of you data fetcher object as a `source_config` parameter. From there, it can be used at your convenience.
 
-*Nota bene*: for now, please keep the `CUSTOM_EXPECTATION_BATCH_SIZE` available in the custom parameters.
+*Nota bene*: for now, please keep the `SOURCE_EXPECTATION_BATCH_SIZE` available in the custom parameters.
 
 Do not hesitate to check the `CONTRIBUTING.md` for more details regarding the collector design and help regarding development setup.
 
@@ -79,9 +79,9 @@ Below are the parameters you'll need to set for the collector:
 
 | Parameter                | config.yml                           | Docker environment variable            | Default                     | Mandatory | Description                                                                                        |
 |--------------------------|--------------------------------------|----------------------------------------|-----------------------------|-----------|----------------------------------------------------------------------------------------------------|
-| Key                  | custom.key                          | `CUSTOM_KEY`                      |value                        | No        | Template example key value                                                                 |
-| Time Window              | custom.time_window              | `CUSTOM_TIME_WINDOW`              | PT1H                        | No        | Default search time window when no date signatures are provided (ISO 8601 format)                |
-| Expectation Batch Size   | custom.expectation_batch_size   | `CUSTOM_EXPECTATION_BATCH_SIZE`   | 50                          | No        | Number of expectations to process in each batch for batch-based processing                         |
+| Key                  | source.key                          | `SOURCE_KEY`                      |value                        | No        | Template example key value                                                                 |
+| Time Window              | source.time_window              | `SOURCE_TIME_WINDOW`              | PT1H                        | No        | Default search time window when no date signatures are provided (ISO 8601 format)                |
+| Expectation Batch Size   | source.expectation_batch_size   | `SOURCE_EXPECTATION_BATCH_SIZE`   | 50                          | No        | Number of expectations to process in each batch for batch-based processing                         |
 
 ### Example Configuration Files
 
@@ -97,7 +97,7 @@ collector:
   period: "PT10M"
   log_level: "info"
 
-custom:
+source:
   key: "your-value"
   time_window: "PT1H"
   expectation_batch_size: 50
@@ -108,7 +108,7 @@ custom:
 export OPENAEV_URL="https://your-openaev-instance.com"
 export OPENAEV_TOKEN="your-openaev-token"
 export COLLECTOR_ID="template--your-unique-uuid"
-export CUSTOM_KEY="value"
+export SOURCE_KEY="value"
 ```
 
 ## Deployment
@@ -146,7 +146,7 @@ docker run -d \
   -e OPENAEV_URL="https://your-openaev-instance.com" \
   -e OPENAEV_TOKEN="your-token" \
   -e COLLECTOR_ID="template--your-uuid" \
-  -e CUSTOM_KEY="your-value" \
+  -e SOURCE_KEY="your-value" \
   openaev-template-collector
 
 # Or run with configuration file mounted
@@ -217,7 +217,7 @@ collector:
 
 #### For High-Volume Environments
 - Reduce `collector.period` for more frequent processing
-- Increase `custom.expectation_batch_size` for better throughput
+- Increase `source.expectation_batch_size` for better throughput
 
 #### For Low-Latency Requirements
 - Use shorter time windows in expectations for faster queries

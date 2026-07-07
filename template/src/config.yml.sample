@@ -5,5 +5,5 @@ openaev:
 collector:
   id: "ChangeMe"
 
-custom:
+source:
   key: "value"

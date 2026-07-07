@@ -6,5 +6,5 @@ services:
       - OPENAEV_URL=http://localhost
       - OPENAEV_TOKEN=ChangeMe
       - COLLECTOR_ID=ChangeMe
-      - CUSTOM_KEY=ChangeMe
+      - SOURCE_KEY=ChangeMe
     restart: always

@@ -4,8 +4,8 @@ from pyoaev.apis.inject_expectation.model import (
     DetectionExpectation,
     PreventionExpectation,
 )
-from src.models.settings.custom_configs import _ConfigLoaderCustom
+from src.models.settings.source_configs import _ConfigLoaderSource
 
-CustomConfig: TypeAlias = _ConfigLoaderCustom
+SourceConfig: TypeAlias = _ConfigLoaderSource
 ExpectationsList: TypeAlias = Sequence[DetectionExpectation | PreventionExpectation]
 SignatureGroups: TypeAlias = dict[str, list[dict[str, str]]]

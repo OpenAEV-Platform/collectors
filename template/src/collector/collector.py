@@ -67,7 +67,7 @@ class BaseCollector(CollectorDaemon):
                     "Source handler model provided does not follow source handler protocol"
                 )
             source_handler_model = source_handler_model or SourceHandler
-            self.source_handler = source_handler_model(self.config.custom)
+            self.source_handler = source_handler_model(self.config.source)
 
             if engine_model and not issubclass(engine_model, CollectorEngineProtocol):
                 self.logger.error(
@@ -118,7 +118,7 @@ class BaseCollector(CollectorDaemon):
             super()._setup()
 
             self.logger.debug(f"{LOG_PREFIX} Configuring the collector engine...")
-            self.engine.configure_engine(self.config.custom, batching=batching)
+            self.engine.configure_engine(self.config.source, batching=batching)
 
             self.logger.info(f"{LOG_PREFIX} Collector setup completed successfully")
 

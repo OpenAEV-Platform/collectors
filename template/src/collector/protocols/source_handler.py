@@ -9,12 +9,12 @@ from pyoaev.signatures.types import SignatureTypes
 from src.collector.models.data import OAEVData, TraceData
 from src.collector.protocols.data_fetcher import DataFetcherProtocol
 from src.collector.protocols.source_data import SourceDataProtocol
-from src.collector.types.collector import CustomConfig, SignatureGroups
+from src.collector.types.collector import SignatureGroups, SourceConfig
 
 
 @runtime_checkable
 class SourceHandlerProtocol(Protocol):
-    def __init__(self, config: CustomConfig) -> None: ...
+    def __init__(self, config: SourceConfig) -> None: ...
 
     def get_source_data(
         self, data_fetcher: DataFetcherProtocol

@@ -14,8 +14,8 @@ from pyoaev.configuration import Configuration
 from src.models.settings import (
     ConfigBaseSettings,
     _ConfigLoaderCollector,
-    _ConfigLoaderCustom,
     _ConfigLoaderOAEV,
+    _ConfigLoaderSource,
 )
 
 
@@ -41,7 +41,7 @@ class ConfigLoaderCollector(_ConfigLoaderCollector):
 class ConfigLoader(ConfigBaseSettings):
     """Configuration loader for the collector.
 
-    Main configuration class that combines OpenAEV, collector, and custom
+    Main configuration class that combines OpenAEV, collector, and source
     settings. Supports loading from YAML files, environment variables, and
     provides methods for converting to daemon-compatible format.
     """
@@ -54,9 +54,9 @@ class ConfigLoader(ConfigBaseSettings):
         default_factory=ConfigLoaderCollector,  # type: ignore[unused-ignore]
         description="Collector configurations.",
     )
-    custom: _ConfigLoaderCustom = Field(
-        default_factory=_ConfigLoaderCustom,
-        description="Custom configurations.",
+    source: _ConfigLoaderSource = Field(
+        default_factory=_ConfigLoaderSource,
+        description="Source configurations.",
     )
 
     @classmethod
@@ -140,11 +140,11 @@ class ConfigLoader(ConfigBaseSettings):
                     "data": int(self.collector.period.total_seconds())
                 },  # type: ignore[union-attr]
                 "collector_icon_filepath": {"data": self.collector.icon_filepath},
-                # Custom configuration (flattened)
-                "custom_key": {"data": self.custom.key},
-                "custom_time_window": {"data": self.custom.time_window},
-                "custom_expectation_batch_size": {
-                    "data": self.custom.expectation_batch_size
+                # Source configuration (flattened)
+                "source_key": {"data": self.source.key},
+                "source_time_window": {"data": self.source.time_window},
+                "source_expectation_batch_size": {
+                    "data": self.source.expectation_batch_size
                 },
             },
             config_base_model=self,

@@ -3,11 +3,11 @@ from src.models.settings.collector_configs import (
     _ConfigLoaderCollector,
     _ConfigLoaderOAEV,
 )
-from src.models.settings.custom_configs import _ConfigLoaderCustom
+from src.models.settings.source_configs import _ConfigLoaderSource
 
 __all__ = [
     "ConfigBaseSettings",
     "_ConfigLoaderCollector",
     "_ConfigLoaderOAEV",
-    "_ConfigLoaderCustom",
+    "_ConfigLoaderSource",
 ]

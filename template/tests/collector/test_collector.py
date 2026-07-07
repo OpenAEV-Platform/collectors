@@ -29,7 +29,7 @@ class TestBaseCollector(unittest.TestCase):
         self.assertIsNotNone(collector.engine)
         self.assertIsNotNone(collector.api)
         m_configloader.return_value.to_daemon_config.assert_called_once()
-        m_source_handler.assert_called_with(collector.config.custom)
+        m_source_handler.assert_called_with(collector.config.source)
         m_basiccollectorengine.assert_called_with(
             name=name,
             collector_id=collector.get_id(),
@@ -139,5 +139,5 @@ class TestBaseCollector(unittest.TestCase):
 
         m_collectordaemon_setup.assert_called_once()
         m_basiccollectorengine.return_value.configure_engine.assert_called_with(
-            collector.config.custom, batching=batching
+            collector.config.source, batching=batching
         )

@@ -3,7 +3,7 @@ from typing import Protocol, runtime_checkable
 from pyoaev.client import OpenAEV
 from src.collector.models.source import Source
 from src.collector.protocols.source_handler import SourceHandlerProtocol
-from src.collector.types.collector import CustomConfig
+from src.collector.types.collector import SourceConfig
 
 
 @runtime_checkable
@@ -19,7 +19,7 @@ class CollectorEngineProtocol(Protocol):
     ) -> None: ...
 
     def configure_engine(
-        self, config: CustomConfig, batching: bool = False
+        self, config: SourceConfig, batching: bool = False
     ) -> None: ...
 
     def run_engine(self) -> None: ...

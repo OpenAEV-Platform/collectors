@@ -6,11 +6,11 @@ from pydantic import Field
 from src.models.settings import ConfigBaseSettings
 
 
-class _ConfigLoaderCustom(ConfigBaseSettings):
-    """Custom API configuration settings.
+class _ConfigLoaderSource(ConfigBaseSettings):
+    """Source configuration settings.
 
     Contains connection details, timing parameters, and retry settings
-    for custom API integration.
+    for source integration.
     """
 
     key: str | None = Field(
