@@ -157,10 +157,10 @@ def _format_command(string_to_analyse, arguments, platforms, prerequisites):
     def handle_match_callback(string, match):
         if os.path.basename(match) == "ExternalPayloads":
             return string
-        else:
-            arg_name = get_argument_name_by_path(arguments, match)
-            handle_resources(platforms, prerequisites, match, arg_name)
-            return string.replace(match, f"#{{{arg_name}}}")
+
+        arg_name = get_argument_name_by_path(arguments, match)
+        handle_resources(platforms, prerequisites, match, arg_name)
+        return string.replace(match, f"#{{{arg_name}}}")
 
     return _catch_atomic_folder_paths(string_to_analyse, handle_match_callback)
 
@@ -174,9 +174,9 @@ def _format_prerequisite(string_to_analyse, arguments):
         if os.path.basename(match) == "ExternalPayloads":
             folder_name = match
             return string
-        else:
-            arg_name = get_argument_name_by_path(arguments, match)
-            return string.replace(match, f"#{{{arg_name}}}")
+
+        arg_name = get_argument_name_by_path(arguments, match)
+        return string.replace(match, f"#{{{arg_name}}}")
 
     string_to_analyse = _catch_atomic_folder_paths(
         string_to_analyse, handle_match_callback
@@ -394,7 +394,7 @@ class OpenAEVAtomicRedTeam(CollectorDaemon):
                         payload_external_ids.append(payload["payload_external_id"])
         self.api.payload.deprecate(
             {
-                "collector_id": self.config.get("collector_id"),
+                "collector_id": self._configuration.get("collector_id"),
                 "payload_external_ids": payload_external_ids,
             }
         )
