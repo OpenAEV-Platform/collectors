@@ -51,7 +51,6 @@ class SourceHandler(SourceHandlerProtocol):
         get source data using the data fetcher
         """
         data = data_fetcher.fetch_data()
-        # TODO: pass end_date? pass signature_extracted from batch? pass batch? pass context?
         return data
 
     def serialize_as_oaevdata(self, data: SourceDataProtocol) -> OAEVData:

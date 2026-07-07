@@ -205,7 +205,7 @@ class ExpectationTrace(BaseModel):
         alert_name = matching_data.get("alert_name", f"{collector_name} Alert")
         trace_link = matching_data.get("alert_link", "")
         trace_date = datetime.now(UTC).replace(microsecond=0)
-        date_str = trace_date.isoformat().replace("+00:00", "Z")  # TODO WTF?
+        date_str = trace_date.isoformat().replace("+00:00", "Z")
         return cls(
             inject_expectation_trace_expectation=str(result.expectation_id),
             inject_expectation_trace_source_id=str(collector_id),
