@@ -57,8 +57,9 @@ Below are the parameters you'll need to set for OpenAEV:
 
 | Parameter     | config.yml    | Docker environment variable | Mandatory | Description                                          |
 |---------------|---------------|-----------------------------|-----------|------------------------------------------------------|
-| OpenAEV URL   | openaev.url   | `OPENAEV_URL`               | Yes       | The URL of the OpenAEV platform.                    |
-| OpenAEV Token | openaev.token | `OPENAEV_TOKEN`             | Yes       | The default admin token set in the OpenAEV platform.|
+| OpenAEV URL       | `openaev.url`       | `OPENAEV_URL`                   | Yes       | The URL of the OpenAEV platform.                    |
+| OpenAEV Token     | `openaev.token`     | `OPENAEV_TOKEN`                 | Yes       | The default admin token set in the OpenAEV platform.|
+| OpenAEV Tenant ID | `openaev.tenant_id` | `OPENAEV_TENANT_ID`             | No        | Tenant identifier for multi-tenant deployments. When set, it must be a valid UUID.|
 
 ### Base collector environment variables
 
@@ -66,12 +67,12 @@ Below are the parameters you'll need to set for running the collector properly:
 
 | Parameter        | config.yml          | Docker environment variable | Default                 | Mandatory | Description                                                                                   |
 |------------------|---------------------|-----------------------------|-------------------------|-----------|-----------------------------------------------------------------------------------------------|
-| Collector ID     | collector.id        | `COLLECTOR_ID`              | template--0b13e3f7-5c9e-46f5-acc4-33032e9b4921 | Yes       | A unique `UUIDv4` identifier for this collector instance.                                     |
-| Collector Name   | collector.name      | `COLLECTOR_NAME`            | Template             | No        | Name of the collector.                                                                        |
-| Collector Period | collector.period    | `COLLECTOR_PERIOD`          | PT2M                    | No        | Collection interval (ISO 8601 format).                                                       |
-| Log Level        | collector.log_level | `COLLECTOR_LOG_LEVEL`       | error                   | No        | Determines the verbosity of the logs. Options are `debug`, `info`, `warning`, or `error`.    |
-| Platform         | collector.platform  | `COLLECTOR_PLATFORM`        | EDR                     | No        | Type of security platform this collector works for. One of: `EDR, XDR, SIEM, SOAR, NDR, ISPM` |
-| Icon Filepath    | collector.icon_filepath | `COLLECTOR_ICON_FILEPATH` | src/img/template-logo.png | No        | Path to the icon file of the collector.                                           |
+| Collector ID     | `collector.id`            | `COLLECTOR_ID`              | template--0b13e3f7-5c9e-46f5-acc4-33032e9b4921 | Yes       | A unique `UUIDv4` identifier for this collector instance.                                     |
+| Collector Name   | `collector.name`          | `COLLECTOR_NAME`            | Template             | No        | Name of the collector.                                                                        |
+| Collector Period | `collector.period`        | `COLLECTOR_PERIOD`          | PT2M                    | No        | Collection interval (ISO 8601 format).                                                       |
+| Log Level        | `collector.log_level`     | `COLLECTOR_LOG_LEVEL`       | error                   | No        | Determines the verbosity of the logs. Options are `debug`, `info`, `warning`, or `error`.    |
+| Platform         | `collector.platform`      | `COLLECTOR_PLATFORM`        | EDR                     | No        | Type of security platform this collector works for. One of: `EDR, XDR, SIEM, SOAR, NDR, ISPM` |
+| Icon Filepath    | `collector.icon_filepath` | `COLLECTOR_ICON_FILEPATH`   | src/img/template-logo.png | No        | Path to the icon file of the collector.                                           |
 
 ### Collector extra parameters environment variables
 
@@ -79,9 +80,9 @@ Below are the parameters you'll need to set for the collector:
 
 | Parameter                | config.yml                           | Docker environment variable            | Default                     | Mandatory | Description                                                                                        |
 |--------------------------|--------------------------------------|----------------------------------------|-----------------------------|-----------|----------------------------------------------------------------------------------------------------|
-| Key                  | source.key                          | `SOURCE_KEY`                      |value                        | No        | Template example key value                                                                 |
-| Time Window              | source.time_window              | `SOURCE_TIME_WINDOW`              | PT1H                        | No        | Default search time window when no date signatures are provided (ISO 8601 format)                |
-| Expectation Batch Size   | source.expectation_batch_size   | `SOURCE_EXPECTATION_BATCH_SIZE`   | 50                          | No        | Number of expectations to process in each batch for batch-based processing                         |
+| Key                  | `source.key`                          | `SOURCE_KEY`                      |value                        | No        | Template example key value                                                                 |
+| Time Window              | `source.time_window`              | `SOURCE_TIME_WINDOW`              | PT1H                        | No        | Default search time window when no date signatures are provided (ISO 8601 format)                |
+| Expectation Batch Size   | `source.expectation_batch_size`   | `SOURCE_EXPECTATION_BATCH_SIZE`   | 50                          | No        | Number of expectations to process in each batch for batch-based processing                         |
 
 ### Example Configuration Files
 
