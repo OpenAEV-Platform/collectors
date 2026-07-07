@@ -7,7 +7,7 @@ from pydantic import Field, HttpUrl, PlainSerializer
 from src.models.settings import ConfigBaseSettings
 
 LogLevelToLower = Annotated[
-    Literal["debug", "info", "warn", "error"],
+    Literal["debug", "info", "warning", "error", "critical"],
     PlainSerializer(lambda v: "".join(v), return_type=str),
 ]
 
