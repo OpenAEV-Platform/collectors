@@ -4,13 +4,10 @@ from datetime import timedelta
 from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import Field, HttpUrl, PlainSerializer
+from pydantic import Field, HttpUrl, PlainSerializer, field_validator
 from src.models.settings import ConfigBaseSettings
 
-LogLevelToLower = Annotated[
-    Literal["debug", "info", "warning", "error", "critical"],
-    PlainSerializer(lambda v: "".join(v), return_type=str),
-]
+LogLevel = Literal["debug", "info", "warning", "error", "critical"]
 
 HttpUrlToString = Annotated[HttpUrl, PlainSerializer(str, return_type=str)]
 TimedeltaInSeconds = Annotated[
@@ -55,7 +52,7 @@ class _ConfigLoaderCollector(ConfigBaseSettings):
         default="EDR",
         description="Platform type for the collector (e.g., EDR, SIEM, etc.).",
     )
-    log_level: LogLevelToLower | None = Field(
+    log_level: LogLevel | None = Field(
         alias="COLLECTOR_LOG_LEVEL",
         default="error",
         description="Determines the verbosity of the logs.",
@@ -70,3 +67,11 @@ class _ConfigLoaderCollector(ConfigBaseSettings):
         default="src/img/template-logo.png",
         description="Path to the icon file of the collector.",
     )
+
+    @field_validator("log_level", mode="before")
+    @classmethod
+    def to_lower(cls, value: str) -> str:
+        try:
+            return value.lower()
+        except AttributeError:
+            return value
