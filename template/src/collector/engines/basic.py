@@ -102,7 +102,8 @@ class BasicCollectorEngine:
             total_processing_time=None,
         )
 
-    def _filter_supported(self, expectations: ExpectationsList) -> ExpectationsList:
+    @staticmethod
+    def _filter_supported(expectations: ExpectationsList) -> ExpectationsList:
         return [
             exp
             for exp in expectations

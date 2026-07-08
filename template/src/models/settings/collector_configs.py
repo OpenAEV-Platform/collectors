@@ -36,7 +36,7 @@ class _ConfigLoaderOAEV(ConfigBaseSettings):
         default=None,
         alias="OPENAEV_TENANT_ID",
         description="Identifier of the tenant within the OpenAEV platform. Used in multi-tenant environments to scope "
-        "API requests and ensure data isolation between different tenants."
+        "API requests and ensure data isolation between different tenants.",
     )
 
 

@@ -44,24 +44,24 @@ class SourceHandler(SourceHandlerProtocol):
         """
         self.config = config
 
-    def get_source_data(
-        self, data_fetcher: DataFetcherProtocol
-    ) -> list[SourceDataProtocol]:
+    @staticmethod
+    def get_source_data(data_fetcher: DataFetcherProtocol) -> list[SourceDataProtocol]:
         """
         get source data using the data fetcher
         """
         data = data_fetcher.fetch_data()
         return data
 
-    def serialize_as_oaevdata(self, data: SourceDataProtocol) -> OAEVData:
+    @staticmethod
+    def serialize_as_oaevdata(data: SourceDataProtocol) -> OAEVData:
         """
         serialize provided data as oaevdata
         """
         oaev_data = data.to_oaev_data()
         return oaev_data
 
+    @staticmethod
     def get_expectation_signature_groups(
-        self,
         signatures: list[SignatureTypes],
         expectation: DetectionExpectation | PreventionExpectation,
     ) -> SignatureGroups:
@@ -83,8 +83,8 @@ class SourceHandler(SourceHandlerProtocol):
             )
         return signature_groups
 
+    @staticmethod
     def match_signature_groups_and_oaevdata(
-        self,
         signature_groups: SignatureGroups,
         oaev_data: OAEVData,
         oaev_detection_helper: OpenAEVDetectionHelper,
@@ -108,15 +108,16 @@ class SourceHandler(SourceHandlerProtocol):
                 return False
         return True
 
-    def serialize_as_tracedata(self, data: SourceDataProtocol) -> TraceData:
+    @staticmethod
+    def serialize_as_tracedata(data: SourceDataProtocol) -> TraceData:
         """
         use pydantic-based TraceData model to serialize then return in dictionary format
         """
         trace = data.to_traces_data()
         return trace
 
+    @staticmethod
     def match_expectation_and_sourcedata(
-        self,
         expectation: DetectionExpectation | PreventionExpectation,
         data: SourceDataProtocol,
     ) -> tuple[bool, bool]:

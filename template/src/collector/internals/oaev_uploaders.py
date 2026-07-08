@@ -67,9 +67,8 @@ class ExpectationUploader(ResilientUploader):
             inject_expectation_input_by_id=bulk_data
         )
 
-    def expectation_unpack_bulk_data(
-        self, bulk_data: BulkData
-    ) -> Iterable[tuple[str, Any]]:
+    @staticmethod
+    def expectation_unpack_bulk_data(bulk_data: BulkData) -> Iterable[tuple[str, Any]]:
         """unpack the default expectation bulk data format into a (index,data) iterable"""
         return bulk_data.items()
 
@@ -137,7 +136,8 @@ class TraceUploader(ResilientUploader):
             payload={"expectation_traces": [trace.to_api_dict() for trace in traces]}
         )
 
-    def trace_unpack_bulk_data(self, traces: BulkData) -> Iterable[tuple[int, Any]]:
+    @staticmethod
+    def trace_unpack_bulk_data(traces: BulkData) -> Iterable[tuple[int, Any]]:
         """unpack the default expectation trace bulk data format into a (index,data) iterable"""
         return enumerate(traces, 1)
 
