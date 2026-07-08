@@ -19,7 +19,7 @@ msticpy = "^3.0.1"
 
 [[tool.poetry.dependencies.pyoaev]]
 markers = "extra == 'prod' and extra != 'local' and extra != 'current'"
-version = "2.260708.0"
+version = "2.260708.1"
 
 [[tool.poetry.dependencies.pyoaev]]
 markers = "extra == 'local' and extra != 'current' and extra != 'prod'"
@@ -54,7 +54,7 @@ icon-path = "src/img/palo-alto-cortex-xsoar-logo.png"
 
 [project]
 name = "palo-alto-cortex-xsoar"
-version = "2.260708.0"
+version = "2.260708.1"
 description = "Collector for Palo Alto Cortex XSOAR EDR."
 readme = "README.md"
 requires-python = ">=3.12,<4.0"

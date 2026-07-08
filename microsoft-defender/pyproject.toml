@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "openaev-microsoft-defender-collector"
-version = "2.260708.0"
+version = "2.260708.1"
 description = "A Collector for the Microsoft Defender security software"
 authors = [
     "Filigran <contact@filigran.io>",
@@ -18,7 +18,7 @@ msal = "1.33.0"
 
 [[tool.poetry.dependencies.pyoaev]]
 markers = "extra == 'prod' and extra != 'dev'"
-version = "2.260708.0"
+version = "2.260708.1"
 source = "pypi"
 
 [[tool.poetry.dependencies.pyoaev]]

@@ -17,7 +17,7 @@ requests = "~2.33.0"
 
 [[tool.poetry.dependencies.pyoaev]]
 markers = "extra == 'prod' and extra != 'local' and extra != 'current'"
-version = "2.260708.0"
+version = "2.260708.1"
 
 [[tool.poetry.dependencies.pyoaev]]
 markers = "extra == 'local' and extra != 'current' and extra != 'prod'"
@@ -133,7 +133,7 @@ icon-path = "src/img/elastic-logo.png"
 
 [project]
 name = "ElasticCollector"
-version = "2.260708.0"
+version = "2.260708.1"
 description = "Collector for Elastic Security."
 readme = "README.md"
 requires-python = ">=3.11,<3.14"
