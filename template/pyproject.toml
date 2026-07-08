@@ -1,27 +1,23 @@
 [build-system]
-requires = ["poetry-core"]
+requires = [
+   "poetry-core",
+]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
-packages = [{ include = "src" }, { include = "tests" }]
-
-[project]
-name = "TemplateCollector"
-version = "2.3.2"
-description = "Collector template for OAEV."
-readme = "README.md"
-
-requires-python = ">=3.11,<3.14"
-dynamic = ["dependencies"]
+packages = [
+    { include = "src" },
+    { include = "tests" },
+]
 
 [tool.poetry.dependencies]
 pyoaev = [
-    {markers = "extra == 'prod' and extra != 'local' and extra != 'current'",version = "^2.0.2"},
+    {markers = "extra == 'prod' and extra != 'local' and extra != 'current'",version = "^2.260708.1"},
     {markers = "extra == 'local' and extra != 'current' and extra != 'prod'",path = "../../client-python", develop = true},
 ]
-pydantic = "^2.11.7"
-pydantic-settings = "^2.11.0"
-requests = "^2.32.5"
+pydantic = "^2.13.3"
+pydantic-settings = "^2.14.0"
+requests = "^2.33.0"
 python-slugify = {extras = ["unidecode"], version = "^8.0.4"}
 
 [tool.poetry.extras]
@@ -29,20 +25,17 @@ prod = ["pyoaev"]
 local = ["pyoaev"]
 
 [tool.poetry.group.dev.dependencies]
-isort = "^6.0.1"
-ruff = "^0.12.11"
-mypy = "^1.17.1"
-black = "^25.1.0"
+black = "^26.3.0"
 flake8 = "^7.3.0"
+isort = "^8.0.1"
+mypy = "^1.17.1"
 pip-audit = "^2.9.0"
-pre-commit = "^4.3.0"
+pre-commit = "^4.6.0"
+ruff = "^0.14.13"
 
 [tool.poetry.group.test.dependencies]
-pytest = "^8.4.1"
+pytest = "^9.0.0"
 polyfactory = "^2.22.2"
-
-[project.scripts]
-TemplateCollector = "src.__main__:main"
 
 [tool.pytest.ini_options]
 testpaths = ["./tests"]
@@ -126,3 +119,17 @@ plugins = ["pydantic.mypy"]
 install-command = "poetry install --extras local"
 config-dump-command = "poetry run python -m src --dump-config-schema"
 icon-path = "src/img/change-me-logo.png"
+
+[project]
+name = "template-collector"
+version = "2.260708.1"
+description = "Collector template for OAEV."
+readme = "README.md"
+requires-python = ">=3.11,<4.0"
+dynamic = [
+    "dependencies",
+]
+Homepage = "https://filigran.io/"
+
+[project.scripts]
+TemplateCollector = "src.__main__:main"
