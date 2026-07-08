@@ -40,7 +40,10 @@ links back to the originating SentinelOne threat.
 - A SentinelOne Management Console with API access
 - A SentinelOne API token with the `Threats` and `Threat Events` permissions (Deep Visibility and a Complete license are
   additionally required to validate static-engine detections)
+- An allowlisting SentinelOne-side of the OpenAEV agent (not the OpenAEV implant) and of the powershell used to start the implant/the executor*
 - For a manual (non-Docker) deployment: Python >= 3.11 and [Poetry](https://python-poetry.org/) >= 2.1
+
+* practical tip: a first run of an atomic testing can be used to flag the OpenAEV agent and the powershell process in SentinelOne, and then use the web interface of SentinelOne to flag them as false positive and to indicate they should run
 
 ## Configuration variables
 
