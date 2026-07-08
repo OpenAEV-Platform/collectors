@@ -1,11 +1,93 @@
 # Configuration files
 config.yml
+.env
+*.sample
 
 # Build artifacts
-dist
+dist/
 
-# Cache directories
-__pycache__
-.ruff_cache
-.mypy_cache
-.pytest_cache
+# Docker artifacts
+.dockerignore
+Dockerfile
+docker-compose.yml
+
+# Version control
+.git/
+.gitignore
+.gitattributes
+.gitmodules
+
+# Documentation
+#*.md
+#README*
+#docs/
+
+# Tests & Coverage
+#tests/
+#*.test.py
+#coverage/
+#.coverage
+#htmlcov/
+#.pytest_cache/
+
+# CI/CD
+.github/
+.circleci/
+
+# QA
+.ruff_cache/
+.mypy_cache/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+pip-log.txt
+pip-delete-this-directory.txt
+.dmypy.json
+*.egg-info/
+
+# Secrets & sensitive files (ALWAYS EXCLUDED FOR SECURITY)
+.env.*
+*.key
+*.pem
+*_rsa
+*_rsa.*
+*.p12
+*.pfx
+.aws/
+.ssh/
+credentials
+secrets.yml
+secrets.yaml
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# Log files
+*.log
+logs/
+
+# OS-specific files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
