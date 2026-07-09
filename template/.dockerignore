@@ -3,6 +3,8 @@
 
 # Configuration files
 config.yml
+src/config.yml
+src/.env
 .env
 *.sample
 

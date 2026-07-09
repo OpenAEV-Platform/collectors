@@ -6,15 +6,15 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PATH="/collector/.venv/bin:$PATH"
 
-ARG POETRY_VERSION=2.1.3 \
-    POETRY_NO_INTERACTION=1 \
-    POETRY_VIRTUALENVS_CREATE=true \
-    POETRY_VIRTUALENVS_IN_PROJECT=true
-
 WORKDIR /collector
 
 # Builder stage for installing dependencies and creating the application environment.
 FROM base AS builder
+
+ENV POETRY_VERSION=2.1.3 \
+    POETRY_NO_INTERACTION=1 \
+    POETRY_VIRTUALENVS_CREATE=true \
+    POETRY_VIRTUALENVS_IN_PROJECT=true
 
 # Allows overriding the client-python source version.
 ARG PYOAEV_GIT_REF_OVERRIDE=""
@@ -49,15 +49,6 @@ RUN if [ "$PYOAEV_GIT_REF_OVERRIDE" ]; then \
       "git+https://github.com/OpenAEV-Platform/client-python.git@$PYOAEV_GIT_REF_OVERRIDE"; \
     fi
 
-# Copy application sources after dependencies are installed to maximize build cache reuse.
-COPY src ./src
-COPY README.md ./
-
-# Build the application package and install it into the existing virtual environment.
-# Dependencies are already installed, so only the project artifact is installed.
-RUN poetry build &&  \
-    pip install --no-cache-dir --no-deps dist/*.whl
-
 # Runtime stage containing only the application environment required for execution.
 FROM base AS runner
 
@@ -66,12 +57,15 @@ FROM base AS runner
 RUN addgroup -g 10001 -S nonroot && \
     adduser -S -D -H -u 10001 -G nonroot nonroot
 
+COPY --chown=nonroot:nonroot README.md ./
+
 # Copy only runtime artifacts from the builder.
 # Set file ownership during copy to avoid an additional chown layer.
 COPY --from=builder --chown=nonroot:nonroot \
     /collector/.venv /collector/.venv
-COPY --from=builder --chown=nonroot:nonroot \
-    /collector/src /collector/src
+
+# Copy application sources after dependencies are installed to maximize build cache reuse.
+COPY --chown=nonroot:nonroot ./src /collector/src
 
 USER nonroot
 
