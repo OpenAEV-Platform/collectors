@@ -1,32 +1,79 @@
-FROM python:3.13-alpine AS builder
+# Common base stage for shared environment configuration.
+FROM python:3.13-alpine AS base
 
-# poetry version available on Ubuntu 24.04
-RUN pip3 install poetry==2.1.3
+# Python runtime and Poetry build configuration.
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PATH="/collector/.venv/bin:$PATH"
 
-RUN apk update && apk upgrade
+ARG POETRY_VERSION=2.1.3 \
+    POETRY_NO_INTERACTION=1 \
+    POETRY_VIRTUALENVS_CREATE=true \
+    POETRY_VIRTUALENVS_IN_PROJECT=true
 
-ARG installdir=/collector
-ADD . ${installdir}
-RUN cd ${installdir} && poetry build
+WORKDIR /collector
 
-FROM python:3.13-alpine AS runner
+# Builder stage for installing dependencies and creating the application environment.
+FROM base AS builder
 
-# Declare the build argument
-ARG PYOAEV_GIT_BRANCH_OVERRIDE
+# Allows overriding the client-python source version.
+ARG PYOAEV_GIT_REF_OVERRIDE=""
 
-ARG installdir=/collector
-COPY --from=builder ${installdir} ${installdir}
-RUN cd ${installdir}/dist && pip3 install --no-cache-dir "$(ls *.whl)[prod]"
+# Build dependencies required.
+RUN apk add --no-cache --virtual .build-deps \
+    build-base \
+    libffi-dev \
+    openssl-dev \
+    git
 
-RUN if [[ ${PYOAEV_GIT_BRANCH_OVERRIDE} ]] ; then \
-    echo "Forcing specific version of client-python" && \
-    apk add --no-cache git && \
-    pip install pip3-autoremove && \
-    pip-autoremove pyoaev -y && \
-    pip install git+https://github.com/OpenAEV-Platform/client-python@${PYOAEV_GIT_BRANCH_OVERRIDE} ; \
+# Poetry is required only during build and is intentionally excluded from the runtime image.
+RUN pip install --no-cache-dir "poetry==$POETRY_VERSION"
+
+# Copy only dependency metadata first.
+COPY pyproject.toml poetry.lock ./
+
+# Cache package downloads to speed up subsequent builds.
+# Install production dependencies into the virtual environment.
+RUN --mount=type=cache,target=/root/.cache \
+    poetry install  \
+    --only main  \
+    --extras prod  \
+    --no-root
+
+# Optional override of the client-python dependency.
+# Useful for testing a specific branch or tag.
+# Example: --build-arg PYOAEV_GIT_REF_OVERRIDE=2.260703.0
+RUN if [ "$PYOAEV_GIT_REF_OVERRIDE" ]; then \
+      echo "Forcing specific version ($PYOAEV_GIT_REF_OVERRIDE) of client-python" && \
+      pip install --no-cache-dir --force-reinstall \
+      "git+https://github.com/OpenAEV-Platform/client-python.git@$PYOAEV_GIT_REF_OVERRIDE"; \
     fi
 
-# necessary for icon location
-WORKDIR ${installdir}
+# Copy application sources after dependencies are installed to maximize build cache reuse.
+COPY src ./src
+COPY README.md ./
 
-CMD ["python3", "-m", "src"]
+# Build the application package and install it into the existing virtual environment.
+# Dependencies are already installed, so only the project artifact is installed.
+RUN poetry build &&  \
+    pip install --no-cache-dir --no-deps dist/*.whl
+
+# Runtime stage containing only the application environment required for execution.
+FROM base AS runner
+
+# Run the application as a non-root user for better container security.
+# Using explicit UIDs/GIDs ensures deterministic ownership during rebuilds (Docker recommendation).
+RUN addgroup -g 10001 -S nonroot && \
+    adduser -S -D -H -u 10001 -G nonroot nonroot
+
+# Copy only runtime artifacts from the builder.
+# Set file ownership during copy to avoid an additional chown layer.
+COPY --from=builder --chown=nonroot:nonroot \
+    /collector/.venv /collector/.venv
+COPY --from=builder --chown=nonroot:nonroot \
+    /collector/src /collector/src
+
+USER nonroot
+
+# Run using the isolated Poetry virtual environment.
+CMD ["python", "-m", "src"]

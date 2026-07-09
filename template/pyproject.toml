@@ -7,7 +7,6 @@ build-backend = "poetry.core.masonry.api"
 [tool.poetry]
 packages = [
     { include = "src" },
-    { include = "tests" },
 ]
 
 [tool.poetry.dependencies]
