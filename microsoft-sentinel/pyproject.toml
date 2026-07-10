@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "openaev-microsoft-sentinel-collector"
-version = "2.260708.1"
+version = "2.260710.0"
 description = "A Collector for Microsoft Sentinel SIEM solution"
 authors = [
     "Filigran <contact@filigran.io>",
@@ -17,7 +17,7 @@ msal = "1.33.0"
 
 [[tool.poetry.dependencies.pyoaev]]
 markers = "extra == 'prod' and extra != 'dev'"
-version = "2.260708.1"
+version = "2.260710.0"
 source = "pypi"
 
 [[tool.poetry.dependencies.pyoaev]]

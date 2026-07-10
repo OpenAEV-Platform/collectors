@@ -17,7 +17,7 @@ requests = "~2.33.0"
 
 [[tool.poetry.dependencies.pyoaev]]
 markers = "extra == 'prod' and extra != 'local' and extra != 'current'"
-version = "2.260708.1"
+version = "2.260710.0"
 
 [[tool.poetry.dependencies.pyoaev]]
 markers = "extra == 'local' and extra != 'current' and extra != 'prod'"
@@ -133,7 +133,7 @@ icon-path = "src/img/netwitness-logo.png"
 
 [project]
 name = "NetWitnessCollector"
-version = "2.260708.1"
+version = "2.260710.0"
 description = "Collector for NetWitness."
 readme = "README.md"
 requires-python = ">=3.11,<3.14"
