@@ -87,9 +87,16 @@ class OpenAEVXtmOne(CollectorDaemon):
     def _agent_payload(self, agent: dict) -> dict:
         slug = agent.get("slug")
         name = agent.get("name") or slug
-        tag_ids = self._resolve_tags(
-            [SOURCE_TAG, AGENT_TAG] + [str(t) for t in (agent.get("tags") or [])]
+        # Normalize mirrored tags the same way scoping does, so inconsistent
+        # casing/whitespace in XTM One never creates duplicate OpenAEV tags.
+        agent_tags = sorted(
+            {
+                str(t).strip().lower()
+                for t in (agent.get("tags") or [])
+                if str(t).strip()
+            }
         )
+        tag_ids = self._resolve_tags([SOURCE_TAG, AGENT_TAG] + agent_tags)
         return {
             "asset_name": f"{name} (XTM One agent)",
             "asset_description": agent.get("description")

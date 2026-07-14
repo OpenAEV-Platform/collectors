@@ -115,6 +115,19 @@ def test_agent_payload_external_reference_and_model():
     assert payload["ai_target_api_key_variable"] == "XTM_ONE_API_KEY"
 
 
+def test_agent_payload_normalizes_mirrored_tags():
+    collector = _build_collector()
+
+    collector._agent_payload(
+        {"slug": "triage", "name": "Triage", "tags": ["Prod", " prod ", "RED-team", ""]}
+    )
+
+    upserted = [
+        call.args[0]["tag_name"] for call in collector.api.tag.upsert.call_args_list
+    ]
+    assert upserted == ["source:xtm-one", "type:agent", "prod", "red-team"]
+
+
 def test_model_payload_external_reference_and_model():
     collector = _build_collector()
 
