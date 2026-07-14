@@ -88,7 +88,7 @@ class OpenAEVXtmOne(CollectorDaemon):
         slug = agent.get("slug")
         name = agent.get("name") or slug
         tag_ids = self._resolve_tags(
-            [SOURCE_TAG, AGENT_TAG] + list(agent.get("tags") or [])
+            [SOURCE_TAG, AGENT_TAG] + [str(t) for t in (agent.get("tags") or [])]
         )
         return {
             "asset_name": f"{name} (XTM One agent)",

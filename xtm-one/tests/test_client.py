@@ -73,6 +73,14 @@ def test_list_agents_filters_unusable_agents():
     assert [a["slug"] for a in agents] == ["triage"]
 
 
+@pytest.mark.parametrize("unexpected_payload", [None, "oops", 42])
+def test_list_agents_tolerates_unexpected_payload_types(unexpected_payload):
+    client = _build_client()
+    client.session = _mock_session(unexpected_payload)
+
+    assert client.list_agents() == []
+
+
 def test_list_agents_supports_items_envelope():
     client = _build_client()
     client.session = _mock_session(

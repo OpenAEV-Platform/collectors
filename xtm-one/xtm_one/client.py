@@ -57,7 +57,17 @@ class XtmOneClient:
         """
         self._validate()
         data = self._get("/api/v1/agents")
-        agents = data if isinstance(data, list) else data.get("items", [])
+        if isinstance(data, list):
+            agents = data
+        elif isinstance(data, dict):
+            agents = data.get("items", [])
+        else:
+            if self.logger:
+                self.logger.warning(
+                    f"Unexpected /api/v1/agents payload type {type(data).__name__}; "
+                    "expected a list or an object with an 'items' key."
+                )
+            agents = []
         result = []
         for agent in agents:
             if not isinstance(agent, dict):
@@ -87,7 +97,7 @@ class XtmOneClient:
             if not isinstance(model, dict):
                 continue
             model_id = model.get("id")
-            if not model_id or model_id.startswith("agent:"):
+            if not model_id or str(model_id).startswith("agent:"):
                 continue
             if model.get("owned_by") == "copilot":
                 continue

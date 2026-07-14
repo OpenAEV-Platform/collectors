@@ -4,7 +4,7 @@ openaev:
   # tenant_id: 'ChangeMe'
 
 collector:
-  id: 'ChangeMe'   # unique collector identifier (string; e.g. openaev_xtm_one)
+  id: 'ChangeMe'   # unique collector instance identifier (UUIDv4 recommended)
   name: 'XTM One'
   period: 'PT1H'
   log_level: 'error'
