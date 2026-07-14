@@ -378,6 +378,82 @@ jobs:
             fi
               docker save -o ~/openaev/images/collector-palo-alto-cortex-xsoar openaev/collector-palo-alto-cortex-xsoar:${CIRCLE_SHA1}
               docker save -o ~/openaev/images/collector-palo-alto-cortex-xsoar-ubi9 openaev/collector-palo-alto-cortex-xsoar:${CIRCLE_SHA1}-ubi9
+      - run:
+          working_directory: ~/openaev/cisco-ai-defense
+          name: Build Docker image openaev/collector-cisco-ai-defense
+          command: |
+            if [[ "${CIRCLE_BRANCH}" == "main" ]]; then
+              docker build --pull --progress=plain -t openaev/collector-cisco-ai-defense:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
+            else
+              docker build --pull --progress=plain -t openaev/collector-cisco-ai-defense:${CIRCLE_SHA1} .
+            fi
+            docker save -o ~/openaev/images/collector-cisco-ai-defense openaev/collector-cisco-ai-defense:${CIRCLE_SHA1}
+      - run:
+          working_directory: ~/openaev/hiddenlayer
+          name: Build Docker image openaev/collector-hiddenlayer
+          command: |
+            if [[ "${CIRCLE_BRANCH}" == "main" ]]; then
+              docker build --pull --progress=plain -t openaev/collector-hiddenlayer:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
+              docker build --pull --progress=plain -t openaev/collector-hiddenlayer:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
+            else
+              docker build --pull --progress=plain -t openaev/collector-hiddenlayer:${CIRCLE_SHA1} .
+              docker build --pull --progress=plain -t openaev/collector-hiddenlayer:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 .
+            fi
+            docker save -o ~/openaev/images/collector-hiddenlayer openaev/collector-hiddenlayer:${CIRCLE_SHA1}
+            docker save -o ~/openaev/images/collector-hiddenlayer-ubi9 openaev/collector-hiddenlayer:${CIRCLE_SHA1}-ubi9
+      - run:
+          working_directory: ~/openaev/lakera-guard
+          name: Build Docker image openaev/collector-lakera-guard
+          command: |
+            if [[ "${CIRCLE_BRANCH}" == "main" ]]; then
+              docker build --pull --progress=plain -t openaev/collector-lakera-guard:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
+            else
+              docker build --pull --progress=plain -t openaev/collector-lakera-guard:${CIRCLE_SHA1} .
+            fi
+            docker save -o ~/openaev/images/collector-lakera-guard openaev/collector-lakera-guard:${CIRCLE_SHA1}
+      - run:
+          working_directory: ~/openaev/mitre-atlas
+          name: Build Docker image openaev/collector-mitre-atlas
+          command: |
+            if [[ "${CIRCLE_BRANCH}" == "main" ]]; then
+              docker build --pull --progress=plain -t openaev/collector-mitre-atlas:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
+            else
+              docker build --pull --progress=plain -t openaev/collector-mitre-atlas:${CIRCLE_SHA1} .
+            fi
+            docker save -o ~/openaev/images/collector-mitre-atlas openaev/collector-mitre-atlas:${CIRCLE_SHA1}
+      - run:
+          working_directory: ~/openaev/prisma-airs
+          name: Build Docker image openaev/collector-prisma-airs
+          command: |
+            if [[ "${CIRCLE_BRANCH}" == "main" ]]; then
+              docker build --pull --progress=plain -t openaev/collector-prisma-airs:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
+            else
+              docker build --pull --progress=plain -t openaev/collector-prisma-airs:${CIRCLE_SHA1} .
+            fi
+            docker save -o ~/openaev/images/collector-prisma-airs openaev/collector-prisma-airs:${CIRCLE_SHA1}
+      - run:
+          working_directory: ~/openaev/prompt-security
+          name: Build Docker image openaev/collector-prompt-security
+          command: |
+            if [[ "${CIRCLE_BRANCH}" == "main" ]]; then
+              docker build --pull --progress=plain -t openaev/collector-prompt-security:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
+            else
+              docker build --pull --progress=plain -t openaev/collector-prompt-security:${CIRCLE_SHA1} .
+            fi
+            docker save -o ~/openaev/images/collector-prompt-security openaev/collector-prompt-security:${CIRCLE_SHA1}
+      - run:
+          working_directory: ~/openaev/xtm-one
+          name: Build Docker image openaev/collector-xtm-one
+          command: |
+            if [[ "${CIRCLE_BRANCH}" == "main" ]]; then
+              docker build --pull --progress=plain -t openaev/collector-xtm-one:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
+              docker build --pull --progress=plain -t openaev/collector-xtm-one:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
+            else
+              docker build --pull --progress=plain -t openaev/collector-xtm-one:${CIRCLE_SHA1} .
+              docker build --pull --progress=plain -t openaev/collector-xtm-one:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 .
+            fi
+            docker save -o ~/openaev/images/collector-xtm-one openaev/collector-xtm-one:${CIRCLE_SHA1}
+            docker save -o ~/openaev/images/collector-xtm-one-ubi9 openaev/collector-xtm-one:${CIRCLE_SHA1}-ubi9
       - persist_to_workspace:
           root: ~/openaev
           paths:
@@ -561,6 +637,34 @@ jobs:
             docker tag openaev/collector-palo-alto-cortex-xsoar:${CIRCLE_SHA1}-ubi9 openaev/collector-palo-alto-cortex-xsoar:${IMAGETAG}-ubi9
             docker tag openaev/collector-palo-alto-cortex-xsoar:${CIRCLE_SHA1}-ubi9 openbas/collector-palo-alto-cortex-xsoar:${IMAGETAG}-ubi9
 
+            docker image load < collector-cisco-ai-defense
+            docker tag openaev/collector-cisco-ai-defense:${CIRCLE_SHA1} openaev/collector-cisco-ai-defense:${IMAGETAG}
+            docker tag openaev/collector-cisco-ai-defense:${CIRCLE_SHA1} openbas/collector-cisco-ai-defense:${IMAGETAG}
+            docker image load < collector-hiddenlayer
+            docker tag openaev/collector-hiddenlayer:${CIRCLE_SHA1} openaev/collector-hiddenlayer:${IMAGETAG}
+            docker tag openaev/collector-hiddenlayer:${CIRCLE_SHA1} openbas/collector-hiddenlayer:${IMAGETAG}
+            docker image load < collector-hiddenlayer-ubi9
+            docker tag openaev/collector-hiddenlayer:${CIRCLE_SHA1}-ubi9 openaev/collector-hiddenlayer:${IMAGETAG}-ubi9
+            docker tag openaev/collector-hiddenlayer:${CIRCLE_SHA1}-ubi9 openbas/collector-hiddenlayer:${IMAGETAG}-ubi9
+            docker image load < collector-lakera-guard
+            docker tag openaev/collector-lakera-guard:${CIRCLE_SHA1} openaev/collector-lakera-guard:${IMAGETAG}
+            docker tag openaev/collector-lakera-guard:${CIRCLE_SHA1} openbas/collector-lakera-guard:${IMAGETAG}
+            docker image load < collector-mitre-atlas
+            docker tag openaev/collector-mitre-atlas:${CIRCLE_SHA1} openaev/collector-mitre-atlas:${IMAGETAG}
+            docker tag openaev/collector-mitre-atlas:${CIRCLE_SHA1} openbas/collector-mitre-atlas:${IMAGETAG}
+            docker image load < collector-prisma-airs
+            docker tag openaev/collector-prisma-airs:${CIRCLE_SHA1} openaev/collector-prisma-airs:${IMAGETAG}
+            docker tag openaev/collector-prisma-airs:${CIRCLE_SHA1} openbas/collector-prisma-airs:${IMAGETAG}
+            docker image load < collector-prompt-security
+            docker tag openaev/collector-prompt-security:${CIRCLE_SHA1} openaev/collector-prompt-security:${IMAGETAG}
+            docker tag openaev/collector-prompt-security:${CIRCLE_SHA1} openbas/collector-prompt-security:${IMAGETAG}
+            docker image load < collector-xtm-one
+            docker tag openaev/collector-xtm-one:${CIRCLE_SHA1} openaev/collector-xtm-one:${IMAGETAG}
+            docker tag openaev/collector-xtm-one:${CIRCLE_SHA1} openbas/collector-xtm-one:${IMAGETAG}
+            docker image load < collector-xtm-one-ubi9
+            docker tag openaev/collector-xtm-one:${CIRCLE_SHA1}-ubi9 openaev/collector-xtm-one:${IMAGETAG}-ubi9
+            docker tag openaev/collector-xtm-one:${CIRCLE_SHA1}-ubi9 openbas/collector-xtm-one:${IMAGETAG}-ubi9
+
             echo "$DOCKERHUB_PASS" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
             docker push openaev/collector-mitre-attack:${IMAGETAG}
             docker push openaev/collector-mitre-attack:${IMAGETAG}-ubi9
@@ -646,6 +750,24 @@ jobs:
             docker push openaev/collector-palo-alto-cortex-xsoar:${IMAGETAG}-ubi9
             docker push openbas/collector-palo-alto-cortex-xsoar:${IMAGETAG}
             docker push openbas/collector-palo-alto-cortex-xsoar:${IMAGETAG}-ubi9
+            docker push openaev/collector-cisco-ai-defense:${IMAGETAG}
+            docker push openbas/collector-cisco-ai-defense:${IMAGETAG}
+            docker push openaev/collector-hiddenlayer:${IMAGETAG}
+            docker push openaev/collector-hiddenlayer:${IMAGETAG}-ubi9
+            docker push openbas/collector-hiddenlayer:${IMAGETAG}
+            docker push openbas/collector-hiddenlayer:${IMAGETAG}-ubi9
+            docker push openaev/collector-lakera-guard:${IMAGETAG}
+            docker push openbas/collector-lakera-guard:${IMAGETAG}
+            docker push openaev/collector-mitre-atlas:${IMAGETAG}
+            docker push openbas/collector-mitre-atlas:${IMAGETAG}
+            docker push openaev/collector-prisma-airs:${IMAGETAG}
+            docker push openbas/collector-prisma-airs:${IMAGETAG}
+            docker push openaev/collector-prompt-security:${IMAGETAG}
+            docker push openbas/collector-prompt-security:${IMAGETAG}
+            docker push openaev/collector-xtm-one:${IMAGETAG}
+            docker push openaev/collector-xtm-one:${IMAGETAG}-ubi9
+            docker push openbas/collector-xtm-one:${IMAGETAG}
+            docker push openbas/collector-xtm-one:${IMAGETAG}-ubi9
             if [ "${IS_LATEST}" == "true" ]
             then
               docker tag openaev/collector-mitre-attack:${IMAGETAG} openaev/collector-mitre-attack:latest
@@ -690,6 +812,20 @@ jobs:
               docker tag openaev/collector-palo-alto-cortex-xdr:${IMAGETAG} openbas/collector-palo-alto-cortex-xdr:latest
               docker tag openaev/collector-palo-alto-cortex-xsoar:${IMAGETAG} openaev/collector-palo-alto-cortex-xsoar:latest
               docker tag openaev/collector-palo-alto-cortex-xsoar:${IMAGETAG} openbas/collector-palo-alto-cortex-xsoar:latest
+              docker tag openaev/collector-cisco-ai-defense:${IMAGETAG} openaev/collector-cisco-ai-defense:latest
+              docker tag openaev/collector-cisco-ai-defense:${IMAGETAG} openbas/collector-cisco-ai-defense:latest
+              docker tag openaev/collector-hiddenlayer:${IMAGETAG} openaev/collector-hiddenlayer:latest
+              docker tag openaev/collector-hiddenlayer:${IMAGETAG} openbas/collector-hiddenlayer:latest
+              docker tag openaev/collector-lakera-guard:${IMAGETAG} openaev/collector-lakera-guard:latest
+              docker tag openaev/collector-lakera-guard:${IMAGETAG} openbas/collector-lakera-guard:latest
+              docker tag openaev/collector-mitre-atlas:${IMAGETAG} openaev/collector-mitre-atlas:latest
+              docker tag openaev/collector-mitre-atlas:${IMAGETAG} openbas/collector-mitre-atlas:latest
+              docker tag openaev/collector-prisma-airs:${IMAGETAG} openaev/collector-prisma-airs:latest
+              docker tag openaev/collector-prisma-airs:${IMAGETAG} openbas/collector-prisma-airs:latest
+              docker tag openaev/collector-prompt-security:${IMAGETAG} openaev/collector-prompt-security:latest
+              docker tag openaev/collector-prompt-security:${IMAGETAG} openbas/collector-prompt-security:latest
+              docker tag openaev/collector-xtm-one:${IMAGETAG} openaev/collector-xtm-one:latest
+              docker tag openaev/collector-xtm-one:${IMAGETAG} openbas/collector-xtm-one:latest
 
               docker push openaev/collector-mitre-attack:latest
               docker push openbas/collector-mitre-attack:latest
@@ -733,6 +869,20 @@ jobs:
               docker push openbas/collector-palo-alto-cortex-xdr:latest
               docker push openaev/collector-palo-alto-cortex-xsoar:latest
               docker push openbas/collector-palo-alto-cortex-xsoar:latest
+              docker push openaev/collector-cisco-ai-defense:latest
+              docker push openbas/collector-cisco-ai-defense:latest
+              docker push openaev/collector-hiddenlayer:latest
+              docker push openbas/collector-hiddenlayer:latest
+              docker push openaev/collector-lakera-guard:latest
+              docker push openbas/collector-lakera-guard:latest
+              docker push openaev/collector-mitre-atlas:latest
+              docker push openbas/collector-mitre-atlas:latest
+              docker push openaev/collector-prisma-airs:latest
+              docker push openbas/collector-prisma-airs:latest
+              docker push openaev/collector-prompt-security:latest
+              docker push openbas/collector-prompt-security:latest
+              docker push openaev/collector-xtm-one:latest
+              docker push openbas/collector-xtm-one:latest
             fi
       - slack/notify:
           event: fail
