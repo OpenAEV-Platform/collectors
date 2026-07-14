@@ -1,0 +1,37 @@
+[tool.poetry]
+name = "openaev-xtm-one-collector"
+version = "2.260710.0"
+description = "A Collector importing XTM One agents (and optionally bare LLM models) as OpenAEV AI targets"
+authors = ["Filigran <contact@filigran.io>"]
+license = "Apache-2.0"
+readme = "README.md"
+packages = [
+    { include = "xtm_one" }
+]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+requests = "^2.32.0"
+pyoaev = [
+    { markers = "extra == 'prod' and extra != 'dev'", version = "2.260710.0", source = "pypi"  },
+    { markers = "extra == 'dev' and extra != 'prod'", path = "../../client-python", develop = true },
+]
+
+[tool.poetry.extras]
+prod = ["pyoaev"]
+dev = ["pyoaev"]
+
+[tool.poetry.group.test.dependencies]
+pytest = "^9.0.2"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.cmw]
+install-command = "poetry install --extras prod"
+config-dump-command = "poetry run python -m xtm_one.openaev_xtm_one --dump-config-schema"
+icon-path = "xtm_one/img/icon-xtm-one.png"
