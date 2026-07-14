@@ -32,8 +32,7 @@ RUN set -eux; \
     if [ -n "${PYOAEV_GIT_BRANCH_OVERRIDE}" ] ; then \
         echo "Forcing specific version of client-python"; \
         microdnf -y --setopt=install_weak_deps=0 install git-core; \
-        pip3.12 install pip3-autoremove; \
-        pip-autoremove pyoaev -y; \
+        pip3.12 uninstall -y pyoaev; \
         pip3.12 install git+https://github.com/OpenAEV-Platform/client-python@${PYOAEV_GIT_BRANCH_OVERRIDE}; \
         microdnf -y remove git-core; \
     fi; \

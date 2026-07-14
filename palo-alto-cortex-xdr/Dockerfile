@@ -21,8 +21,7 @@ RUN cd ${installdir}/dist && pip3 install --no-cache-dir "$(ls *.whl)[prod]"
 RUN if [[ ${PYOAEV_GIT_BRANCH_OVERRIDE} ]] ; then \
     echo "Forcing specific version of client-python" && \
     apk add --no-cache git && \
-    pip install pip3-autoremove && \
-    pip-autoremove pyoaev -y && \
+    pip uninstall -y pyoaev && \
     pip install git+https://github.com/OpenAEV-Platform/client-python@${PYOAEV_GIT_BRANCH_OVERRIDE} ; \
     fi
 
