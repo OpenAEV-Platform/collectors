@@ -76,9 +76,22 @@ def test_list_agents_filters_unusable_agents():
 @pytest.mark.parametrize("unexpected_payload", [None, "oops", 42])
 def test_list_agents_tolerates_unexpected_payload_types(unexpected_payload):
     client = _build_client()
+    client.logger = MagicMock()
     client.session = _mock_session(unexpected_payload)
 
     assert client.list_agents() == []
+    client.logger.warning.assert_called_once()
+
+
+def test_list_agents_skips_non_dict_entries():
+    client = _build_client()
+    client.session = _mock_session(
+        ["not-a-dict", {"slug": "triage", "name": "Triage", "enabled": True}]
+    )
+
+    agents = client.list_agents()
+
+    assert [a["slug"] for a in agents] == ["triage"]
 
 
 def test_list_agents_supports_items_envelope():
@@ -126,3 +139,14 @@ def test_list_bare_models_handles_empty_payload():
     client.session = _mock_session({})
 
     assert client.list_bare_models() == []
+
+
+def test_list_bare_models_skips_non_dict_entries():
+    client = _build_client()
+    client.session = _mock_session(
+        {"data": ["not-a-dict", {"id": "gpt-4o", "owned_by": "openai"}]}
+    )
+
+    models = client.list_bare_models()
+
+    assert [m["id"] for m in models] == ["gpt-4o"]
