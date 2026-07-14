@@ -1,0 +1,15 @@
+openaev:
+  url: 'http://localhost:3001'
+  token: 'ChangeMe'
+  # tenant_id: 'ChangeMe'
+
+collector:
+  id: 'ChangeMe'   # unique collector identifier (string; e.g. openaev_xtm_one)
+  name: 'XTM One'
+  period: 'PT1H'
+  log_level: 'error'
+  xtm_one_url: 'ChangeMe'   # base URL of the XTM One platform
+  xtm_one_token: 'ChangeMe'   # XTM One API key (fcp-...) to read agents and models
+  xtm_one_api_key_variable: 'XTM_ONE_API_KEY'
+  include_bare_models: false
+  agent_tags: ''   # comma-separated agent tags to scope on (empty = all agents)

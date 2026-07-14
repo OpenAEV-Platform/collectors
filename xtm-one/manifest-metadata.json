@@ -1,0 +1,18 @@
+{
+  "title": "XTM One",
+  "slug": "openaev_xtm_one",
+  "description": "Import XTM One agents (and optionally bare LLM models) as OpenAEV AI targets so they can be exercised by adversarial AI injects.",
+  "short_description": "Import XTM One agents as AI targets",
+  "use_cases": ["Asset collection"],
+  "verified": true,
+  "last_verified_date": "",
+  "playbook_supported": false,
+  "max_confidence_level": 80,
+  "support_version": "",
+  "subscription_link": "https://filigran.io/solutions/xtm-one/",
+  "source_code": "",
+  "manager_supported": true,
+  "container_version": "rolling",
+  "container_image": "openaev/collector-xtm-one",
+  "container_type": "COLLECTOR"
+}
