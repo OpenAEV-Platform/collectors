@@ -23,14 +23,10 @@ class CollectorConfigOverride(ConfigLoaderCollector):
     )
     xtm_one_token: str | None = Field(
         default=None,
-        description="XTM One API key (fcp-...) used to read the agents and models catalog.",
-    )
-    xtm_one_api_key_variable: str | None = Field(
-        default="XTM_ONE_API_KEY",
         description=(
-            "Name of the injector environment variable holding the credential the AI "
-            "red team injector uses to reach XTM One at execution time. The secret "
-            "value itself is never stored on the AI target."
+            "XTM One API key (fcp-...) used to read the agents and models catalog and "
+            "written onto each seeded AI target so the injector can authenticate to "
+            "XTM One directly."
         ),
     )
     include_bare_models: bool = Field(

@@ -2,14 +2,18 @@
 
 On each run the collector reads the XTM One agents catalog (optionally scoped to a
 set of tags) and upserts one OpenAEV ``AiTarget`` per agent, wired to XTM One's
-OpenAI-compatible proxy (``{xtm_one_url}/v1`` with model ``agent:<slug>``). When
+Platform Chat API (``{xtm_one_url}/api/v1/platform/chat/messages`` with
+``agent_slug=<slug>``). Agents are reached through the ``XTM_ONE`` injector
+provider rather than the OpenAI-compatible ``/v1`` proxy, because that proxy is
+disabled when XTM One runs in ``xtm_one`` platform mode. When
 ``include_bare_models`` is enabled it additionally mirrors the bare LLM models
-exposed by the proxy. Targets are matched on a stable external reference so the
-collector is idempotent and updates existing targets in place.
+exposed by the OpenAI-compatible proxy (only reachable when that proxy is
+enabled). Targets are matched on a stable external reference so the collector is
+idempotent and updates existing targets in place.
 
-The credential the AI red team injector uses at execution time is never stored on
-the target: only the name of the injector environment variable holding it
-(``xtm_one_api_key_variable``) is recorded, matching the AI target contract.
+The XTM One API key from the collector config (``xtm_one_token``) is written onto
+each AI target (``ai_target_token``) so the injector can authenticate to XTM One
+directly. The credential lives entirely on the AI target.
 """
 
 from pyoaev.configuration import Configuration
@@ -17,7 +21,10 @@ from pyoaev.daemons import CollectorDaemon
 from xtm_one.client import XtmOneClient
 from xtm_one.configuration.config_loader import ConfigLoader
 
-PROVIDER = "OPENAI_COMPATIBLE"
+# Agents are called through the dedicated XTM One provider (Platform Chat API);
+# bare LLM models are only reachable through the OpenAI-compatible proxy.
+AGENT_PROVIDER = "XTM_ONE"
+MODEL_PROVIDER = "OPENAI_COMPATIBLE"
 SOURCE_TAG = "source:xtm-one"
 AGENT_TAG = "type:agent"
 MODEL_TAG = "type:model"
@@ -34,12 +41,12 @@ class OpenAEVXtmOne(CollectorDaemon):
         )
         self.collector_id = self._configuration.get("collector_id")
         self.xtm_one_url = (self._configuration.get("xtm_one_url") or "").rstrip("/")
-        self.api_key_variable = self._configuration.get("xtm_one_api_key_variable")
+        self.xtm_one_token = self._configuration.get("xtm_one_token")
         self.include_bare_models = bool(self._configuration.get("include_bare_models"))
         self.agent_tags = self._parse_tags(self._configuration.get("agent_tags"))
         self.client = XtmOneClient(
             self.xtm_one_url,
-            self._configuration.get("xtm_one_token"),
+            self.xtm_one_token,
             self.logger,
         )
         self._tag_cache: dict[str, str] = {}
@@ -51,7 +58,13 @@ class OpenAEVXtmOne(CollectorDaemon):
         return {t.strip().lower() for t in str(raw).split(",") if t.strip()}
 
     @property
-    def _endpoint(self) -> str:
+    def _agent_endpoint(self) -> str:
+        """XTM One base URL; the AI red team injector's ``XTM_ONE`` provider
+        appends ``/api/v1/platform/chat/messages`` itself."""
+        return self.xtm_one_url
+
+    @property
+    def _model_endpoint(self) -> str:
         """OpenAI-compatible proxy base; the AI red team injector appends
         ``/chat/completions`` itself."""
         return f"{self.xtm_one_url}/v1"
@@ -103,11 +116,11 @@ class OpenAEVXtmOne(CollectorDaemon):
             or "XTM One agent exposed through the OpenAI-compatible proxy.",
             "asset_external_reference": f"xtm-one:agent:{slug}",
             "asset_tags": tag_ids,
-            "ai_target_provider": PROVIDER,
-            "ai_target_endpoint": self._endpoint,
+            "ai_target_provider": AGENT_PROVIDER,
+            "ai_target_endpoint": self._agent_endpoint,
             "ai_target_model": f"agent:{slug}",
             "ai_target_modality": "TEXT",
-            "ai_target_api_key_variable": self.api_key_variable,
+            "ai_target_token": self.xtm_one_token,
             "ai_target_configuration": {
                 "source": "xtm-one",
                 "xtm_one_kind": "agent",
@@ -124,11 +137,11 @@ class OpenAEVXtmOne(CollectorDaemon):
             "OpenAI-compatible proxy.",
             "asset_external_reference": f"xtm-one:model:{model_id}",
             "asset_tags": tag_ids,
-            "ai_target_provider": PROVIDER,
-            "ai_target_endpoint": self._endpoint,
+            "ai_target_provider": MODEL_PROVIDER,
+            "ai_target_endpoint": self._model_endpoint,
             "ai_target_model": model_id,
             "ai_target_modality": "TEXT",
-            "ai_target_api_key_variable": self.api_key_variable,
+            "ai_target_token": self.xtm_one_token,
             "ai_target_configuration": {
                 "source": "xtm-one",
                 "xtm_one_kind": "model",

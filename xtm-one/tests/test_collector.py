@@ -28,7 +28,6 @@ def _build_configuration(**overrides):
         "collector_log_level": {"data": "error"},
         "xtm_one_url": {"data": "https://xtm-one.example.test/"},
         "xtm_one_token": {"data": "fcp-secret"},
-        "xtm_one_api_key_variable": {"data": "XTM_ONE_API_KEY"},
         "include_bare_models": {"data": False},
         "agent_tags": {"data": None},
     }
@@ -43,7 +42,7 @@ def _build_collector():
     collector.api.tag.upsert.return_value = {"tag_id": "tag-uuid"}
     collector.logger = MagicMock()
     collector.xtm_one_url = "https://xtm-one.example.test"
-    collector.api_key_variable = "XTM_ONE_API_KEY"
+    collector.xtm_one_token = "fcp-secret"
     collector.include_bare_models = False
     collector.agent_tags = set()
     collector._tag_cache = {}
@@ -56,10 +55,11 @@ def test_init_normalizes_configuration():
     )
 
     assert collector.xtm_one_url == "https://xtm-one.example.test"
-    assert collector._endpoint == "https://xtm-one.example.test/v1"
+    assert collector._agent_endpoint == "https://xtm-one.example.test"
+    assert collector._model_endpoint == "https://xtm-one.example.test/v1"
     assert collector.agent_tags == {"prod", "red-team"}
     assert collector.include_bare_models is False
-    assert collector.api_key_variable == "XTM_ONE_API_KEY"
+    assert collector.xtm_one_token == "fcp-secret"
 
 
 @pytest.mark.parametrize(
@@ -111,8 +111,11 @@ def test_agent_payload_external_reference_and_model():
 
     assert payload["asset_external_reference"] == "xtm-one:agent:triage"
     assert payload["ai_target_model"] == "agent:triage"
-    assert payload["ai_target_endpoint"] == "https://xtm-one.example.test/v1"
-    assert payload["ai_target_api_key_variable"] == "XTM_ONE_API_KEY"
+    assert payload["ai_target_provider"] == "XTM_ONE"
+    assert payload["ai_target_endpoint"] == "https://xtm-one.example.test"
+    assert payload["ai_target_configuration"]["xtm_one_slug"] == "triage"
+    assert payload["ai_target_token"] == "fcp-secret"
+    assert "ai_target_api_key_variable" not in payload
 
 
 def test_agent_payload_normalizes_mirrored_tags():
@@ -135,7 +138,10 @@ def test_model_payload_external_reference_and_model():
 
     assert payload["asset_external_reference"] == "xtm-one:model:gpt-4o"
     assert payload["ai_target_model"] == "gpt-4o"
+    assert payload["ai_target_provider"] == "OPENAI_COMPATIBLE"
     assert payload["ai_target_endpoint"] == "https://xtm-one.example.test/v1"
+    assert payload["ai_target_token"] == "fcp-secret"
+    assert "ai_target_api_key_variable" not in payload
 
 
 def test_existing_targets_keeps_only_xtm_one_references():

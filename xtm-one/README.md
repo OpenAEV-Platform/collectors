@@ -37,9 +37,8 @@ target per bare LLM model (e.g. `gpt-4o`, `claude-3-5-sonnet`), reusing the same
 Targets are matched on a stable external reference (`xtm-one:agent:<slug>` / `xtm-one:model:<id>`), so the collector is
 idempotent and updates existing targets in place instead of creating duplicates.
 
-Secrets are never stored on the AI target. The collector only records the **name** of the injector environment variable
-(`XTM_ONE_API_KEY_VARIABLE`) that holds the credential; the AI red team injector resolves the actual secret from its own
-environment at execution time.
+The XTM One API key (`collector.xtm_one_token`) is written onto each seeded AI target (`ai_target_token`), so the AI red
+team injector authenticates to XTM One directly using the credential carried by the target.
 
 ## Requirements
 
@@ -77,8 +76,7 @@ The collector is configured either through environment variables (recommended, r
 | Parameter          | config.yml                        | Docker environment variable          | Default         | Mandatory | Description                                                                                                                                                        |
 |--------------------|-----------------------------------|--------------------------------------|-----------------|-----------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | XTM One URL        | `collector.xtm_one_url`           | `COLLECTOR_XTM_ONE_URL`              | /               | Yes       | Base URL of the XTM One platform (e.g. `https://xtm-one.example.com`). The collector talks to `/api/v1/agents` and `/v1/models`.                                    |
-| XTM One Token      | `collector.xtm_one_token`         | `COLLECTOR_XTM_ONE_TOKEN`            | /               | Yes       | XTM One API key (`fcp-...`) used to read the agents and models catalog.                                                                                             |
-| API key variable   | `collector.xtm_one_api_key_variable` | `COLLECTOR_XTM_ONE_API_KEY_VARIABLE` | `XTM_ONE_API_KEY` | No        | Name of the injector environment variable holding the credential the AI red team injector uses at execution time. The secret value is never stored on the target. |
+| XTM One Token      | `collector.xtm_one_token`         | `COLLECTOR_XTM_ONE_TOKEN`            | /               | Yes       | XTM One API key (`fcp-...`) used to read the agents and models catalog and stored on each seeded AI target so the injector can authenticate to XTM One directly.    |
 | Include bare models | `collector.include_bare_models`  | `COLLECTOR_INCLUDE_BARE_MODELS`      | `false`         | No        | When `true`, also create an AI target for each bare LLM model exposed by the proxy (in addition to the agents).                                                     |
 | Agent tags         | `collector.agent_tags`            | `COLLECTOR_AGENT_TAGS`               | (empty)         | No        | Comma-separated list of XTM One agent tags to scope on. Empty means all agents are collected. Tag matching is case-insensitive.                                     |
 
@@ -159,8 +157,9 @@ place, so repeated runs never create duplicates.
 - Endpoints used: `GET {XTM_ONE_URL}/api/v1/agents` (agents catalog) and, when bare-model collection is enabled,
   `GET {XTM_ONE_URL}/v1/models` (OpenAI-compatible models listing).
 - Authentication: `Authorization: Bearer <COLLECTOR_XTM_ONE_TOKEN>` (an XTM One `fcp-...` API key).
-- The created AI targets point back at `{XTM_ONE_URL}/v1`; the AI red team injector appends `/chat/completions` and
-  sends the recorded model (`agent:<slug>` or the bare model id).
+- Agent targets use the `XTM_ONE` provider and point back at `{XTM_ONE_URL}`; the AI red team injector calls
+  `POST /api/v1/platform/chat/messages` with the recorded `agent:<slug>`. Bare-model targets use the
+  `OPENAI_COMPATIBLE` provider at `{XTM_ONE_URL}/v1` (the injector appends `/chat/completions`).
 
 ## Debugging
 
@@ -172,8 +171,8 @@ Set `COLLECTOR_LOG_LEVEL=debug` to get verbose logs, including each AI target as
   access to the agents.
 - An empty AI target catalog after a run usually means every agent was filtered out by `COLLECTOR_AGENT_TAGS`, or all
   agents are disabled / `disable_chat`.
-- If injects against the imported targets fail to authenticate, verify that the injector environment defines the
-  variable named by `COLLECTOR_XTM_ONE_API_KEY_VARIABLE` and that it holds a valid XTM One `fcp-...` key.
+- If injects against the imported targets fail to authenticate, verify that `COLLECTOR_XTM_ONE_TOKEN` holds a valid XTM
+  One `fcp-...` key (it is stored on each target as `ai_target_token` and used by the injector at execution time).
 
 ## Additional information
 
