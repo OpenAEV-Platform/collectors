@@ -21,9 +21,7 @@ from xtm_one.openaev_xtm_one import OpenAEVXtmOne  # noqa: E402
 
 
 def _iso(delta_seconds: int = 0) -> str:
-    return (
-        datetime.now(timezone.utc) + timedelta(seconds=delta_seconds)
-    ).isoformat()
+    return (datetime.now(timezone.utc) + timedelta(seconds=delta_seconds)).isoformat()
 
 
 def _expectation(
@@ -41,9 +39,9 @@ def _expectation(
         "inject_expectation_inject": inject_id,
         "inject_expectation_agent": agent,
         "inject_expiration_time": expiration,
-        "inject_expectation_created_at": created_at
-        if created_at is not None
-        else _iso(),
+        "inject_expectation_created_at": (
+            created_at if created_at is not None else _iso()
+        ),
     }
     if marker is not None:
         expectation["inject_expectation_signatures"] = [
@@ -331,9 +329,7 @@ def test_process_message_tolerates_model_listing_failure():
 def test_marker_for_prefers_signature_over_recomputation():
     collector = _build_collector()
 
-    marker = collector._marker_for(
-        _expectation(marker="oaevfromsignature"), "inject-1"
-    )
+    marker = collector._marker_for(_expectation(marker="oaevfromsignature"), "inject-1")
 
     assert marker == "oaevfromsignature"
 

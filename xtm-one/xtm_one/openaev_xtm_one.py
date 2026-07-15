@@ -3,11 +3,13 @@
 The collector has two complementary jobs, both run on every scheduled cycle:
 
 1. **Import** - it reads the XTM One agents catalog (optionally scoped to a set
-   of tags) and upserts one OpenAEV ``AiTarget`` per agent, wired to XTM One's
-   Platform Chat API (``{xtm_one_url}/api/v1/platform/chat/messages`` with
-   ``agent_slug=<slug>``). Agents are reached through the ``XTM_ONE`` injector
-   provider rather than the OpenAI-compatible ``/v1`` proxy, because that proxy
-   is disabled when XTM One runs in ``xtm_one`` platform mode. When
+   of tags) and upserts one OpenAEV ``AiTarget`` per agent. Each agent target
+   carries the ``XTM_ONE`` provider, the XTM One base URL as
+   ``ai_target_endpoint`` and ``agent:<slug>`` as ``ai_target_model``; the AI
+   red team injector derives the agent slug from that recorded model and calls
+   ``{endpoint}/api/v1/platform/chat/messages`` itself. Agents go through the
+   Platform Chat API rather than the OpenAI-compatible ``/v1`` proxy, because
+   that proxy is disabled when XTM One runs in ``xtm_one`` platform mode. When
    ``include_bare_models`` is enabled it additionally mirrors the bare LLM models
    exposed by the OpenAI-compatible proxy. Targets are matched on a stable
    external reference so the collector is idempotent.
@@ -161,7 +163,7 @@ class OpenAEVXtmOne(CollectorDaemon):
         return {
             "asset_name": f"{name} (XTM One agent)",
             "asset_description": agent.get("description")
-            or "XTM One agent exposed through the OpenAI-compatible proxy.",
+            or "XTM One agent reached through the Platform Chat API.",
             "asset_external_reference": f"xtm-one:agent:{slug}",
             "asset_tags": tag_ids,
             "ai_target_provider": AGENT_PROVIDER,
@@ -270,7 +272,9 @@ class OpenAEVXtmOne(CollectorDaemon):
                 return str(signature["value"])
         if not inject_id:
             return None
-        return build_marker(inject_id, expectation.get("inject_expectation_agent") or "")
+        return build_marker(
+            inject_id, expectation.get("inject_expectation_agent") or ""
+        )
 
     @staticmethod
     def _event_matches(marker: str, event: dict) -> bool:
@@ -340,7 +344,9 @@ class OpenAEVXtmOne(CollectorDaemon):
         except Exception as exc:  # noqa: BLE001
             self.logger.error(f"Failed to update expectation {expectation_id}: {exc}")
 
-    def _fulfill(self, expectation: dict, expectation_type: str, event: dict) -> dict | None:
+    def _fulfill(
+        self, expectation: dict, expectation_type: str, event: dict
+    ) -> dict | None:
         """Fill a matched expectation and return a trace when it is a success."""
         expectation_id = expectation["inject_expectation_id"]
         details = event.get("details") or {}
@@ -421,7 +427,9 @@ class OpenAEVXtmOne(CollectorDaemon):
                 if trace:
                     traces.append(trace)
             elif self._is_expired(expectation, now):
-                result = NOT_DETECTED if expectation_type == DETECTION else NOT_PREVENTED
+                result = (
+                    NOT_DETECTED if expectation_type == DETECTION else NOT_PREVENTED
+                )
                 self._update_expectation(
                     expectation["inject_expectation_id"],
                     result,

@@ -66,7 +66,7 @@ class XtmOneClient:
         """Return the chat-capable agents exposed by XTM One.
 
         Agents that are disabled, hidden from chat, or without a slug cannot be
-        reached through the OpenAI-compatible proxy, so they are filtered out.
+        reached through the Platform Chat API, so they are filtered out.
         """
         self._validate()
         data = self._get("/api/v1/agents")

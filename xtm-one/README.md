@@ -32,7 +32,8 @@ The XTM One collector connects [XTM One](https://filigran.io/solutions/xtm-one/)
 
 ## Introduction
 
-XTM One runs autonomous AI agents and exposes them (plus the underlying LLM models) through an OpenAI-compatible proxy.
+XTM One runs autonomous AI agents, reachable through its Platform Chat API (the underlying LLM models are additionally
+exposed through an OpenAI-compatible proxy).
 OpenAEV (Breach and Attack Simulation) can exercise those AI systems with adversarial injects, but it first needs an AI
 target describing how to reach each one. This collector keeps the OpenAEV AI target catalog in sync with XTM One: every
 run it lists the agents, filters them by tag (when configured), and creates or updates one AI target per agent wired to
@@ -238,5 +239,6 @@ Set `COLLECTOR_LOG_LEVEL=debug` to get verbose logs, including each AI target as
 - The collector is idempotent: it upserts AI targets on every run (keyed by their external reference), so it is safe to
   run repeatedly.
 - Agents scoping is tag-based; bare models have no tags in XTM One, so `COLLECTOR_AGENT_TAGS` only affects agents.
-- The credential used to reach XTM One at inject execution time is resolved by the injector from the environment
-  variable named on the target; it is never read from or stored by the platform.
+- The credential used to reach XTM One at inject execution time is the `ai_target_token` stored on each seeded target
+  (a copy of `COLLECTOR_XTM_ONE_TOKEN`); the injector reads it from the target when the inject runs. Rotating the XTM
+  One key therefore only requires updating the collector configuration - the next run refreshes every seeded target.
