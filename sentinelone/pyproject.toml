@@ -17,7 +17,7 @@ requests = "~2.33.0"
 
 [[tool.poetry.dependencies.pyoaev]]
 markers = "extra == 'prod' and extra != 'local' and extra != 'current'"
-version = "2.260710.0"
+version = "2.260715.0"
 
 [[tool.poetry.dependencies.pyoaev]]
 markers = "extra == 'local' and extra != 'current' and extra != 'prod'"
@@ -133,7 +133,7 @@ icon-path = "src/img/sentinelone-logo.png"
 
 [project]
 name = "SentinelOneCollector"
-version = "2.260710.0"
+version = "2.260715.0"
 description = "Collector for SentinelOne EDR."
 readme = "README.md"
 requires-python = ">=3.11,<3.14"

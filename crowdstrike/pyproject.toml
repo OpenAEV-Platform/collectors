@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "openaev-crowdstrike-collector"
-version = "2.260710.0"
+version = "2.260715.0"
 description = "Collector for Crowdstrike Falcon"
 authors = [
     "Filigran <contact@filigran.io>",
@@ -18,7 +18,7 @@ pydantic = "^2.11.7"
 
 [[tool.poetry.dependencies.pyoaev]]
 markers = "extra == 'prod' and extra != 'dev'"
-version = "2.260710.0"
+version = "2.260715.0"
 source = "pypi"
 
 [[tool.poetry.dependencies.pyoaev]]

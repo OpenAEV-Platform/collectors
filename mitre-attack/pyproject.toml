@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "openaev-mitre-attack-collector"
-version = "2.260710.0"
+version = "2.260715.0"
 description = "A Collector for fetching MITRE ATT&CK taxonomies; https://attack.mitre.org/"
 authors = [
     "Filigran <contact@filigran.io>",
@@ -16,7 +16,7 @@ python = "^3.11"
 
 [[tool.poetry.dependencies.pyoaev]]
 markers = "extra == 'prod' and extra != 'dev'"
-version = "2.260710.0"
+version = "2.260715.0"
 source = "pypi"
 
 [[tool.poetry.dependencies.pyoaev]]
