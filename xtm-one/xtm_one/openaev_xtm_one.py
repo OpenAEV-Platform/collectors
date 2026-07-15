@@ -1,6 +1,7 @@
 """Import XTM One agents as OpenAEV AI targets and validate AI defense expectations.
 
-The collector has two complementary jobs, both run on every scheduled cycle:
+The collector has two complementary jobs. Import runs on every scheduled cycle;
+validation also runs each cycle unless disabled with ``validate_expectations``:
 
 1. **Import** - it reads the XTM One agents catalog (optionally scoped to a set
    of tags) and upserts one OpenAEV ``AiTarget`` per agent. Each agent target
@@ -25,7 +26,8 @@ The collector has two complementary jobs, both run on every scheduled cycle:
    so PREVENTION is reported as *Not Prevented*; ``_is_prevented`` centralizes
    that decision so it can flip to true if XTM One later records a blocking
    signal. Expectations with no matching event by the time they expire are failed
-   (*Not Detected* / *Not Prevented*).
+   (*Not Detected* / *Not Prevented*). Set ``validate_expectations`` to false to
+   run the collector as a pure importer.
 
 The XTM One API key from the collector config (``xtm_one_token``) is written onto
 each AI target (``ai_target_token``) so the injector can authenticate to XTM One
@@ -69,7 +71,11 @@ _EVENT_LOOKBACK_FALLBACK = timedelta(hours=24)
 
 
 def _parse_iso(value: str) -> datetime:
-    """Parse an ISO-8601 timestamp into a timezone-aware UTC datetime."""
+    """Parse an ISO-8601 timestamp into a timezone-aware datetime.
+
+    Naive timestamps are assumed to be UTC; explicit offsets are preserved
+    as-is (aware datetimes compare correctly across offsets).
+    """
     text = str(value).strip()
     if text.endswith("Z"):
         text = text[:-1] + "+00:00"
@@ -320,10 +326,10 @@ class OpenAEVXtmOne(CollectorDaemon):
         if not raw_created or expiration is None:
             return False
         try:
-            created = _parse_iso(raw_created)
+            deadline = _parse_iso(raw_created) + timedelta(seconds=int(expiration))
         except (ValueError, TypeError):
             return False
-        return created + timedelta(seconds=int(expiration)) < now
+        return deadline < now
 
     def _update_expectation(
         self, expectation_id: str, result: str, is_success: bool, metadata: dict

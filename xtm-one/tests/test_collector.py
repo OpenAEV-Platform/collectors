@@ -1,8 +1,9 @@
-"""Unit tests for the collector upsert logic.
+"""Unit tests for the collector upsert and expectation-validation logic.
 
-These tests exercise the idempotency core of ``OpenAEVXtmOne``: existing AI
+These tests exercise the idempotency core of ``OpenAEVXtmOne`` (existing AI
 targets are matched on their stable external reference and updated in place,
-while unknown references trigger a creation. The daemon is built without its
+while unknown references trigger a creation) and the AI expectation validation
+(marker matching, prevention verdicts, expiry). The daemon is built without its
 ``__init__`` (which registers against a live OpenAEV) so only the pyoaev import
 is required.
 """
