@@ -23,6 +23,9 @@ class ConfigLoader(SettingsLoader):
                 "collector_icon_filepath": {"data": self.collector.icon_filepath},
                 "xtm_one_url": {"data": self.collector.xtm_one_url},
                 "xtm_one_token": {"data": self.collector.xtm_one_token},
+                "validate_expectations": {
+                    "data": self.collector.validate_expectations
+                },
                 "include_bare_models": {"data": self.collector.include_bare_models},
                 "agent_tags": {"data": self.collector.agent_tags},
             },

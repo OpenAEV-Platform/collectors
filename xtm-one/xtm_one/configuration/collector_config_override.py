@@ -25,8 +25,19 @@ class CollectorConfigOverride(ConfigLoaderCollector):
         default=None,
         description=(
             "XTM One API key (fcp-...) used to read the agents and models catalog and "
-            "written onto each seeded AI target so the injector can authenticate to "
-            "XTM One directly."
+            "the security audit log, and written onto each seeded AI target so the "
+            "injector can authenticate to XTM One directly. Reading the audit log to "
+            "validate detection expectations requires this key to belong to an XTM One "
+            "administrator."
+        ),
+    )
+    validate_expectations: bool = Field(
+        default=True,
+        description=(
+            "When true, the collector also validates AI detection/prevention "
+            "expectations by matching XTM One 'Prompt injection detected' security "
+            "events to the AI red team injects that triggered them. Requires the XTM "
+            "One token to have administrator access to the audit log."
         ),
     )
     include_bare_models: bool = Field(

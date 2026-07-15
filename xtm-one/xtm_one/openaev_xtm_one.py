@@ -1,23 +1,41 @@
-"""Import XTM One agents (and optionally bare LLM models) as OpenAEV AI targets.
+"""Import XTM One agents as OpenAEV AI targets and validate AI defense expectations.
 
-On each run the collector reads the XTM One agents catalog (optionally scoped to a
-set of tags) and upserts one OpenAEV ``AiTarget`` per agent, wired to XTM One's
-Platform Chat API (``{xtm_one_url}/api/v1/platform/chat/messages`` with
-``agent_slug=<slug>``). Agents are reached through the ``XTM_ONE`` injector
-provider rather than the OpenAI-compatible ``/v1`` proxy, because that proxy is
-disabled when XTM One runs in ``xtm_one`` platform mode. When
-``include_bare_models`` is enabled it additionally mirrors the bare LLM models
-exposed by the OpenAI-compatible proxy (only reachable when that proxy is
-enabled). Targets are matched on a stable external reference so the collector is
-idempotent and updates existing targets in place.
+The collector has two complementary jobs, both run on every scheduled cycle:
+
+1. **Import** - it reads the XTM One agents catalog (optionally scoped to a set
+   of tags) and upserts one OpenAEV ``AiTarget`` per agent, wired to XTM One's
+   Platform Chat API (``{xtm_one_url}/api/v1/platform/chat/messages`` with
+   ``agent_slug=<slug>``). Agents are reached through the ``XTM_ONE`` injector
+   provider rather than the OpenAI-compatible ``/v1`` proxy, because that proxy
+   is disabled when XTM One runs in ``xtm_one`` platform mode. When
+   ``include_bare_models`` is enabled it additionally mirrors the bare LLM models
+   exposed by the OpenAI-compatible proxy. Targets are matched on a stable
+   external reference so the collector is idempotent.
+
+2. **Validate** - like an EDR/AI-defense collector, it fulfills the DETECTION and
+   PREVENTION expectations raised by the AI red team injector. It reads XTM One's
+   security audit log (``GET /api/v1/audit-logs``) and correlates each
+   "Prompt injection detected" event back to the inject that triggered it using
+   the per-inject canary marker embedded in the attack prompt (the same
+   ``oaev<sha>`` token the injector and platform derive from the inject id). A
+   matching event fulfills DETECTION as *Detected*. XTM One's authenticated agent
+   chat only detects and logs prompt injections (it does not block the request),
+   so PREVENTION is reported as *Not Prevented*; ``_is_prevented`` centralizes
+   that decision so it can flip to true if XTM One later records a blocking
+   signal. Expectations with no matching event by the time they expire are failed
+   (*Not Detected* / *Not Prevented*).
 
 The XTM One API key from the collector config (``xtm_one_token``) is written onto
 each AI target (``ai_target_token``) so the injector can authenticate to XTM One
-directly. The credential lives entirely on the AI target.
+directly, and is also used to read the agents catalog and the audit log (the
+latter requires the key to belong to an XTM One administrator).
 """
+
+from datetime import datetime, timedelta, timezone
 
 from pyoaev.configuration import Configuration
 from pyoaev.daemons import CollectorDaemon
+from pyoaev.signatures.ai_marker import build_marker
 from xtm_one.client import XtmOneClient
 from xtm_one.configuration.config_loader import ConfigLoader
 
@@ -31,6 +49,33 @@ MODEL_TAG = "type:model"
 SOURCE_TAG_COLOR = "#0ea5e9"
 KIND_TAG_COLOR = "#6366f1"
 
+# Expectation validation.
+DETECTION = "DETECTION"
+PREVENTION = "PREVENTION"
+DETECTED = "Detected"
+NOT_DETECTED = "Not Detected"
+PREVENTED = "Prevented"
+NOT_PREVENTED = "Not Prevented"
+# Signature attached to AI expectations that carries the per-inject canary marker.
+AI_REQUEST_MARKER_SIGNATURE = "ai_request_marker"
+# Widen the audit-log window slightly around the expectation dates to absorb any
+# clock skew between the collector, OpenAEV and XTM One.
+_EVENT_WINDOW_BUFFER = timedelta(minutes=5)
+# Fallback lookback when an expectation is missing its creation date (should not
+# happen in practice, since OpenAEV always sets it).
+_EVENT_LOOKBACK_FALLBACK = timedelta(hours=24)
+
+
+def _parse_iso(value: str) -> datetime:
+    """Parse an ISO-8601 timestamp into a timezone-aware UTC datetime."""
+    text = str(value).strip()
+    if text.endswith("Z"):
+        text = text[:-1] + "+00:00"
+    parsed = datetime.fromisoformat(text)
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed
+
 
 class OpenAEVXtmOne(CollectorDaemon):
     def __init__(self, configuration: Configuration):
@@ -43,6 +88,9 @@ class OpenAEVXtmOne(CollectorDaemon):
         self.xtm_one_url = (self._configuration.get("xtm_one_url") or "").rstrip("/")
         self.xtm_one_token = self._configuration.get("xtm_one_token")
         self.include_bare_models = bool(self._configuration.get("include_bare_models"))
+        self.validate_expectations = bool(
+            self._configuration.get("validate_expectations")
+        )
         self.agent_tags = self._parse_tags(self._configuration.get("agent_tags"))
         self.client = XtmOneClient(
             self.xtm_one_url,
@@ -177,7 +225,8 @@ class OpenAEVXtmOne(CollectorDaemon):
         except Exception as exc:  # noqa: BLE001
             self.logger.error(f"Failed to upsert AI target {ref}: {exc}")
 
-    def _process_message(self) -> None:
+    def _import_targets(self) -> None:
+        """Mirror the XTM One agents (and optional bare models) as AI targets."""
         try:
             agents = self.client.list_agents()
         except Exception as exc:  # noqa: BLE001
@@ -199,6 +248,200 @@ class OpenAEVXtmOne(CollectorDaemon):
                 models = []
             for model in models:
                 self._upsert(self._model_payload(model), existing)
+
+    # -- Expectation validation ------------------------------------------------
+
+    @staticmethod
+    def _marker_for(expectation: dict, inject_id: str) -> str | None:
+        """Return the canary marker correlating this expectation to a XTM One event.
+
+        Prefer the ``ai_request_marker`` signature the platform attaches to the
+        expectation; fall back to recomputing it from the inject id so the
+        collector stays compatible with expectations created before signatures
+        were populated. Both paths yield the same ``oaev<sha>`` value the
+        injector embeds in the attack prompt.
+        """
+        for signature in expectation.get("inject_expectation_signatures") or []:
+            if (
+                isinstance(signature, dict)
+                and signature.get("type") == AI_REQUEST_MARKER_SIGNATURE
+                and signature.get("value")
+            ):
+                return str(signature["value"])
+        if not inject_id:
+            return None
+        return build_marker(inject_id, expectation.get("inject_expectation_agent") or "")
+
+    @staticmethod
+    def _event_matches(marker: str, event: dict) -> bool:
+        details = event.get("details") or {}
+        preview = details.get("message_preview") or ""
+        return bool(marker) and marker in preview
+
+    @staticmethod
+    def _is_prevented(event: dict) -> bool:
+        """Whether the security event proves the attack was blocked, not just seen.
+
+        XTM One's authenticated agent chat detects prompt injections but keeps
+        processing the request (detect-and-continue), so today a logged event
+        never means prevention. This hook honors an explicit blocking signal if
+        XTM One ever starts recording one, keeping the rest of the pipeline
+        untouched.
+        """
+        details = event.get("details") or {}
+        if details.get("blocked") is True or details.get("prevented") is True:
+            return True
+        outcome = str(details.get("action") or details.get("outcome") or "").lower()
+        return outcome in ("blocked", "prevented", "reject", "rejected")
+
+    def _event_window_start(self, expectations: list[dict]) -> str:
+        """Lower bound for the audit-log query: just before the oldest expectation."""
+        created = []
+        for expectation in expectations:
+            raw = expectation.get("inject_expectation_created_at")
+            if raw:
+                try:
+                    created.append(_parse_iso(raw))
+                except (ValueError, TypeError):
+                    continue
+        if created:
+            start = min(created) - _EVENT_WINDOW_BUFFER
+        else:
+            start = datetime.now(timezone.utc) - _EVENT_LOOKBACK_FALLBACK
+        return start.isoformat()
+
+    def _is_expired(self, expectation: dict, now: datetime) -> bool:
+        raw_created = expectation.get("inject_expectation_created_at")
+        expiration = expectation.get("inject_expiration_time")
+        if not raw_created or expiration is None:
+            return False
+        try:
+            created = _parse_iso(raw_created)
+        except (ValueError, TypeError):
+            return False
+        return created + timedelta(seconds=int(expiration)) < now
+
+    def _update_expectation(
+        self, expectation_id: str, result: str, is_success: bool, metadata: dict
+    ) -> None:
+        try:
+            self.api.inject_expectation.update(
+                expectation_id,
+                {
+                    "collector_id": self.collector_id,
+                    "result": result,
+                    "is_success": is_success,
+                    "metadata": metadata,
+                },
+            )
+            self.logger.info(
+                f"Expectation {expectation_id} -> {result} (success={is_success})"
+            )
+        except Exception as exc:  # noqa: BLE001
+            self.logger.error(f"Failed to update expectation {expectation_id}: {exc}")
+
+    def _fulfill(self, expectation: dict, expectation_type: str, event: dict) -> dict | None:
+        """Fill a matched expectation and return a trace when it is a success."""
+        expectation_id = expectation["inject_expectation_id"]
+        details = event.get("details") or {}
+        metadata = {
+            "audit_log_id": event.get("id"),
+            "agent_slug": details.get("agent_slug"),
+            "agent_name": details.get("agent_name") or event.get("entity_name"),
+            "conversation_id": details.get("conversation_id"),
+            "severity": details.get("severity"),
+            "reasons": details.get("reasons"),
+        }
+        if expectation_type == DETECTION:
+            result, is_success = DETECTED, True
+        else:
+            prevented = self._is_prevented(event)
+            result, is_success = (
+                (PREVENTED, True) if prevented else (NOT_PREVENTED, False)
+            )
+        self._update_expectation(expectation_id, result, is_success, metadata)
+        if not is_success:
+            return None
+        return {
+            "inject_expectation_trace_expectation": expectation_id,
+            "inject_expectation_trace_source_id": self.collector_id,
+            "inject_expectation_trace_alert_name": event.get("summary")
+            or "Prompt injection detected",
+            "inject_expectation_trace_alert_link": self.xtm_one_url,
+            "inject_expectation_trace_date": event.get("created_at")
+            or datetime.now(timezone.utc).isoformat(),
+        }
+
+    def _validate_expectations(self) -> None:
+        try:
+            expectations = self.api.inject_expectation.ai_expectations_for_source(
+                self.collector_id
+            )
+        except Exception as exc:  # noqa: BLE001
+            self.logger.error(f"Could not fetch AI expectations: {exc}")
+            return
+
+        pending = [
+            expectation
+            for expectation in (expectations or [])
+            if expectation.get("inject_expectation_inject")
+            and expectation.get("inject_expectation_type") in (DETECTION, PREVENTION)
+        ]
+        if not pending:
+            self.logger.info("No AI expectations waiting to be matched")
+            return
+
+        try:
+            events = self.client.list_security_events(
+                date_from=self._event_window_start(pending)
+            )
+        except Exception as exc:  # noqa: BLE001
+            self.logger.error(f"Could not fetch XTM One security events: {exc}")
+            return
+
+        self.logger.info(
+            f"Matching {len(pending)} AI expectation(s) against "
+            f"{len(events)} XTM One security event(s)"
+        )
+
+        now = datetime.now(timezone.utc)
+        traces = []
+        for expectation in pending:
+            expectation_type = expectation["inject_expectation_type"]
+            marker = self._marker_for(
+                expectation, expectation["inject_expectation_inject"]
+            )
+            event = None
+            if marker:
+                event = next(
+                    (e for e in events if self._event_matches(marker, e)), None
+                )
+            if event is not None:
+                trace = self._fulfill(expectation, expectation_type, event)
+                if trace:
+                    traces.append(trace)
+            elif self._is_expired(expectation, now):
+                result = NOT_DETECTED if expectation_type == DETECTION else NOT_PREVENTED
+                self._update_expectation(
+                    expectation["inject_expectation_id"],
+                    result,
+                    False,
+                    {"reason": "expired: no matching XTM One security event"},
+                )
+            # Otherwise leave it pending for a later cycle.
+
+        if traces:
+            try:
+                self.api.inject_expectation_trace.bulk_create(
+                    payload={"expectation_traces": traces}
+                )
+            except Exception as exc:  # noqa: BLE001
+                self.logger.warning(f"Could not create expectation traces: {exc}")
+
+    def _process_message(self) -> None:
+        self._import_targets()
+        if self.validate_expectations:
+            self._validate_expectations()
 
 
 if __name__ == "__main__":
