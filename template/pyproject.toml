@@ -16,7 +16,7 @@ requests = "^2.33.0"
 
 [[tool.poetry.dependencies.pyoaev]]
 markers = "extra == 'prod' and extra != 'local' and extra != 'current'"
-version = "2.260715.0"
+version = "2.260716.0"
 
 [[tool.poetry.dependencies.pyoaev]]
 markers = "extra == 'local' and extra != 'current' and extra != 'prod'"
@@ -138,7 +138,7 @@ icon-path = "src/img/change-me-logo.png"
 
 [project]
 name = "template-collector"
-version = "2.260715.0"
+version = "2.260716.0"
 description = "Collector template for OAEV."
 readme = "README.md"
 requires-python = ">=3.11,<4.0"

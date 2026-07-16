@@ -17,7 +17,7 @@ requests = "~2.33.0"
 
 [[tool.poetry.dependencies.pyoaev]]
 markers = "extra == 'prod' and extra != 'local' and extra != 'current'"
-version = "2.260715.0"
+version = "2.260716.0"
 
 [[tool.poetry.dependencies.pyoaev]]
 markers = "extra == 'local' and extra != 'current' and extra != 'prod'"
@@ -52,7 +52,7 @@ icon-path = "src/img/palo-alto-cortex-xdr-logo.png"
 
 [project]
 name = "palo-alto-cortex-xdr"
-version = "2.260715.0"
+version = "2.260716.0"
 description = "Collector for Palo Alto Cortex XDR EDR."
 readme = "README.md"
 Homepage = "https://filigran.io/"

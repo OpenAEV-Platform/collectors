@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "openaev-xtm-one-collector"
-version = "2.260715.0"
+version = "2.260716.0"
 description = "A Collector importing XTM One agents (and optionally bare LLM models) as OpenAEV AI targets"
 authors = [
     "Filigran <contact@filigran.io>",
@@ -17,7 +17,7 @@ requests = "^2.32.0"
 
 [[tool.poetry.dependencies.pyoaev]]
 markers = "extra == 'prod' and extra != 'dev'"
-version = "2.260715.0"
+version = "2.260716.0"
 source = "pypi"
 
 [[tool.poetry.dependencies.pyoaev]]
