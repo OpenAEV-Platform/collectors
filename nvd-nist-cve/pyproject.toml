@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "openaev-nvd-nist-cve-collector"
-version = "2.260716.0"
+version = "2.260716.1"
 description = "Collector for retrieve CVE from NVD by Nist"
 authors = [
     "Filigran <contact@filigran.io>",
@@ -16,7 +16,7 @@ python = "^3.11"
 
 [[tool.poetry.dependencies.pyoaev]]
 markers = "extra == 'prod' and extra != 'dev'"
-version = "2.260716.0"
+version = "2.260716.1"
 source = "pypi"
 
 [[tool.poetry.dependencies.pyoaev]]

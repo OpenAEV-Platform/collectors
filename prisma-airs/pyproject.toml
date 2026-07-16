@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "openaev-prisma-airs-collector"
-version = "2.260716.0"
+version = "2.260716.1"
 description = "A Collector validating Palo Alto Prisma AIRS (AI Runtime Security) detection/prevention of AI adversarial injects"
 authors = [
     "Filigran <contact@filigran.io>",
@@ -17,7 +17,7 @@ requests = "^2.32.0"
 
 [[tool.poetry.dependencies.pyoaev]]
 markers = "extra == 'prod' and extra != 'dev'"
-version = "2.260716.0"
+version = "2.260716.1"
 source = "pypi"
 
 [[tool.poetry.dependencies.pyoaev]]
