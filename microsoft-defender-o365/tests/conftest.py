@@ -107,7 +107,9 @@ def _given_microsoft_defender_o365_env_var_set(
     monkeypatch.setenv(f"{MICROSOFT_DEFENDER_O365_ENV_PREFIX}{field_name}", value)
 
 
-def _given_microsoft_defender_o365_env_var_not_set(monkeypatch, field_name: str) -> None:
+def _given_microsoft_defender_o365_env_var_not_set(
+    monkeypatch, field_name: str
+) -> None:
     """Given MICROSOFT_DEFENDER_O365_<FIELD> is not set.
 
     Args:
@@ -116,7 +118,9 @@ def _given_microsoft_defender_o365_env_var_not_set(monkeypatch, field_name: str)
             to ``MICROSOFT_DEFENDER_O365_ENV_PREFIX``.
 
     """
-    monkeypatch.delenv(f"{MICROSOFT_DEFENDER_O365_ENV_PREFIX}{field_name}", raising=False)
+    monkeypatch.delenv(
+        f"{MICROSOFT_DEFENDER_O365_ENV_PREFIX}{field_name}", raising=False
+    )
 
 
 def _given_microsoft_defender_o365_all_required_fields_present(
