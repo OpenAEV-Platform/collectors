@@ -121,7 +121,9 @@ def _when_platform_catalog_is_queried(mocks: dict[str, MagicMock]) -> list[dict]
 # --------
 
 
-def _then_service_appears_in_catalog(catalog_entries: list[dict], service_name: str) -> None:
+def _then_service_appears_in_catalog(
+    catalog_entries: list[dict], service_name: str
+) -> None:
     """Verify that the service appears in the catalog entries.
 
     Args:
@@ -146,7 +148,9 @@ def _then_service_status_is(
 
     """
     matching_entries = [
-        entry for entry in catalog_entries if entry.get("collector_name") == service_name
+        entry
+        for entry in catalog_entries
+        if entry.get("collector_name") == service_name
     ]
     assert matching_entries, f"No catalog entry found for '{service_name}'"
     assert matching_entries[0]["status"] == expected_status

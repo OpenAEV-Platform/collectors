@@ -125,13 +125,15 @@ def _then_process_remains_alive_in_daemon_mode(
     mocks["BaseCollector"].return_value.start.assert_called_once()
 
 
-def _then_no_unhandled_exception_in_service_logs(raised_exception: Exception | None) -> None:
+def _then_no_unhandled_exception_in_service_logs(
+    raised_exception: Exception | None,
+) -> None:
     """Verify that no unhandled exception was raised while the service started.
 
     Args:
         raised_exception: The exception captured while running ``main()``, if any.
 
     """
-    assert raised_exception is None, (
-        f"Unhandled exception raised during startup: {raised_exception}"
-    )
+    assert (
+        raised_exception is None
+    ), f"Unhandled exception raised during startup: {raised_exception}"
