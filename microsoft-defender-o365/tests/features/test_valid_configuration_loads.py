@@ -3,7 +3,6 @@
 from types import ModuleType
 
 import pytest
-
 from tests.conftest import (
     _given_microsoft_defender_o365_env_var_set,
     _then_microsoft_defender_o365_no_validation_error_raised,
@@ -47,7 +46,9 @@ def test_valid_configuration_with_all_required_fields_loads_successfully(
     # string
     _given_microsoft_defender_o365_env_var_set(monkeypatch, field_1, "test-tenant-id")
     _given_microsoft_defender_o365_env_var_set(monkeypatch, field_2, "test-client-id")
-    _given_microsoft_defender_o365_env_var_set(monkeypatch, field_3, "test-client-secret")
+    _given_microsoft_defender_o365_env_var_set(
+        monkeypatch, field_3, "test-client-secret"
+    )
 
     # When: DefenderO365Config is instantiated
     config, error = _when_microsoft_defender_o365_config_is_instantiated(

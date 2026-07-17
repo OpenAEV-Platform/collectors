@@ -3,7 +3,6 @@
 from types import ModuleType
 
 import pytest
-
 from tests.conftest import (
     _given_microsoft_defender_o365_all_required_fields_present,
     _given_microsoft_defender_o365_env_var_set,

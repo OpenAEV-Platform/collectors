@@ -11,6 +11,13 @@ collector:
 #  log_level: "error"  # determine the verbosity of the logs
 
 source:
-  key: "value"  # template example of a key:value configuration
-#  time_window: "PT1H"  # default search time window (ISO 8601 format)
-#  expectation_batch_size: 50  # number of expectations in batching-based process mode
+  tenant_id: "ChangeMe"  # tenant identifier used to authenticate against Microsoft Graph (mandatory)
+  client_id: "ChangeMe"  # Azure AD application (client) identifier (mandatory)
+#  use_certificate_auth: false  # whether to authenticate using a client certificate instead of a client secret
+  client_secret: "ChangeMe"  # Azure AD application client secret (mandatory unless certificate auth is used)
+#  client_cert_path: "ChangeMe"  # filesystem path to the client certificate (mandatory if certificate auth is used)
+#  client_cert_thumbprint: "ChangeMe"  # thumbprint of the client certificate (mandatory if certificate auth is used)
+#  base_url: "https://graph.microsoft.com/v1.0"  # base URL for the Microsoft Graph API
+#  filter_service_source: "microsoftDefenderForOffice365"  # value used to filter Microsoft Graph security alerts
+#  rate_limit_requests_per_minute: 150  # maximum number of Microsoft Graph API requests issued per minute (must be >= 1)
+#  max_fetch_retries: 5  # maximum number of retries when fetching data from Microsoft Graph fails transiently
