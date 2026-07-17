@@ -5,11 +5,12 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-WORKFLOW_PATH = (
+CIRCLECI_CONFIG_PATH = Path(__file__).resolve().parents[3] / ".circleci" / "config.yml"
+GITHUB_ACTIONS_TEST_WORKFLOW_PATH = (
     Path(__file__).resolve().parents[3]
     / ".github"
     / "workflows"
-    / "microsoft-defender-o365.yml"
+    / "tests-collectors.yml"
 )
 
 # --------
@@ -52,21 +53,43 @@ def test_push_triggers_lint_and_test_jobs_that_both_pass(
 
 
 def _given_ci_pipeline_configured_with_lint_and_test_jobs() -> list[str]:
-    """Load the CI pipeline configuration and verify lint/test jobs are defined.
+    """Load the repository's existing CI pipeline configuration and verify
+    lint/test jobs are defined.
+
+    This collector relies on the repository-wide pipelines rather than a
+    dedicated per-collector workflow file: the CircleCI pipeline
+    (``.circleci/config.yml``) defines the ``ensure_formatting``/``linter``
+    (lint) and ``test`` jobs, and the shared GitHub Actions workflow
+    (``.github/workflows/tests-collectors.yml``) auto-discovers and runs the
+    ``test`` job for every collector exposing a ``test``/``tests`` directory
+    (this collector's ``tests/`` directory makes it eligible).
 
     Returns:
-        The list of job names ("lint", "test") defined in the collector's CI workflow.
+        The list of job names ("lint", "test") defined in the repository's
+        CI pipeline configuration.
 
     Raises:
-        AssertionError: If the workflow file is missing, or lint/test jobs are not defined.
+        AssertionError: If a pipeline configuration file is missing, or
+            lint/test jobs are not defined.
 
     """
-    assert WORKFLOW_PATH.is_file(), f"CI workflow file not found: {WORKFLOW_PATH}"
+    assert (
+        CIRCLECI_CONFIG_PATH.is_file()
+    ), f"CircleCI config not found: {CIRCLECI_CONFIG_PATH}"
+    assert (
+        GITHUB_ACTIONS_TEST_WORKFLOW_PATH.is_file()
+    ), f"Shared test workflow not found: {GITHUB_ACTIONS_TEST_WORKFLOW_PATH}"
 
-    workflow_content = WORKFLOW_PATH.read_text(encoding="utf-8")
+    circleci_config = CIRCLECI_CONFIG_PATH.read_text(encoding="utf-8")
+    test_workflow = GITHUB_ACTIONS_TEST_WORKFLOW_PATH.read_text(encoding="utf-8")
 
-    jobs = [job for job in ("lint", "test") if f"{job}:" in workflow_content]
-    assert "lint" in jobs, "No 'lint' job defined in the CI pipeline configuration"
+    jobs = []
+    if "ensure_formatting:" in circleci_config and "linter:" in circleci_config:
+        jobs.append("lint")
+    if "test:" in circleci_config or "test:" in test_workflow:
+        jobs.append("test")
+
+    assert "lint" in jobs, "No lint job(s) defined in the CI pipeline configuration"
     assert "test" in jobs, "No 'test' job defined in the CI pipeline configuration"
 
     return jobs
@@ -94,7 +117,9 @@ def _when_ci_pipeline_runs(
 
     with patch("subprocess.run") as mock_run:
         for job_name in pipeline_jobs:
-            mock_run.return_value = MagicMock(returncode=mock_exit_codes.get(job_name, 0))
+            mock_run.return_value = MagicMock(
+                returncode=mock_exit_codes.get(job_name, 0)
+            )
             completed_process = mock_run(["poetry", "run", job_name], check=False)
             job_results[job_name] = completed_process.returncode
 
