@@ -403,6 +403,10 @@ def test_validate_expectations_marks_detection_success_and_traces():
     assert payload["is_success"] is True
     assert payload["collector_id"] == "collector-uuid"
     assert payload["metadata"]["audit_log_id"] == "audit-1"
+    # OpenAEV types metadata as Map<String, String>: the list-valued "reasons" must be flattened
+    # to a string and every value must be a str, otherwise the fulfillment PUT 500s.
+    assert payload["metadata"]["reasons"] == "instruction_override"
+    assert all(isinstance(v, str) for v in payload["metadata"].values())
     collector.api.inject_expectation_trace.bulk_create.assert_called_once()
 
 

@@ -283,6 +283,27 @@ class OpenAEVXtmOne(CollectorDaemon):
         )
 
     @staticmethod
+    def _string_metadata(raw: dict) -> dict:
+        """Coerce a metadata dict into the ``Map<String, String>`` OpenAEV expects.
+
+        Joins list values, stringifies scalars and drops ``None``/empty entries so the
+        expectation update payload never trips server-side JSON deserialization.
+        """
+        clean: dict[str, str] = {}
+        for key, value in raw.items():
+            if value is None:
+                continue
+            if isinstance(value, (list, tuple, set)):
+                joined = ", ".join(str(v) for v in value if v is not None and str(v))
+                if joined:
+                    clean[key] = joined
+            else:
+                text = str(value)
+                if text:
+                    clean[key] = text
+        return clean
+
+    @staticmethod
     def _event_matches(marker: str, event: dict) -> bool:
         details = event.get("details") or {}
         preview = details.get("message_preview") or ""
@@ -356,14 +377,20 @@ class OpenAEVXtmOne(CollectorDaemon):
         """Fill a matched expectation and return a trace when it is a success."""
         expectation_id = expectation["inject_expectation_id"]
         details = event.get("details") or {}
-        metadata = {
-            "audit_log_id": event.get("id"),
-            "agent_slug": details.get("agent_slug"),
-            "agent_name": details.get("agent_name") or event.get("entity_name"),
-            "conversation_id": details.get("conversation_id"),
-            "severity": details.get("severity"),
-            "reasons": details.get("reasons"),
-        }
+        # OpenAEV types the expectation metadata as Map<String, String>, so every value must be a
+        # non-empty string. Lists (e.g. reasons) are joined and None/empty entries are dropped -
+        # otherwise Jackson rejects the payload and the whole fulfillment PUT 500s, silently
+        # leaving the expectation unfilled.
+        metadata = self._string_metadata(
+            {
+                "audit_log_id": event.get("id"),
+                "agent_slug": details.get("agent_slug"),
+                "agent_name": details.get("agent_name") or event.get("entity_name"),
+                "conversation_id": details.get("conversation_id"),
+                "severity": details.get("severity"),
+                "reasons": details.get("reasons"),
+            }
+        )
         if expectation_type == DETECTION:
             result, is_success = DETECTED, True
         else:
