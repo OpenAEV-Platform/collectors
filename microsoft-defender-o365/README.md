@@ -21,8 +21,6 @@ As of now, outside of `src/collector` (generic) and `src/source` (custom) there 
 
 Your custom configuration will be propagated through the source handler to the `__init__.py` of you data fetcher object as a `source_config` parameter. From there, it can be used at your convenience.
 
-*Nota bene*: for now, please keep the `SOURCE_EXPECTATION_BATCH_SIZE` available in the custom parameters.
-
 Do not hesitate to check the `CONTRIBUTING.md` for more details regarding the collector design and help regarding development setup.
 
 ## Features
@@ -78,11 +76,20 @@ Below are the parameters you'll need to set for running the collector properly:
 
 Below are the parameters you'll need to set for the collector:
 
-| Parameter                | config.yml                           | Docker environment variable            | Default                     | Mandatory | Description                                                                                        |
-|--------------------------|---------------------------------------|-----------------------------------------|-----------------------------|-----------|----------------------------------------------------------------------------------------------------|
-| Key                  | `source.key`                          | `SOURCE_KEY`                      |value                        | No        | Template example key value                                                                 |
-| Time Window              | `source.time_window`              | `SOURCE_TIME_WINDOW`              | PT1H                        | No        | Default search time window when no date signatures are provided (ISO 8601 format)                |
-| Expectation Batch Size   | `source.expectation_batch_size`   | `SOURCE_EXPECTATION_BATCH_SIZE`   | 50                          | No        | Number of expectations to process in each batch for batch-based processing                         |
+| Parameter                          | config.yml                                     | Docker environment variable                             | Default                             | Mandatory | Description                                                                                     |
+|-------------------------------------|-------------------------------------------------|-----------------------------------------------------------|--------------------------------------|-----------|---------------------------------------------------------------------------------------------------|
+| Tenant ID                           | `source.tenant_id`                              | `MICROSOFT_DEFENDER_O365_TENANT_ID`                        | -                                     | Yes       | Azure AD (Entra ID) tenant identifier used to authenticate against Microsoft Graph.                |
+| Client ID                           | `source.client_id`                              | `MICROSOFT_DEFENDER_O365_CLIENT_ID`                        | -                                     | Yes       | Azure AD application (client) identifier used to authenticate against Microsoft Graph.             |
+| Use Certificate Auth                | `source.use_certificate_auth`                   | `MICROSOFT_DEFENDER_O365_USE_CERTIFICATE_AUTH`             | false                                 | No        | Whether to authenticate using a client certificate instead of a client secret.                     |
+| Client Secret                       | `source.client_secret`                          | `MICROSOFT_DEFENDER_O365_CLIENT_SECRET`                    | -                                     | Yes, unless certificate auth is used | Azure AD application client secret.                                       |
+| Client Certificate Path             | `source.client_cert_path`                       | `MICROSOFT_DEFENDER_O365_CLIENT_CERT_PATH`                 | -                                     | Yes, if certificate auth is used | Filesystem path to the client certificate.                                     |
+| Client Certificate Thumbprint       | `source.client_cert_thumbprint`                 | `MICROSOFT_DEFENDER_O365_CLIENT_CERT_THUMBPRINT`           | -                                     | Yes, if certificate auth is used | Thumbprint of the client certificate.                                          |
+| Base URL                            | `source.base_url`                               | `MICROSOFT_DEFENDER_O365_BASE_URL`                         | https://graph.microsoft.com/v1.0     | No        | Base URL for the Microsoft Graph API.                                                              |
+| Filter Service Source               | `source.filter_service_source`                  | `MICROSOFT_DEFENDER_O365_FILTER_SERVICE_SOURCE`            | microsoftDefenderForOffice365        | No        | Value used to filter Microsoft Graph security alerts down to those produced by Microsoft Defender for Office 365. |
+| Rate Limit (requests per minute)    | `source.rate_limit_requests_per_minute`         | `MICROSOFT_DEFENDER_O365_RATE_LIMIT_REQUESTS_PER_MINUTE`   | 150                                   | No        | Maximum number of Microsoft Graph API requests issued per minute (must be >= 1).                   |
+| Max Fetch Retries                   | `source.max_fetch_retries`                      | `MICROSOFT_DEFENDER_O365_MAX_FETCH_RETRIES`                | 5                                     | No        | Maximum number of retries when fetching data from Microsoft Graph fails transiently.                |
+
+*Nota bene*: exactly one authentication mode must be fully configured: either `use_certificate_auth=false` with `client_secret` set, or `use_certificate_auth=true` with both `client_cert_path` and `client_cert_thumbprint` set.
 
 ### Example Configuration Files
 
@@ -99,9 +106,13 @@ collector:
   log_level: "info"
 
 source:
-  key: "your-value"
-  time_window: "PT1H"
-  expectation_batch_size: 50
+  tenant_id: "your-tenant-id"
+  client_id: "your-client-id"
+  client_secret: "your-client-secret"
+  base_url: "https://graph.microsoft.com/v1.0"
+  filter_service_source: "microsoftDefenderForOffice365"
+  rate_limit_requests_per_minute: 150
+  max_fetch_retries: 5
 ```
 
 #### Environment Variables
@@ -109,7 +120,9 @@ source:
 export OPENAEV_URL="https://your-openaev-instance.com"
 export OPENAEV_TOKEN="your-openaev-token"
 export COLLECTOR_ID="microsoft-defender-o365--your-unique-uuid"
-export SOURCE_KEY="value"
+export MICROSOFT_DEFENDER_O365_TENANT_ID="your-tenant-id"
+export MICROSOFT_DEFENDER_O365_CLIENT_ID="your-client-id"
+export MICROSOFT_DEFENDER_O365_CLIENT_SECRET="your-client-secret"
 ```
 
 ## Deployment
@@ -147,7 +160,9 @@ docker run -d \
   -e OPENAEV_URL="https://your-openaev-instance.com" \
   -e OPENAEV_TOKEN="your-token" \
   -e COLLECTOR_ID="microsoft-defender-o365--your-uuid" \
-  -e SOURCE_KEY="your-value" \
+  -e MICROSOFT_DEFENDER_O365_TENANT_ID="your-tenant-id" \
+  -e MICROSOFT_DEFENDER_O365_CLIENT_ID="your-client-id" \
+  -e MICROSOFT_DEFENDER_O365_CLIENT_SECRET="your-client-secret" \
   openaev-microsoft-defender-o365-collector
 
 # Or run with configuration file mounted
@@ -218,7 +233,7 @@ collector:
 
 #### For High-Volume Environments
 - Reduce `collector.period` for more frequent processing
-- Increase `source.expectation_batch_size` for better throughput
+- Increase `source.rate_limit_requests_per_minute` for higher Microsoft Graph API throughput
 
 #### For Low-Latency Requirements
 - Use shorter time windows in expectations for faster queries
