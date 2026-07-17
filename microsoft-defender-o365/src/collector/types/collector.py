@@ -4,7 +4,6 @@ from pyoaev.apis.inject_expectation.model import (
     DetectionExpectation,
     PreventionExpectation,
 )
-
 from src.models.settings.source_configs import _ConfigLoaderSource
 
 SourceConfig: TypeAlias = _ConfigLoaderSource
