@@ -8,7 +8,6 @@ from pyoaev.apis.inject_expectation.model import (
 from pyoaev.client import OpenAEV
 from pyoaev.helpers import OpenAEVDetectionHelper
 from pyoaev.signatures.types import SignatureTypes
-
 from src.collector.internals.oaev_uploaders import ExpectationUploader, TraceUploader
 from src.collector.models.exception import (
     CollectorEngineConfigError,

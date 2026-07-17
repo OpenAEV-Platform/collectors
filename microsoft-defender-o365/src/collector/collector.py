@@ -2,7 +2,6 @@ import logging
 
 from pyoaev.daemons import CollectorDaemon
 from slugify import slugify
-
 from src.collector.engines.basic import BasicCollectorEngine
 from src.collector.models.exception import (
     CollectorConfigError,

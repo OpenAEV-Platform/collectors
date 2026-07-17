@@ -1,7 +1,6 @@
 from typing import Protocol, runtime_checkable
 
 from pyoaev.client import OpenAEV
-
 from src.collector.models.source import Source
 from src.collector.protocols.source_handler import SourceHandlerProtocol
 from src.collector.types.collector import SourceConfig

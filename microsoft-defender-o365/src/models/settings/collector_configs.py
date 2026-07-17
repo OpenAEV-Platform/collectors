@@ -5,7 +5,6 @@ from typing import Annotated, Literal
 from uuid import UUID
 
 from pydantic import Field, HttpUrl, PlainSerializer, field_validator
-
 from src.models.settings import ConfigBaseSettings
 
 LogLevel = Literal["debug", "info", "warning", "error", "critical"]

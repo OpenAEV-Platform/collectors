@@ -3,7 +3,6 @@
 from typing import Any, Iterable
 
 from pyoaev.client import OpenAEV
-
 from src.collector.internals.resilient_uploader import ResilientUploader
 from src.collector.models.expectations import ExpectationTrace
 from src.collector.types.internals import BulkData
