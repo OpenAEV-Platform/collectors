@@ -1,0 +1,16 @@
+openaev:
+  url: "http://change.me"  # base URL to reach the OpenAEV server
+  token: "ChangeMe"  # admin account API token from the OpenAEV server
+#  tenant_id: "ChangeMe"  # tenant identifier for multi-tenant deployments
+
+collector:
+  id: "ChangeMe"  # collector ID must be a unique string, e.g. UUIDv4
+#  name: "Template"  # name of the collector
+#  platform: "EDR"  # type of security platform this collector works for
+#  period: "PT2M"  # collection interval (ISO 8601 format)
+#  log_level: "error"  # determine the verbosity of the logs
+
+source:
+  key: "value"  # template example of a key:value configuration
+#  time_window: "PT1H"  # default search time window (ISO 8601 format)
+#  expectation_batch_size: 50  # number of expectations in batching-based process mode
