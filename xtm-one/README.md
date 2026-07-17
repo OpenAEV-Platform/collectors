@@ -74,12 +74,13 @@ The collector is configured either through environment variables (recommended, r
 
 ### Base collector environment variables
 
-| Parameter        | config.yml            | Docker environment variable | Default | Mandatory | Description                                                              |
-|------------------|-----------------------|-----------------------------|---------|-----------|--------------------------------------------------------------------------|
-| Collector ID     | `collector.id`        | `COLLECTOR_ID`              | /       | Yes       | A unique `UUIDv4` identifier for this collector instance.                |
-| Collector Name   | `collector.name`      | `COLLECTOR_NAME`            | XTM One | No        | The name of the collector as shown in OpenAEV.                          |
-| Collector Period | `collector.period`    | `COLLECTOR_PERIOD`          | PT1H    | No        | Interval between two runs, as an ISO 8601 duration (e.g. `PT1H` = 1h).   |
-| Log Level        | `collector.log_level` | `COLLECTOR_LOG_LEVEL`       | error   | No        | Verbosity of the logs. One of `debug`, `info`, `warn`, `error`.         |
+| Parameter        | config.yml            | Docker environment variable | Default      | Mandatory | Description                                                              |
+|------------------|-----------------------|-----------------------------|--------------|-----------|--------------------------------------------------------------------------|
+| Collector ID     | `collector.id`        | `COLLECTOR_ID`              | /            | Yes       | A unique `UUIDv4` identifier for this collector instance.                |
+| Collector Name   | `collector.name`      | `COLLECTOR_NAME`            | XTM One      | No        | The name of the collector as shown in OpenAEV.                          |
+| Collector Period | `collector.period`    | `COLLECTOR_PERIOD`          | PT1H         | No        | Interval between two runs, as an ISO 8601 duration (e.g. `PT1H` = 1h).   |
+| Log Level        | `collector.log_level` | `COLLECTOR_LOG_LEVEL`       | error        | No        | Verbosity of the logs. One of `debug`, `info`, `warn`, `error`.         |
+| Platform         | `collector.platform`  | `COLLECTOR_PLATFORM`        | LLM_FIREWALL | No        | The `SecurityPlatform` type registered in OpenAEV, so XTM One appears as a security platform and expectation results are attributed to it. Use `LLM_FIREWALL` for AI firewall / guardrail validators. |
 
 ### XTM One collector environment variables
 
