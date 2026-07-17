@@ -150,3 +150,52 @@ def test_list_bare_models_skips_non_dict_entries():
     models = client.list_bare_models()
 
     assert [m["id"] for m in models] == ["gpt-4o"]
+
+
+def _mock_paginated_session(pages):
+    responses = []
+    for page in pages:
+        response = MagicMock()
+        response.json.return_value = page
+        response.raise_for_status.return_value = None
+        responses.append(response)
+    session = MagicMock()
+    session.get.side_effect = responses
+    return session
+
+
+def test_list_security_events_sends_security_filters():
+    client = _build_client()
+    client.session = _mock_session(
+        {"items": [{"id": "a", "details": {"message_preview": "x"}}], "total": 1}
+    )
+
+    events = client.list_security_events(date_from="2026-07-15T00:00:00+00:00")
+
+    assert [e["id"] for e in events] == ["a"]
+    args, kwargs = client.session.get.call_args
+    assert args[0] == "https://xtm-one.example.test/api/v1/audit-logs"
+    assert kwargs["params"]["action"] == "security_alert"
+    assert kwargs["params"]["entity_type"] == "security"
+    assert kwargs["params"]["date_from"] == "2026-07-15T00:00:00+00:00"
+
+
+def test_list_security_events_skips_non_dict_items():
+    client = _build_client()
+    client.session = _mock_session({"items": ["oops", {"id": "a"}], "total": 2})
+
+    events = client.list_security_events()
+
+    assert [e["id"] for e in events] == ["a"]
+
+
+def test_list_security_events_paginates_until_page_not_full():
+    client = _build_client()
+    first_page = {"items": [{"id": str(i)} for i in range(200)], "total": 250}
+    second_page = {"items": [{"id": str(i)} for i in range(200, 250)], "total": 250}
+    client.session = _mock_paginated_session([first_page, second_page])
+
+    events = client.list_security_events()
+
+    assert len(events) == 250
+    assert client.session.get.call_count == 2

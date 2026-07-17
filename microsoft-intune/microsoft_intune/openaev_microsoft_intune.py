@@ -376,7 +376,7 @@ class OpenAEVMicrosoftIntune(CollectorDaemon):
                 endpoint = {
                     "asset_name": device_name,
                     "asset_external_reference": device_id,  # Using Intune device ID as external reference
-                    "endpoint_hostname": device.get("deviceName", device_name),
+                    "asset_hostname": device.get("deviceName", device_name),
                     "endpoint_platform": platform,
                     "endpoint_arch": arch,
                     "asset_category": asset_category,
@@ -385,7 +385,7 @@ class OpenAEVMicrosoftIntune(CollectorDaemon):
 
                 # Add MAC addresses if available
                 if mac_addresses:
-                    endpoint["endpoint_mac_addresses"] = mac_addresses
+                    endpoint["asset_mac_addresses"] = mac_addresses
 
                 # Create and collect tag IDs
                 tag_ids = []

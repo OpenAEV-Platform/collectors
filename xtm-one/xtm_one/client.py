@@ -2,13 +2,23 @@
 
 Reads the agents catalog (``GET /api/v1/agents``) and, optionally, the bare LLM
 models exposed by the OpenAI-compatible proxy (``GET /v1/models``) so the
-collector can mirror them as OpenAEV AI targets. Only read operations are
-performed here; nothing is ever written back to XTM One.
+collector can mirror them as OpenAEV AI targets. It also reads the security
+audit log (``GET /api/v1/audit-logs``) to surface the "Prompt injection
+detected" events used to validate detection expectations. Only read operations
+are performed here; nothing is ever written back to XTM One.
 """
 
 from urllib.parse import urlparse
 
 import requests
+
+# Security audit-log filters (see XTM One ``GET /api/v1/audit-logs``).
+SECURITY_ALERT_ACTION = "security_alert"
+SECURITY_ENTITY_TYPE = "security"
+# The audit-log endpoint caps ``limit`` at 200; page through it defensively so a
+# single busy window cannot make the collector fetch unbounded history.
+_AUDIT_PAGE_SIZE = 200
+_AUDIT_MAX_PAGES = 50
 
 
 class XtmOneClient:
@@ -42,9 +52,12 @@ class XtmOneClient:
             "Content-Type": "application/json",
         }
 
-    def _get(self, path: str) -> object:
+    def _get(self, path: str, params: dict | None = None) -> object:
         resp = self.session.get(
-            f"{self.base_url}{path}", headers=self._headers(), timeout=30
+            f"{self.base_url}{path}",
+            headers=self._headers(),
+            params=params,
+            timeout=30,
         )
         resp.raise_for_status()
         return resp.json()
@@ -53,7 +66,7 @@ class XtmOneClient:
         """Return the chat-capable agents exposed by XTM One.
 
         Agents that are disabled, hidden from chat, or without a slug cannot be
-        reached through the OpenAI-compatible proxy, so they are filtered out.
+        reached through the Platform Chat API, so they are filtered out.
         """
         self._validate()
         data = self._get("/api/v1/agents")
@@ -103,3 +116,50 @@ class XtmOneClient:
                 continue
             result.append(model)
         return result
+
+    def list_security_events(self, date_from: str | None = None) -> list[dict]:
+        """Return XTM One security-alert audit events (prompt-injection detections).
+
+        Pages through ``GET /api/v1/audit-logs`` scoped to
+        ``action=security_alert`` and ``entity_type=security`` (newest first).
+        ``date_from`` is an inclusive ISO-8601 lower bound on ``created_at`` used
+        to only pull events since the oldest expectation still waiting.
+
+        The audit-log API is admin-only, so the configured token
+        (``xtm_one_token``) must belong to an XTM One administrator; otherwise
+        the request fails with a 403.
+        """
+        self._validate()
+        events: list[dict] = []
+        offset = 0
+        for _ in range(_AUDIT_MAX_PAGES):
+            params = {
+                "action": SECURITY_ALERT_ACTION,
+                "entity_type": SECURITY_ENTITY_TYPE,
+                "limit": _AUDIT_PAGE_SIZE,
+                "offset": offset,
+            }
+            if date_from:
+                params["date_from"] = date_from
+            data = self._get("/api/v1/audit-logs", params=params)
+            if isinstance(data, dict):
+                items = data.get("items", [])
+                total = data.get("total")
+            elif isinstance(data, list):
+                items = data
+                total = None
+            else:
+                if self.logger:
+                    self.logger.warning(
+                        "Unexpected /api/v1/audit-logs payload type "
+                        f"{type(data).__name__}; expected an object with an "
+                        "'items' key."
+                    )
+                break
+            events.extend(item for item in items if isinstance(item, dict))
+            offset += _AUDIT_PAGE_SIZE
+            if len(items) < _AUDIT_PAGE_SIZE:
+                break
+            if total is not None and offset >= total:
+                break
+        return events

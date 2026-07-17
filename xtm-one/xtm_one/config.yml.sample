@@ -6,10 +6,11 @@ openaev:
 collector:
   id: 'ChangeMe'   # unique collector instance identifier (UUIDv4 recommended)
   name: 'XTM One'
+  platform: 'LLM_FIREWALL'   # security platform type registered in OpenAEV (EDR, XDR, SIEM, SOAR, NDR, ISPM, LLM_FIREWALL, AI_GATEWAY)
   period: 'PT1H'
   log_level: 'error'
   xtm_one_url: 'ChangeMe'   # base URL of the XTM One platform
-  xtm_one_token: 'ChangeMe'   # XTM One API key (fcp-...) to read agents and models
-  xtm_one_api_key_variable: 'XTM_ONE_API_KEY'
+  xtm_one_token: 'ChangeMe'   # XTM One API key (fcp-...): reads the catalog + audit log (admin key) and is stored on each seeded AI target
+  validate_expectations: true   # match "Prompt injection detected" audit events to AI red team injects (needs an admin key)
   include_bare_models: false
   agent_tags: ''   # comma-separated agent tags to scope on (empty = all agents)

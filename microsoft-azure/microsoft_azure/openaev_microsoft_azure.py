@@ -287,7 +287,7 @@ class OpenAEVMicrosoftAzure(CollectorDaemon):
                 endpoint = {
                     "asset_name": vm_name,
                     "asset_external_reference": vm_id,  # Using Azure resource ID as external reference
-                    "endpoint_hostname": vm_name,
+                    "asset_hostname": vm_name,
                     "endpoint_platform": platform,
                     "endpoint_arch": (
                         "x86_64"
@@ -298,7 +298,7 @@ class OpenAEVMicrosoftAzure(CollectorDaemon):
                     "asset_cloud_provider": "AZURE",
                     "asset_cloud_native_type": "virtual_machine",
                     "asset_cloud_region": vm_location,
-                    "endpoint_ips": ips,
+                    "asset_ips": ips,
                     "asset_description": f"Azure VM - Size: {vm_size}, Location: {vm_location}",
                 }
 

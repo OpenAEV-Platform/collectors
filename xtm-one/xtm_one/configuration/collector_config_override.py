@@ -13,6 +13,16 @@ class CollectorConfigOverride(ConfigLoaderCollector):
         default="xtm_one/img/icon-xtm-one.png",
         description="Path to the icon file",
     )
+    platform: str | None = Field(
+        default="LLM_FIREWALL",
+        description=(
+            "Security platform type registered for this collector so XTM One appears in "
+            "the OpenAEV inventory as a security platform (like any EDR/XDR collector) and "
+            "detection/prevention expectation results are attributed to it. XTM One acts as "
+            "an AI defense that flags prompt injections, hence LLM_FIREWALL by default. "
+            "Accepted values: EDR, XDR, SIEM, SOAR, NDR, ISPM, LLM_FIREWALL, AI_GATEWAY."
+        ),
+    )
     period: timedelta | None = Field(
         default=timedelta(hours=1),
         description="Duration between two scheduled runs of the collector (ISO 8601 format).",
@@ -23,14 +33,21 @@ class CollectorConfigOverride(ConfigLoaderCollector):
     )
     xtm_one_token: str | None = Field(
         default=None,
-        description="XTM One API key (fcp-...) used to read the agents and models catalog.",
-    )
-    xtm_one_api_key_variable: str | None = Field(
-        default="XTM_ONE_API_KEY",
         description=(
-            "Name of the injector environment variable holding the credential the AI "
-            "red team injector uses to reach XTM One at execution time. The secret "
-            "value itself is never stored on the AI target."
+            "XTM One API key (fcp-...) used to read the agents and models catalog and "
+            "the security audit log, and written onto each seeded AI target so the "
+            "injector can authenticate to XTM One directly. Reading the audit log to "
+            "validate detection expectations requires this key to belong to an XTM One "
+            "administrator."
+        ),
+    )
+    validate_expectations: bool = Field(
+        default=True,
+        description=(
+            "When true, the collector also validates AI detection/prevention "
+            "expectations by matching XTM One 'Prompt injection detected' security "
+            "events to the AI red team injects that triggered them. Requires the XTM "
+            "One token to have administrator access to the audit log."
         ),
     )
     include_bare_models: bool = Field(
