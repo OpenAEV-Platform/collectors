@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "openaev-hiddenlayer-collector"
-version = "2.260716.1"
+version = "2.260717.0"
 description = "A Collector validating HiddenLayer AI Runtime Security (AIDR) detection/prevention of AI adversarial injects"
 authors = [
     "Filigran <contact@filigran.io>",
@@ -17,7 +17,7 @@ requests = "^2.32.0"
 
 [[tool.poetry.dependencies.pyoaev]]
 markers = "extra == 'prod' and extra != 'dev'"
-version = "2.260716.1"
+version = "2.260717.0"
 source = "pypi"
 
 [[tool.poetry.dependencies.pyoaev]]
