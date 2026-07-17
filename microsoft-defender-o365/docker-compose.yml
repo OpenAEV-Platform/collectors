@@ -1,0 +1,11 @@
+version: "3"
+services:
+  collector-microsoft-defender-o365:
+    image: openaev/collector-microsoft-defender-o365:rolling
+    environment:
+      - OPENAEV_URL=http://localhost
+      - OPENAEV_TOKEN=ChangeMe
+      - OPENAEV_TENANT_ID=ChangeMe
+      - COLLECTOR_ID=ChangeMe
+      - SOURCE_KEY=ChangeMe
+    restart: always
