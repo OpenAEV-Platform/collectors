@@ -13,6 +13,16 @@ class CollectorConfigOverride(ConfigLoaderCollector):
         default="xtm_one/img/icon-xtm-one.png",
         description="Path to the icon file",
     )
+    platform: str | None = Field(
+        default="LLM_FIREWALL",
+        description=(
+            "Security platform type registered for this collector so XTM One appears in "
+            "the OpenAEV inventory as a security platform (like any EDR/XDR collector) and "
+            "detection/prevention expectation results are attributed to it. XTM One acts as "
+            "an AI defense that flags prompt injections, hence LLM_FIREWALL by default. "
+            "Accepted values: EDR, XDR, SIEM, SOAR, NDR, ISPM, LLM_FIREWALL, AI_GATEWAY."
+        ),
+    )
     period: timedelta | None = Field(
         default=timedelta(hours=1),
         description="Duration between two scheduled runs of the collector (ISO 8601 format).",

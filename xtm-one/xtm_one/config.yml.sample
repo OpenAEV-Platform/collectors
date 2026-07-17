@@ -6,6 +6,7 @@ openaev:
 collector:
   id: 'ChangeMe'   # unique collector instance identifier (UUIDv4 recommended)
   name: 'XTM One'
+  platform: 'LLM_FIREWALL'   # security platform type registered in OpenAEV (EDR, XDR, SIEM, SOAR, NDR, ISPM, LLM_FIREWALL, AI_GATEWAY)
   period: 'PT1H'
   log_level: 'error'
   xtm_one_url: 'ChangeMe'   # base URL of the XTM One platform
