@@ -3,7 +3,7 @@
   "slug": "openaev_lakera_guard",
   "description": "Validate that Lakera Guard (Check Point AI Security) detects or prevents AI adversarial injects by replaying the attack content through the Lakera screening API.",
   "short_description": "Validate Lakera Guard detection and prevention",
-  "use_cases": ["Security response"],
+  "use_cases": ["Security response", "AI security"],
   "verified": true,
   "last_verified_date": "",
   "playbook_supported": false,

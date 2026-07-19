@@ -1,8 +1,8 @@
 {
   "title": "MITRE Att&ck",
   "slug": "openaev_mitre_attack",
-  "description": "Collect MITRE Att&ck tactics and techniques library",
-  "short_description": "Collect MITRE Att&ck tactics and techniques library",
+  "description": "Import the MITRE ATT&CK knowledge base of adversary tactics and techniques into OpenAEV, so injects and payloads can be mapped to the ATT&CK matrix.",
+  "short_description": "Import the MITRE ATT&CK tactics and techniques",
   "use_cases": ["Data collection"],
   "verified": true,
   "last_verified_date": "",

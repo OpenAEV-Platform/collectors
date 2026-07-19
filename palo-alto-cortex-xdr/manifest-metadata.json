@@ -1,8 +1,8 @@
 {
   "title": "Palo Alto Cortex XDR",
   "slug": "palo_alto_cortex_xdr",
-  "description": "Collect alerts information from Palo Alto Cortex XDR",
-  "short_description": "Collect alerts information from Palo Alto Cortex XDR",
+  "description": "Validate OpenAEV detection and prevention expectations against Palo Alto Cortex XDR by collecting the alerts it raises in response to simulated attacks.",
+  "short_description": "Collect alerts from Palo Alto Cortex XDR",
   "use_cases": ["Security response"],
   "verified": true,
   "last_verified_date": "",

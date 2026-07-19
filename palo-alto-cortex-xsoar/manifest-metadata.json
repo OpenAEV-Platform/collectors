@@ -1,8 +1,8 @@
 {
   "title": "Palo Alto Cortex XSOAR",
   "slug": "palo_alto_cortex_xsoar",
-  "description": "Collect alerts information from Palo Alto Cortex XSOAR",
-  "short_description": "Collect alerts information from Palo Alto Cortex XSOAR",
+  "description": "Collect incidents from Palo Alto Cortex XSOAR to validate how your SOAR playbooks respond to OpenAEV simulated attacks.",
+  "short_description": "Collect incidents from Palo Alto Cortex XSOAR",
   "use_cases": ["Security response"],
   "verified": true,
   "last_verified_date": "",

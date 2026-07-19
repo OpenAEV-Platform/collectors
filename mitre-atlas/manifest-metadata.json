@@ -3,7 +3,7 @@
   "slug": "openaev_mitre_atlas",
   "description": "Collect MITRE ATLAS (Adversarial Threat Landscape for AI Systems) tactics and techniques library",
   "short_description": "Collect MITRE ATLAS AI adversarial tactics and techniques",
-  "use_cases": ["Data collection"],
+  "use_cases": ["Data collection", "AI security"],
   "verified": true,
   "last_verified_date": "",
   "playbook_supported": false,

@@ -1,9 +1,9 @@
 {
-  "title": "Microsoft azure",
+  "title": "Microsoft Azure",
   "slug": "openaev_microsoft_azure",
-  "description": "Allow registration of agentless endpoints coming from Microsoft Azure",
-  "short_description": "Allow registration of agentless endpoints coming from Microsoft Azure",
-  "use_cases": [],
+  "description": "Register agentless endpoints from Microsoft Azure virtual machines in OpenAEV, so cloud instances can be targeted by simulations without deploying an agent.",
+  "short_description": "Register Microsoft Azure virtual machines as agentless endpoints",
+  "use_cases": ["Asset collection", "Cloud security"],
   "verified": true,
   "last_verified_date": "",
   "playbook_supported": false,

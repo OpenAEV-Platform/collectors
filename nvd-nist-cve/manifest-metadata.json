@@ -1,8 +1,8 @@
 {
   "title": "NVD NIST",
   "slug": "openaev_nvd_nist_cve",
-  "description": "Collect NVD NIST database",
-  "short_description": "Collect NVD NIST database",
+  "description": "Import CVE vulnerability data from the National Vulnerability Database (NVD) maintained by NIST, enriching OpenAEV with authoritative vulnerability references.",
+  "short_description": "Import CVE vulnerabilities from the NIST NVD",
   "use_cases": ["Data collection"],
   "verified": true,
   "last_verified_date": "",

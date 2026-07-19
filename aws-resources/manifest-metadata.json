@@ -1,9 +1,9 @@
 {
   "title": "Amazon Web Service Resources",
   "slug": "openaev_aws_resources",
-  "description": "Allow registration of agentless endpoints coming from Amazon Web Service",
-  "short_description": "Allow registration of agentless endpoints coming from Amazon Web Service",
-  "use_cases": ["Endpoint collection"],
+  "description": "Register agentless endpoints from Amazon Web Services EC2 instances in OpenAEV, so cloud resources can be targeted by simulations without deploying an agent.",
+  "short_description": "Register AWS EC2 instances as agentless endpoints",
+  "use_cases": ["Asset collection", "Cloud security"],
   "verified": true,
   "last_verified_date": "",
   "playbook_supported": false,

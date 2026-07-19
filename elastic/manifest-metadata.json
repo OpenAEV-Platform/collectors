@@ -1,8 +1,8 @@
 {
   "title": "Elastic Security",
   "slug": "openaev_elastic",
-  "description": "Collect responses from Elastic Security",
-  "short_description": "Collect responses from Elastic Security",
+  "description": "Validate OpenAEV detection expectations against Elastic Security by collecting the alerts its SIEM and endpoint protection raise in response to simulated attacks.",
+  "short_description": "Collect detections from Elastic Security",
   "use_cases": ["Security response"],
   "verified": false,
   "last_verified_date": "",

@@ -1,9 +1,9 @@
 {
   "title": "Microsoft Intune",
   "slug": "openaev_microsoft_intune",
-  "description": "Allow registration of agentless endpoints coming from Microsoft Intune endpoints",
-  "short_description": "Allow registration of agentless endpoints coming from Microsoft Intune endpoints",
-  "use_cases": ["Endpoint collection"],
+  "description": "Register agentless endpoints managed by Microsoft Intune in OpenAEV, so managed devices can be targeted by simulations without deploying an agent.",
+  "short_description": "Register Microsoft Intune managed devices as agentless endpoints",
+  "use_cases": ["Asset collection"],
   "verified": true,
   "last_verified_date": "",
   "playbook_supported": false,
