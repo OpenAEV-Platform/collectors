@@ -3,7 +3,7 @@
   "slug": "openaev_cisco_ai_defense",
   "description": "Validate that Cisco AI Defense (Robust Intelligence) detects or blocks AI adversarial injects by replaying the attack content through the Cisco AI Defense inspection API.",
   "short_description": "Validate Cisco AI Defense detection and prevention",
-  "use_cases": ["Security response"],
+  "use_cases": ["Security response", "AI security"],
   "verified": true,
   "last_verified_date": "",
   "playbook_supported": false,

@@ -3,7 +3,7 @@
   "slug": "openaev_prompt_security",
   "description": "Validate that Prompt Security (SentinelOne) detects or blocks AI adversarial injects by replaying the attack content through the Prompt Security protect API.",
   "short_description": "Validate Prompt Security detection and prevention",
-  "use_cases": ["Security response"],
+  "use_cases": ["Security response", "AI security"],
   "verified": true,
   "last_verified_date": "",
   "playbook_supported": false,
