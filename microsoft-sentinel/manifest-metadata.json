@@ -1,8 +1,8 @@
 {
   "title": "Microsoft Sentinel",
   "slug": "openaev_microsoft_sentinel",
-  "description": "Collect responses from Microsoft Sentinel",
-  "short_description": "Collect responses from Microsoft Sentinel",
+  "description": "Validate OpenAEV detection expectations against Microsoft Sentinel by collecting the incidents and alerts your cloud-native SIEM correlates in response to simulated attacks.",
+  "short_description": "Collect incidents and alerts from Microsoft Sentinel",
   "use_cases": ["Security response"],
   "verified": true,
   "last_verified_date": "",

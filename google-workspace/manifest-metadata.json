@@ -1,8 +1,8 @@
 {
-  "title": "Google workspace",
+  "title": "Google Workspace",
   "slug": "openaev_google_workspace",
-  "description": "Collect users information from Google Workspace to create players",
-  "short_description": "Collect users information from Google Workspace to create players",
+  "description": "Synchronize users and groups from Google Workspace into OpenAEV as players and teams, so simulations can target your real organizational directory.",
+  "short_description": "Import users from Google Workspace as players",
   "use_cases": ["Player collection"],
   "verified": true,
   "last_verified_date": "",

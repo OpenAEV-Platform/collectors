@@ -1,8 +1,8 @@
 {
   "title": "IBM QRadar",
   "slug": "openaev_qradar",
-  "description": "Collect responses from IBM QRadar",
-  "short_description": "Collect responses from IBM QRadar",
+  "description": "Validate OpenAEV detection expectations against IBM QRadar by collecting the offenses your SIEM raises in response to simulated attacks.",
+  "short_description": "Collect offenses from IBM QRadar SIEM",
   "use_cases": ["Security response"],
   "verified": false,
   "last_verified_date": "",

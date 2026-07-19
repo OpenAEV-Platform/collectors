@@ -1,8 +1,8 @@
 {
   "title": "OpenAEV Library",
   "slug": "openaev_openaev",
-  "description": "Collect OAEV payload library",
-  "short_description": "Collect OAEV payload library",
+  "description": "Import the curated OpenAEV payload library, giving you a maintained catalog of attack payloads to run in atomic tests and scenarios.",
+  "short_description": "Import the OpenAEV payload library",
   "use_cases": ["Payload collection"],
   "verified": true,
   "last_verified_date": "",

@@ -1,8 +1,8 @@
 {
   "title": "Microsoft Defender",
   "slug": "openaev_microsoft_defender",
-  "description": "Collect responses from Microsoft Defender",
-  "short_description": "Collect responses from Microsoft Defender",
+  "description": "Validate OpenAEV detection and prevention expectations against Microsoft Defender for Endpoint by collecting the alerts it raises in response to simulated attacks.",
+  "short_description": "Collect detections from Microsoft Defender for Endpoint",
   "use_cases": ["Security response"],
   "verified": true,
   "last_verified_date": "",

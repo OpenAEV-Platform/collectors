@@ -1,8 +1,8 @@
 {
   "title": "NetWitness",
   "slug": "openaev_netwitness",
-  "description": "Collect responses from NetWitness",
-  "short_description": "Collect responses from NetWitness",
+  "description": "Validate OpenAEV detection expectations against NetWitness by collecting the alerts its network detection and response platform raises in response to simulated attacks.",
+  "short_description": "Collect detections from NetWitness",
   "use_cases": ["Security response"],
   "verified": false,
   "last_verified_date": "",

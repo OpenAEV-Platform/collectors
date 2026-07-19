@@ -1,8 +1,8 @@
 {
   "title": "Atomic Red Team",
   "slug": "openaev_atomic_red_team",
-  "description": "Collect Atomic Red Team payload library",
-  "short_description": "Collect Atomic Red Team payload library",
+  "description": "Import the Atomic Red Team library of MITRE ATT&CK-aligned tests into OpenAEV as ready-to-run payloads, so you can exercise detection and prevention against community adversary techniques.",
+  "short_description": "Import the Atomic Red Team payload library",
   "use_cases": ["Payload collection"],
   "verified": true,
   "last_verified_date": "",

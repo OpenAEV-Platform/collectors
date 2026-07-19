@@ -1,8 +1,8 @@
 {
   "title": "LogRhythm",
   "slug": "openaev_logrhythm",
-  "description": "Collect responses from LogRhythm",
-  "short_description": "Collect responses from LogRhythm",
+  "description": "Validate OpenAEV detection expectations against LogRhythm by collecting the alarms your SIEM raises in response to simulated attacks.",
+  "short_description": "Collect alarms from LogRhythm SIEM",
   "use_cases": ["Security response"],
   "verified": false,
   "last_verified_date": "",

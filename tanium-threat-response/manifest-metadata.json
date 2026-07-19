@@ -1,8 +1,8 @@
 {
   "title": "Tanium Threat Response",
   "slug": "openaev_tanium_threat_response",
-  "description": "Collect responses from Tanium Threat Response",
-  "short_description": "Collect responses from Tanium Threat Response",
+  "description": "Validate OpenAEV detection and prevention expectations against Tanium Threat Response by collecting the alerts it raises in response to simulated attacks.",
+  "short_description": "Collect detections from Tanium Threat Response",
   "use_cases": ["Security response"],
   "verified": true,
   "last_verified_date": "",

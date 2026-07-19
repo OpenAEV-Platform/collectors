@@ -1,8 +1,8 @@
 {
-  "title": "Crowdstrike",
+  "title": "CrowdStrike",
   "slug": "openaev_crowdstrike",
-  "description": "Collect responses from Crowdstrike EDR",
-  "short_description": "Collect responses from Crowdstrike EDR",
+  "description": "Validate OpenAEV detection and prevention expectations against CrowdStrike Falcon by collecting the detections and alerts its endpoint protection raises in response to simulated attacks.",
+  "short_description": "Collect detections from CrowdStrike Falcon EDR",
   "use_cases": ["Security response"],
   "verified": true,
   "last_verified_date": "",
