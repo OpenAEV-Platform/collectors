@@ -360,6 +360,13 @@ class OpenAEVAtomicRedTeam(CollectorDaemon):
                             "payload_attack_patterns": [attack_pattern],
                             "payload_arguments": arguments,
                             "payload_expectations": ["PREVENTION", "DETECTION"],
+                            # Atomic tests are endpoint command execution: the detecting/preventing
+                            # security platforms are endpoint agents (EDR/XDR) and the SIEM that
+                            # ingests their telemetry. Empty would mean "any platform".
+                            "payload_expected_security_platforms": {
+                                "DETECTION": ["EDR", "XDR", "SIEM"],
+                                "PREVENTION": ["EDR", "XDR"],
+                            },
                             "command_executor": EXECUTORS[
                                 atomic_test["executor"]["name"]
                             ],
