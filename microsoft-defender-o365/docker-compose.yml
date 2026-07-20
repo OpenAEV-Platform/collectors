@@ -7,7 +7,7 @@ services:
       - OPENAEV_TOKEN=ChangeMe
       - OPENAEV_TENANT_ID=ChangeMe
       - COLLECTOR_ID=ChangeMe
-      - MICROSOFT_DEFENDER_O365_TENANT_ID=ChangeMe
-      - MICROSOFT_DEFENDER_O365_CLIENT_ID=ChangeMe
-      - MICROSOFT_DEFENDER_O365_CLIENT_SECRET=ChangeMe
+      - SOURCE_TENANT_ID=ChangeMe
+      - SOURCE_CLIENT_ID=ChangeMe
+      - SOURCE_CLIENT_SECRET=ChangeMe
     restart: always

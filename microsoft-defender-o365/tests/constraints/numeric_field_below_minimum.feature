@@ -11,7 +11,7 @@ Feature: Numeric field below minimum raises a ValidationError
 
   Scenario Outline: Numeric field below minimum threshold raises ValidationError
     Given all required fields are set
-    And MICROSOFT_DEFENDER_O365_<NUMERIC_FIELD> is "<invalid_value>"
+    And SOURCE_<NUMERIC_FIELD> is "<invalid_value>"
     When DefenderO365Config is instantiated
     Then a ValidationError is raised
     And the error references the "<error_field>" field

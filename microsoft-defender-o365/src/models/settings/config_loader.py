@@ -27,12 +27,10 @@ class ConfigLoaderCollector(_ConfigLoaderCollector):
     """
 
     id: str = Field(
-        alias="COLLECTOR_ID",
         default="microsoft-defender-o365--0b13e3f7-5c9e-46f5-acc4-33032e9b4921",
         description="A unique UUIDv4 identifier for this collector instance.",
     )
     name: str = Field(
-        alias="COLLECTOR_NAME",
         default="Microsoft Defender for Office 365",
         description="Name of the collector.",
     )
@@ -152,7 +150,7 @@ class ConfigLoader(ConfigBaseSettings):
                 "source_client_cert_thumbprint": {
                     "data": self.source.client_cert_thumbprint
                 },
-                "source_base_url": {"data": self.source.base_url},
+                "source_base_url": {"data": str(self.source.base_url)},
                 "source_filter_service_source": {
                     "data": self.source.filter_service_source
                 },
