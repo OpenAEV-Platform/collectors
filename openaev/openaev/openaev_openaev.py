@@ -20,6 +20,28 @@ DEFAULT_EXPECTED_SECURITY_PLATFORMS = {
 }
 
 
+def apply_default_expected_security_platforms(payload_information) -> None:
+    """Fill in default expected security platform types on the payload.
+
+    Only applies when the source repo JSON does not declare
+    payload_expected_security_platforms itself: an explicit value always wins,
+    including an explicit empty map (which means "any platform"). Defaults are
+    only declared for the expectation types the payload has; payloads without
+    expectations are left untouched.
+    """
+    if payload_information.get("payload_expected_security_platforms") is not None:
+        return
+    expected_security_platforms = {
+        expectation_type: list(platform_types)
+        for expectation_type, platform_types in DEFAULT_EXPECTED_SECURITY_PLATFORMS.items()
+        if expectation_type in (payload_information.get("payload_expectations") or [])
+    }
+    if expected_security_platforms:
+        payload_information["payload_expected_security_platforms"] = (
+            expected_security_platforms
+        )
+
+
 class OpenAEVOpenAEV(CollectorDaemon):
     def __init__(
         self,
@@ -149,17 +171,7 @@ class OpenAEVOpenAEV(CollectorDaemon):
             # Declare expected security platform types on the payload's
             # predefined expectations when the source repo JSON does not
             # declare them itself (only for expectation types the payload has).
-            if not payload_information.get("payload_expected_security_platforms"):
-                expected_security_platforms = {
-                    expectation_type: platform_types
-                    for expectation_type, platform_types in DEFAULT_EXPECTED_SECURITY_PLATFORMS.items()
-                    if expectation_type
-                    in (payload_information.get("payload_expectations") or [])
-                }
-                if expected_security_platforms:
-                    payload_information["payload_expected_security_platforms"] = (
-                        expected_security_platforms
-                    )
+            apply_default_expected_security_platforms(payload_information)
 
             self.api.payload.upsert(payload_information)
             payload_external_ids.append(payload_information["payload_external_id"])
