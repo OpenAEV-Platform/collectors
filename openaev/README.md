@@ -133,6 +133,11 @@ On each run, the collector:
 4. Upserts the payload (tagged `source:openaev-datasets`, plus `type:native` when applicable), then deprecates the
    payloads previously imported by this collector that are no longer present in the manifest.
 
+When a payload entry does not declare `payload_expected_security_platforms` itself, the collector fills in a default
+for the expectation types the payload declares: `DETECTION` -> `EDR`, `XDR`, `SIEM` and `PREVENTION` -> `EDR`, `XDR`
+(native OpenAEV payloads are endpoint command execution / file drops). A value declared in the payload library JSON
+always takes precedence, and payloads without expectations are left untouched.
+
 ## Data source
 
 This collector reads a public data source, so no credentials or API key are required.

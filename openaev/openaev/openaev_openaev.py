@@ -8,6 +8,39 @@ from pyoaev.daemons import CollectorDaemon
 
 from openaev.configuration.config_loader import ConfigLoader
 
+# OpenAEV native payloads are endpoint command execution / file drops: the
+# detecting/preventing security platforms are endpoint agents (EDR/XDR) and the
+# SIEM that ingests their telemetry. Applied per expectation type declared on
+# the payload, only when the source repo JSON does not declare
+# payload_expected_security_platforms itself (an explicit value always wins).
+# Empty would mean "any platform".
+DEFAULT_EXPECTED_SECURITY_PLATFORMS = {
+    "DETECTION": ["EDR", "XDR", "SIEM"],
+    "PREVENTION": ["EDR", "XDR"],
+}
+
+
+def apply_default_expected_security_platforms(payload_information) -> None:
+    """Fill in default expected security platform types on the payload.
+
+    Only applies when the source repo JSON does not declare
+    payload_expected_security_platforms itself: an explicit value always wins,
+    including an explicit empty map (which means "any platform"). Defaults are
+    only declared for the expectation types the payload has; payloads without
+    expectations are left untouched.
+    """
+    if payload_information.get("payload_expected_security_platforms") is not None:
+        return
+    expected_security_platforms = {
+        expectation_type: list(platform_types)
+        for expectation_type, platform_types in DEFAULT_EXPECTED_SECURITY_PLATFORMS.items()
+        if expectation_type in (payload_information.get("payload_expectations") or [])
+    }
+    if expected_security_platforms:
+        payload_information["payload_expected_security_platforms"] = (
+            expected_security_platforms
+        )
+
 
 class OpenAEVOpenAEV(CollectorDaemon):
     def __init__(
@@ -134,6 +167,11 @@ class OpenAEVOpenAEV(CollectorDaemon):
                 payload_information["executable_file"] = new_document["document_id"]
             elif "file_drop_file" in payload_information and new_document is not None:
                 payload_information["file_drop_file"] = new_document["document_id"]
+
+            # Declare expected security platform types on the payload's
+            # predefined expectations when the source repo JSON does not
+            # declare them itself (only for expectation types the payload has).
+            apply_default_expected_security_platforms(payload_information)
 
             self.api.payload.upsert(payload_information)
             payload_external_ids.append(payload_information["payload_external_id"])
