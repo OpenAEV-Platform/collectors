@@ -1,4 +1,145 @@
+[build-system]
+requires = [
+    "poetry-core",
+]
+build-backend = "poetry.core.masonry.api"
+
 [tool.poetry]
+packages = [
+    { include = "openaev" },
+]
+
+[tool.poetry.dependencies]
+json-api-doc = "^0.15.0"
+orjson = "^3.11.9"
+pydantic = "^2.13.3"
+pydantic-settings = "^2.14.0"
+pygithub = "^2.9.1"
+requests = ">=2.33.0,<2.34.0"
+
+[[tool.poetry.dependencies.pyoaev]]
+markers = "extra == 'prod' and extra != 'local' and extra != 'current'"
+version = "2.260717.0"
+
+[[tool.poetry.dependencies.pyoaev]]
+markers = "extra == 'local' and extra != 'current' and extra != 'prod'"
+path = "../../client-python"
+develop = true
+
+[tool.poetry.dependencies.python-slugify]
+extras = [
+    "unidecode",
+]
+version = "^8.0.4"
+
+[tool.poetry.extras]
+prod = [
+    "pyoaev",
+]
+local = [
+    "pyoaev",
+]
+
+[tool.poetry.group.dev.dependencies]
+black = "^26.3.0"
+flake8 = "^7.3.0"
+isort = "^8.0.1"
+mypy = "^1.17.1"
+pip-audit = "^2.9.0"
+pre-commit = "^4.6.0"
+ruff = "^0.14.13"
+
+[tool.poetry.group.test.dependencies]
+pytest = "^9.0.0"
+polyfactory = "^2.22.2"
+
+[tool.pytest.ini_options]
+testpaths = [
+    "./tests",
+]
+
+[tool.ruff]
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".ipynb_checkpoints",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pyenv",
+    ".pytest_cache",
+    ".pytype",
+    ".ruff_cache",
+    ".tox",
+    ".venv",
+    ".vscode",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "site-packages",
+    "venv",
+]
+target-version = "py312"
+
+[tool.ruff.lint]
+ignore = [
+    "I001",
+    "D203",
+    "E501",
+    "F821",
+    "D205",
+    "D213",
+    "D211",
+    "G004",
+    "TRY003",
+    "D104",
+    "D407",
+    "D408",
+    "D409",
+]
+select = [
+    "E",
+    "F",
+    "W",
+    "D",
+    "G",
+    "T",
+    "B",
+    "C",
+    "N",
+    "I",
+    "S",
+]
+
+[tool.mypy]
+strict = true
+exclude = [
+    "^tests",
+    "^docs",
+    "^build",
+    "^dist",
+    "^venv",
+    "^site-packages",
+    "^__pypackages__",
+    "^.venv",
+]
+plugins = [
+    "pydantic.mypy",
+]
+
+[tool.cmw]
+install-command = "poetry install --extras local"
+config-dump-command = "poetry run python -m openaev.openaev_openaev --dump-config-schema"
+icon-path = "openaev/img/icon-openaev.png"
+
+[project]
 name = "openaev-openaev-collector"
 version = "2.260717.0"
 description = "A Collector for fetching OpenAEV payloads"
@@ -7,38 +148,11 @@ authors = [
 ]
 license = "Apache-2.0"
 readme = "README.md"
-packages = [
-    { include = "openaev" },
+requires-python = ">=3.11,<4.0"
+dynamic = [
+    "dependencies",
 ]
+Homepage = "https://filigran.io/"
 
-[tool.poetry.dependencies]
-python = "^3.11"
-
-[[tool.poetry.dependencies.pyoaev]]
-markers = "extra == 'prod' and extra != 'dev'"
-version = "2.260717.0"
-source = "pypi"
-
-[[tool.poetry.dependencies.pyoaev]]
-markers = "extra == 'dev' and extra != 'prod'"
-path = "../../client-python"
-develop = true
-
-[tool.poetry.extras]
-prod = [
-    "pyoaev",
-]
-dev = [
-    "pyoaev",
-]
-
-[tool.cmw]
-install-command = "poetry install --extras prod"
-config-dump-command = "poetry run python -m openaev.openaev_openaev --dump-config-schema"
-icon-path = "openaev/img/icon-openaev.png"
-
-[build-system]
-requires = [
-    "poetry-core",
-]
-build-backend = "poetry.core.masonry.api"
+[project.scripts]
+TemplateCollector = "src.__main__:main"
