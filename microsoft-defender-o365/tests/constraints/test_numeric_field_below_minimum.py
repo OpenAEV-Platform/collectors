@@ -36,7 +36,7 @@ def test_numeric_field_below_minimum_threshold_raises_validation_error(
     error_field,
 ):
     """Scenario Outline: Numeric field below minimum threshold raises ValidationError"""
-    # Given: all required fields are set, and MICROSOFT_DEFENDER_O365_<NUMERIC_FIELD> is
+    # Given: all required fields are set, and SOURCE_<NUMERIC_FIELD> is
     # "<invalid_value>"
     _given_microsoft_defender_o365_all_required_fields_present(monkeypatch)
     _given_microsoft_defender_o365_env_var_set(
@@ -45,7 +45,7 @@ def test_numeric_field_below_minimum_threshold_raises_validation_error(
 
     # When: DefenderO365Config is instantiated
     _, error = _when_microsoft_defender_o365_config_is_instantiated(
-        microsoft_defender_o365_source_config_module
+        monkeypatch, microsoft_defender_o365_source_config_module
     )
 
     # Then: a ValidationError is raised, and the error references the "<error_field>" field

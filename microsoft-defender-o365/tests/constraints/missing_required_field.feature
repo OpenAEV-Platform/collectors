@@ -10,7 +10,7 @@ Feature: Missing required field raises a ValidationError at instantiation
     And all fields except the tested one are correctly set
 
   Scenario Outline: Missing required field raises ValidationError referencing the field
-    Given MICROSOFT_DEFENDER_O365_<REQUIRED_FIELD> is not set
+    Given SOURCE_<REQUIRED_FIELD> is not set
     And all other required fields are present
     When DefenderO365Config is instantiated
     Then a ValidationError is raised

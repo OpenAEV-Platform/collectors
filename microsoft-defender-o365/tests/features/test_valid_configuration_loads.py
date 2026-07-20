@@ -42,7 +42,7 @@ def test_valid_configuration_with_all_required_fields_loads_successfully(
     default_value,
 ):
     """Scenario Outline: Valid configuration with all required fields loads successfully"""
-    # Given: MICROSOFT_DEFENDER_O365_<FIELD_1>/<FIELD_2>/<FIELD_3> are each set to a non-empty
+    # Given: SOURCE_<FIELD_1>/<FIELD_2>/<FIELD_3> are each set to a non-empty
     # string
     _given_microsoft_defender_o365_env_var_set(monkeypatch, field_1, "test-tenant-id")
     _given_microsoft_defender_o365_env_var_set(monkeypatch, field_2, "test-client-id")
@@ -52,7 +52,7 @@ def test_valid_configuration_with_all_required_fields_loads_successfully(
 
     # When: DefenderO365Config is instantiated
     config, error = _when_microsoft_defender_o365_config_is_instantiated(
-        microsoft_defender_o365_source_config_module
+        monkeypatch, microsoft_defender_o365_source_config_module
     )
 
     # Then: no ValidationError is raised, config.<FIELD_1_ATTR> is not None, and
