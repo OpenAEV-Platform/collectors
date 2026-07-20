@@ -10,9 +10,9 @@ Feature: Valid configuration loads without error via Pydantic BaseSettings
     And environment variables are the primary configuration source
 
   Scenario Outline: Valid configuration with all required fields loads successfully
-    Given MICROSOFT_DEFENDER_O365_<FIELD_1> is set to a non-empty string
-    And MICROSOFT_DEFENDER_O365_<FIELD_2> is set to a non-empty string
-    And MICROSOFT_DEFENDER_O365_<FIELD_3> is set to a non-empty string
+    Given SOURCE_<FIELD_1> is set to a non-empty string
+    And SOURCE_<FIELD_2> is set to a non-empty string
+    And SOURCE_<FIELD_3> is set to a non-empty string
     When DefenderO365Config is instantiated
     Then no ValidationError is raised
     And config.<FIELD_1_ATTR> is not None

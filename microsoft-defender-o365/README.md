@@ -78,16 +78,16 @@ Below are the parameters you'll need to set for the collector:
 
 | Parameter                          | config.yml                                     | Docker environment variable                             | Default                             | Mandatory | Description                                                                                     |
 |-------------------------------------|-------------------------------------------------|-----------------------------------------------------------|--------------------------------------|-----------|---------------------------------------------------------------------------------------------------|
-| Tenant ID                           | `source.tenant_id`                              | `MICROSOFT_DEFENDER_O365_TENANT_ID`                        | -                                     | Yes       | Azure AD (Entra ID) tenant identifier used to authenticate against Microsoft Graph.                |
-| Client ID                           | `source.client_id`                              | `MICROSOFT_DEFENDER_O365_CLIENT_ID`                        | -                                     | Yes       | Azure AD application (client) identifier used to authenticate against Microsoft Graph.             |
-| Use Certificate Auth                | `source.use_certificate_auth`                   | `MICROSOFT_DEFENDER_O365_USE_CERTIFICATE_AUTH`             | false                                 | No        | Whether to authenticate using a client certificate instead of a client secret.                     |
-| Client Secret                       | `source.client_secret`                          | `MICROSOFT_DEFENDER_O365_CLIENT_SECRET`                    | -                                     | Yes, unless certificate auth is used | Azure AD application client secret.                                       |
-| Client Certificate Path             | `source.client_cert_path`                       | `MICROSOFT_DEFENDER_O365_CLIENT_CERT_PATH`                 | -                                     | Yes, if certificate auth is used | Filesystem path to the client certificate.                                     |
-| Client Certificate Thumbprint       | `source.client_cert_thumbprint`                 | `MICROSOFT_DEFENDER_O365_CLIENT_CERT_THUMBPRINT`           | -                                     | Yes, if certificate auth is used | Thumbprint of the client certificate.                                          |
-| Base URL                            | `source.base_url`                               | `MICROSOFT_DEFENDER_O365_BASE_URL`                         | https://graph.microsoft.com/v1.0     | No        | Base URL for the Microsoft Graph API.                                                              |
-| Filter Service Source               | `source.filter_service_source`                  | `MICROSOFT_DEFENDER_O365_FILTER_SERVICE_SOURCE`            | microsoftDefenderForOffice365        | No        | Value used to filter Microsoft Graph security alerts down to those produced by Microsoft Defender for Office 365. |
-| Rate Limit (requests per minute)    | `source.rate_limit_requests_per_minute`         | `MICROSOFT_DEFENDER_O365_RATE_LIMIT_REQUESTS_PER_MINUTE`   | 150                                   | No        | Maximum number of Microsoft Graph API requests issued per minute (must be >= 1).                   |
-| Max Fetch Retries                   | `source.max_fetch_retries`                      | `MICROSOFT_DEFENDER_O365_MAX_FETCH_RETRIES`                | 5                                     | No        | Maximum number of retries when fetching data from Microsoft Graph fails transiently.                |
+| Tenant ID                           | `source.tenant_id`                              | `SOURCE_TENANT_ID`                        | -                                     | Yes       | Azure AD (Entra ID) tenant identifier used to authenticate against Microsoft Graph.                |
+| Client ID                           | `source.client_id`                              | `SOURCE_CLIENT_ID`                        | -                                     | Yes       | Azure AD application (client) identifier used to authenticate against Microsoft Graph.             |
+| Use Certificate Auth                | `source.use_certificate_auth`                   | `SOURCE_USE_CERTIFICATE_AUTH`             | false                                 | No        | Whether to authenticate using a client certificate instead of a client secret.                     |
+| Client Secret                       | `source.client_secret`                          | `SOURCE_CLIENT_SECRET`                    | -                                     | Yes, unless certificate auth is used | Azure AD application client secret.                                       |
+| Client Certificate Path             | `source.client_cert_path`                       | `SOURCE_CLIENT_CERT_PATH`                 | -                                     | Yes, if certificate auth is used | Filesystem path to the client certificate.                                     |
+| Client Certificate Thumbprint       | `source.client_cert_thumbprint`                 | `SOURCE_CLIENT_CERT_THUMBPRINT`           | -                                     | Yes, if certificate auth is used | Thumbprint of the client certificate.                                          |
+| Base URL                            | `source.base_url`                               | `SOURCE_BASE_URL`                         | https://graph.microsoft.com/v1.0     | No        | Base URL for the Microsoft Graph API.                                                              |
+| Filter Service Source               | `source.filter_service_source`                  | `SOURCE_FILTER_SERVICE_SOURCE`            | microsoftDefenderForOffice365        | No        | Value used to filter Microsoft Graph security alerts down to those produced by Microsoft Defender for Office 365. |
+| Rate Limit (requests per minute)    | `source.rate_limit_requests_per_minute`         | `SOURCE_RATE_LIMIT_REQUESTS_PER_MINUTE`   | 150                                   | No        | Maximum number of Microsoft Graph API requests issued per minute (must be >= 1).                   |
+| Max Fetch Retries                   | `source.max_fetch_retries`                      | `SOURCE_MAX_FETCH_RETRIES`                | 5                                     | No        | Maximum number of retries when fetching data from Microsoft Graph fails transiently.                |
 
 *Nota bene*: exactly one authentication mode must be fully configured: either `use_certificate_auth=false` with `client_secret` set, or `use_certificate_auth=true` with both `client_cert_path` and `client_cert_thumbprint` set.
 
@@ -120,9 +120,9 @@ source:
 export OPENAEV_URL="https://your-openaev-instance.com"
 export OPENAEV_TOKEN="your-openaev-token"
 export COLLECTOR_ID="microsoft-defender-o365--your-unique-uuid"
-export MICROSOFT_DEFENDER_O365_TENANT_ID="your-tenant-id"
-export MICROSOFT_DEFENDER_O365_CLIENT_ID="your-client-id"
-export MICROSOFT_DEFENDER_O365_CLIENT_SECRET="your-client-secret"
+export SOURCE_TENANT_ID="your-tenant-id"
+export SOURCE_CLIENT_ID="your-client-id"
+export SOURCE_CLIENT_SECRET="your-client-secret"
 ```
 
 ## Deployment
@@ -160,9 +160,9 @@ docker run -d \
   -e OPENAEV_URL="https://your-openaev-instance.com" \
   -e OPENAEV_TOKEN="your-token" \
   -e COLLECTOR_ID="microsoft-defender-o365--your-uuid" \
-  -e MICROSOFT_DEFENDER_O365_TENANT_ID="your-tenant-id" \
-  -e MICROSOFT_DEFENDER_O365_CLIENT_ID="your-client-id" \
-  -e MICROSOFT_DEFENDER_O365_CLIENT_SECRET="your-client-secret" \
+  -e SOURCE_TENANT_ID="your-tenant-id" \
+  -e SOURCE_CLIENT_ID="your-client-id" \
+  -e SOURCE_CLIENT_SECRET="your-client-secret" \
   openaev-microsoft-defender-o365-collector
 
 # Or run with configuration file mounted

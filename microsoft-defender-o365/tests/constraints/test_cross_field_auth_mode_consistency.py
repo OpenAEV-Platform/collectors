@@ -37,8 +37,8 @@ def test_certificate_auth_mode_enabled_without_certificate_required_fields_raise
     error_field_b,
 ):
     """Scenario Outline: Certificate auth mode enabled without certificate required fields raises ValidationError"""
-    # Given: MICROSOFT_DEFENDER_O365_USE_CERTIFICATE_AUTH is "<mode_flag_value>", and
-    # MICROSOFT_DEFENDER_O365_CLIENT_CERT_PATH/CLIENT_CERT_THUMBPRINT are not set
+    # Given: SOURCE_USE_CERTIFICATE_AUTH is "<mode_flag_value>", and
+    # SOURCE_CLIENT_CERT_PATH/CLIENT_CERT_THUMBPRINT are not set
     _given_microsoft_defender_o365_all_required_fields_present(monkeypatch)
     _given_microsoft_defender_o365_env_var_set(
         monkeypatch, "USE_CERTIFICATE_AUTH", mode_flag_value
@@ -50,7 +50,7 @@ def test_certificate_auth_mode_enabled_without_certificate_required_fields_raise
 
     # When: DefenderO365Config is instantiated
     _, error = _when_microsoft_defender_o365_config_is_instantiated(
-        microsoft_defender_o365_source_config_module
+        monkeypatch, microsoft_defender_o365_source_config_module
     )
 
     # Then: a ValidationError is raised, and the error references "<error_field_a>" or
@@ -79,8 +79,8 @@ def test_credential_auth_mode_enabled_without_credential_required_fields_raises_
     error_field,
 ):
     """Scenario Outline: Credential auth mode enabled without credential required fields raises ValidationError"""
-    # Given: MICROSOFT_DEFENDER_O365_USE_CERTIFICATE_AUTH is "<mode_flag_value>", and
-    # MICROSOFT_DEFENDER_O365_CLIENT_SECRET is not set
+    # Given: SOURCE_USE_CERTIFICATE_AUTH is "<mode_flag_value>", and
+    # SOURCE_CLIENT_SECRET is not set
     _given_microsoft_defender_o365_all_required_fields_present(
         monkeypatch, exclude="CLIENT_SECRET"
     )
@@ -91,7 +91,7 @@ def test_credential_auth_mode_enabled_without_credential_required_fields_raises_
 
     # When: DefenderO365Config is instantiated
     _, error = _when_microsoft_defender_o365_config_is_instantiated(
-        microsoft_defender_o365_source_config_module
+        monkeypatch, microsoft_defender_o365_source_config_module
     )
 
     # Then: a ValidationError is raised, and the error references "<error_field>"

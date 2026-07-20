@@ -33,7 +33,7 @@ def test_missing_required_field_raises_validation_error_referencing_the_field(
     error_field,
 ):
     """Scenario Outline: Missing required field raises ValidationError referencing the field"""
-    # Given: MICROSOFT_DEFENDER_O365_<REQUIRED_FIELD> is not set, and all other required fields
+    # Given: SOURCE_<REQUIRED_FIELD> is not set, and all other required fields
     # are present
     _given_microsoft_defender_o365_env_var_not_set(monkeypatch, required_field)
     _given_microsoft_defender_o365_all_required_fields_present(
@@ -42,7 +42,7 @@ def test_missing_required_field_raises_validation_error_referencing_the_field(
 
     # When: DefenderO365Config is instantiated
     _, error = _when_microsoft_defender_o365_config_is_instantiated(
-        microsoft_defender_o365_source_config_module
+        monkeypatch, microsoft_defender_o365_source_config_module
     )
 
     # Then: a ValidationError is raised, and the error references the "<error_field>" field

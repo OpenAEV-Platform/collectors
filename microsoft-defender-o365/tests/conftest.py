@@ -5,11 +5,36 @@ tests/constraints scenario module, following the Given/When/Then helper
 convention described in the project's CONTRIBUTING.md.
 """
 
+from pathlib import Path
 from types import ModuleType
 
 import pytest
 from polyfactory.factories.pydantic_factory import ModelFactory
 from pydantic import BaseModel
+
+
+@pytest.fixture(autouse=True)
+def _isolate_from_local_dotenv_and_yaml_config(monkeypatch):
+    """Prevent a developer's local ``.env``/``config.yml`` from leaking into tests.
+
+    ``ConfigLoader.settings_customise_sources`` gives exclusive priority to a
+    ``.env`` file, then to ``config.yml``, over environment variables (see
+    ``src/models/settings/config_loader.py``). Both files are gitignored,
+    developer-local convenience files that don't exist in CI, but when present
+    locally they silently short-circuit every env-var-driven scenario in this
+    suite. Making ``Path.exists()`` report ``False`` for exactly these two
+    collector-root files keeps the suite deterministic regardless of the local
+    working copy state, without touching the developer's actual files.
+    """
+    real_exists = Path.exists
+
+    def fake_exists(self, *args, **kwargs):
+        if self.name in (".env", "config.yml"):
+            return False
+        return real_exists(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "exists", fake_exists)
+    yield
 
 
 class CollectorRegistrationConfig(BaseModel):
@@ -65,7 +90,7 @@ def microsoft_defender_o365_collector_module() -> ModuleType:
 # fields below, rather than introducing a differently-named class. Gherkin `When ... DefenderO365Config
 # is instantiated` steps are therefore implemented against `_ConfigLoaderSource`.
 
-MICROSOFT_DEFENDER_O365_ENV_PREFIX = "MICROSOFT_DEFENDER_O365_"
+MICROSOFT_DEFENDER_O365_ENV_PREFIX = "SOURCE_"
 
 #: Minimal set of env vars that make `_ConfigLoaderSource` instantiate without error.
 MICROSOFT_DEFENDER_O365_VALID_REQUIRED_ENV: dict[str, str] = {
@@ -77,17 +102,16 @@ MICROSOFT_DEFENDER_O365_VALID_REQUIRED_ENV: dict[str, str] = {
 
 @pytest.fixture
 def microsoft_defender_o365_source_config_module() -> ModuleType:
-    """Import and expose the (not-yet-implemented) source configuration module.
+    """Import and expose the config loader module wiring the source configuration.
 
-    This module is expected to be updated by chunk2 (#493) so that
-    ``src.models.settings.source_configs._ConfigLoaderSource`` carries the real
-    Microsoft Defender for Office 365 business configuration fields (``tenant_id``,
-    ``client_id``, ``use_certificate_auth``, ...) instead of the template's generic
-    placeholders. Importing it and instantiating the class is expected to fail/raise
-    the wrong errors until that implementation lands, which is the intended "red"
-    state of these tests.
+    ``src.models.settings.config_loader.ConfigLoader`` nests
+    ``src.models.settings.source_configs._ConfigLoaderSource`` under its ``source``
+    field. Instantiating through ``ConfigLoader`` (rather than the source config
+    class directly) is what makes pydantic-settings' ``env_nested_delimiter``
+    derive the ``SOURCE_*`` env var prefix automatically from the ``source`` field
+    name, without needing per-field aliases.
     """
-    import src.models.settings.source_configs as module
+    import src.models.settings.config_loader as module
 
     return module
 
@@ -95,7 +119,7 @@ def microsoft_defender_o365_source_config_module() -> ModuleType:
 def _given_microsoft_defender_o365_env_var_set(
     monkeypatch, field_name: str, value: str
 ) -> None:
-    """Given MICROSOFT_DEFENDER_O365_<FIELD> is set to "<value>".
+    """Given SOURCE_<FIELD> is set to "<value>".
 
     Args:
         monkeypatch: pytest's monkeypatch fixture.
@@ -110,7 +134,7 @@ def _given_microsoft_defender_o365_env_var_set(
 def _given_microsoft_defender_o365_env_var_not_set(
     monkeypatch, field_name: str
 ) -> None:
-    """Given MICROSOFT_DEFENDER_O365_<FIELD> is not set.
+    """Given SOURCE_<FIELD> is not set.
 
     Args:
         monkeypatch: pytest's monkeypatch fixture.
@@ -141,20 +165,28 @@ def _given_microsoft_defender_o365_all_required_fields_present(
 
 
 def _when_microsoft_defender_o365_config_is_instantiated(
-    module: ModuleType,
+    monkeypatch, module: ModuleType
 ) -> tuple[object | None, Exception | None]:
     """When DefenderO365Config is instantiated.
 
+    Sets the OpenAEV platform env vars (unrelated to the scenario under test, but
+    required by ``ConfigLoader``) before instantiating, then returns the nested
+    ``source`` configuration object so scenarios keep asserting on
+    ``config.<field>`` directly.
+
     Args:
-        module: The ``src.models.settings.source_configs`` module under test.
+        monkeypatch: pytest's monkeypatch fixture.
+        module: The ``src.models.settings.config_loader`` module under test.
 
     Returns:
-        A ``(config, error)`` tuple: the instantiated config and ``None`` on success,
-        or ``None`` and the raised exception on failure.
+        A ``(config, error)`` tuple: the instantiated source config and ``None``
+        on success, or ``None`` and the raised exception on failure.
 
     """
+    monkeypatch.setenv("OPENAEV_URL", "https://openaev.example.com")
+    monkeypatch.setenv("OPENAEV_TOKEN", "test-openaev-token")
     try:
-        return module._ConfigLoaderSource(), None
+        return module.ConfigLoader().source, None
     except Exception as err:  # pylint: disable=broad-except
         return None, err
 
