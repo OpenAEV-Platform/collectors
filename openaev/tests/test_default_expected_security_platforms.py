@@ -59,6 +59,21 @@ def test_explicit_empty_map_is_preserved():
     assert payload_information["payload_expected_security_platforms"] == {}
 
 
+def test_explicit_null_is_treated_as_missing():
+    # A JSON null (Python None) means "not declared" and gets the defaults.
+    payload_information = {
+        "payload_expectations": ["PREVENTION", "DETECTION"],
+        "payload_expected_security_platforms": None,
+    }
+
+    apply_default_expected_security_platforms(payload_information)
+
+    assert payload_information["payload_expected_security_platforms"] == {
+        "DETECTION": ["EDR", "XDR", "SIEM"],
+        "PREVENTION": ["EDR", "XDR"],
+    }
+
+
 def test_payload_without_expectations_left_untouched():
     for payload_information in ({}, {"payload_expectations": []}):
         apply_default_expected_security_platforms(payload_information)
