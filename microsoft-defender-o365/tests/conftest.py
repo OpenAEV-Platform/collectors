@@ -82,8 +82,7 @@ def microsoft_defender_o365_collector_module() -> ModuleType:
 # Chunk2 (#493) - business configuration (source_configs.py) shared helpers
 # --------
 #
-# Per RULE-0006 (~/.copilot/rules/0006-template-placeholder-replacement-over-new-class.md),
-# chunk2's Done Checklist names a "DefenderO365Config" class, but the target file
+# Chunk2's Done Checklist names a "DefenderO365Config" class, but the target file
 # (src/models/settings/source_configs.py) already holds the template's placeholder scaffold
 # class `_ConfigLoaderSource(ConfigBaseSettings)`. The resolution is to keep the template's
 # class name/structure and replace only its placeholder fields/aliases with the real business
