@@ -59,7 +59,7 @@ def _given_minimal_service_with_stub_source_wired(
     """Patch the collector module's dependencies with a minimal stub Source wired in.
 
     Args:
-        collector: The ``src.microsoft_defender_o365_collector`` module under test.
+        collector: The ``src.collector_main`` module under test.
         base_class_name: Name of the base daemon class the service is built from
             (e.g. "BaseCollector"), asserted against the module's imported symbol.
 
@@ -92,7 +92,7 @@ def _when_service_process_is_started(collector) -> Exception | None:
     """Start the service process by invoking the collector's main() entry point.
 
     Args:
-        collector: The ``src.microsoft_defender_o365_collector`` module under test.
+        collector: The ``src.collector_main`` module under test.
 
     Returns:
         The exception raised by ``main()``, if any, otherwise ``None``.
