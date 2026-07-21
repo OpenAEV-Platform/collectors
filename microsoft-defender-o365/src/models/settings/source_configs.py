@@ -45,7 +45,7 @@ class _ConfigLoaderSource(ConfigBaseSettings):
         "use_certificate_auth is enabled.",
     )
     base_url: HttpUrl = Field(
-        default="https://graph.microsoft.com/v1.0",
+        default=HttpUrl("https://graph.microsoft.com/v1.0"),
         description="Base URL for the Microsoft Graph API.",
     )
     filter_service_source: str = Field(

@@ -1,4 +1,4 @@
-"""Base class for global config models."""
+"""Configuration loader combining OpenAEV, collector, and source settings."""
 
 from pathlib import Path
 
@@ -136,8 +136,12 @@ class ConfigLoader(ConfigBaseSettings):
                 "collector_platform": {"data": self.collector.platform},
                 "collector_log_level": {"data": self.collector.log_level},
                 "collector_period": {
-                    "data": int(self.collector.period.total_seconds())
-                },  # type: ignore[union-attr]
+                    "data": (
+                        int(self.collector.period.total_seconds())
+                        if self.collector.period is not None
+                        else None
+                    )
+                },
                 "collector_icon_filepath": {"data": self.collector.icon_filepath},
                 # Source configuration (flattened)
                 "source_tenant_id": {"data": self.source.tenant_id},
