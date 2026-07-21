@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
-from pyoaev.apis.inject_expectation.model import (
+from pyoaev.apis.inject_expectation.model import (  # type: ignore[import-untyped]
     DetectionExpectation,
     PreventionExpectation,
 )

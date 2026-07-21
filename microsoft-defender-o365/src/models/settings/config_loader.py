@@ -10,7 +10,7 @@ from pydantic_settings import (
     PydanticBaseSettingsSource,
     YamlConfigSettingsSource,
 )
-from pyoaev.configuration import Configuration
+from pyoaev.configuration import Configuration  # type: ignore[import-untyped]
 from src.models.settings import (
     ConfigBaseSettings,
     _ConfigLoaderCollector,

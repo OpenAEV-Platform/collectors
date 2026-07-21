@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 from typing import Any, ClassVar
 
 from pydantic import AnyUrl, BaseModel, Field, model_validator
-from pyoaev.signatures.types import SignatureTypes
+from pyoaev.signatures.types import SignatureTypes  # type: ignore[import-untyped]
 
 
 class OAEVData(BaseModel, extra="allow"):
