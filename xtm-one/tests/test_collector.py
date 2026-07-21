@@ -18,6 +18,7 @@ pytest.importorskip("pyoaev")
 
 from pyoaev.configuration import Configuration  # noqa: E402
 from pyoaev.signatures.ai_marker import build_marker  # noqa: E402
+from xtm_one.configuration.config_loader import _optional_seconds  # noqa: E402
 from xtm_one.openaev_xtm_one import OpenAEVXtmOne  # noqa: E402
 
 
@@ -132,6 +133,13 @@ def test_init_normalizes_configuration():
     assert collector.import_period == timedelta(hours=1)
     assert collector._last_import_at is None
     assert collector.xtm_one_token == "fcp-secret"
+
+
+def test_optional_seconds_tolerates_null_durations():
+    # Both period fields are typed `timedelta | None`: an explicit YAML null
+    # must not crash the daemon-config build (the runtime fallbacks apply).
+    assert _optional_seconds(None) is None
+    assert _optional_seconds(timedelta(minutes=5)) == 300
 
 
 def test_init_defaults_import_period_when_missing():
