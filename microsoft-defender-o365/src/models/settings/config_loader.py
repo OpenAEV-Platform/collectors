@@ -1,4 +1,4 @@
-"""Base class for global config models."""
+"""Configuration loader combining OpenAEV, collector, and source settings."""
 
 from pathlib import Path
 
@@ -27,12 +27,10 @@ class ConfigLoaderCollector(_ConfigLoaderCollector):
     """
 
     id: str = Field(
-        alias="COLLECTOR_ID",
         default="microsoft-defender-o365--0b13e3f7-5c9e-46f5-acc4-33032e9b4921",
         description="A unique UUIDv4 identifier for this collector instance.",
     )
     name: str = Field(
-        alias="COLLECTOR_NAME",
         default="Microsoft Defender for Office 365",
         description="Name of the collector.",
     )
@@ -138,15 +136,32 @@ class ConfigLoader(ConfigBaseSettings):
                 "collector_platform": {"data": self.collector.platform},
                 "collector_log_level": {"data": self.collector.log_level},
                 "collector_period": {
-                    "data": int(self.collector.period.total_seconds())
-                },  # type: ignore[union-attr]
+                    "data": (
+                        int(self.collector.period.total_seconds())
+                        if self.collector.period is not None
+                        else None
+                    )
+                },
                 "collector_icon_filepath": {"data": self.collector.icon_filepath},
                 # Source configuration (flattened)
-                "source_key": {"data": self.source.key},
-                "source_time_window": {"data": self.source.time_window},
-                "source_expectation_batch_size": {
-                    "data": self.source.expectation_batch_size
+                "source_tenant_id": {"data": self.source.tenant_id},
+                "source_client_id": {"data": self.source.client_id},
+                "source_use_certificate_auth": {
+                    "data": self.source.use_certificate_auth
                 },
+                "source_client_secret": {"data": self.source.client_secret},
+                "source_client_cert_path": {"data": self.source.client_cert_path},
+                "source_client_cert_thumbprint": {
+                    "data": self.source.client_cert_thumbprint
+                },
+                "source_base_url": {"data": str(self.source.base_url)},
+                "source_filter_service_source": {
+                    "data": self.source.filter_service_source
+                },
+                "source_rate_limit_requests_per_minute": {
+                    "data": self.source.rate_limit_requests_per_minute
+                },
+                "source_max_fetch_retries": {"data": self.source.max_fetch_retries},
             },
             config_base_model=self,
         )
