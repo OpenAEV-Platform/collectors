@@ -106,6 +106,10 @@ class OpenAEVOpenAEV(CollectorDaemon):
                     if tag_id in tags_mapping:
                         new_tags.append(tags_mapping[tag_id])
                 document["document_tags"] = new_tags
+                # Community payload samples are malware: OpenAEV re-encrypts them at
+                # rest as a password-protected archive and the implant decrypts them
+                # on the fly before detonation.
+                document["document_kind"] = "MALWARE_SAMPLE"
 
                 zip_url = openaev_url_prefix + document["document_path"]
                 zip_response = self.session.get(zip_url)
