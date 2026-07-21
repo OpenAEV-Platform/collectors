@@ -1,0 +1,18 @@
+{
+  "title": "Microsoft Defender for Office 365",
+  "slug": "openaev_microsoft_defender_o365",
+  "description": "Collect and match Microsoft Defender for Office 365 email alerts",
+  "short_description": "Collect and match Microsoft Defender for Office 365 email alerts",
+  "use_cases": ["Security response"],
+  "verified": true,
+  "last_verified_date": "",
+  "playbook_supported": false,
+  "max_confidence_level": 80,
+  "support_version": "",
+  "subscription_link": "https://www.microsoft.com/en-us/security/business/siem-and-xdr/microsoft-defender-office-365",
+  "source_code": "",
+  "manager_supported": true,
+  "container_version": "rolling",
+  "container_image": "openaev/collector-microsoft-defender-o365",
+  "container_type": "COLLECTOR"
+}
