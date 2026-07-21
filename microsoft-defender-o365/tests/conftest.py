@@ -68,12 +68,12 @@ def microsoft_defender_o365_collector_module() -> ModuleType:
     """Import and expose the (not-yet-implemented) collector entry-point module.
 
     This module is expected to be created by chunk1 (#471) as
-    ``src/microsoft_defender_o365_collector.py``, exposing a ``main()`` function
+    ``src/collector_main.py``, exposing a ``main()`` function
     wiring a stub ``Source`` into ``BaseCollector``. Importing it is expected to
     fail until that implementation lands, which is the intended "red" state of
     these tests.
     """
-    import src.microsoft_defender_o365_collector as module
+    import src.collector_main as module
 
     return module
 
