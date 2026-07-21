@@ -1,7 +1,5 @@
 from src.collector.types.collector import SourceConfig
-from src.source.microsoft_defender_o365_source_data import (
-    MicrosoftDefenderO365SourceData,
-)
+from src.source.source_data import MicrosoftDefenderO365SourceData
 
 
 class MicrosoftDefenderO365DataFetcher:

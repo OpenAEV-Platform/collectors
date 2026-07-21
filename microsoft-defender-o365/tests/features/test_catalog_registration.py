@@ -57,7 +57,7 @@ def _given_service_running_with_registration_configuration(
     """Run the collector's main() with a mocked BaseCollector registered in the catalog.
 
     Args:
-        collector: The ``src.microsoft_defender_o365_collector`` module under test.
+        collector: The ``src.collector_main`` module under test.
         collector_registration_config_factory: Polyfactory factory generating dynamic
             CollectorRegistrationConfig fixtures.
         service_name: Name of the service expected to appear in the catalog.
