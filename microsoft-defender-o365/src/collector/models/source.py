@@ -1,10 +1,10 @@
 from pydantic import BaseModel
-from pyoaev.apis.inject_expectation.model.expectation import (
+from pyoaev.apis.inject_expectation.model.expectation import (  # type: ignore[import-untyped]
     DetectionExpectation,
     PreventionExpectation,
 )
-from pyoaev.helpers import OpenAEVDetectionHelper
-from pyoaev.signatures.types import SignatureTypes
+from pyoaev.helpers import OpenAEVDetectionHelper  # type: ignore[import-untyped]
+from pyoaev.signatures.types import SignatureTypes  # type: ignore[import-untyped]
 from src.collector.models.data import OAEVData, TraceData
 from src.collector.protocols.data_fetcher import DataFetcherProtocol
 from src.collector.protocols.source_data import SourceDataProtocol
