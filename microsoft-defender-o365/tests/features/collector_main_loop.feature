@@ -40,6 +40,13 @@ Feature: DefenderO365Collector main loop executes end-to-end with stubs
       | tenant_id   | client_id   | client_secret |
       | test-tenant | test-client | test-secret   |
 
+  Scenario: Main entry point starts BaseCollector with the declared Source
+    Given the collector entry point dependencies are stubbed
+    When the collector main entry point is invoked
+    Then Source is declared with the Microsoft Defender O365 data fetcher, source data, and signatures
+    And BaseCollector is instantiated with the declared Source
+    And BaseCollector is started exactly once
+
   Scenario Outline: Loop emits LOG_PREFIX log messages at each engine step
     Given a DefenderO365Collector with a DataFetcher returning at least one mock alert
     And the OpenAEV API returns at least one mock expectation

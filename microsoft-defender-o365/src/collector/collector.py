@@ -1,6 +1,6 @@
 import logging
 
-from pyoaev.daemons import CollectorDaemon
+from pyoaev.daemons import CollectorDaemon  # type: ignore[import-untyped]
 from slugify import slugify
 from src.collector.engines.basic import BasicCollectorEngine
 from src.collector.models.exception import (
@@ -19,11 +19,13 @@ from src.models.settings.config_loader import ConfigLoader
 LOG_PREFIX = "[Collector]"
 
 
-class BaseCollector(CollectorDaemon):
+class BaseCollector(CollectorDaemon):  # type: ignore[misc]
     """
     Generic BaseCollector providing a defined source to a generic collector engine.
     This collector is use-case agnostic and works with any source provided.
     """
+
+    logger: logging.Logger
 
     def __init__(
         self,
@@ -102,7 +104,7 @@ class BaseCollector(CollectorDaemon):
                 f"Failed to initialize the engine of {self.name} collector: {err}"
             ) from err
 
-    def _setup(self, batching: bool = False) -> None:
+    def _setup(self) -> None:
         """Set up the collector.
 
         Setup the collector daemon and configure the engine.
@@ -118,7 +120,7 @@ class BaseCollector(CollectorDaemon):
             super()._setup()
 
             self.logger.debug(f"{LOG_PREFIX} Configuring the collector engine...")
-            self.engine.configure_engine(self.config.source, batching=batching)
+            self.engine.configure_engine(self.config.source)
 
             self.logger.info(f"{LOG_PREFIX} Collector setup completed successfully")
 

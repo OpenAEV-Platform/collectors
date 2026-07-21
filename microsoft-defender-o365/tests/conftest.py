@@ -5,8 +5,11 @@ tests/constraints scenario module, following the Given/When/Then helper
 convention described in the project's CONTRIBUTING.md.
 """
 
+from __future__ import annotations
+
 from pathlib import Path
 from types import ModuleType
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock
 
 import pytest
@@ -14,6 +17,11 @@ from polyfactory.factories.pydantic_factory import ModelFactory
 from pydantic import BaseModel
 from pyoaev.apis.inject_expectation.model import DetectionExpectation
 from pyoaev.client import OpenAEV
+
+if TYPE_CHECKING:
+    from src.collector.engines.basic import BasicCollectorEngine
+    from src.collector.models.source import Source
+    from src.collector.protocols.source_handler import SourceHandlerProtocol
 
 
 @pytest.fixture(autouse=True)
@@ -281,7 +289,7 @@ def detection_expectation_factory() -> type[DetectionExpectationFactory]:
     return DetectionExpectationFactory
 
 
-def _given_microsoft_defender_o365_source_declared():
+def _given_microsoft_defender_o365_source_declared() -> Source:
     """And Source is declared as Source(data_fetcher_model=DefenderO365DataFetcher, source_data_model=DefenderO365SourceData, signatures=SUPPORTED_SIGNATURES).
 
     Returns:
@@ -326,7 +334,7 @@ def _given_microsoft_defender_o365_oaev_api_returns_expectations(
 
 
 def _given_microsoft_defender_o365_stubbed_source_handler(
-    stub_return_get_source_data: list,
+    stub_return_get_source_data: list[object],
     stub_return_match_groups: bool,
     stub_return_match_expectation: tuple[bool, bool],
 ) -> MagicMock:
@@ -349,7 +357,6 @@ def _given_microsoft_defender_o365_stubbed_source_handler(
     from src.collector.protocols.source_handler import SourceHandlerProtocol
 
     source_handler = MagicMock(spec=SourceHandlerProtocol)
-    source_handler.config = MagicMock()
     source_handler.get_source_data.return_value = stub_return_get_source_data
     source_handler.serialize_as_oaevdata.return_value = MagicMock()
     source_handler.get_expectation_signature_groups.return_value = {}
@@ -366,7 +373,11 @@ def _given_microsoft_defender_o365_stubbed_source_handler(
     return source_handler
 
 
-def _given_microsoft_defender_o365_collector_engine(source, source_handler, oaev_api):
+def _given_microsoft_defender_o365_collector_engine(
+    source: Source,
+    source_handler: SourceHandlerProtocol,
+    oaev_api: OpenAEV,
+) -> BasicCollectorEngine:
     """Given a DefenderO365Collector(BaseCollector) instance with all methods stubbed.
 
     Wires a real ``BasicCollectorEngine`` (the generic engine started by
@@ -394,14 +405,13 @@ def _given_microsoft_defender_o365_collector_engine(source, source_handler, oaev
         source=source,
         source_handler=source_handler,
         oaev_api=oaev_api,
-        batching=False,
     )
     engine.configure_engine(config=MagicMock())
     return engine
 
 
 def _when_microsoft_defender_o365_engine_cycle_triggered(
-    engine,
+    engine: BasicCollectorEngine,
 ) -> Exception | None:
     """When one loop iteration is triggered / When one engine cycle is triggered via run_engine().
 

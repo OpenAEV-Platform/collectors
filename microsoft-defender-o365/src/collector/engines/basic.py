@@ -1,13 +1,13 @@
 import logging
 import os
 
-from pyoaev.apis.inject_expectation.model import (
+from pyoaev.apis.inject_expectation.model import (  # type: ignore[import-untyped]
     DetectionExpectation,
     PreventionExpectation,
 )
-from pyoaev.client import OpenAEV
-from pyoaev.helpers import OpenAEVDetectionHelper
-from pyoaev.signatures.types import SignatureTypes
+from pyoaev.client import OpenAEV  # type: ignore[import-untyped]
+from pyoaev.helpers import OpenAEVDetectionHelper  # type: ignore[import-untyped]
+from pyoaev.signatures.types import SignatureTypes  # type: ignore[import-untyped]
 from src.collector.internals.oaev_uploaders import ExpectationUploader, TraceUploader
 from src.collector.models.exception import (
     CollectorEngineConfigError,
@@ -19,7 +19,6 @@ from src.collector.models.source import Source
 from src.collector.protocols.data_fetcher import DataFetcherProtocol
 from src.collector.protocols.source_handler import SourceHandlerProtocol
 from src.collector.types.collector import ExpectationsList, SourceConfig
-from src.collector.utils.retroport_itertools import batched
 
 LOG_PREFIX = "[BasicCollectorEngine]"
 
@@ -37,7 +36,6 @@ class BasicCollectorEngine:
         source: Source,
         source_handler: SourceHandlerProtocol,
         oaev_api: OpenAEV,
-        batching: bool = False,
     ) -> None:
         self.name = name
         self.collector_id = collector_id
@@ -55,8 +53,6 @@ class BasicCollectorEngine:
         if oaev_api and not isinstance(oaev_api, OpenAEV):
             raise TypeError("OAEV API must be of OpenAEV type")
         self.oaev_api = oaev_api
-
-        self.batching = batching
 
         self.logger = logging.getLogger(__name__)
         self.current_summary = ExpectationSummary()
@@ -84,12 +80,11 @@ class BasicCollectorEngine:
     def signatures(self) -> list[SignatureTypes]:
         return self.source.signatures
 
-    def configure_engine(self, config: SourceConfig, batching: bool = False) -> None:
+    def configure_engine(self, config: SourceConfig) -> None:
         self.logger.info(
             f"{LOG_PREFIX} Supported signatures: {[sig.value for sig in self.signatures]}"
         )
         self.config = config
-        self.batching = batching
         self._reset_summary()
         self.configured = True
 
@@ -180,7 +175,7 @@ class BasicCollectorEngine:
                 f"data fetcher {self.data_fetcher_model} to source handler"
             )
             data = self.source_handler.get_source_data(
-                self.data_fetcher_model(self.source_handler.config)
+                self.data_fetcher_model(self.config)
             )
         except Exception as err:  # per batch
             batch_results = [
@@ -290,21 +285,10 @@ class BasicCollectorEngine:
 
             results = []
 
-            if self.batching:
-                # using a retro-compatible batched
-                # instead of itertools.batched due to python 3.11 support
-                batches = batched(expectations, self.config.expectation_batch_size)
-            else:
-                batches = [
-                    expectations,
-                ]  # default: single giant batch of expectations
-
-            for batch in batches:
-                self.logger.info(
-                    f"{LOG_PREFIX} Processing a batch of expectations of size {len(batch)}"
-                )
-                batch_results = self._process_batch(batch)
-                results.extend(batch_results)
+            self.logger.info(
+                f"{LOG_PREFIX} Processing a batch of expectations of size {len(expectations)}"
+            )
+            results.extend(self._process_batch(expectations))
 
             self.current_summary.processed = len(results)
             self.current_summary.valid = sum(1 for result in results if result.is_valid)
