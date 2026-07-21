@@ -21,6 +21,10 @@ class ConfigLoader(SettingsLoader):
                     "data": int(self.collector.period.total_seconds()),  # type: ignore[union-attr]
                     "is_number": True,
                 },
+                "import_period": {
+                    "data": int(self.collector.import_period.total_seconds()),  # type: ignore[union-attr]
+                    "is_number": True,
+                },
                 "collector_icon_filepath": {"data": self.collector.icon_filepath},
                 "xtm_one_url": {"data": self.collector.xtm_one_url},
                 "xtm_one_token": {"data": self.collector.xtm_one_token},

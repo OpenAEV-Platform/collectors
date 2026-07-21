@@ -24,8 +24,22 @@ class CollectorConfigOverride(ConfigLoaderCollector):
         ),
     )
     period: timedelta | None = Field(
+        default=timedelta(minutes=5),
+        description=(
+            "Duration between two scheduled runs of the collector (ISO 8601 format). "
+            "Expectation validation runs on every cycle, so this is effectively the "
+            "expectation-matching cadence; the agent import is additionally throttled "
+            "by import_period."
+        ),
+    )
+    import_period: timedelta | None = Field(
         default=timedelta(hours=1),
-        description="Duration between two scheduled runs of the collector (ISO 8601 format).",
+        description=(
+            "Minimum duration between two imports of the XTM One agents/models "
+            "catalog (ISO 8601 format). The import runs on the first cycle and then "
+            "only when this much time has elapsed since the previous import; set it "
+            "lower than or equal to the collector period to import on every cycle."
+        ),
     )
     xtm_one_url: str | None = Field(
         default=None,

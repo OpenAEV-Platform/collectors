@@ -92,10 +92,11 @@ def _build_configuration(**overrides):
         "xtm_one_token": {"data": "fcp-secret"},
         "validate_expectations": {"data": True},
         "include_bare_models": {"data": False},
+        "import_period": {"data": 3600, "is_number": True},
         "agent_tags": {"data": None},
     }
     for key, value in overrides.items():
-        hints[key] = {"data": value}
+        hints[key] = {"data": value} if not isinstance(value, dict) else value
     return Configuration(config_hints=hints)
 
 
@@ -110,6 +111,8 @@ def _build_collector():
     collector.xtm_one_token = "fcp-secret"
     collector.include_bare_models = False
     collector.validate_expectations = True
+    collector.import_period = timedelta(hours=1)
+    collector._last_import_at = None
     collector.agent_tags = set()
     collector._tag_cache = {}
     return collector
@@ -126,7 +129,18 @@ def test_init_normalizes_configuration():
     assert collector.agent_tags == {"prod", "red-team"}
     assert collector.include_bare_models is False
     assert collector.validate_expectations is True
+    assert collector.import_period == timedelta(hours=1)
+    assert collector._last_import_at is None
     assert collector.xtm_one_token == "fcp-secret"
+
+
+def test_init_defaults_import_period_when_missing():
+    configuration = _build_configuration()
+    configuration.set("import_period", None)
+
+    collector = OpenAEVXtmOne(configuration=configuration)
+
+    assert collector.import_period == timedelta(hours=1)
 
 
 @pytest.mark.parametrize(
@@ -501,3 +515,61 @@ def test_process_message_runs_validation_when_enabled():
     collector.api.inject_expectation.ai_expectations_for_source.assert_called_once_with(
         "collector-uuid"
     )
+
+
+# -- Import throttling -----------------------------------------------------------
+
+
+def test_process_message_imports_on_first_cycle_only_within_import_period():
+    collector = _build_collector()
+    collector.client = MagicMock()
+    collector.client.list_agents.return_value = []
+    collector.api.ai_target.list.return_value = []
+
+    collector._process_message()
+    collector._process_message()
+
+    # The catalog is read once, but expectations are validated on both cycles.
+    collector.client.list_agents.assert_called_once()
+    assert collector.api.inject_expectation.ai_expectations_for_source.call_count == 2
+
+
+def test_process_message_imports_again_once_import_period_elapsed():
+    collector = _build_collector()
+    collector.client = MagicMock()
+    collector.client.list_agents.return_value = []
+    collector.api.ai_target.list.return_value = []
+
+    collector._process_message()
+    collector._last_import_at = datetime.now(timezone.utc) - timedelta(
+        hours=1, minutes=1
+    )
+    collector._process_message()
+
+    assert collector.client.list_agents.call_count == 2
+
+
+def test_process_message_retries_failed_import_on_next_cycle():
+    collector = _build_collector()
+    collector.client = MagicMock()
+    collector.client.list_agents.side_effect = [RuntimeError("boom"), []]
+    collector.api.ai_target.list.return_value = []
+
+    collector._process_message()
+    collector._process_message()
+
+    # The failed catalog read does not consume the import period.
+    assert collector.client.list_agents.call_count == 2
+
+
+def test_should_import_boundary():
+    collector = _build_collector()
+    now = datetime.now(timezone.utc)
+
+    assert collector._should_import(now) is True
+
+    collector._last_import_at = now - timedelta(minutes=59)
+    assert collector._should_import(now) is False
+
+    collector._last_import_at = now - timedelta(hours=1)
+    assert collector._should_import(now) is True
