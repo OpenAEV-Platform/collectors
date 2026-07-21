@@ -7,10 +7,13 @@ convention described in the project's CONTRIBUTING.md.
 
 from pathlib import Path
 from types import ModuleType
+from unittest.mock import MagicMock
 
 import pytest
 from polyfactory.factories.pydantic_factory import ModelFactory
 from pydantic import BaseModel
+from pyoaev.apis.inject_expectation.model import DetectionExpectation
+from pyoaev.client import OpenAEV
 
 
 @pytest.fixture(autouse=True)
@@ -254,3 +257,176 @@ def _then_microsoft_defender_o365_error_references_one_of_fields(
     assert any(
         any(field_name in loc for loc in locations) for field_name in field_names
     ), f"Expected an error referencing one of {field_names}, got locations: {locations}"
+
+
+# --------
+# Chunk3 (#495) - engine/main-loop wiring shared helpers
+# --------
+
+
+class DetectionExpectationFactory(ModelFactory[DetectionExpectation]):
+    """Polyfactory factory generating dynamic DetectionExpectation fixtures.
+
+    ``DetectionExpectation.__init__`` reads a mandatory ``api_client`` kwarg
+    that isn't a Pydantic field, so callers must build via
+    ``DetectionExpectationFactory.build(api_client=MagicMock())``.
+    """
+
+    __model__ = DetectionExpectation
+
+
+@pytest.fixture
+def detection_expectation_factory() -> type[DetectionExpectationFactory]:
+    """Expose the polyfactory factory so feature tests can build mock expectations."""
+    return DetectionExpectationFactory
+
+
+def _given_microsoft_defender_o365_source_declared():
+    """And Source is declared as Source(data_fetcher_model=DefenderO365DataFetcher, source_data_model=DefenderO365SourceData, signatures=SUPPORTED_SIGNATURES).
+
+    Returns:
+        A ``Source`` instance wired with the collector's real data fetcher,
+        source data, and signature classes.
+
+    """
+    from src.collector.models.source import Source
+    from src.source.data_fetcher import MicrosoftDefenderO365DataFetcher
+    from src.source.signatures import SUPPORTED_SIGNATURES
+    from src.source.source_data import MicrosoftDefenderO365SourceData
+
+    return Source(
+        data_fetcher_model=MicrosoftDefenderO365DataFetcher,
+        source_data_model=MicrosoftDefenderO365SourceData,
+        signatures=SUPPORTED_SIGNATURES,
+    )
+
+
+def _given_microsoft_defender_o365_oaev_api_returns_expectations(
+    expectations: list[DetectionExpectation],
+) -> MagicMock:
+    """And the OpenAEV API returns at least one mock expectation.
+
+    Args:
+        expectations: The expectation objects the mocked API should return.
+
+    Returns:
+        A ``MagicMock`` satisfying the ``OpenAEV`` client's interface.
+
+    """
+    oaev_api = MagicMock(spec=OpenAEV)
+    # ``inject_expectation``/``inject_expectation_trace`` are set as instance
+    # attributes inside OpenAEV.__init__ (not class attributes), so `spec`
+    # doesn't pick them up automatically: attach them explicitly.
+    oaev_api.inject_expectation = MagicMock()
+    oaev_api.inject_expectation_trace = MagicMock()
+    oaev_api.inject_expectation.expectations_models_for_source.return_value = (
+        expectations
+    )
+    return oaev_api
+
+
+def _given_microsoft_defender_o365_stubbed_source_handler(
+    stub_return_get_source_data: list,
+    stub_return_match_groups: bool,
+    stub_return_match_expectation: tuple[bool, bool],
+) -> MagicMock:
+    """Given a DefenderO365Collector(BaseCollector) instance with all methods stubbed.
+
+    Builds a ``SourceHandlerProtocol``-compliant mock with each of its six
+    methods stubbed to the values provided by the scenario's Examples table.
+
+    Args:
+        stub_return_get_source_data: Value returned by ``get_source_data``.
+        stub_return_match_groups: Value returned by
+            ``match_signature_groups_and_oaevdata``.
+        stub_return_match_expectation: Value returned by
+            ``match_expectation_and_sourcedata``.
+
+    Returns:
+        A ``MagicMock`` satisfying the ``SourceHandlerProtocol`` interface.
+
+    """
+    from src.collector.protocols.source_handler import SourceHandlerProtocol
+
+    source_handler = MagicMock(spec=SourceHandlerProtocol)
+    source_handler.config = MagicMock()
+    source_handler.get_source_data.return_value = stub_return_get_source_data
+    source_handler.serialize_as_oaevdata.return_value = MagicMock()
+    source_handler.get_expectation_signature_groups.return_value = {}
+    source_handler.match_signature_groups_and_oaevdata.return_value = (
+        stub_return_match_groups
+    )
+    source_handler.serialize_as_tracedata.return_value.model_dump.return_value = {
+        "alert_name": "Stubbed Alert",
+        "alert_link": "http://stub.example.com/alert",
+    }
+    source_handler.match_expectation_and_sourcedata.return_value = (
+        stub_return_match_expectation
+    )
+    return source_handler
+
+
+def _given_microsoft_defender_o365_collector_engine(source, source_handler, oaev_api):
+    """Given a DefenderO365Collector(BaseCollector) instance with all methods stubbed.
+
+    Wires a real ``BasicCollectorEngine`` (the generic engine started by
+    ``BaseCollector``) with the provided ``Source``, ``SourceHandlerProtocol``
+    (mock or real instance), and mocked ``OpenAEV`` API client, then
+    configures it so ``run_engine`` can be called directly.
+
+    Args:
+        source: The ``Source`` instance declaring the data fetcher/source
+            data/signatures.
+        source_handler: A ``SourceHandlerProtocol``-compliant mock or
+            instance.
+        oaev_api: A mocked ``OpenAEV`` API client.
+
+    Returns:
+        A configured ``BasicCollectorEngine`` instance ready for
+        ``run_engine()``.
+
+    """
+    from src.collector.engines.basic import BasicCollectorEngine
+
+    engine = BasicCollectorEngine(
+        name="Microsoft Defender O365 Collector",
+        collector_id="test-collector-id",
+        source=source,
+        source_handler=source_handler,
+        oaev_api=oaev_api,
+        batching=False,
+    )
+    engine.configure_engine(config=MagicMock())
+    return engine
+
+
+def _when_microsoft_defender_o365_engine_cycle_triggered(
+    engine,
+) -> Exception | None:
+    """When one loop iteration is triggered / When one engine cycle is triggered via run_engine().
+
+    Args:
+        engine: The ``BasicCollectorEngine`` instance under test.
+
+    Returns:
+        ``None`` on success, or the raised exception on failure.
+
+    """
+    try:
+        engine.run_engine()
+        return None
+    except Exception as err:  # pylint: disable=broad-except
+        return err
+
+
+def _then_microsoft_defender_o365_no_unhandled_exception_raised(
+    error: Exception | None,
+) -> None:
+    """Then no unhandled exception is raised.
+
+    Args:
+        error: The error captured by
+            ``_when_microsoft_defender_o365_engine_cycle_triggered``.
+
+    """
+    assert error is None, f"Unexpected exception raised: {error!r}"
