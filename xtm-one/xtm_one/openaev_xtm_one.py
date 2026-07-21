@@ -1,7 +1,10 @@
 """Import XTM One agents as OpenAEV AI targets and validate AI defense expectations.
 
-The collector has two complementary jobs. Import runs on every scheduled cycle;
-validation also runs each cycle unless disabled with ``validate_expectations``:
+The collector has two complementary jobs running on different cadences.
+Expectation validation runs on every scheduled cycle (every ``period``, 5
+minutes by default) unless disabled with ``validate_expectations``; the catalog
+import is throttled by ``import_period`` (1 hour by default) so the agents
+catalog is not re-read on every validation cycle:
 
 1. **Import** - it reads the XTM One agents catalog (optionally scoped to a set
    of tags) and upserts one OpenAEV ``AiTarget`` per agent. Each agent target
@@ -68,6 +71,9 @@ _EVENT_WINDOW_BUFFER = timedelta(minutes=5)
 # Fallback lookback when an expectation is missing its creation date (should not
 # happen in practice, since OpenAEV always sets it).
 _EVENT_LOOKBACK_FALLBACK = timedelta(hours=24)
+# Fallback minimum interval between two catalog imports when import_period is
+# missing from the configuration.
+_IMPORT_PERIOD_FALLBACK = timedelta(hours=1)
 
 
 def _parse_iso(value: str) -> datetime:
@@ -99,6 +105,13 @@ class OpenAEVXtmOne(CollectorDaemon):
         self.validate_expectations = bool(
             self._configuration.get("validate_expectations")
         )
+        import_seconds = self._configuration.get("import_period")
+        self.import_period = (
+            timedelta(seconds=int(import_seconds))
+            if import_seconds is not None
+            else _IMPORT_PERIOD_FALLBACK
+        )
+        self._last_import_at: datetime | None = None
         self.agent_tags = self._parse_tags(self._configuration.get("agent_tags"))
         self.client = XtmOneClient(
             self.xtm_one_url,
@@ -233,13 +246,17 @@ class OpenAEVXtmOne(CollectorDaemon):
         except Exception as exc:  # noqa: BLE001
             self.logger.error(f"Failed to upsert AI target {ref}: {exc}")
 
-    def _import_targets(self) -> None:
-        """Mirror the XTM One agents (and optional bare models) as AI targets."""
+    def _import_targets(self) -> bool:
+        """Mirror the XTM One agents (and optional bare models) as AI targets.
+
+        Returns whether the catalog could be read, so a transient failure is
+        retried on the next cycle instead of waiting a full ``import_period``.
+        """
         try:
             agents = self.client.list_agents()
         except Exception as exc:  # noqa: BLE001
             self.logger.error(f"Could not fetch XTM One agents: {exc}")
-            return
+            return False
 
         existing = self._existing_targets()
 
@@ -256,6 +273,7 @@ class OpenAEVXtmOne(CollectorDaemon):
                 models = []
             for model in models:
                 self._upsert(self._model_payload(model), existing)
+        return True
 
     # -- Expectation validation ------------------------------------------------
 
@@ -479,8 +497,23 @@ class OpenAEVXtmOne(CollectorDaemon):
             except Exception as exc:  # noqa: BLE001
                 self.logger.warning(f"Could not create expectation traces: {exc}")
 
+    def _should_import(self, now: datetime) -> bool:
+        """The scheduler loop runs every ``period`` (expectation-matching cadence);
+        the heavier catalog import only runs once per ``import_period``."""
+        if self._last_import_at is None:
+            return True
+        return now - self._last_import_at >= self.import_period
+
     def _process_message(self) -> None:
-        self._import_targets()
+        now = datetime.now(timezone.utc)
+        if self._should_import(now):
+            if self._import_targets():
+                self._last_import_at = now
+        else:
+            self.logger.debug(
+                "Skipping catalog import (next one no earlier than "
+                f"{self._last_import_at + self.import_period})"
+            )
         if self.validate_expectations:
             self._validate_expectations()
 

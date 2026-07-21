@@ -78,7 +78,7 @@ The collector is configured either through environment variables (recommended, r
 |------------------|-----------------------|-----------------------------|--------------|-----------|--------------------------------------------------------------------------|
 | Collector ID     | `collector.id`        | `COLLECTOR_ID`              | /            | Yes       | A unique `UUIDv4` identifier for this collector instance.                |
 | Collector Name   | `collector.name`      | `COLLECTOR_NAME`            | XTM One      | No        | The name of the collector as shown in OpenAEV.                          |
-| Collector Period | `collector.period`    | `COLLECTOR_PERIOD`          | PT1H         | No        | Interval between two runs, as an ISO 8601 duration (e.g. `PT1H` = 1h).   |
+| Collector Period | `collector.period`    | `COLLECTOR_PERIOD`          | PT5M         | No        | Interval between two runs, as an ISO 8601 duration (e.g. `PT5M` = 5min). Expectation validation runs on every cycle, so this is the expectation-matching cadence; the catalog import is additionally throttled by the import period below. |
 | Log Level        | `collector.log_level` | `COLLECTOR_LOG_LEVEL`       | error        | No        | Verbosity of the logs. One of `debug`, `info`, `warn`, `error`.         |
 | Platform         | `collector.platform`  | `COLLECTOR_PLATFORM`        | LLM_FIREWALL | No        | The `SecurityPlatform` type registered in OpenAEV, so XTM One appears as a security platform and expectation results are attributed to it. Use `LLM_FIREWALL` for AI firewall / guardrail validators. |
 
@@ -88,6 +88,7 @@ The collector is configured either through environment variables (recommended, r
 |--------------------|-----------------------------------|--------------------------------------|-----------------|-----------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | XTM One URL         | `collector.xtm_one_url`          | `COLLECTOR_XTM_ONE_URL`              | /               | Yes       | Base URL of the XTM One platform (e.g. `https://xtm-one.example.com`). The collector talks to `/api/v1/agents`, `/v1/models` and `/api/v1/audit-logs`.              |
 | XTM One Token       | `collector.xtm_one_token`        | `COLLECTOR_XTM_ONE_TOKEN`            | /               | Yes       | XTM One API key (`fcp-...`) used to read the agents/models catalog and the security audit log, and stored on each seeded AI target. Reading the audit log to validate expectations requires an **administrator** key. |
+| Import period       | `collector.import_period`        | `COLLECTOR_IMPORT_PERIOD`            | `PT1H`          | No        | Minimum interval between two imports of the agents/models catalog, as an ISO 8601 duration. The import runs on the first cycle and then at most once per this period; set it lower than or equal to the collector period to import on every cycle. |
 | Validate expectations | `collector.validate_expectations` | `COLLECTOR_VALIDATE_EXPECTATIONS` | `true`          | No        | When `true`, match XTM One "Prompt injection detected" audit events to the AI red team injects to fulfill detection/prevention expectations. Requires an admin token. |
 | Include bare models | `collector.include_bare_models`  | `COLLECTOR_INCLUDE_BARE_MODELS`      | `false`         | No        | When `true`, also create an AI target for each bare LLM model exposed by the proxy (in addition to the agents).                                                     |
 | Agent tags          | `collector.agent_tags`           | `COLLECTOR_AGENT_TAGS`               | (empty)         | No        | Comma-separated list of XTM One agent tags to scope on. Empty means all agents are collected. Tag matching is case-insensitive.                                     |
@@ -123,9 +124,11 @@ poetry run python -m xtm_one.openaev_xtm_one
 
 ## Usage
 
-Once started, the collector registers itself in OpenAEV and then runs automatically every `COLLECTOR_PERIOD` (1 hour by
-default). Each run re-reads the XTM One agents catalog and upserts the corresponding AI targets, then (unless disabled)
-matches XTM One prompt-injection audit events to the pending AI red team expectations. No manual interaction is required.
+Once started, the collector registers itself in OpenAEV and then runs automatically every `COLLECTOR_PERIOD` (5 minutes
+by default). Every cycle (unless disabled) matches XTM One prompt-injection audit events to the pending AI red team
+expectations, so detection/prevention results land within minutes of an inject. The heavier catalog import (re-reading
+the XTM One agents and upserting the corresponding AI targets) runs on the first cycle and then at most once per
+`COLLECTOR_IMPORT_PERIOD` (1 hour by default). No manual interaction is required.
 
 By default (`COLLECTOR_INCLUDE_BARE_MODELS=false` and an empty `COLLECTOR_AGENT_TAGS`) the collector imports **all**
 chat-capable agents and **no** bare models. Set `COLLECTOR_AGENT_TAGS` to a comma-separated list to scope on specific
@@ -155,7 +158,7 @@ flowchart LR
     C -->|fulfill by marker match| E
 ```
 
-On each run, the collector first imports targets:
+On each import cycle (the first run, then at most once per `COLLECTOR_IMPORT_PERIOD`), the collector imports targets:
 
 1. Reads `GET /api/v1/agents` from XTM One and keeps only chat-capable agents (enabled, not `disable_chat`, with a
    slug).
@@ -167,13 +170,13 @@ On each run, the collector first imports targets:
    `source:xtm-one` and `type:model`).
 
 Existing targets are matched on their external reference (`xtm-one:agent:<slug>` / `xtm-one:model:<id>`) and updated in
-place, so repeated runs never create duplicates. It then validates expectations when
-`COLLECTOR_VALIDATE_EXPECTATIONS=true` (see below).
+place, so repeated runs never create duplicates. Expectation validation runs on every cycle (every `COLLECTOR_PERIOD`)
+when `COLLECTOR_VALIDATE_EXPECTATIONS=true` (see below).
 
 ## Detection and prevention validation
 
-When `COLLECTOR_VALIDATE_EXPECTATIONS=true` (the default), after importing targets the collector fulfills the detection
-and prevention expectations raised by the AI red team injector, in the same way an EDR or AI-defense collector does.
+When `COLLECTOR_VALIDATE_EXPECTATIONS=true` (the default), on every cycle the collector fulfills the detection and
+prevention expectations raised by the AI red team injector, in the same way an EDR or AI-defense collector does.
 
 How the correlation works:
 
@@ -242,4 +245,5 @@ Set `COLLECTOR_LOG_LEVEL=debug` to get verbose logs, including each AI target as
 - Agents scoping is tag-based; bare models have no tags in XTM One, so `COLLECTOR_AGENT_TAGS` only affects agents.
 - The credential used to reach XTM One at inject execution time is the `ai_target_token` stored on each seeded target
   (a copy of `COLLECTOR_XTM_ONE_TOKEN`); the injector reads it from the target when the inject runs. Rotating the XTM
-  One key therefore only requires updating the collector configuration - the next run refreshes every seeded target.
+  One key therefore only requires updating the collector configuration - the next import cycle refreshes every seeded
+  target.

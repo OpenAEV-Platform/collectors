@@ -7,7 +7,8 @@ collector:
   id: 'ChangeMe'   # unique collector instance identifier (UUIDv4 recommended)
   name: 'XTM One'
   platform: 'LLM_FIREWALL'   # security platform type registered in OpenAEV (EDR, XDR, SIEM, SOAR, NDR, ISPM, LLM_FIREWALL, AI_GATEWAY)
-  period: 'PT1H'
+  period: 'PT5M'   # scheduler loop = expectation-matching cadence
+  import_period: 'PT1H'   # minimum interval between two agents-catalog imports
   log_level: 'error'
   xtm_one_url: 'ChangeMe'   # base URL of the XTM One platform
   xtm_one_token: 'ChangeMe'   # XTM One API key (fcp-...): reads the catalog + audit log (admin key) and is stored on each seeded AI target

@@ -1,6 +1,19 @@
+from datetime import timedelta
+
 from pydantic import Field
 from pyoaev.configuration import ConfigLoaderOAEV, Configuration, SettingsLoader
 from xtm_one.configuration.collector_config_override import CollectorConfigOverride
+
+
+def _optional_seconds(value: timedelta | None) -> int | None:
+    """Convert an optional duration to whole seconds.
+
+    Both period fields are typed ``timedelta | None``, so an explicit
+    ``null`` in the YAML config must not crash the daemon-config build;
+    ``None`` flows through and the runtime fallbacks apply (the daemon
+    default for ``period``, one hour for ``import_period``).
+    """
+    return int(value.total_seconds()) if value is not None else None
 
 
 class ConfigLoader(SettingsLoader):
@@ -18,7 +31,11 @@ class ConfigLoader(SettingsLoader):
                 "collector_platform": {"data": self.collector.platform},
                 "collector_log_level": {"data": self.collector.log_level},
                 "collector_period": {
-                    "data": int(self.collector.period.total_seconds()),  # type: ignore[union-attr]
+                    "data": _optional_seconds(self.collector.period),
+                    "is_number": True,
+                },
+                "import_period": {
+                    "data": _optional_seconds(self.collector.import_period),
                     "is_number": True,
                 },
                 "collector_icon_filepath": {"data": self.collector.icon_filepath},
