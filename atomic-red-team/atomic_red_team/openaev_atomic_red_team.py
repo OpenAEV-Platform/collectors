@@ -27,7 +27,8 @@ IGNORED_PAYLOADS = [
     "6aa58451-1121-4490-a8e9-1dada3f1c68c",
     "b854eb97-bf9b-45ab-a1b5-b94e4880c56b",
     "4ff64f0b-aaf2-4866-b39d-38d9791407cc",
-    "f3aa95fe-4f10-4485-ad26-abf22a764c52", #Ignore this payload because it is a Delete Filesystem - Linux from Atomic Red Team and it is not suitable for OpenAEV. It causes data loss and system instability.
+    "f3aa95fe-4f10-4485-ad26-abf22a764c52",  # Ignore this payload because it is a Delete Filesystem -
+    # Linux from Atomic Red Team and it is not suitable for OpenAEV. It causes data loss and system instability.
 ]
 
 PLATFORMS = {
