@@ -1,0 +1,70 @@
+name: Lint & Format
+
+on:
+  push:
+  pull_request:
+  workflow_call:
+
+env:
+  UV_SYSTEM_PYTHON: 1
+  
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  ensure_formatting:
+    name: Ensure Formatting
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: "Set up Python"
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b
+
+      - name: Create virtual environment
+        run: uv venv
+
+      - name: Install formatting tools
+        run: uv pip install black isort
+
+      - name: Confirm black version
+        run: uv run black --version
+
+      - name: Check isort
+        run: uv run isort --profile black --line-length 88 --check-only --diff .
+
+      - name: Check black
+        run: uv run black --check --diff .
+
+  base_linter:
+    name: Base Linter (flake8)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: "Set up Python"
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b
+
+      - name: Create virtual environment
+        run: uv venv
+
+      - name: Install flake8
+        run: uv pip install flake8
+
+      - name: Run flake8
+        run: uv run flake8 --ignore=E,W .
