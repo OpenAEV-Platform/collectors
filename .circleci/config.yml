@@ -806,20 +806,34 @@ jobs:
       - slack/notify:
           event: fail
           template: basic_fail_1
-  deploy_testing:
+  deploy_main_oaev:
     docker:
       - image: cimg/base:stable
     steps:
       - checkout
       - kubernetes/install-kubectl
-      - run: kubectl --server=https://api.staging.eu-west.filigran.io --token=$K8S_TOKEN -n customer-testing-oaev rollout restart deployment -l app=openaev-colljector
-  deploy_prerelease:
+      - run: kubectl --server=https://api.staging.eu-west.filigran.io --token=$K8S_TOKEN -n main-oaev rollout restart deployment -l app=openaev-colljector
+  deploy_main_ff_oaev:
     docker:
       - image: cimg/base:stable
     steps:
       - checkout
       - kubernetes/install-kubectl
-      - run: kubectl --server=https://api.staging.eu-west.filigran.io --token=$K8S_TOKEN_PRE_RELEASE -n customer-prerelease-oaev rollout restart deployment -l app=openaev-colljector
+      - run: kubectl --server=https://api.staging.eu-west.filigran.io --token=$K8S_TOKEN -n main-ff-oaev rollout restart deployment -l app=openaev-colljector
+  deploy_testing_oaev:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - checkout
+      - kubernetes/install-kubectl
+      - run: kubectl --server=https://api.staging.eu-west.filigran.io --token=$K8S_TOKEN -n testing-oaev rollout restart deployment -l app=openaev-colljector
+  deploy_testing_xtm_one_oaev:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - checkout
+      - kubernetes/install-kubectl
+      - run: kubectl --server=https://api.staging.eu-west.filigran.io --token=$K8S_TOKEN_PRE_RELEASE -n testing-xtm-one-oaev rollout restart deployment -l app=openaev-colljector
   notify_rolling:
     docker:
       - image: "cimg/base:stable"
@@ -853,7 +867,25 @@ workflows:
             branches:
               only:
                 - main
-      - deploy_testing:
+      - deploy_main_oaev:
+          requires:
+            - publish_images
+          filters:
+            branches:
+              only: main
+      - deploy_main_ff_oaev:
+          requires:
+            - publish_images
+          filters:
+            branches:
+              only: main
+      - deploy_testing_oaev:
+          requires:
+            - publish_images
+          filters:
+            branches:
+              only: main
+      - deploy_testing_xtm_one_oaev:
           requires:
             - publish_images
           filters:
@@ -861,7 +893,10 @@ workflows:
               only: main
       - notify_rolling:
           requires:
-            - deploy_testing
+            - deploy_main_oaev
+            - deploy_main_ff_oaev
+            - deploy_testing_oaev
+            - deploy_testing_xtm_one_oaev
       - notify:
           requires:
             - publish_images
