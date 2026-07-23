@@ -76,21 +76,33 @@ def _normalize_path(path):
     return path.replace("\\", "/")
 
 
+def _basename(path):
+    # Atomic Red Team paths are Windows-style ("PathToAtomicsFolder\..\file.exe").
+    # os.path.basename does not split on backslashes when the collector runs on
+    # Linux, so normalize separators before extracting the file name.
+    return os.path.basename(_normalize_path(str(path)))
+
+
 def get_argument_name_by_path(arguments, fullpath):
-    file_name = os.path.basename(fullpath)
+    file_name = _basename(fullpath)
 
     for ar in arguments:
-        default_value_file_name = os.path.basename(str(ar["default_value"]))
         if (
             isinstance(ar["default_value"], str)
-            and file_name == default_value_file_name
+            and file_name == _basename(ar["default_value"])
             and "http" not in ar["default_value"]
         ):
-
             return ar["key"]
 
-    path_without_prefix = fullpath.replace("PathToAtomicsFolder", "").replace("$", "")
     new_key = f"{file_name.replace('.', '_')}_atomicredteam_path"
+
+    # Never append the same argument key twice: duplicated keys end up as
+    # duplicated fields in the generated injector contract.
+    for ar in arguments:
+        if ar["key"] == new_key:
+            return new_key
+
+    path_without_prefix = fullpath.replace("PathToAtomicsFolder", "").replace("$", "")
     new_argument = {
         "type": "text",
         "key": new_key,
@@ -102,7 +114,7 @@ def get_argument_name_by_path(arguments, fullpath):
 
 
 def handle_resources(platforms, prerequisites, fullpath, arg_name):
-    file_name = os.path.basename(fullpath)
+    file_name = _basename(fullpath)
     path_without_prefix = fullpath.replace("PathToAtomicsFolder", "").replace("$", "")
 
     for pr in prerequisites:
@@ -160,7 +172,7 @@ def _catch_atomic_folder_paths(string_to_analyse, handle_match_callback):
 
 def _format_command(string_to_analyse, arguments, platforms, prerequisites):
     def handle_match_callback(string, match):
-        if os.path.basename(match) == "ExternalPayloads":
+        if _basename(match) == "ExternalPayloads":
             return string
 
         arg_name = get_argument_name_by_path(arguments, match)
@@ -176,7 +188,7 @@ def _format_prerequisite(string_to_analyse, arguments):
 
     def handle_match_callback(string, match):
         nonlocal folder_name, arg_name
-        if os.path.basename(match) == "ExternalPayloads":
+        if _basename(match) == "ExternalPayloads":
             folder_name = match
             return string
 
