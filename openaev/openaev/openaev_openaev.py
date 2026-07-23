@@ -95,6 +95,12 @@ class OpenAEVOpenAEV(CollectorDaemon):
             return
 
         payload["payload_collector"] = self._configuration.get("collector_id")
+
+        # Declare expected security platform types on the payload's
+        # predefined expectations when the source repo JSON does not
+        # declare them itself (only for expectation types the payload has).
+        apply_default_expected_security_platforms(payload_information)
+
         self.api.payload.upsert(payload)
         self.logger.info(f"Payload {payload["payload_name"]} imported")
 
