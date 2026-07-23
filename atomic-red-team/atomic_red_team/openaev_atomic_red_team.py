@@ -29,6 +29,11 @@ IGNORED_PAYLOADS = [
     "4ff64f0b-aaf2-4866-b39d-38d9791407cc",
 ]
 
+# Ignore payloads that are deemed too harmful for the current OAEV capabilities
+FORBIDDEN_PAYLOADS = [
+    "f3aa95fe-4f10-4485-ad26-abf22a764c52",  # Delete Filesystem - Linux from Atomic Red Team (rational: data loss and system instability)
+]
+
 PLATFORMS = {
     "windows": "Windows",
     "linux": "Linux",
@@ -237,6 +242,8 @@ class OpenAEVAtomicRedTeam(CollectorDaemon):
                     "atomic_tests"
                 ]:
                     if atomic_test["auto_generated_guid"] in IGNORED_PAYLOADS:
+                        continue
+                    if atomic_test["auto_generated_guid"] in FORBIDDEN_PAYLOADS:
                         continue
                     arguments = []
                     if (
