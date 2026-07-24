@@ -21,3 +21,8 @@ class CollectorConfigOverride(ConfigLoaderCollector):
         default="atomic_red_team/img/icon-atomic-red-team.png",
         description="Path to the icon file",
     )
+    author: str | None = Field(
+        default=None,
+        description="Optional author override for this collector's payloads and "
+        "contracts. When absent, the platform attributes them to the collector's name.",
+    )
