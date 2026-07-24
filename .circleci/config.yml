@@ -70,7 +70,7 @@ jobs:
           command: poetry run python -m unittest
       - run:
           working_directory: ~/openaev/palo-alto-cortex-xdr
-          name: Install dependencies for palo-alto-cortex-xdx
+          name: Install dependencies for palo-alto-cortex-xdr
           command: poetry run pip install pytest factory-boy pyoaev
       - run:
           working_directory: ~/openaev/palo-alto-cortex-xdr
