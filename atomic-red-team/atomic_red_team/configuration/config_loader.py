@@ -25,6 +25,9 @@ class ConfigLoader(SettingsLoader):
                     "is_number": True,
                 },
                 "collector_icon_filepath": {"data": self.collector.icon_filepath},
+                # Optional author override; None lets the platform attribute the
+                # payloads to the collector's name.
+                "collector_author": {"data": self.collector.author},
             },
             config_base_model=self,
         )

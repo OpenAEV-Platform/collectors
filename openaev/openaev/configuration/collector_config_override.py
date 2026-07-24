@@ -14,3 +14,8 @@ class CollectorConfigOverride(ConfigLoaderCollector):
         default=timedelta(days=7),
         description="Duration between two scheduled runs of the collector (ISO 8601 format).",
     )
+    author: str | None = Field(
+        default=None,
+        description="Optional author override for this collector's payloads and "
+        "contracts. When absent, the platform attributes them to the collector's name.",
+    )
