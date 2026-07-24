@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import MagicMock, patch, sentinel
 
-import openaev.processors .common_processor as module
+import openaev.processors.common_processor as module
 
 
 @patch.object(module, "requests")
@@ -16,7 +16,7 @@ class TestCommonProcessor(unittest.TestCase):
             api=api,
             logger=logger,
             payload_path=payload_path,
-            github_crawler=github_crawler
+            github_crawler=github_crawler,
         )
 
         self.assertEqual(cprocessor.api, api)
@@ -35,7 +35,7 @@ class TestCommonProcessor(unittest.TestCase):
             api=api,
             logger=logger,
             payload_path=payload_path,
-            github_crawler=github_crawler
+            github_crawler=github_crawler,
         )
 
         tag_name = "my-tag-name"
@@ -44,4 +44,6 @@ class TestCommonProcessor(unittest.TestCase):
         cprocessor._create_or_get_tag(tag_name, tag_color)
         api.tag.upsert.return_value = {"tag_id": sentinel.tag_id}
 
-        api.tag.upsert.assert_called_with({"tag_name": tag_name, "tag_color": tag_color})
+        api.tag.upsert.assert_called_with(
+            {"tag_name": tag_name, "tag_color": tag_color}
+        )

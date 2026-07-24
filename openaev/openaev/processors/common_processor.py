@@ -4,6 +4,7 @@ import zipfile
 
 import requests
 
+from openaev.constants import DEFAULT_EXPECTED_SECURITY_PLATFORMS
 from openaev.github_crawler import GithubCrawler
 
 
@@ -31,6 +32,28 @@ class CommonProcessor:
         except Exception as e:
             self.logger.warning(f"Failed to upsert tag {tag_name}: {e}")
             return None
+
+    @staticmethod
+    def _apply_default_expected_security_platforms(payload) -> None:
+        """Fill in default expected security platform types on the payload.
+
+        Only applies when the source repo JSON does not declare
+        payload_expected_security_platforms itself: an explicit value always wins,
+        including an explicit empty map (which means "any platform"). Defaults are
+        only declared for the expectation types the payload has; payloads without
+        expectations are left untouched.
+        """
+        if payload.get("payload_expected_security_platforms") is not None:
+            return
+
+        expected_security_platforms = {
+            expectation_type: list(platform_types)
+            for expectation_type, platform_types in DEFAULT_EXPECTED_SECURITY_PLATFORMS.items()
+            if expectation_type in (payload.get("payload_expectations") or [])
+        }
+
+        if expected_security_platforms:
+            payload["payload_expected_security_platforms"] = expected_security_platforms
 
     def _process_payload_tags(self, payload: dict):
         tags_mapping = {}

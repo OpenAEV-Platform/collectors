@@ -71,4 +71,9 @@ class JsonApiProcessor(CommonProcessor):
             if key in flat_payload:
                 del flat_payload[key]
 
+        # Declare expected security platform types on the payload's
+        # predefined expectations when the source repo JSON does not
+        # declare them itself (only for expectation types the payload has).
+        self._apply_default_expected_security_platforms(flat_payload)
+
         return flat_payload

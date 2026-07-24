@@ -25,4 +25,9 @@ class JsonFlatProcessor(CommonProcessor):
             if key in payload_information and new_document is not None:
                 payload_information[key] = new_document["document_id"]
 
+        # Declare expected security platform types on the payload's
+        # predefined expectations when the source repo JSON does not
+        # declare them itself (only for expectation types the payload has).
+        self._apply_default_expected_security_platforms(payload_information)
+
         return payload_information
