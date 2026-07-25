@@ -15,6 +15,19 @@ class CollectorConfigOverride(ConfigLoaderCollector):
         default="SIEM",
         description="Platform type for the collector (e.g., EDR, SIEM, etc.).",
     )
+    platform_description: str | None = Field(
+        default=(
+            "Microsoft Sentinel, the Microsoft cloud-native security information "
+            "and event management (SIEM) platform. Automatically registered by the "
+            "Microsoft Sentinel collector, which matches Sentinel incidents to "
+            "validate detection expectations."
+        ),
+        description="Description applied to the security platform auto-created by the collector.",
+    )
+    platform_tags: list[str] | None = Field(
+        default=["siem", "microsoft"],
+        description="Tag names applied to the security platform auto-created by the collector.",
+    )
     icon_filepath: str | None = Field(
         default="microsoft_sentinel/img/icon-microsoft-sentinel.png",
         description="Path to the icon file",

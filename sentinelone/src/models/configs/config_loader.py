@@ -36,6 +36,21 @@ class ConfigLoaderCollector(_ConfigLoaderCollector):
         default="SentinelOne",
         description="Name of the collector.",
     )
+    platform_description: str | None = Field(
+        alias="COLLECTOR_PLATFORM_DESCRIPTION",
+        default=(
+            "SentinelOne Singularity, the SentinelOne endpoint detection and "
+            "response (EDR) platform. Automatically registered by the SentinelOne "
+            "collector, which matches SentinelOne threats to validate prevention "
+            "and detection expectations."
+        ),
+        description="Description applied to the security platform auto-created by the collector.",
+    )
+    platform_tags: list[str] | None = Field(
+        alias="COLLECTOR_PLATFORM_TAGS",
+        default=["edr", "sentinelone"],
+        description="Tag names applied to the security platform auto-created by the collector.",
+    )
 
 
 class ConfigLoader(ConfigBaseSettings):
@@ -135,6 +150,10 @@ class ConfigLoader(ConfigBaseSettings):
                 "collector_id": {"data": self.collector.id},
                 "collector_name": {"data": self.collector.name},
                 "collector_platform": {"data": self.collector.platform},
+                "collector_platform_description": {
+                    "data": self.collector.platform_description
+                },
+                "collector_platform_tags": {"data": self.collector.platform_tags},
                 "collector_log_level": {"data": self.collector.log_level},
                 "collector_period": {
                     "data": int(self.collector.period.total_seconds())

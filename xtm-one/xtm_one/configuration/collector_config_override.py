@@ -23,6 +23,19 @@ class CollectorConfigOverride(ConfigLoaderCollector):
             "Accepted values: EDR, XDR, SIEM, SOAR, NDR, ISPM, LLM_FIREWALL, AI_GATEWAY."
         ),
     )
+    platform_description: str | None = Field(
+        default=(
+            "Filigran XTM One, the agentic AI platform whose built-in AI defense "
+            "detects prompt injections against its agents. Automatically registered "
+            "by the XTM One collector, which matches XTM One security events to "
+            "validate AI detection expectations."
+        ),
+        description="Description applied to the security platform auto-created by the collector.",
+    )
+    platform_tags: list[str] | None = Field(
+        default=["llm-firewall", "filigran"],
+        description="Tag names applied to the security platform auto-created by the collector.",
+    )
     period: timedelta | None = Field(
         default=timedelta(minutes=5),
         description=(
