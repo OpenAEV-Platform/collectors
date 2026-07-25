@@ -167,6 +167,15 @@ class OpenAEVTaniumThreatResponse(CollectorDaemon):
         # null when an expectation has no signatures, so guard before iterating.
         if not expectation.get("inject_expectation_signatures"):
             return False
+        # Drop malformed signature entries (missing type or null value) so the
+        # detection helper never compares None against alert data.
+        valid_signatures = [
+            signature
+            for signature in expectation["inject_expectation_signatures"]
+            if signature.get("type") and signature.get("value")
+        ]
+        if not valid_signatures:
+            return False
         # Defender / Deep Instinct (dedicated collectors)
         if alert["matchType"] in ["windows_defender", "deep_instinct"]:
             return False
@@ -202,7 +211,7 @@ class OpenAEVTaniumThreatResponse(CollectorDaemon):
                     "data": str(alert),
                 }
         match_result = self.openaev_detection_helper.match_alert_elements(
-            signatures=expectation["inject_expectation_signatures"],
+            signatures=valid_signatures,
             alert_data=alert_data,
         )
 

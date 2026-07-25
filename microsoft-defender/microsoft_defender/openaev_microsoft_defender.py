@@ -246,6 +246,17 @@ class OpenAEVMicrosoftDefender(CollectorDaemon):
         if not expectation.get("inject_expectation_signatures"):
             return False
 
+        # Drop malformed signature entries (missing type or null value): a null
+        # value coerced to an empty string would trivially match any alert data
+        # in the detection helper's substring comparison.
+        valid_signatures = [
+            signature
+            for signature in expectation["inject_expectation_signatures"]
+            if signature.get("type") and signature.get("value")
+        ]
+        if not valid_signatures:
+            return False
+
         alert_data = {}
         for signature_type in self.relevant_signatures_types:
             alert_data[signature_type] = {}
@@ -287,12 +298,12 @@ class OpenAEVMicrosoftDefender(CollectorDaemon):
         match_result = self.openaev_detection_helper.match_alert_elements(
             signatures=[
                 {
-                    "type": signature.get("type"),
+                    "type": signature["type"],
                     # the KQL query lowers all, filenames due to limitation in data source
                     # therefore we need to compare to lowercased strings
-                    "value": (signature.get("value") or "").lower(),
+                    "value": signature["value"].lower(),
                 }
-                for signature in expectation["inject_expectation_signatures"]
+                for signature in valid_signatures
             ],
             alert_data=alert_data,
         )

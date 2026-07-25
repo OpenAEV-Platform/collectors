@@ -193,3 +193,27 @@ def test_match_alert_returns_false_when_signatures_are_null():
 
     # Key entirely absent
     assert collector._match_alert(alert, evidences, dict(base_expectation)) is False
+
+
+def test_match_alert_returns_false_when_signatures_are_malformed():
+    """Signatures missing a type or carrying a null value must be ignored:
+    coercing a null value to an empty string would trivially match any alert
+    data in the detection helper's substring comparison (false positive)."""
+    collector = OpenAEVMicrosoftDefender.__new__(OpenAEVMicrosoftDefender)
+    collector.logger = MagicMock()
+
+    alert = {"AlertId": "alert-1"}
+    evidences = []
+
+    for signatures in (
+        [{"type": "process_name", "value": None}],
+        [{"type": "process_name"}],
+        [{"value": "powershell.exe"}],
+        [{"type": None, "value": None}],
+    ):
+        expectation = {
+            "inject_expectation_id": "exp-1",
+            "inject_expectation_asset": "host-1",
+            "inject_expectation_signatures": signatures,
+        }
+        assert collector._match_alert(alert, evidences, expectation) is False
