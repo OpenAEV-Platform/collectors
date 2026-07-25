@@ -241,6 +241,11 @@ class OpenAEVMicrosoftDefender(CollectorDaemon):
         if expectation["inject_expectation_asset"] is None:
             return False
 
+        # No signatures to match against: the platform serializes the field as
+        # null when an expectation has no signatures, so guard before iterating.
+        if not expectation.get("inject_expectation_signatures"):
+            return False
+
         alert_data = {}
         for signature_type in self.relevant_signatures_types:
             alert_data[signature_type] = {}
@@ -282,12 +287,12 @@ class OpenAEVMicrosoftDefender(CollectorDaemon):
         match_result = self.openaev_detection_helper.match_alert_elements(
             signatures=[
                 {
-                    "type": expectation.get("type"),
+                    "type": signature.get("type"),
                     # the KQL query lowers all, filenames due to limitation in data source
                     # therefore we need to compare to lowercased strings
-                    "value": expectation.get("value").lower(),
+                    "value": (signature.get("value") or "").lower(),
                 }
-                for expectation in expectation["inject_expectation_signatures"]
+                for signature in expectation["inject_expectation_signatures"]
             ],
             alert_data=alert_data,
         )

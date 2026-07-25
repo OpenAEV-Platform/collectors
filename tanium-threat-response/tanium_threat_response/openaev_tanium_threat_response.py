@@ -163,6 +163,10 @@ class OpenAEVTaniumThreatResponse(CollectorDaemon):
         # No asset
         if expectation["inject_expectation_asset"] is None:
             return False
+        # No signatures to match against: the platform serializes the field as
+        # null when an expectation has no signatures, so guard before iterating.
+        if not expectation.get("inject_expectation_signatures"):
+            return False
         # Defender / Deep Instinct (dedicated collectors)
         if alert["matchType"] in ["windows_defender", "deep_instinct"]:
             return False
@@ -209,10 +213,11 @@ class OpenAEVTaniumThreatResponse(CollectorDaemon):
     # --- PROCESS ---
 
     def _is_expectation_filled(self, expectation) -> bool:
+        # inject_expectation_results is serialized as null when empty
         return any(
             er.get("sourceId", "") == self._configuration.get("collector_id")
             and er.get("result", None) is not None
-            for er in expectation["inject_expectation_results"]
+            for er in expectation.get("inject_expectation_results") or []
         )
 
     def _process_message(self) -> None:

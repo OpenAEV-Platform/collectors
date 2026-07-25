@@ -167,3 +167,29 @@ def test_process_alerts_updates_detection_and_creates_trace():
     request_body = post_mock.await_args.kwargs["body"]
     assert request_body.query == TH_API_QUERY
     assert request_body.timespan
+
+
+def test_match_alert_returns_false_when_signatures_are_null():
+    """Regression test: the platform serializes inject_expectation_signatures as
+    null when an expectation has no signatures, which used to crash the whole
+    processing loop with 'NoneType' object is not iterable."""
+    collector = OpenAEVMicrosoftDefender.__new__(OpenAEVMicrosoftDefender)
+    collector.logger = MagicMock()
+
+    alert = {"AlertId": "alert-1"}
+    evidences = []
+
+    base_expectation = {
+        "inject_expectation_id": "exp-1",
+        "inject_expectation_asset": "host-1",
+    }
+
+    for signatures in (None, []):
+        expectation = {
+            **base_expectation,
+            "inject_expectation_signatures": signatures,
+        }
+        assert collector._match_alert(alert, evidences, expectation) is False
+
+    # Key entirely absent
+    assert collector._match_alert(alert, evidences, dict(base_expectation)) is False
