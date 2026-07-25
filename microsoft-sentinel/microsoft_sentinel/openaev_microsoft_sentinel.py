@@ -80,8 +80,9 @@ class OpenAEVMicrosoftSentinel(CollectorDaemon):
 
     def _match_alert_link(self, expectation, alert_link_datas) -> bool:
         # Extract expectation alert link
+        # (inject_expectation_results is serialized as null when empty)
         alert_id_expectation = None
-        for item in expectation["inject_expectation_results"]:
+        for item in expectation.get("inject_expectation_results") or []:
             self.logger.info(item["sourceName"])
             attached_collectors = self._configuration.get(
                 "microsoft_sentinel_edr_collectors"
