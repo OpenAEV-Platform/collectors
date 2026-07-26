@@ -13,6 +13,19 @@ class CollectorConfigOverride(ConfigLoaderCollector):
         default="LLM_FIREWALL",
         description="Security platform type registered for this collector.",
     )
+    platform_description: str | None = Field(
+        default=(
+            "Prompt Security, the AI security platform protecting LLM applications "
+            "from prompt injections and data leakage. Automatically registered by "
+            "the Prompt Security collector, which matches security events to "
+            "validate AI prevention and detection expectations."
+        ),
+        description="Description applied to the security platform auto-created by the collector.",
+    )
+    platform_tags: list[str] | None = Field(
+        default=["llm-firewall", "prompt-security"],
+        description="Tag names applied to the security platform auto-created by the collector.",
+    )
     icon_filepath: str | None = Field(
         default="prompt_security/img/icon-prompt-security.png",
         description="Path to the icon file",

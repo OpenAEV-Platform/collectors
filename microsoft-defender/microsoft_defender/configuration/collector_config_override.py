@@ -15,6 +15,19 @@ class CollectorConfigOverride(ConfigLoaderCollector):
         default="EDR",
         description="Platform type for the collector (e.g., EDR, SIEM, etc.).",
     )
+    platform_description: str | None = Field(
+        default=(
+            "Microsoft Defender for Endpoint, the Microsoft endpoint detection and "
+            "response (EDR) platform. Automatically registered by the Microsoft "
+            "Defender collector, which matches Defender alerts to validate "
+            "prevention and detection expectations."
+        ),
+        description="Description applied to the security platform auto-created by the collector.",
+    )
+    platform_tags: list[str] | None = Field(
+        default=["edr", "microsoft"],
+        description="Tag names applied to the security platform auto-created by the collector.",
+    )
     icon_filepath: str | None = Field(
         default="microsoft_defender/img/icon-microsoft-defender.png",
         description="Path to the icon file",

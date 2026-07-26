@@ -21,6 +21,10 @@ class ConfigLoader(SettingsLoader):
                 "collector_name": {"data": self.collector.name},
                 "collector_log_level": {"data": self.collector.log_level},
                 "collector_platform": {"data": self.collector.platform},
+                "collector_platform_description": {
+                    "data": self.collector.platform_description
+                },
+                "collector_platform_tags": {"data": self.collector.platform_tags},
                 "collector_period": {
                     "data": int(self.collector.period.total_seconds()),  # type: ignore[union-attr]
                     "is_number": True,

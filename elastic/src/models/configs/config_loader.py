@@ -36,6 +36,21 @@ class ConfigLoaderCollector(_ConfigLoaderCollector):
         default="Elastic",
         description="Name of the collector.",
     )
+    platform_description: str | None = Field(
+        alias="COLLECTOR_PLATFORM_DESCRIPTION",
+        default=(
+            "Elastic Security, the Elastic SIEM and endpoint security solution. "
+            "Automatically registered by the Elastic collector, which matches "
+            "Elastic Security alerts to validate prevention and detection "
+            "expectations."
+        ),
+        description="Description applied to the security platform auto-created by the collector.",
+    )
+    platform_tags: list[str] | None = Field(
+        alias="COLLECTOR_PLATFORM_TAGS",
+        default=["siem", "elastic"],
+        description="Tag names applied to the security platform auto-created by the collector.",
+    )
 
 
 class ConfigLoader(ConfigBaseSettings):
@@ -135,6 +150,10 @@ class ConfigLoader(ConfigBaseSettings):
                 "collector_id": {"data": self.collector.id},
                 "collector_name": {"data": self.collector.name},
                 "collector_platform": {"data": self.collector.platform},
+                "collector_platform_description": {
+                    "data": self.collector.platform_description
+                },
+                "collector_platform_tags": {"data": self.collector.platform_tags},
                 "collector_log_level": {"data": self.collector.log_level},
                 "collector_period": {
                     "data": int(self.collector.period.total_seconds()),  # type: ignore[union-attr]

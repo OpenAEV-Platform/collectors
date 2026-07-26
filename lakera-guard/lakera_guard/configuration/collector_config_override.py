@@ -13,6 +13,19 @@ class CollectorConfigOverride(ConfigLoaderCollector):
         default="LLM_FIREWALL",
         description="Security platform type registered for this collector.",
     )
+    platform_description: str | None = Field(
+        default=(
+            "Lakera Guard, the AI security platform screening LLM prompts for "
+            "injections and unsafe content. Automatically registered by the Lakera "
+            "Guard collector, which matches screening results to validate AI "
+            "prevention and detection expectations."
+        ),
+        description="Description applied to the security platform auto-created by the collector.",
+    )
+    platform_tags: list[str] | None = Field(
+        default=["llm-firewall", "lakera"],
+        description="Tag names applied to the security platform auto-created by the collector.",
+    )
     icon_filepath: str | None = Field(
         default="lakera_guard/img/icon-lakera-guard.png",
         description="Path to the icon file",

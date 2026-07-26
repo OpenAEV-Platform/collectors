@@ -36,6 +36,21 @@ class ConfigLoaderCollector(BaseConfigLoaderCollector):
         default="Palo Alto Cortex XDR",
         description="Name of the collector.",
     )
+    platform_description: str | None = Field(
+        alias="COLLECTOR_PLATFORM_DESCRIPTION",
+        default=(
+            "Palo Alto Networks Cortex XDR, the Palo Alto extended detection and "
+            "response (XDR) platform. Automatically registered by the Cortex XDR "
+            "collector, which matches Cortex XDR alerts to validate prevention and "
+            "detection expectations."
+        ),
+        description="Description applied to the security platform auto-created by the collector.",
+    )
+    platform_tags: list[str] | None = Field(
+        alias="COLLECTOR_PLATFORM_TAGS",
+        default=["xdr", "palo-alto"],
+        description="Tag names applied to the security platform auto-created by the collector.",
+    )
 
 
 class ConfigLoader(ConfigBaseSettings):
@@ -135,6 +150,10 @@ class ConfigLoader(ConfigBaseSettings):
                 "collector_id": {"data": self.collector.id},
                 "collector_name": {"data": self.collector.name},
                 "collector_platform": {"data": self.collector.platform},
+                "collector_platform_description": {
+                    "data": self.collector.platform_description
+                },
+                "collector_platform_tags": {"data": self.collector.platform_tags},
                 "collector_log_level": {"data": self.collector.log_level},
                 "collector_period": {
                     "data": (
