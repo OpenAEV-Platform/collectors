@@ -57,7 +57,7 @@ class OpenAEVOpenAEV(CollectorDaemon):
             payload = json_flat_processor._process_payload(payload)
         else:
             self.logger.warning(
-                f"Skipping a payload that didn't match JSON:API format nor flat legacy format: {self.payload_path}"
+                f"Skipping a payload that didn't match JSON:API format nor flat legacy format: {payload_path}"
             )
             return
 

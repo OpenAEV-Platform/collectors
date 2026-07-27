@@ -1,6 +1,6 @@
 import unittest
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch, sentinel
 
 import orjson
 
@@ -12,8 +12,8 @@ daemon_config_data = {
     "openaev_url_prefix": "https://raw.githubusercontent.com/OpenAEV-Platform/payloads/refs/heads/main/",
     "collector_id": "collector-id",
 }
-old_format_path = Path("./tests/functional/old_format.json")
-new_format_path = Path("./tests/functional/new_format.json")
+json_flat_format_path = Path("./tests/functional/old_format.json")
+json_api_format_path = Path("./tests/functional/new_format.json")
 
 
 def fake_upsert_tag(data):
@@ -21,108 +21,139 @@ def fake_upsert_tag(data):
 
 
 class TestProcessingFunctions(unittest.TestCase):
-    def test_compare_process_results(self):
+    @patch.object(module, "GithubCrawler")
+    def test_compare_process_results(self, m_github_crawler):
         _configuration = daemon_config_data
         api = MagicMock()
         api.tag.upsert.side_effect = fake_upsert_tag
-        session = MagicMock()
 
         collector = module.OpenAEVOpenAEV(_configuration)
         collector.api = api
-        collector.session = session
 
-        old_payload = orjson.loads(old_format_path.read_bytes())
-        new_payload = orjson.loads(new_format_path.read_bytes())
+        json_flat_payload = orjson.loads(json_flat_format_path.read_bytes())
+        self.assertTrue(collector._is_valid_json_flat(json_flat_payload))
 
-        old_payload_processed = collector._process_jsonflat_payload(old_payload)
-        new_payload_processed = collector._process_jsonapi_payload(new_payload)
+        json_api_payload = orjson.loads(json_api_format_path.read_bytes())
+        self.assertTrue(collector._is_valid_json_api(json_api_payload))
+
+        json_flat_processor = module.JsonFlatProcessor(
+            api=collector.api,
+            logger=collector.api,
+            payload_path=sentinel.json_flat_payload_path,
+            github_crawler=collector.github_crawler,
+        )
+        json_flat_session = MagicMock()
+        json_flat_processor.session = json_flat_session
+
+        json_flat_payload_processed = json_flat_processor._process_payload(
+            json_flat_payload
+        )
+
+        json_api_processor = module.JsonApiProcessor(
+            api=collector.api,
+            logger=collector.api,
+            payload_path=sentinel.json_api_payload_path,
+            github_crawler=collector.github_crawler,
+        )
+        json_api_session = MagicMock()
+        json_api_processor.session = json_api_session
+
+        json_api_payload_processed = json_api_processor._process_payload(
+            json_api_payload
+        )
 
         self.assertTrue(
             all(
-                key in new_payload_processed
-                for key in old_payload_processed
-                if old_payload_processed[key]
+                key in json_api_payload_processed
+                for key in json_flat_payload_processed
+                if json_flat_payload_processed[key]
             )
         )
         self.assertTrue(
             all(
-                key in old_payload_processed
-                for key in new_payload_processed
-                if new_payload_processed[key]
+                key in json_flat_payload_processed
+                for key in json_api_payload_processed
+                if json_api_payload_processed[key]
             )
         )
 
         self.assertTrue(
             all(
-                type(old_payload_processed[key]) == type(new_payload_processed[key])
-                for key in old_payload_processed
-                if old_payload_processed[key]
+                type(json_flat_payload_processed[key])
+                == type(json_api_payload_processed[key])
+                for key in json_flat_payload_processed
+                if json_flat_payload_processed[key]
             )
         )
         self.assertTrue(
             all(
-                type(old_payload_processed[key]) == type(new_payload_processed[key])
-                for key in new_payload_processed
-                if new_payload_processed[key]
+                type(json_flat_payload_processed[key])
+                == type(json_api_payload_processed[key])
+                for key in json_api_payload_processed
+                if json_api_payload_processed[key]
             )
         )
 
         exclusion_list = ["payload_created_at", "payload_updated_at"]
-        for key in old_payload_processed:
-            if old_payload_processed[key] and key not in exclusion_list:
-                if isinstance(old_payload_processed[key], dict):
+        for key in json_flat_payload_processed:
+            if json_flat_payload_processed[key] and key not in exclusion_list:
+                if isinstance(json_flat_payload_processed[key], dict):
                     self.assertEqual(
-                        old_payload_processed[key], new_payload_processed[key]
+                        json_flat_payload_processed[key],
+                        json_api_payload_processed[key],
                     )
-                elif isinstance(old_payload_processed[key], list):
+                elif isinstance(json_flat_payload_processed[key], list):
                     try:
                         self.assertEqual(
-                            sorted(old_payload_processed[key]),
-                            sorted(new_payload_processed[key]),
+                            sorted(json_flat_payload_processed[key]),
+                            sorted(json_api_payload_processed[key]),
                         )
                     except TypeError:
                         self.assertTrue(
                             all(
-                                element in new_payload_processed[key]
-                                for element in old_payload_processed[key]
+                                element in json_api_payload_processed[key]
+                                for element in json_flat_payload_processed[key]
                             )
                         )
                         self.assertTrue(
                             all(
-                                element in old_payload_processed[key]
-                                for element in new_payload_processed[key]
+                                element in json_flat_payload_processed[key]
+                                for element in json_api_payload_processed[key]
                             )
                         )
                 else:
                     self.assertEqual(
-                        old_payload_processed[key], new_payload_processed[key]
+                        json_flat_payload_processed[key],
+                        json_api_payload_processed[key],
                     )
-        for key in new_payload_processed:
-            if new_payload_processed[key] and key not in exclusion_list:
-                if isinstance(new_payload_processed[key], dict):
+        for key in json_api_payload_processed:
+            if json_api_payload_processed[key] and key not in exclusion_list:
+                if isinstance(json_api_payload_processed[key], dict):
                     self.assertEqual(
-                        old_payload_processed[key], new_payload_processed[key]
+                        json_flat_payload_processed[key],
+                        json_api_payload_processed[key],
                     )
-                elif isinstance(new_payload_processed[key], list):
+                elif isinstance(json_api_payload_processed[key], list):
                     try:
                         self.assertEqual(
-                            sorted(old_payload_processed[key]),
-                            sorted(new_payload_processed[key]),
+                            sorted(json_flat_payload_processed[key]),
+                            sorted(json_api_payload_processed[key]),
                         )
                     except TypeError:
                         self.assertTrue(
                             all(
-                                element in new_payload_processed[key]
-                                for element in old_payload_processed[key]
+                                element in json_api_payload_processed[key]
+                                for element in json_flat_payload_processed[key]
                             )
                         )
                         self.assertTrue(
                             all(
-                                element in old_payload_processed[key]
-                                for element in new_payload_processed[key]
+                                element in json_flat_payload_processed[key]
+                                for element in json_api_payload_processed[key]
                             )
                         )
                 else:
                     self.assertEqual(
-                        old_payload_processed[key], new_payload_processed[key]
+                        json_flat_payload_processed[key],
+                        json_api_payload_processed[key],
                     )
