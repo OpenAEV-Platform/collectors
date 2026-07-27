@@ -144,7 +144,7 @@ name = "openaev-openaev-collector"
 version = "2.260717.0"
 description = "A Collector for fetching OpenAEV payloads"
 authors = [
-    "Filigran <contact@filigran.io>",
+    {name = "Filigran", email = "<contact@filigran.io>"}
 ]
 license = "Apache-2.0"
 readme = "README.md"
