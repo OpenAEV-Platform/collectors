@@ -9,7 +9,13 @@ import src.auth.ms_graph_auth_client as module
 @patch.object(module, "AuthorityBuilder")
 class TestMSGraphAuthClient(unittest.TestCase):
     @patch.object(module, "Path")
-    def test_ms_graph_auth_client_init_cert_case(self, m_path, m_authority_builder, m_azure_public, m_confidential_client_application):
+    def test_ms_graph_auth_client_init_cert_case(
+        self,
+        m_path,
+        m_authority_builder,
+        m_azure_public,
+        m_confidential_client_application,
+    ):
         config = MagicMock()
         config.tenant_id = sentinel.tenant_id
         config.use_certificate_auth = True
@@ -29,12 +35,20 @@ class TestMSGraphAuthClient(unittest.TestCase):
             client_credential={
                 "private_key": sentinel.cert_text,
                 "thumbprint": sentinel.client_cert_thumbprint,
-            }
+            },
         )
-        self.assertEqual(auth_client.app, m_confidential_client_application.return_value)
+        self.assertEqual(
+            auth_client.app, m_confidential_client_application.return_value
+        )
 
     @patch.object(module, "Path")
-    def test_ms_grapj_auth_client_init_cert_case_not_exist(self, m_path, m_authority_builder, m_azure_public, m_confidential_client_application):
+    def test_ms_grapj_auth_client_init_cert_case_not_exist(
+        self,
+        m_path,
+        m_authority_builder,
+        m_azure_public,
+        m_confidential_client_application,
+    ):
         config = MagicMock()
         config.tenant_id = sentinel.tenant_id
         config.use_certificate_auth = True
@@ -46,10 +60,12 @@ class TestMSGraphAuthClient(unittest.TestCase):
 
         with self.assertRaises(module.AuthenticationError) as ctx:
             module.MSGraphAuthClient(config)
-        
+
         self.assertIn("Certificate file does not exist at path", str(ctx.exception))
 
-    def test_ms_graph_auth_client_init_secret_case(self, m_authority_builder, m_azure_public, m_confidential_client_application):
+    def test_ms_graph_auth_client_init_secret_case(
+        self, m_authority_builder, m_azure_public, m_confidential_client_application
+    ):
         config = MagicMock()
         config.tenant_id = sentinel.tenant_id
         config.use_certificate_auth = False
@@ -64,9 +80,13 @@ class TestMSGraphAuthClient(unittest.TestCase):
             authority=m_authority_builder.return_value,
             client_credential=sentinel.client_secret,
         )
-        self.assertEqual(auth_client.app, m_confidential_client_application.return_value)
+        self.assertEqual(
+            auth_client.app, m_confidential_client_application.return_value
+        )
 
-    def test_msg_graph_auth_client_get_access_token(self, m_authority_builder, m_azure_public, m_confidential_client_application):
+    def test_msg_graph_auth_client_get_access_token(
+        self, m_authority_builder, m_azure_public, m_confidential_client_application
+    ):
         config = MagicMock()
         config.use_certificate_auth = False
         m_confidential_client_application.return_value.acquire_token_for_client.return_value = {
@@ -82,12 +102,14 @@ class TestMSGraphAuthClient(unittest.TestCase):
         )
         self.assertEqual(access_token, sentinel.access_token)
 
-    def test_msg_graph_auth_client_get_access_token_error(self, m_authority_builder, m_azure_public, m_confidential_client_application):
+    def test_msg_graph_auth_client_get_access_token_error(
+        self, m_authority_builder, m_azure_public, m_confidential_client_application
+    ):
         config = MagicMock()
         config.use_certificate_auth = False
         m_confidential_client_application.return_value.acquire_token_for_client.return_value = {
             "error": "invalid_client",
-            "error_description": "Full description leaking elements"
+            "error_description": "Full description leaking elements",
         }
 
         auth_client = module.MSGraphAuthClient(config)
