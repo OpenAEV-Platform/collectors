@@ -20,11 +20,13 @@ class OpenAEVOpenAEV(CollectorDaemon):
         repo_name, ref_value = extract_from_url_prefix(self.openaev_url_prefix)
         self.github_crawler = GithubCrawler(repo_name, ref_value)
 
-    def _is_valid_json_api(self, payload: dict) -> bool:
+    @staticmethod
+    def _is_valid_json_api(payload: dict) -> bool:
         """check if the JSON data is in the JSON:API format"""
         return "data" in payload.keys()
 
-    def _is_valid_json_flat(self, payload: dict) -> bool:
+    @staticmethod
+    def _is_valid_json_flat(payload: dict) -> bool:
         """check if the JSON data is in the legacy flat JSON payload format"""
         return "payload_information" in payload.keys()
 
@@ -64,18 +66,31 @@ class OpenAEVOpenAEV(CollectorDaemon):
         payload["payload_collector"] = self._configuration.get("collector_id")
 
         self.api.payload.upsert(payload)
-        self.logger.info(f"Payload {payload["payload_name"]} imported")
+        self.logger.info(f"Payload {payload['payload_name']} imported")
 
         return payload["payload_external_id"]
 
     def _process_message(self) -> None:
         payload_external_ids = []
-        payloads = self.github_crawler.get_json_file_paths()
+        payloads = []
+
+        try:
+            payloads = self.github_crawler.get_json_file_paths()
+        except Exception as err:
+            self.logger.error(
+                f"Could not parse github project due to {type(err).__name__}: {err}"
+            )
 
         for payload_path in payloads:
-            payload_external_id = self._process_single_payload(payload_path)
-            if payload_external_id:
-                payload_external_ids.append(payload_external_id)
+            try:
+                payload_external_id = self._process_single_payload(payload_path)
+            except Exception as err:
+                self.logger.error(
+                    f"Could not process payload at {payload_path} due to {type(err).__name__}: {err}"
+                )
+            else:
+                if payload_external_id:
+                    payload_external_ids.append(payload_external_id)
 
         self.api.payload.deprecate(
             {

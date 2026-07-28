@@ -27,7 +27,9 @@ class GithubCrawler:
         tree_url = tree_url.replace("{/sha}", f"/{self.ref.object.sha}")
         tree_url += "?recursive=true"
 
-        tree_data = requests.get(tree_url).json()["tree"]
+        response = requests.get(tree_url)
+        response.raise_for_status()
+        tree_data = response.json()["tree"]
 
         json_file_paths = [
             element["path"]

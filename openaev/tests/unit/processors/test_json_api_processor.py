@@ -20,7 +20,7 @@ class TestJsonApiProcessor(unittest.TestCase):
     ):
         api = MagicMock()
         logger = MagicMock()
-        payload_path = MagicMock()
+        payload_path = "test/payload.json"
         github_crawler = MagicMock()
 
         japiprocessor = module.JsonApiProcessor(

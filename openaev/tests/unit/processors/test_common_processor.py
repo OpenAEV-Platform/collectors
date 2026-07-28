@@ -9,7 +9,7 @@ class TestCommonProcessor(unittest.TestCase):
     def test_common_processor_init(self, m_requests):
         api = MagicMock()
         logger = MagicMock()
-        payload_path = MagicMock()
+        payload_path = "test/payload.json"
         github_crawler = MagicMock()
 
         cprocessor = module.CommonProcessor(
@@ -28,7 +28,7 @@ class TestCommonProcessor(unittest.TestCase):
     def test_common_processor_create_or_get_tag(self, m_requests):
         api = MagicMock()
         logger = MagicMock()
-        payload_path = MagicMock()
+        payload_path = "test/payload.json"
         github_crawler = MagicMock()
 
         cprocessor = module.CommonProcessor(
@@ -71,7 +71,7 @@ class TestCommonProcessor(unittest.TestCase):
     ):
         api = MagicMock()
         logger = MagicMock()
-        payload_path = MagicMock()
+        payload_path = "test/payload.json"
         github_crawler = MagicMock()
 
         cprocessor = module.CommonProcessor(
@@ -138,7 +138,7 @@ class TestCommonProcessor(unittest.TestCase):
     def test_common_processor_process_payload_attack_patterns(self, m_requests):
         api = MagicMock()
         logger = MagicMock()
-        payload_path = MagicMock()
+        payload_path = "test/payload.json"
         github_crawler = MagicMock()
 
         cprocessor = module.CommonProcessor(
@@ -174,7 +174,7 @@ class TestCommonProcessor(unittest.TestCase):
     ):
         api = MagicMock()
         logger = MagicMock()
-        payload_path = MagicMock()
+        payload_path = "test/payload.json"
         github_crawler = MagicMock()
 
         cprocessor = module.CommonProcessor(

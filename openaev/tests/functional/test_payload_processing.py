@@ -1,6 +1,6 @@
 import unittest
 from pathlib import Path
-from unittest.mock import MagicMock, patch, sentinel
+from unittest.mock import MagicMock, patch
 
 import orjson
 
@@ -39,7 +39,7 @@ class TestProcessingFunctions(unittest.TestCase):
         json_flat_processor = module.JsonFlatProcessor(
             api=collector.api,
             logger=collector.api,
-            payload_path=sentinel.json_flat_payload_path,
+            payload_path="test/json_flat_payload_path",
             github_crawler=collector.github_crawler,
         )
         json_flat_session = MagicMock()
@@ -52,7 +52,7 @@ class TestProcessingFunctions(unittest.TestCase):
         json_api_processor = module.JsonApiProcessor(
             api=collector.api,
             logger=collector.api,
-            payload_path=sentinel.json_api_payload_path,
+            payload_path="test/json_api_payload_path",
             github_crawler=collector.github_crawler,
         )
         json_api_session = MagicMock()

@@ -16,12 +16,19 @@ class CommonProcessor:
         payload_path,
         github_crawler: GithubCrawler,
     ) -> None:
+        self._check_payload_path(payload_path)
+
         self.api = api
         self.logger = logger
         self.payload_path = payload_path
         self.github_crawler = github_crawler
 
         self.session = requests.Session()
+
+    @staticmethod
+    def _check_payload_path(payload_path):
+        if "/" not in payload_path:
+            raise ValueError("Payload should not be at the root of the repository")
 
     def _create_or_get_tag(self, tag_name: str, tag_color: str = "#6b7280"):
         """Create or get a tag and return its ID."""
@@ -167,7 +174,7 @@ class CommonProcessor:
             file_content = file_response.content
 
         mime_type, _ = mimetypes.guess_type(payload_document["document_name"])
-        mime_type = mime_type or "application/octet_stream"
+        mime_type = mime_type or "application/octet-stream"
         with io.BytesIO(file_content) as file_handle:
             file = (
                 payload_document["document_name"],
