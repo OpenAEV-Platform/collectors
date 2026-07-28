@@ -1,183 +1,96 @@
-import io
-import mimetypes
-import zipfile
-
-import requests
 from pyoaev.configuration import Configuration
 from pyoaev.daemons import CollectorDaemon
 
 from openaev.configuration.config_loader import ConfigLoader
-
-# OpenAEV native payloads are endpoint command execution / file drops: the
-# detecting/preventing security platforms are endpoint agents (EDR/XDR) and the
-# SIEM that ingests their telemetry. Applied per expectation type declared on
-# the payload, only when the source repo JSON does not declare
-# payload_expected_security_platforms itself (an explicit value always wins).
-# Empty would mean "any platform".
-DEFAULT_EXPECTED_SECURITY_PLATFORMS = {
-    "DETECTION": ["EDR", "XDR", "SIEM"],
-    "PREVENTION": ["EDR", "XDR"],
-}
-
-
-def apply_default_expected_security_platforms(payload_information) -> None:
-    """Fill in default expected security platform types on the payload.
-
-    Only applies when the source repo JSON does not declare
-    payload_expected_security_platforms itself: an explicit value always wins,
-    including an explicit empty map (which means "any platform"). Defaults are
-    only declared for the expectation types the payload has; payloads without
-    expectations are left untouched.
-    """
-    if payload_information.get("payload_expected_security_platforms") is not None:
-        return
-    expected_security_platforms = {
-        expectation_type: list(platform_types)
-        for expectation_type, platform_types in DEFAULT_EXPECTED_SECURITY_PLATFORMS.items()
-        if expectation_type in (payload_information.get("payload_expectations") or [])
-    }
-    if expected_security_platforms:
-        payload_information["payload_expected_security_platforms"] = (
-            expected_security_platforms
-        )
+from openaev.github_crawler import GithubCrawler, extract_from_url_prefix
+from openaev.processors import JsonApiProcessor, JsonFlatProcessor
 
 
 class OpenAEVOpenAEV(CollectorDaemon):
     def __init__(
         self,
         configuration: Configuration,
-    ):
+    ) -> None:
         super().__init__(
             configuration=configuration,
             callback=self._process_message,
             collector_type="openaev_openaev",
         )
-        self.session = requests.Session()
+        self.openaev_url_prefix = self._configuration.get("openaev_url_prefix")
+        repo_name, ref_value = extract_from_url_prefix(self.openaev_url_prefix)
+        self.github_crawler = GithubCrawler(repo_name, ref_value)
 
-    def _create_or_get_tag(self, tag_name, tag_color="#6b7280"):
-        """Create or get a tag and return its ID."""
-        try:
-            tag_data = {"tag_name": tag_name, "tag_color": tag_color}
-            result = self.api.tag.upsert(tag_data)
-            return result.get("tag_id")
-        except Exception as e:
-            self.logger.warning(f"Failed to upsert tag {tag_name}: {e}")
-            return None
+    @staticmethod
+    def _is_valid_json_api(payload: dict) -> bool:
+        """check if the JSON data is in the JSON:API format"""
+        return "data" in payload.keys()
 
-    def _process_message(self) -> None:
+    @staticmethod
+    def _is_valid_json_flat(payload: dict) -> bool:
+        """check if the JSON data is in the legacy flat JSON payload format"""
+        return "payload_information" in payload.keys()
+
+    def _process_single_payload(self, payload_path) -> str | None:
+        payload = self.github_crawler.get_json(payload_path)
+
         openaev_import_only_native = self._configuration.get(
             "openaev_import_only_native"
         )
-        openaev_url_prefix = self._configuration.get("openaev_url_prefix")
-        response = self.session.get(url=openaev_url_prefix + "manifest.json")
-        payloads = response.json()
+        if openaev_import_only_native and (
+            "native_collection" not in payload or not payload["native_collection"]
+        ):
+            return
+
+        if self._is_valid_json_api(payload):  # new format
+            json_api_processor = JsonApiProcessor(
+                api=self.api,
+                logger=self.logger,
+                payload_path=payload_path,
+                github_crawler=self.github_crawler,
+            )
+            payload = json_api_processor._process_payload(payload)
+        elif self._is_valid_json_flat(payload):  # legacy format
+            json_flat_processor = JsonFlatProcessor(
+                api=self.api,
+                logger=self.logger,
+                payload_path=payload_path,
+                github_crawler=self.github_crawler,
+            )
+            payload = json_flat_processor._process_payload(payload)
+        else:
+            self.logger.warning(
+                f"Skipping a payload that didn't match JSON:API format nor flat legacy format: {payload_path}"
+            )
+            return
+
+        payload["payload_collector"] = self._configuration.get("collector_id")
+
+        self.api.payload.upsert(payload)
+        self.logger.info(f"Payload {payload['payload_name']} imported")
+
+        return payload["payload_external_id"]
+
+    def _process_message(self) -> None:
         payload_external_ids = []
+        payloads = []
 
-        for payload in payloads:
-
-            # Only native, continue
-            if openaev_import_only_native and (
-                "native_collection" not in payload or not payload["native_collection"]
-            ):
-                continue
-
-            payload_information = payload.get("payload_information")
-            self.logger.info("Importing payload " + payload_information["payload_name"])
-
-            # Create tags
-            tags_mapping = {}
-            tags = payload.get("payload_tags", [])
-            for tag in tags:
-                new_tag = self.api.tag.upsert(tag)
-                tags_mapping[tag["tag_id"]] = new_tag["tag_id"]
-
-            # Create attack patterns
-            attack_patterns = payload.get("payload_attack_patterns", [])
-            if len(attack_patterns) > 0:
-                self.api.attack_pattern.upsert(attack_patterns, True)
-
-            # Create document
-            new_document = None
-            document = payload.get("payload_document", None)
-            if document is not None and "document_path" in document:
-                # Upload the document
-                new_tags = []
-                for tag_id in document.get("document_tags", []):
-                    if tag_id in tags_mapping:
-                        new_tags.append(tags_mapping[tag_id])
-                document["document_tags"] = new_tags
-
-                zip_url = openaev_url_prefix + document["document_path"]
-                zip_response = self.session.get(zip_url)
-                zip_response.raise_for_status()
-                with io.BytesIO(zip_response.content) as zip_buffer:
-                    with zipfile.ZipFile(zip_buffer) as z:
-                        file_names = z.namelist()
-                        if not file_names:
-                            raise Exception(f"No file found in zip at {zip_url}")
-                        file_name = file_names[0]
-                        with z.open(file_name, pwd=b"infected") as unzipped_file:
-                            file_content = unzipped_file.read()
-                            mime_type, _ = mimetypes.guess_type(
-                                document["document_name"]
-                            )
-                            if mime_type is None:
-                                mime_type = "application/octet-stream"
-                            file_handle = io.BytesIO(file_content)
-                            file = (document["document_name"], file_handle, mime_type)
-                            new_document = self.api.document.upsert(
-                                document=document, file=file
-                            )
-
-            # Upsert payload
-            payload_information["payload_collector"] = self._configuration.get(
-                "collector_id"
+        try:
+            payloads = self.github_crawler.get_json_file_paths()
+        except Exception as err:
+            self.logger.error(
+                f"Could not parse github project due to {type(err).__name__}: {err}"
             )
 
-            new_tags = []
-            for tag_id in payload_information.get("payload_tags", []):
-                if tag_id in tags_mapping:
-                    new_tags.append(tags_mapping[tag_id])
-
-            # Add collector source tag
-            source_tag_name = "source:openaev-datasets"
-            source_tag_id = self._create_or_get_tag(source_tag_name, "#ef4444")  # Red
-            if source_tag_id:
-                new_tags.append(source_tag_id)
-
-            # Add native/community tag if applicable
-            if payload.get("native_collection", False):
-                native_tag_name = "type:native"
-                native_tag_id = self._create_or_get_tag(
-                    native_tag_name, "#10b981"
-                )  # Green
-                if native_tag_id:
-                    new_tags.append(native_tag_id)
-
-            payload_information["payload_tags"] = new_tags
-
-            new_attack_patterns = []
-            for attack_pattern in payload_information.get(
-                "payload_attack_patterns", []
-            ):
-                new_attack_patterns.append(attack_pattern["attack_pattern_external_id"])
-            payload_information["payload_attack_patterns"] = new_attack_patterns
-
-            if "executable_file" in payload_information and new_document is not None:
-                payload_information["executable_file"] = new_document["document_id"]
-            elif "file_drop_file" in payload_information and new_document is not None:
-                payload_information["file_drop_file"] = new_document["document_id"]
-
-            # Declare expected security platform types on the payload's
-            # predefined expectations when the source repo JSON does not
-            # declare them itself (only for expectation types the payload has).
-            apply_default_expected_security_platforms(payload_information)
-
-            self.api.payload.upsert(payload_information)
-            payload_external_ids.append(payload_information["payload_external_id"])
-            self.logger.info(
-                "Payload " + payload_information["payload_name"] + " imported"
-            )
+        for payload_path in payloads:
+            try:
+                payload_external_id = self._process_single_payload(payload_path)
+            except Exception as err:
+                self.logger.error(
+                    f"Could not process payload at {payload_path} due to {type(err).__name__}: {err}"
+                )
+            else:
+                if payload_external_id:
+                    payload_external_ids.append(payload_external_id)
 
         self.api.payload.deprecate(
             {

