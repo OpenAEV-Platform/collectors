@@ -1,8 +1,7 @@
 from pathlib import Path
 
 from msal import ConfidentialClientApplication
-from msal.authority import AuthorityBuilder, AZURE_PUBLIC
-
+from msal.authority import AZURE_PUBLIC, AuthorityBuilder
 from src.auth.exceptions import AuthenticationError
 from src.models.settings.source_configs import _ConfigLoaderSource
 
@@ -14,7 +13,9 @@ class MSGraphAuthClient:
         if config.use_certificate_auth:
             client_cert_path = Path(config.client_cert_path)
             if not client_cert_path.exists():
-                raise AuthenticationError(f"Certificate file does not exist at path: {client_cert_path.as_posix()}")
+                raise AuthenticationError(
+                    f"Certificate file does not exist at path: {client_cert_path.as_posix()}"
+                )
 
             self.app = ConfidentialClientApplication(
                 config.client_id,
@@ -22,7 +23,7 @@ class MSGraphAuthClient:
                 client_credential={
                     "private_key": client_cert_path.read_text(),
                     "thumbprint": config.client_cert_thumbprint,
-                }
+                },
             )
         else:
             self.app = ConfidentialClientApplication(
