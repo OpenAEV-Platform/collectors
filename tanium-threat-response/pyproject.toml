@@ -14,6 +14,8 @@ packages = [
 [tool.poetry.dependencies]
 python = "^3.11"
 thefuzz = "^0.22.1"
+pytz = "^2026.3.post1"
+python-dateutil = "^2.9.0.post0"
 
 [[tool.poetry.dependencies.pyoaev]]
 markers = "extra == 'prod' and extra != 'dev'"
