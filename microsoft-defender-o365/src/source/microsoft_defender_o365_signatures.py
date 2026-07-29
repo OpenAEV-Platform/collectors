@@ -9,4 +9,5 @@ SUPPORTED_SIGNATURES: list[SignatureTypes] = [
     SignatureTypes.SIG_TYPE_FILE_HASH,
     SignatureTypes.SIG_TYPE_SOURCE_EMAIL,
     SignatureTypes.SIG_TYPE_TARGET_EMAIL,
+    SignatureTypes.SIG_TYPE_EMAIL_CUSTOM_HEADER,
 ]

@@ -7,7 +7,7 @@ class TestSignatures(unittest.TestCase):
     def test_length(self):
         self.assertEqual(
             len(module.SUPPORTED_SIGNATURES),
-            7,
+            8,
         )
 
     def test_types(self):
