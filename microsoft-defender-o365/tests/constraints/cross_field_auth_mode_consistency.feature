@@ -11,7 +11,7 @@ Feature: Cross-field validator enforces mutually-exclusive field group consisten
 
   Scenario Outline: Certificate auth mode enabled without certificate required fields raises ValidationError
     Given SOURCE_USE_CERTIFICATE_AUTH is "<mode_flag_value>"
-    And SOURCE_CLIENT_CERT_PATH is not set
+    And SOURCE_CLIENT_CERT_DATA is not set
     And SOURCE_CLIENT_CERT_THUMBPRINT is not set
     When DefenderO365Config is instantiated
     Then a ValidationError is raised
@@ -19,7 +19,7 @@ Feature: Cross-field validator enforces mutually-exclusive field group consisten
 
     Examples:
       | mode_flag_value | error_field_a    | error_field_b            |
-      | true             | client_cert_path | client_cert_thumbprint   |
+      | true             | client_cert_data | client_cert_thumbprint   |
 
   Scenario Outline: Credential auth mode enabled without credential required fields raises ValidationError
     Given SOURCE_USE_CERTIFICATE_AUTH is "<mode_flag_value>"
