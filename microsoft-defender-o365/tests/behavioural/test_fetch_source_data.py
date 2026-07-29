@@ -156,3 +156,32 @@ def test_empty_response_returns_empty_list(source_config_fixture):
 
     # Then: the fetcher returns an empty list
     _then_result_is_empty(result)
+
+
+# Scenario: OData filter is applied to the request
+def test_odata_filter_applied_to_request(source_config_fixture):
+    """Scenario: OData filter is applied to the request."""
+    from tests.conftest import (
+        _given_microsoft_defender_o365_single_page_response,
+        _then_result_is_list_of_source_data,
+        _when_microsoft_defender_o365_fetcher_fetches_data,
+    )
+
+    mock_session = MagicMock()
+    mock_auth = MagicMock()
+    mock_auth.get_access_token.return_value = "test-token"
+
+    # Given: the API returns a single page of 1 alert
+    _given_microsoft_defender_o365_single_page_response(mock_session, 1)
+
+    # When: the data fetcher retrieves alerts
+    result = _when_microsoft_defender_o365_fetcher_fetches_data(
+        source_config_fixture, mock_session, mock_auth
+    )
+
+    # Then: the request URL contains the serviceSource filter
+    _then_result_is_list_of_source_data(result)
+    call_args = mock_session.get.call_args
+    params = call_args[1].get("params", {})
+    assert "$filter" in params
+    assert "microsoftDefenderForOffice365" in params["$filter"]
