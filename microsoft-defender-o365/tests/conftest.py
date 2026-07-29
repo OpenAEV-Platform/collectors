@@ -7,6 +7,7 @@ convention described in the project's CONTRIBUTING.md.
 
 from pathlib import Path
 from types import ModuleType
+from unittest.mock import MagicMock
 
 import pytest
 from polyfactory.factories.pydantic_factory import ModelFactory
@@ -276,3 +277,261 @@ def source_config_fixture() -> "object":
         client_secret="test-client-secret",
     )
     return config
+
+
+# --------
+# Chunk6 (#501) - Data fetcher GWT helpers for behavioural tests
+# --------
+
+
+def _given_microsoft_defender_o365_single_page_response(
+    mock_session, alert_count: int = 3
+) -> None:
+    """Given the API returns a single page of <N> alerts.
+
+    Args:
+        mock_session: The mocked requests.Session object.
+        alert_count: Number of alerts to return (default 3).
+    """
+    alerts = [
+        {
+            "id": f"ALT-{i:03d}",
+            "title": f"Phishing email detected {i}",
+            "status": "new",
+            "severity": "high",
+            "serviceSource": "microsoftDefenderForOffice365",
+            "createdDateTime": "2026-07-05T14:00:00Z",
+        }
+        for i in range(1, alert_count + 1)
+    ]
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {"value": alerts}
+    mock_session.get.return_value = mock_response
+
+
+def _given_microsoft_defender_o365_multi_page_response(
+    mock_session, page_sizes: list[int] = [2, 3]
+) -> None:
+    """Given the API returns multiple pages of alerts.
+
+    Args:
+        mock_session: The mocked requests.Session object.
+        page_sizes: List of alert counts per page.
+    """
+    responses = []
+    alert_id = 1
+    for idx, size in enumerate(page_sizes):
+        alerts = [
+            {
+                "id": f"ALT-{alert_id:03d}",
+                "title": f"Alert {alert_id}",
+                "status": "new",
+                "severity": "high",
+                "serviceSource": "microsoftDefenderForOffice365",
+                "createdDateTime": "2026-07-05T14:00:00Z",
+            }
+            for _ in range(size)
+        ]
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        if idx < len(page_sizes) - 1:
+            mock_response.json.return_value = {
+                "value": alerts,
+                "@odata.nextLink": f"https://graph.microsoft.com/v1.0/security/alerts_v2?$skiptoken=page{idx+1}",
+            }
+        else:
+            mock_response.json.return_value = {"value": alerts}
+        responses.append(mock_response)
+        alert_id += size
+    mock_session.get.side_effect = responses
+
+
+def _given_microsoft_defender_o365_mixed_evidence_response(
+    mock_session,
+) -> None:
+    """Given the API returns alerts with mixed evidence types.
+
+    Args:
+        mock_session: The mocked requests.Session object.
+    """
+    alert = {
+        "id": "ALT-001",
+        "title": "Phishing email detected",
+        "status": "new",
+        "severity": "high",
+        "serviceSource": "microsoftDefenderForOffice365",
+        "createdDateTime": "2026-07-05T14:00:00Z",
+        "evidence": [
+            {
+                "@odata.type": "#microsoft.graph.security.analyzedMessageEvidence",
+                "subject": "Invoice",
+                "p1Sender": {"emailAddress": "bad@evil.com"},
+            },
+            {
+                "@odata.type": "#microsoft.graph.security.urlEvidence",
+                "url": "https://example.com",
+            },
+        ],
+    }
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {"value": [alert]}
+    mock_session.get.return_value = mock_response
+
+
+def _given_microsoft_defender_o365_empty_response(mock_session) -> None:
+    """Given the API returns an empty value array.
+
+    Args:
+        mock_session: The mocked requests.Session object.
+    """
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {"value": []}
+    mock_session.get.return_value = mock_response
+
+
+def _given_microsoft_defender_o365_rate_limited_response(
+    mock_session,
+) -> None:
+    """Given the API returns a 429 rate limit response followed by success.
+
+    Args:
+        mock_session: The mocked requests.Session object.
+    """
+    response_429 = MagicMock()
+    response_429.status_code = 429
+    response_429.headers = {"Retry-After": "1"}
+    response_429.json.return_value = {"value": []}
+
+    response_ok = MagicMock()
+    response_ok.status_code = 200
+    response_ok.json.return_value = {
+        "value": [
+            {
+                "id": "ALT-001",
+                "title": "Alert",
+                "status": "new",
+                "severity": "high",
+                "serviceSource": "microsoftDefenderForOffice365",
+                "createdDateTime": "2026-07-05T14:00:00Z",
+            }
+        ]
+    }
+    mock_session.get.side_effect = [response_429, response_ok]
+
+
+def _given_microsoft_defender_o365_token_expired_response(
+    mock_session,
+) -> None:
+    """Given the API returns a 401 response followed by success.
+
+    Args:
+        mock_session: The mocked requests.Session object.
+    """
+    response_401 = MagicMock()
+    response_401.status_code = 401
+    response_401.json.return_value = {"value": []}
+
+    response_ok = MagicMock()
+    response_ok.status_code = 200
+    response_ok.json.return_value = {
+        "value": [
+            {
+                "id": "ALT-001",
+                "title": "Alert",
+                "status": "new",
+                "severity": "high",
+                "serviceSource": "microsoftDefenderForOffice365",
+                "createdDateTime": "2026-07-05T14:00:00Z",
+            }
+        ]
+    }
+    mock_session.get.side_effect = [response_401, response_ok]
+
+
+def _when_microsoft_defender_o365_fetcher_fetches_data(
+    config, mock_session, mock_auth
+) -> list:
+    """When the data fetcher retrieves alerts.
+
+    Patches MSAL authority and session before construction to prevent
+    live OIDC tenant discovery.
+
+    Args:
+        config: The source configuration object.
+        mock_session: The mocked requests.Session.
+        mock_auth: The mocked MSGraphAuthClient.
+
+    Returns:
+        The list of MicrosoftDefenderO365SourceData objects.
+    """
+    from unittest.mock import patch
+
+    from src.source.defender_o365_data_fetcher import DefenderO365DataFetcher
+
+    with (
+        patch(
+            "src.source.defender_o365_data_fetcher.MSGraphAuthClient",
+            return_value=mock_auth,
+        ),
+        patch("src.source.defender_o365_data_fetcher.Session", return_value=mock_session),
+    ):
+        fetcher = DefenderO365DataFetcher(config)
+        return fetcher.fetch_data()
+
+
+def _then_result_is_list_of_source_data(result) -> None:
+    """Then the fetcher returns a list of source data objects.
+
+    Args:
+        result: The fetch result to check.
+    """
+    assert isinstance(result, list)
+
+
+def _then_each_result_has_raw_alert(result) -> None:
+    """Then each source data object contains the raw alert data.
+
+    Args:
+        result: The fetch result to check.
+    """
+    for item in result:
+        assert hasattr(item, "raw_alert")
+
+
+def _then_result_count_equals(result, expected_count: int) -> None:
+    """Then the result count equals the expected count.
+
+    Args:
+        result: The fetch result to check.
+        expected_count: The expected number of results.
+    """
+    assert len(result) == expected_count
+
+
+def _then_result_is_empty(result) -> None:
+    """Then the fetcher returns an empty list.
+
+    Args:
+        result: The fetch result to check.
+    """
+    assert result == []
+
+
+def _then_only_analyzed_message_evidence_preserved(result) -> None:
+    """Then only analyzedMessageEvidence items are preserved.
+
+    Checks that evidence items have analyzedMessageEvidence schema fields
+    (subject, p1Sender, etc.) rather than other evidence types (url, file, etc.).
+
+    Args:
+        result: The fetch result to check.
+    """
+    for item in result:
+        if item.raw_alert and "evidence" in item.raw_alert:
+            for ev in item.raw_alert["evidence"]:
+                assert isinstance(ev, dict)
+                # model_dump'd analyzedMessageEvidence has these keys
+                assert "subject" in ev or "p1Sender" in ev
