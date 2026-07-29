@@ -1,6 +1,5 @@
 from pyoaev.signatures.types import SignatureTypes  # noqa: F401
 
-
 SUPPORTED_SIGNATURES: list[SignatureTypes] = [
     SignatureTypes.SIG_TYPE_START_DATE,
     SignatureTypes.SIG_TYPE_END_DATE,
