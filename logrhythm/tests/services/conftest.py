@@ -1,5 +1,6 @@
 """Conftest for services tests with polyfactory fixtures."""
 
+import logging
 from unittest.mock import Mock, patch
 
 import pytest
@@ -189,12 +190,21 @@ def mock_logging():
 
     Auto-applies to all tests to prevent logging output during test execution.
 
+    The real root logger is returned for unnamed lookups so pytest's logging
+    plugin (which iterates the root logger's manager since pytest 9.1) keeps
+    working; named loggers used by the collector code remain mocked.
+
     Yields:
         Mock logger instance.
 
     """
+    real_get_logger = logging.getLogger
     with patch("logging.getLogger") as mock_logger:
-        mock_logger.return_value = Mock()
+        shared_logger = Mock()
+        mock_logger.return_value = shared_logger
+        mock_logger.side_effect = (
+            lambda name=None: real_get_logger() if name is None else shared_logger
+        )
         yield mock_logger
 
 
