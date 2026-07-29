@@ -7,14 +7,16 @@ transient error handling.
 
 import logging
 import time
+from urllib.parse import urljoin, urlsplit
+from datetime import datetime
 from typing import Any
 
+from pydantic import HttpUrl, ValidationError
 from requests import Session
 from requests.adapters import HTTPAdapter
 from urllib3.util import Retry
 
 from src.auth.ms_graph_auth_client import MSGraphAuthClient
-from src.auth.exceptions import AuthenticationError
 from src.collector.types.collector import SourceConfig
 from src.source.defender_o365_alert_model import DefenderO365Alert
 from src.source.source_data import MicrosoftDefenderO365SourceData
@@ -39,7 +41,18 @@ class DefenderO365DataFetcher:
         """
         self.config = config
         self.auth_client = MSGraphAuthClient(config)
+        self._since_datetime: datetime | None = None
         self._build_session()
+
+    @property
+    def since_datetime(self) -> datetime | None:
+        """The lower-bound datetime filter for alert fetching."""
+        return self._since_datetime
+
+    @since_datetime.setter
+    def since_datetime(self, value: datetime | None) -> None:
+        """Set the lower-bound datetime filter for alert fetching."""
+        self._since_datetime = value
 
     def _build_session(self) -> None:
         """Build requests.Session with urllib3 Retry adapter."""
@@ -47,7 +60,7 @@ class DefenderO365DataFetcher:
         retries = Retry(
             total=self.config.max_fetch_retries,
             allowed_methods=["GET"],
-            status_forcelist=[429, 500, 502, 503, 504],
+            status_forcelist=[500, 502, 503, 504],
             backoff_factor=0.5,
             backoff_jitter=0.2,
         )
@@ -55,26 +68,59 @@ class DefenderO365DataFetcher:
         self.session.mount("https://", adapter)
         self.session.mount("http://", adapter)
 
+    def close(self) -> None:
+        """Close the underlying requests.Session connection pool."""
+        self.session.close()
+
     def _build_url(self, path: str) -> str:
         """Build a full URL from the configured base_url and a path.
+
+        Uses directory semantics: ensures trailing slash on base, strips
+        leading slash from path, so urljoin preserves the base path segment
+        (e.g. /v1.0) rather than replacing it.
 
         Args:
             path: The API path to append to the base URL.
 
         Returns:
             The full URL string.
-        """
-        base = str(self.config.base_url).rstrip("/")
-        return f"{base}{path}"
 
-    def _build_filter_params(self) -> dict[str, str]:
+        Raises:
+            ValueError: If the path contains a scheme or netloc.
+        """
+        reference = urlsplit(path)
+
+        if reference.scheme or reference.netloc:
+            raise ValueError("URL reference must not replace the base origin")
+
+        base = self.config.base_url.encoded_string().rstrip("/") + "/"
+        relative_path = path.lstrip("/")
+
+        return HttpUrl(urljoin(base, relative_path)).encoded_string()
+
+    def _build_filter_params(self, since_datetime: datetime | None = None) -> dict[str, str]:
         """Build OData filter parameters from config.
 
+        Combines serviceSource filter with an optional createdDateTime lower
+        bound. Always orders results by createdDateTime descending (most
+        recent first).
+
+        Args:
+            since_datetime: If provided, only alerts created at or after
+                this time are returned.
+
         Returns:
-            Dict with $filter parameter for serviceSource.
+            Dict with $filter and $orderby parameters.
         """
+        filters = [f"serviceSource eq '{self.config.filter_service_source}'"]
+        if since_datetime is not None:
+            filters.append(
+                f"createdDateTime ge '{since_datetime.isoformat()}'"
+            )
+
         return {
-            "$filter": f"serviceSource eq '{self.config.filter_service_source}'",
+            "$filter": " and ".join(filters),
+            "$orderby": "createdDateTime desc",
         }
 
     def fetch_data(self) -> list[MicrosoftDefenderO365SourceData]:
@@ -83,77 +129,88 @@ class DefenderO365DataFetcher:
         Follows @odata.nextLink pagination until no next page exists.
         Handles HTTP 429 (time.sleep + retry) and HTTP 401 (token refresh
         + single retry). Returns one MicrosoftDefenderO365SourceData
-        per alert, all pages merged.
+        per alert, all pages merged. Results are ordered by createdDateTime
+        descending (most recent first).
 
         Returns:
             A list of MicrosoftDefenderO365SourceData instances.
         """
-        url = self._build_url("/security/alerts_v2")
-        params = self._build_filter_params()
+        url = self._build_url("security/alerts_v2")
+        params = self._build_filter_params(self._since_datetime)
         all_alerts: list[dict[str, Any]] = []
         page_count = 0
 
         while url:
-            page_count += 1
+            request_attempt = 0
             token = self.auth_client.get_access_token()
 
-            response = self.session.get(
-                url,
-                headers={"Authorization": f"Bearer {token}"},
-                params=params,
-            )
+            while request_attempt < self.config.max_fetch_retries:
+                request_attempt += 1
 
-            # Handle rate limiting
-            if response.status_code == 429:
-                retry_after = int(response.headers.get("Retry-After", 1))
-                logger.warning(
-                    f"{LOG_PREFIX} Rate limited on page {page_count}, "
-                    f"sleeping {retry_after}s"
-                )
-                time.sleep(retry_after)
-                continue
-
-            # Handle token expiry
-            if response.status_code == 401:
-                logger.info(
-                    f"{LOG_PREFIX} Token expired on page {page_count}, refreshing"
-                )
-                token = self.auth_client.get_access_token(force_refresh=True)
                 response = self.session.get(
                     url,
                     headers={"Authorization": f"Bearer {token}"},
                     params=params,
                 )
-                if response.status_code == 401:
+
+                # Handle rate limiting
+                if response.status_code == 429:
+                    retry_after = int(response.headers.get("Retry-After", 1))
                     logger.warning(
-                        f"{LOG_PREFIX} Second 401 after token refresh on page {page_count}"
+                        f"{LOG_PREFIX} Rate limited (attempt {request_attempt}), "
+                        f"sleeping {retry_after}s"
                     )
-                    # Don't raise, just continue with empty result for this page
+                    time.sleep(retry_after)
+                    continue
+
+                # Handle token expiry
+                if response.status_code == 401:
+                    logger.info(
+                        f"{LOG_PREFIX} Token expired (attempt {request_attempt}), refreshing"
+                    )
+                    token = self.auth_client.get_access_token(force_refresh=True)
+                    continue
+
                 response.raise_for_status()
+                break
 
             data = response.json()
-            value = data.get("value", [])
+
+            if not isinstance(data, dict):
+                raise ValueError("Graph response must be a JSON object")
+
+            value = data.get("value")
+            if not isinstance(value, list):
+                raise ValueError("Graph response 'value' must be a list")
 
             # Validate and filter each alert
             for raw_alert in value:
                 try:
                     alert = DefenderO365Alert.model_validate(raw_alert)
-                    # Filter evidence to only analyzedMessageEvidence
-                    filtered_evidence = alert.filter_evidence()
-                    if filtered_evidence:
-                        raw_alert["evidence"] = [
-                            e.model_dump(by_alias=True) for e in filtered_evidence
-                        ]
-                    all_alerts.append(raw_alert)
-                except Exception as exc:
-                    logger.debug(
-                        f"{LOG_PREFIX} Skipping malformed alert: {exc}"
+                except ValidationError as exc:
+                    alert_id = (
+                        raw_alert.get("id", "unknown")
+                        if isinstance(raw_alert, dict)
+                        else "unknown"
                     )
+                    logger.info(
+                        f"{LOG_PREFIX} Skipping malformed alert id={alert_id}: {exc}"
+                    )
+                    continue
+
+                # Compact: id, status, createdDateTime, filtered evidence
+                compact_alert = alert.filter_evidence()
+                all_alerts.append(compact_alert)
 
             # Follow pagination
-            url = data.get("@odata.nextLink")
+            next_link = data.get("@odata.nextLink")
+            if next_link is not None and not isinstance(next_link, str):
+                raise ValueError("Graph '@odata.nextLink' must be a string")
+
+            url = next_link
             params = None  # nextLink carries its own params
 
+            page_count += 1
             logger.info(
                 f"{LOG_PREFIX} Page {page_count}: fetched {len(value)} alerts"
             )

@@ -72,6 +72,7 @@ class TestMSGraphAuthClient(unittest.TestCase):
 
         m_confidential_client_application.return_value.acquire_token_for_client.assert_called_with(
             scopes=["https://graph.microsoft.com/.default"],
+            force_refresh=False,
         )
         self.assertEqual(access_token, sentinel.access_token)
 
@@ -93,4 +94,5 @@ class TestMSGraphAuthClient(unittest.TestCase):
         self.assertIn("invalid_client", str(ctx.exception))
         m_confidential_client_application.return_value.acquire_token_for_client.assert_called_with(
             scopes=["https://graph.microsoft.com/.default"],
+            force_refresh=False,
         )

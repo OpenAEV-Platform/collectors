@@ -79,23 +79,57 @@ class DefenderO365Alert(BaseModel):
         odata_type = item.get("@odata.type", "")
         return "analyzedMessageEvidence" in odata_type
 
-    def filter_evidence(self) -> list[AnalyzedMessageEvidence]:
-        """Filter evidence to keep only analyzedMessageEvidence items.
+    def filter_evidence(self) -> dict[str, Any]:
+        """Extract a compact alert dict with only the fields we need.
+
+        Filters evidence to analyzedMessageEvidence items and extracts
+        only: urls, p1/p2 sender email, p1/p2 sender display name,
+        recipient email address. Returns the full compact alert with
+        id, status, createdDateTime, and the filtered evidence.
 
         Returns:
-            A list of AnalyzedMessageEvidence instances parsed from the
-            alert's evidence field.
+            A compact dict ready for SourceData wrapping.
         """
         filtered = []
         for item in self.evidence:
             if self._is_analyzed_message_evidence(item):
                 try:
                     evidence = AnalyzedMessageEvidence.model_validate(item)
-                    filtered.append(evidence)
+                    compact = {
+                        "urls": evidence.urls,
+                        "p1_sender_email": (
+                            evidence.p1_sender.email_address
+                            if evidence.p1_sender
+                            else None
+                        ),
+                        "p1_sender_display_name": (
+                            evidence.p1_sender.display_name
+                            if evidence.p1_sender
+                            else None
+                        ),
+                        "p2_sender_email": (
+                            evidence.p2_sender.email_address
+                            if evidence.p2_sender
+                            else None
+                        ),
+                        "p2_sender_display_name": (
+                            evidence.p2_sender.display_name
+                            if evidence.p2_sender
+                            else None
+                        ),
+                        "recipient_email_address": evidence.recipient_email_address,
+                    }
+                    filtered.append(compact)
                 except Exception:
                     # Skip malformed evidence items
                     continue
-        return filtered
+        return {
+            "id": self.id,
+            "status": self.status,
+            "alertWebUrl": self.alert_web_url,
+            "createdDateTime": self.created_date_time.isoformat(),
+            "evidence": filtered,
+        }
 
     @classmethod
     def model_validate(cls, obj: dict[str, Any]) -> "DefenderO365Alert":

@@ -114,14 +114,38 @@ class TestDefenderO365Alert(unittest.TestCase):
         self.assertEqual(alert.id, "ALT-001")
         self.assertEqual(len(alert.evidence), 3)
 
-    def test_alert_evidence_filtering(self) -> None:
-        """Then evidence filtering keeps only analyzedMessageEvidence items."""
+    def test_filter_evidence_returns_compact_alert(self) -> None:
+        """Then filter_evidence returns a compact alert dict with 5 keys."""
         alert = DefenderO365Alert.model_validate(self._alert_with_mixed_evidence())
-        # Filter evidence to only analyzedMessageEvidence
-        filtered = alert.filter_evidence()
-        self.assertEqual(len(filtered), 2)
-        for item in filtered:
-            self.assertIsInstance(item, AnalyzedMessageEvidence)
+        compact = alert.filter_evidence()
+        self.assertIsInstance(compact, dict)
+        self.assertEqual(set(compact.keys()), {"id", "status", "alertWebUrl", "createdDateTime", "evidence"})
+        self.assertEqual(compact["id"], "ALT-001")
+        self.assertEqual(compact["status"], "new")
+        self.assertIn("2026-07-05T14:00:00", compact["createdDateTime"])
+
+    def test_filter_evidence_keeps_only_analyzed_message_evidence(self) -> None:
+        """Then filtered evidence contains only compacted analyzedMessageEvidence."""
+        alert = DefenderO365Alert.model_validate(self._alert_with_mixed_evidence())
+        compact = alert.filter_evidence()
+        self.assertEqual(len(compact["evidence"]), 2)
+        for item in compact["evidence"]:
+            self.assertIn("urls", item)
+            self.assertIn("p1_sender_email", item)
+            self.assertIn("p1_sender_display_name", item)
+            self.assertIn("p2_sender_email", item)
+            self.assertIn("p2_sender_display_name", item)
+            self.assertIn("recipient_email_address", item)
+
+    def test_filter_evidence_compact_fields(self) -> None:
+        """Then compact evidence contains extracted sender and URL fields."""
+        alert = DefenderO365Alert.model_validate(self._alert_with_mixed_evidence())
+        compact = alert.filter_evidence()
+        ev = compact["evidence"][0]
+        self.assertEqual(ev["p1_sender_email"], "bad@evil.com")
+        self.assertIsNone(ev["p1_sender_display_name"])
+        self.assertIsNone(ev["p2_sender_email"])
+        self.assertEqual(ev["urls"], [])
 
     def test_alert_missing_required_fields(self) -> None:
         """Then a dict with missing required fields raises ValidationError."""
@@ -134,6 +158,16 @@ class TestDefenderO365Alert(unittest.TestCase):
         data = self._minimal_alert()
         alert = DefenderO365Alert.model_validate(data)
         self.assertEqual(alert.raw, data)
+
+    def test_filter_evidence_minimal_no_evidence(self) -> None:
+        """Then filter_evidence returns empty evidence list for alert with no evidence."""
+        alert = DefenderO365Alert.model_validate(self._minimal_alert())
+        compact = alert.filter_evidence()
+        self.assertEqual(compact["id"], "ALT-001")
+        self.assertEqual(compact["status"], "new")
+        self.assertIn("2026-07-05T14:00:00", compact["createdDateTime"])
+        self.assertEqual(compact["evidence"], [])
+        self.assertEqual(len(compact.keys()), 5)
 
 
 class TestSourceDataRewrite(unittest.TestCase):

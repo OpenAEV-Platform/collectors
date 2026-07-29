@@ -39,7 +39,8 @@ class MSGraphAuthClient:
                 with no access_token.
         """
         result = self.app.acquire_token_for_client(
-            scopes=["https://graph.microsoft.com/.default"]
+            scopes=["https://graph.microsoft.com/.default"],
+            force_refresh=force_refresh,
         )
 
         if access_token := result.get("access_token"):

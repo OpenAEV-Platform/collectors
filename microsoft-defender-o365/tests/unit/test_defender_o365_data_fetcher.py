@@ -4,10 +4,13 @@ Tests pagination, retry logic, auth recovery, evidence filtering,
 and structured logging with mocked HTTP responses.
 """
 
+from datetime import datetime
 import json
 import time
 import unittest
 from unittest.mock import MagicMock, patch
+
+from pydantic import HttpUrl
 
 from src.auth.exceptions import AuthenticationError
 
@@ -30,7 +33,7 @@ class TestDefenderO365DataFetcher(unittest.TestCase):
     def _make_config(self) -> MagicMock:
         """Create a mock SourceConfig."""
         config = MagicMock()
-        config.base_url = "https://graph.microsoft.com/v1.0"
+        config.base_url = HttpUrl("https://graph.microsoft.com/v1.0")
         config.filter_service_source = "microsoftDefenderForOffice365"
         config.max_fetch_retries = 5
         return config
@@ -222,7 +225,12 @@ class TestDefenderO365DataFetcher(unittest.TestCase):
         response_401_again.status_code = 401
         response_401_again.json.return_value = {"value": []}
 
-        mock_session.get.side_effect = [response_401, response_401_again]
+        # Third call returns empty 200
+        response_ok = MagicMock()
+        response_ok.status_code = 200
+        response_ok.json.return_value = {"value": []}
+
+        mock_session.get.side_effect = [response_401, response_401_again, response_ok]
         mock_session_class.return_value = mock_session
 
         # Execute
@@ -269,7 +277,7 @@ class TestDefenderO365DataFetcher(unittest.TestCase):
         mock_session_class,
         mock_auth_client,
     ):
-        """Then the request URL contains $filter with serviceSource."""
+        """Then the request contains $filter with serviceSource and $orderby."""
         from src.source.defender_o365_data_fetcher import DefenderO365DataFetcher
 
         mock_session = MagicMock()
@@ -291,10 +299,45 @@ class TestDefenderO365DataFetcher(unittest.TestCase):
         # Assert
         mock_session.get.assert_called()
         call_args = mock_session.get.call_args
-        # Check that params include the filter
         params = call_args[1].get("params", {})
         self.assertIn("$filter", params)
         self.assertIn("microsoftDefenderForOffice365", params["$filter"])
+        self.assertIn("$orderby", params)
+        self.assertEqual(params["$orderby"], "createdDateTime desc")
+
+    @patch("src.source.defender_o365_data_fetcher.MSGraphAuthClient")
+    @patch("src.source.defender_o365_data_fetcher.Session")
+    def test_since_datetime_added_to_filter(
+        self,
+        mock_session_class,
+        mock_auth_client,
+    ):
+        """Then since_datetime property adds createdDateTime ge filter clause."""
+        from src.source.defender_o365_data_fetcher import DefenderO365DataFetcher
+
+        mock_session = MagicMock()
+        mock_auth = MagicMock()
+        mock_auth.get_access_token.return_value = "test-token"
+        mock_auth_client.return_value = mock_auth
+
+        response = MagicMock()
+        response.status_code = 200
+        response.json.return_value = {"value": [_make_alert("ALT-001")]}
+        mock_session.get.return_value = response
+        mock_session_class.return_value = mock_session
+
+        # Execute
+        config = self._make_config()
+        fetcher = DefenderO365DataFetcher(config)
+        since = datetime(2026, 7, 1, 0, 0, 0)
+        fetcher.since_datetime = since
+        fetcher.fetch_data()
+
+        # Assert
+        call_args = mock_session.get.call_args
+        params = call_args[1].get("params", {})
+        self.assertIn("createdDateTime ge", params["$filter"])
+        self.assertIn("2026-07-01T00:00:00", params["$filter"])
 
 
 if __name__ == "__main__":

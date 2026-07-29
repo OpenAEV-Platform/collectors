@@ -15,36 +15,38 @@ class TestSourceDataContractCompliance:
 
     def test_source_data_satisfies_protocol(self) -> None:
         """Then MicrosoftDefenderO365SourceData satisfies SourceDataProtocol."""
-        data = MicrosoftDefenderO365SourceData()
+        data = MicrosoftDefenderO365SourceData(raw_alert={"id": "ALT-001"})
         assert isinstance(data, SourceDataProtocol)
 
     def test_to_oaev_data_returns_oaev_data(self) -> None:
         """Then to_oaev_data() returns an OAEVData instance."""
-        data = MicrosoftDefenderO365SourceData()
+        data = MicrosoftDefenderO365SourceData(raw_alert={"id": "ALT-001"})
         result = data.to_oaev_data()
         assert isinstance(result, OAEVData)
 
     def test_to_traces_data_returns_trace_data(self) -> None:
         """Then to_traces_data() returns a TraceData instance."""
-        data = MicrosoftDefenderO365SourceData()
+        data = MicrosoftDefenderO365SourceData(
+            raw_alert={"id": "ALT-001", "alertWebUrl": "https://example.com/alert/1"}
+        )
         result = data.to_traces_data()
         assert isinstance(result, TraceData)
 
     def test_is_prevented_returns_bool(self) -> None:
         """Then is_prevented() returns a bool."""
-        data = MicrosoftDefenderO365SourceData()
+        data = MicrosoftDefenderO365SourceData(raw_alert={"id": "ALT-001"})
         result = data.is_prevented()
         assert isinstance(result, bool)
 
     def test_is_detected_returns_bool(self) -> None:
         """Then is_detected() returns a bool."""
-        data = MicrosoftDefenderO365SourceData()
+        data = MicrosoftDefenderO365SourceData(raw_alert={"id": "ALT-001"})
         result = data.is_detected()
         assert isinstance(result, bool)
 
     def test_str_returns_str(self) -> None:
         """Then __str__() returns a str."""
-        data = MicrosoftDefenderO365SourceData()
+        data = MicrosoftDefenderO365SourceData(raw_alert={"id": "ALT-001"})
         result = str(data)
         assert isinstance(result, str)
         assert len(result) > 0

@@ -1,4 +1,3 @@
-import secrets
 from typing import Any
 
 from src.collector.models.data import OAEVData, TraceData
@@ -17,40 +16,37 @@ class MicrosoftDefenderO365SourceData:
 
         Args:
             raw_alert: The original Graph Security API alert dict, preserved
-                verbatim. If None, generates a placeholder value.
+                verbatim. If None, the instance is empty (no placeholder).
         """
         self.raw_alert = raw_alert
-        if raw_alert is None:
-            self.value = secrets.token_hex(8)
-        else:
-            self.value = raw_alert.get("id", secrets.token_hex(8))
+        self.value = raw_alert.get("id") if raw_alert else None
 
     def to_oaev_data(self) -> OAEVData:
-        """Serialize source data into OAEVData"""
-        return OAEVData(parent_process_name=f"{self.value}")
+        """Serialize source data into OAEVData."""
+        return OAEVData(parent_process_name=self.value or "")
 
     def to_traces_data(self) -> TraceData:
-        """Serialize traces data into TraceData"""
+        """Serialize traces data into TraceData."""
         alert_web_url = self.raw_alert.get("alertWebUrl") if self.raw_alert else None
         return TraceData(
-            alert_name=f"Alert {self.value}",
-            alert_link=alert_web_url or f"http://fake.url/{self.value}",
+            alert_name=f"Alert {self.value}" if self.value else "",
+            alert_link=alert_web_url,
         )
 
     def is_prevented(self) -> bool:
-        """Placeholder analysis of the data to determine if the threat is prevented"""
-        if self.raw_alert:
-            status = self.raw_alert.get("status", "")
-            return status in ("closed", "resolved")
-        return bool(secrets.randbits(1))
+        """Determine if the threat is prevented.
+
+        Status interpretation is out of scope for this chunk; returns False.
+        """
+        return False
 
     def is_detected(self) -> bool:
-        """Placeholder analysis of the data to determine if the threat is detected"""
-        if self.raw_alert:
-            status = self.raw_alert.get("status", "")
-            return status in ("new", "active", "inProgress")
-        return bool(secrets.randbits(1))
+        """Determine if the threat is detected.
+
+        Status interpretation is out of scope for this chunk; returns False.
+        """
+        return False
 
     def __str__(self) -> str:
-        """Str output of the source data for logging purposes"""
-        return f"{self.value}"
+        """Str output of the source data for logging purposes."""
+        return str(self.value) if self.value else "<empty>"

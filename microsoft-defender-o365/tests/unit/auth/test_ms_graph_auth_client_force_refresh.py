@@ -43,7 +43,7 @@ class TestMSGraphAuthClientForceRefresh(unittest.TestCase):
         m_confidential_client_application,
     ):
         """When get_access_token(force_refresh=True) is called,
-        it accepts the parameter and returns a token."""
+        it passes force_refresh=True to MSAL and returns a token."""
         config = MagicMock()
         config.use_certificate_auth = False
         m_confidential_client_application.return_value.acquire_token_for_client.return_value = {
@@ -54,7 +54,11 @@ class TestMSGraphAuthClientForceRefresh(unittest.TestCase):
         token = auth_client.get_access_token(force_refresh=True)
 
         self.assertEqual(token, sentinel.refreshed_token)
-        m_confidential_client_application.return_value.acquire_token_for_client.assert_called_once()
+        call_kwargs = (
+            m_confidential_client_application.return_value
+            .acquire_token_for_client.call_args.kwargs
+        )
+        self.assertTrue(call_kwargs.get("force_refresh"))
 
     def test_get_access_token_force_refresh_raises_on_error(
         self,

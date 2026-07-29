@@ -523,15 +523,25 @@ def _then_result_is_empty(result) -> None:
 def _then_only_analyzed_message_evidence_preserved(result) -> None:
     """Then only analyzedMessageEvidence items are preserved.
 
-    Checks that evidence items have analyzedMessageEvidence schema fields
-    (subject, p1Sender, etc.) rather than other evidence types (url, file, etc.).
+    Checks that each raw_alert is a compact dict with id, status,
+    createdDateTime, and compacted evidence (urls, p1/p2 sender info,
+    recipient email) rather than the full Graph payload.
 
     Args:
         result: The fetch result to check.
     """
+    EXPECTED_ALERT_KEYS = {"id", "status", "createdDateTime", "evidence"}
+    EXPECTED_EVIDENCE_KEYS = {
+        "urls",
+        "p1_sender_email",
+        "p1_sender_display_name",
+        "p2_sender_email",
+        "p2_sender_display_name",
+        "recipient_email_address",
+    }
     for item in result:
-        if item.raw_alert and "evidence" in item.raw_alert:
+        if item.raw_alert:
+            assert EXPECTED_ALERT_KEYS.issubset(item.raw_alert.keys())
             for ev in item.raw_alert["evidence"]:
                 assert isinstance(ev, dict)
-                # model_dump'd analyzedMessageEvidence has these keys
-                assert "subject" in ev or "p1Sender" in ev
+                assert EXPECTED_EVIDENCE_KEYS.issubset(ev.keys())
