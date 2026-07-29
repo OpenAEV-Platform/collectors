@@ -23,7 +23,7 @@ from tests.conftest import (
 @pytest.mark.parametrize(
     "mode_flag_value, error_field_a, error_field_b",
     [
-        ("true", "client_cert_path", "client_cert_thumbprint"),
+        ("true", "client_cert_data", "client_cert_thumbprint"),
     ],
     ids=[
         "certificate_auth_enabled_missing_cert_fields",
@@ -38,12 +38,12 @@ def test_certificate_auth_mode_enabled_without_certificate_required_fields_raise
 ):
     """Scenario Outline: Certificate auth mode enabled without certificate required fields raises ValidationError"""
     # Given: SOURCE_USE_CERTIFICATE_AUTH is "<mode_flag_value>", and
-    # SOURCE_CLIENT_CERT_PATH/CLIENT_CERT_THUMBPRINT are not set
+    # SOURCE_CLIENT_CERT_DATA/CLIENT_CERT_THUMBPRINT are not set
     _given_microsoft_defender_o365_all_required_fields_present(monkeypatch)
     _given_microsoft_defender_o365_env_var_set(
         monkeypatch, "USE_CERTIFICATE_AUTH", mode_flag_value
     )
-    _given_microsoft_defender_o365_env_var_not_set(monkeypatch, "CLIENT_CERT_PATH")
+    _given_microsoft_defender_o365_env_var_not_set(monkeypatch, "CLIENT_CERT_DATA")
     _given_microsoft_defender_o365_env_var_not_set(
         monkeypatch, "CLIENT_CERT_THUMBPRINT"
     )

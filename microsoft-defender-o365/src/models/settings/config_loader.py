@@ -150,7 +150,7 @@ class ConfigLoader(ConfigBaseSettings):
                     "data": self.source.use_certificate_auth
                 },
                 "source_client_secret": {"data": self.source.client_secret},
-                "source_client_cert_path": {"data": self.source.client_cert_path},
+                "source_client_cert_data": {"data": self.source.client_cert_data},
                 "source_client_cert_thumbprint": {
                     "data": self.source.client_cert_thumbprint
                 },

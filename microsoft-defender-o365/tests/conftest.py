@@ -137,7 +137,7 @@ def _given_microsoft_defender_o365_env_var_not_set(
 
     Args:
         monkeypatch: pytest's monkeypatch fixture.
-        field_name: The field's env var suffix (e.g. ``"CLIENT_CERT_PATH"``), appended
+        field_name: The field's env var suffix (e.g. ``"CLIENT_CERT_DATA"``), appended
             to ``MICROSOFT_DEFENDER_O365_ENV_PREFIX``.
 
     """

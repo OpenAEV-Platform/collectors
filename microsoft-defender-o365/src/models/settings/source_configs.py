@@ -34,9 +34,9 @@ class _ConfigLoaderSource(ConfigBaseSettings):
         description="Azure AD application client secret. Required unless "
         "use_certificate_auth is enabled.",
     )
-    client_cert_path: str | None = Field(
+    client_cert_data: str | None = Field(
         default=None,
-        description="Filesystem path to the client certificate. Required when "
+        description="Content of the client certificate. Required when "
         "use_certificate_auth is enabled.",
     )
     client_cert_thumbprint: str | None = Field(
@@ -65,15 +65,15 @@ class _ConfigLoaderSource(ConfigBaseSettings):
         "fails transiently.",
     )
 
-    @field_validator("client_cert_path")
+    @field_validator("client_cert_data")
     @classmethod
-    def _validate_client_cert_path(
+    def _validate_client_cert_data(
         cls, value: str | None, info: ValidationInfo
     ) -> str | None:
-        """Require client_cert_path when certificate auth mode is enabled.
+        """Require client_cert_data when certificate auth mode is enabled.
 
         Args:
-            value: The provided client_cert_path value, if any.
+            value: The provided client_cert_data value, if any.
             info: Pydantic validation info, exposing already-validated field values.
 
         Returns:
@@ -85,7 +85,7 @@ class _ConfigLoaderSource(ConfigBaseSettings):
         """
         if info.data.get("use_certificate_auth") and not value:
             raise ValueError(
-                "client_cert_path is required when use_certificate_auth is enabled"
+                "client_cert_data is required when use_certificate_auth is enabled"
             )
         return value
 
