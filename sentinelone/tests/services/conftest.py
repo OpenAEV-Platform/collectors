@@ -1,5 +1,6 @@
 """Conftest for services tests with polyfactory fixtures."""
 
+import logging
 from unittest.mock import Mock, patch
 
 import pytest
@@ -199,14 +200,25 @@ def mock_logging():
     """Auto-mock logging to reduce noise in tests.
 
     Auto-applies to all tests to prevent logging output during test execution.
+    Only calls that request a *named* logger (how application code obtains
+    its logger, e.g. ``logging.getLogger(__name__)``) are intercepted. Calls
+    with no name are delegated to the real ``logging.getLogger`` so pytest's
+    own log-capturing machinery (which fetches the real root logger via
+    ``logging.getLogger()``) is unaffected.
 
     Yields:
         Mock logger instance.
 
     """
-    with patch("logging.getLogger") as mock_logger:
-        mock_logger.return_value = Mock()
-        yield mock_logger
+    real_get_logger = logging.getLogger
+    mock_logger = Mock()
+
+    def _fake_get_logger(name=None):
+        return real_get_logger(name) if name is None else mock_logger
+
+    with patch("logging.getLogger", side_effect=_fake_get_logger) as mock_get_logger:
+        mock_get_logger.return_value = mock_logger
+        yield mock_get_logger
 
 
 @pytest.fixture
