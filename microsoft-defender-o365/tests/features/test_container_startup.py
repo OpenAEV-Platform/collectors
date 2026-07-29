@@ -1,6 +1,7 @@
 """Essential tests for Microsoft Defender O365 container startup - Gherkin GWT Format."""
 
 from unittest.mock import MagicMock, patch
+from pytest import FixtureRequest
 
 import pytest
 
@@ -21,6 +22,7 @@ import pytest
 )
 def test_service_process_remains_alive_with_no_unhandled_exceptions(
     microsoft_defender_o365_collector_module,
+    request,
     platform,
     service_name,
     base_class,
@@ -33,6 +35,7 @@ def test_service_process_remains_alive_with_no_unhandled_exceptions(
     mocks = _given_minimal_service_with_stub_source_wired(
         microsoft_defender_o365_collector_module,
         base_class_name=base_class,
+        request=request,
     )
 
     # When: the service process is started via docker-compose (simulated here by calling the
@@ -55,6 +58,7 @@ def test_service_process_remains_alive_with_no_unhandled_exceptions(
 def _given_minimal_service_with_stub_source_wired(
     collector,
     base_class_name: str,
+    request: FixtureRequest,
 ) -> dict[str, MagicMock]:
     """Patch the collector module's dependencies with a minimal stub Source wired in.
 
@@ -80,7 +84,13 @@ def _given_minimal_service_with_stub_source_wired(
         "Source": patch.object(collector, "Source"),
         "BaseCollector": patch.object(collector, "BaseCollector"),
     }
-    return {name: patcher.start() for name, patcher in patchers.items()}
+    mocks = {}
+
+    for name, patcher in patchers.items():
+        mocks[name] = patcher.start()
+        request.addfinalizer(patcher.stop)
+
+    return mocks
 
 
 # --------
