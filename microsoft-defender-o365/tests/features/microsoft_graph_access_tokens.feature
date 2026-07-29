@@ -35,7 +35,7 @@ Feature: MSGraphAuthClient acquires Microsoft Graph access tokens via MSAL
 
   Scenario Outline: Certificate mode initializes MSAL with private_key and thumbprint
     Given use_certificate_auth is True
-    And client_cert_path points to a readable PEM file containing "<pem_content>"
+    And client_cert_data containing "<pem_content>"
     And client_cert_thumbprint is "<thumbprint>"
     And acquire_token_for_client returns {"access_token": "<token>", "token_type": "Bearer"}
     When get_access_token is called

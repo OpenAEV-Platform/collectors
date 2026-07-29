@@ -8,10 +8,8 @@ import src.auth.ms_graph_auth_client as module
 @patch.object(module, "AZURE_PUBLIC")
 @patch.object(module, "AuthorityBuilder")
 class TestMSGraphAuthClient(unittest.TestCase):
-    @patch.object(module, "Path")
     def test_ms_graph_auth_client_init_cert_case(
         self,
-        m_path,
         m_authority_builder,
         m_azure_public,
         m_confidential_client_application,
@@ -20,11 +18,8 @@ class TestMSGraphAuthClient(unittest.TestCase):
         config.tenant_id = sentinel.tenant_id
         config.use_certificate_auth = True
         config.client_id = sentinel.client_id
-        config.client_cert_path = sentinel.client_cert_path
+        config.client_cert_data = sentinel.client_cert_data
         config.client_cert_thumbprint = sentinel.client_cert_thumbprint
-
-        m_path.return_value.exists.return_value = True
-        m_path.return_value.read_text.return_value = sentinel.cert_text
 
         auth_client = module.MSGraphAuthClient(config)
 
@@ -33,35 +28,13 @@ class TestMSGraphAuthClient(unittest.TestCase):
             sentinel.client_id,
             authority=m_authority_builder.return_value,
             client_credential={
-                "private_key": sentinel.cert_text,
+                "private_key": sentinel.client_cert_data,
                 "thumbprint": sentinel.client_cert_thumbprint,
             },
         )
         self.assertEqual(
             auth_client.app, m_confidential_client_application.return_value
         )
-
-    @patch.object(module, "Path")
-    def test_ms_grapj_auth_client_init_cert_case_not_exist(
-        self,
-        m_path,
-        m_authority_builder,
-        m_azure_public,
-        m_confidential_client_application,
-    ):
-        config = MagicMock()
-        config.tenant_id = sentinel.tenant_id
-        config.use_certificate_auth = True
-        config.client_id = sentinel.client_id
-        config.client_cert_path = sentinel.client_cert_path
-        config.client_cert_thumbprint = sentinel.client_cert_thumbprint
-
-        m_path.return_value.exists.return_value = False
-
-        with self.assertRaises(module.AuthenticationError) as ctx:
-            module.MSGraphAuthClient(config)
-
-        self.assertIn("Certificate file does not exist at path", str(ctx.exception))
 
     def test_ms_graph_auth_client_init_secret_case(
         self, m_authority_builder, m_azure_public, m_confidential_client_application
