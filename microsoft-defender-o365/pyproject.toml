@@ -83,7 +83,7 @@ exclude = [
     "site-packages",
     "venv",
 ]
-target-version = "py312"
+target-version = "py313"
 
 [tool.ruff.lint]
 ignore = [
@@ -141,7 +141,7 @@ name = "microsoft-defender-o365-collector"
 version = "2.260715.0"
 description = "Collector for Microsoft Defender for Office 365 (email-focused alerts) for OAEV."
 readme = "README.md"
-requires-python = ">=3.11,<4.0"
+requires-python = ">=3.13,<4.0"
 dynamic = [
     "dependencies",
 ]
