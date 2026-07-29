@@ -213,8 +213,8 @@ def mock_logging():
     with patch("logging.getLogger") as mock_logger:
         shared_logger = Mock()
         mock_logger.return_value = shared_logger
-        mock_logger.side_effect = (
-            lambda name=None: real_get_logger() if name is None else shared_logger
+        mock_logger.side_effect = lambda name=None: (
+            real_get_logger() if name is None else shared_logger
         )
         yield mock_logger
 
