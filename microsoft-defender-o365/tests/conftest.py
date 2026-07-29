@@ -254,3 +254,25 @@ def _then_microsoft_defender_o365_error_references_one_of_fields(
     assert any(
         any(field_name in loc for loc in locations) for field_name in field_names
     ), f"Expected an error referencing one of {field_names}, got locations: {locations}"
+
+
+# --------
+# Chunk6 (#501) - SourceConfig fixture for contract compliance tests
+# --------
+
+
+@pytest.fixture
+def source_config_fixture() -> "object":
+    """Input contract fixture: a valid SourceConfig for DataFetcherProtocol tests.
+
+    Builds a minimal _ConfigLoaderSource with the required authentication fields.
+    The autouse dotenv isolation fixture ensures no local .env leaks in.
+    """
+    from src.models.settings.source_configs import _ConfigLoaderSource
+
+    config = _ConfigLoaderSource(
+        tenant_id="test-tenant-id",
+        client_id="test-client-id",
+        client_secret="test-client-secret",
+    )
+    return config
