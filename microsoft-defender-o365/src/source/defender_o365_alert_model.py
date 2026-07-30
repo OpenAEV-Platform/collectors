@@ -131,6 +131,8 @@ class DefenderO365Alert(BaseModel):
             "id": self.id,
             "status": self.status,
             "alertWebUrl": self.alert_web_url,
+            "firstActivityDateTime": self.first_activity_date_time,
+            "lastActivityDateTime": self.last_activity_date_time,
             "createdDateTime": self.created_date_time.isoformat(),
             "evidence": filtered,
         }
