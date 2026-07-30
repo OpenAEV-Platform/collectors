@@ -77,7 +77,7 @@ section as `collector.*` keys, mapped to `COLLECTOR_*` environment variables.
 |--------------|------------------------|-----------------------------|-------------------------------|-----------|---------------------------------------------------------------------------------------------|
 | API Base URL | `collector.base_url`   | `COLLECTOR_BASE_URL`        | /                             | Yes       | Cisco AI Defense inspection API base URL (region/tenant specific), scheme + host only (e.g. `https://<region>.api.inspect.aidefense.security.cisco.com`). The collector appends `/api/v1/inspect/prompt`. |
 | API Key      | `collector.api_key`    | `COLLECTOR_API_KEY`         | /                             | Yes       | Cisco AI Defense API key.                                                                    |
-| Auth Header  | `collector.auth_header`| `COLLECTOR_AUTH_HEADER`     | `X-Cisco-AI-Defense-Api-Key`  | No        | HTTP header used to carry the API key.                                                       |
+| Auth Header  | `collector.auth_header`| `COLLECTOR_AUTH_HEADER`     | `x-cisco-ai-defense-tenant-api-key`  | No        | HTTP header used to carry the API key.                                                       |
 
 > Note: set `base_url` to the scheme + host only, with no path, query, or fragment. The collector
 > appends the inspection path itself, so a URL that already includes a path is rejected.
@@ -161,7 +161,7 @@ On each run, the collector:
   region/tenant.
 - API endpoint used:
   - `POST {base_url}/api/v1/inspect/prompt` (prompt inspection), authenticated with the configurable
-    auth header (default `X-Cisco-AI-Defense-Api-Key`).
+    auth header (default `x-cisco-ai-defense-tenant-api-key`).
 - Reference: [Cisco AI Defense](https://www.cisco.com/site/us/en/products/security/ai-defense/index.html)
   (the public API surface is still consolidating; the endpoint path and auth header are configurable).
 

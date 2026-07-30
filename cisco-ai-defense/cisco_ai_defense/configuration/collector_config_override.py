@@ -40,6 +40,6 @@ class CollectorConfigOverride(ConfigLoaderCollector):
     )
     api_key: str | None = Field(default=None, description="Cisco AI Defense API key.")
     auth_header: str | None = Field(
-        default="X-Cisco-AI-Defense-Api-Key",
+        default="x-cisco-ai-defense-tenant-api-key",
         description="HTTP header used to carry the API key.",
     )
