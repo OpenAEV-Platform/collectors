@@ -1,4 +1,3 @@
-from datetime import datetime
 from typing import Protocol, runtime_checkable
 
 from src.collector.protocols.source_data import SourceDataProtocol
