@@ -6,7 +6,6 @@ regardless of internal implementation changes. Prevents protocol drift.
 
 from unittest.mock import MagicMock, patch
 
-import pytest
 from src.collector.protocols.data_fetcher import DataFetcherProtocol
 from src.source.data_fetcher import MicrosoftDefenderO365DataFetcher
 
@@ -43,7 +42,9 @@ def _mock_fetcher(source_config_fixture: object) -> tuple:
             "src.source.defender_o365_data_fetcher.MSGraphAuthClient",
             return_value=mock_auth,
         ),
-        patch("src.source.defender_o365_data_fetcher.Session", return_value=mock_session),
+        patch(
+            "src.source.defender_o365_data_fetcher.Session", return_value=mock_session
+        ),
     ):
         fetcher = MicrosoftDefenderO365DataFetcher(source_config_fixture)
         return fetcher, mock_session, mock_auth
@@ -59,9 +60,7 @@ class TestDataFetcherContractCompliance:
         fetcher, _, _ = _mock_fetcher(source_config_fixture)
         assert isinstance(fetcher, DataFetcherProtocol)
 
-    def test_fetch_data_returns_list(
-        self, source_config_fixture: object
-    ) -> None:
+    def test_fetch_data_returns_list(self, source_config_fixture: object) -> None:
         """Then fetch_data() returns a list."""
         fetcher, _, _ = _mock_fetcher(source_config_fixture)
         result = fetcher.fetch_data()
@@ -93,10 +92,8 @@ class TestDataFetcherContractCompliance:
         ]
         for item in result:
             for method_name in required_methods:
-                assert hasattr(item, method_name), (
-                    f"Missing required method: {method_name}"
-                )
+                assert hasattr(
+                    item, method_name
+                ), f"Missing required method: {method_name}"
                 method = getattr(item, method_name)
-                assert callable(method), (
-                    f"Method {method_name} is not callable"
-                )
+                assert callable(method), f"Method {method_name} is not callable"

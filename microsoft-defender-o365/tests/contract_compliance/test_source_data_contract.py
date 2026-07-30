@@ -4,7 +4,6 @@ Ensures MicrosoftDefenderO365SourceData satisfies the template SourceDataProtoco
 and returns correct types from each method.
 """
 
-import pytest
 from src.collector.models.data import OAEVData, TraceData
 from src.collector.protocols.source_data import SourceDataProtocol
 from src.source.source_data import MicrosoftDefenderO365SourceData

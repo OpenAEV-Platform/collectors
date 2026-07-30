@@ -119,7 +119,10 @@ class TestDefenderO365Alert(unittest.TestCase):
         alert = DefenderO365Alert.model_validate(self._alert_with_mixed_evidence())
         compact = alert.filter_evidence()
         self.assertIsInstance(compact, dict)
-        self.assertEqual(set(compact.keys()), {"id", "status", "alertWebUrl", "createdDateTime", "evidence"})
+        self.assertEqual(
+            set(compact.keys()),
+            {"id", "status", "alertWebUrl", "createdDateTime", "evidence"},
+        )
         self.assertEqual(compact["id"], "ALT-001")
         self.assertEqual(compact["status"], "new")
         self.assertIn("2026-07-05T14:00:00", compact["createdDateTime"])

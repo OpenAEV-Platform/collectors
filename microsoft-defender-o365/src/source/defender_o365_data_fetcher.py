@@ -7,19 +7,18 @@ transient error handling.
 
 import logging
 import time
-from urllib.parse import urljoin, urlsplit
 from datetime import datetime
 from typing import Any
+from urllib.parse import urljoin, urlsplit
 
 from pydantic import HttpUrl, ValidationError
 from requests import Session
 from requests.adapters import HTTPAdapter
-from urllib3.util import Retry
-
 from src.auth.ms_graph_auth_client import MSGraphAuthClient
 from src.collector.types.collector import SourceConfig
 from src.source.defender_o365_alert_model import DefenderO365Alert
 from src.source.source_data import MicrosoftDefenderO365SourceData
+from urllib3.util import Retry
 
 LOG_PREFIX = "[DefenderO365DataFetcher]"
 logger = logging.getLogger(__name__)
@@ -98,7 +97,9 @@ class DefenderO365DataFetcher:
 
         return HttpUrl(urljoin(base, relative_path)).encoded_string()
 
-    def _build_filter_params(self, since_datetime: datetime | None = None) -> dict[str, str]:
+    def _build_filter_params(
+        self, since_datetime: datetime | None = None
+    ) -> dict[str, str]:
         """Build OData filter parameters from config.
 
         Combines serviceSource filter with an optional createdDateTime lower
@@ -114,9 +115,7 @@ class DefenderO365DataFetcher:
         """
         filters = [f"serviceSource eq '{self.config.filter_service_source}'"]
         if since_datetime is not None:
-            filters.append(
-                f"createdDateTime ge '{since_datetime.isoformat()}'"
-            )
+            filters.append(f"createdDateTime ge '{since_datetime.isoformat()}'")
 
         return {
             "$filter": " and ".join(filters),
@@ -212,9 +211,7 @@ class DefenderO365DataFetcher:
             params = None  # nextLink carries its own params
 
             page_count += 1
-            logger.info(
-                f"{LOG_PREFIX} Page {page_count}: fetched {len(value)} alerts"
-            )
+            logger.info(f"{LOG_PREFIX} Page {page_count}: fetched {len(value)} alerts")
 
         logger.info(
             f"{LOG_PREFIX} Total: {len(all_alerts)} alerts across {page_count} pages"
@@ -222,6 +219,5 @@ class DefenderO365DataFetcher:
 
         # Wrap each alert in SourceData
         return [
-            MicrosoftDefenderO365SourceData(raw_alert=alert)
-            for alert in all_alerts
+            MicrosoftDefenderO365SourceData(raw_alert=alert) for alert in all_alerts
         ]

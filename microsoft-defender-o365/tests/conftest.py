@@ -476,7 +476,9 @@ def _when_microsoft_defender_o365_fetcher_fetches_data(
             "src.source.defender_o365_data_fetcher.MSGraphAuthClient",
             return_value=mock_auth,
         ),
-        patch("src.source.defender_o365_data_fetcher.Session", return_value=mock_session),
+        patch(
+            "src.source.defender_o365_data_fetcher.Session", return_value=mock_session
+        ),
     ):
         fetcher = DefenderO365DataFetcher(config)
         return fetcher.fetch_data()

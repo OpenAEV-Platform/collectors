@@ -33,7 +33,9 @@ class AnalyzedMessageEvidence(BaseModel):
     delivery_action: str | None = Field(None, alias="deliveryAction")
     delivery_location: str | None = Field(None, alias="deliveryLocation")
     threats: list[str] = []
-    threat_detection_methods: list[str] = Field(default_factory=list, alias="threatDetectionMethods")
+    threat_detection_methods: list[str] = Field(
+        default_factory=list, alias="threatDetectionMethods"
+    )
     urls: list[str] = []
     url_count: int | None = Field(None, alias="urlCount")
     attachments_count: int | None = Field(None, alias="attachmentsCount")
@@ -67,7 +69,9 @@ class DefenderO365Alert(BaseModel):
     evidence: list[dict[str, Any]] = []
     created_date_time: datetime = Field(..., alias="createdDateTime")
     last_update_date_time: datetime | None = Field(None, alias="lastUpdateDateTime")
-    first_activity_date_time: datetime | None = Field(None, alias="firstActivityDateTime")
+    first_activity_date_time: datetime | None = Field(
+        None, alias="firstActivityDateTime"
+    )
     last_activity_date_time: datetime | None = Field(None, alias="lastActivityDateTime")
     threat_display_name: str | None = Field(None, alias="threatDisplayName")
     threat_family_name: str | None = Field(None, alias="threatFamilyName")

@@ -4,15 +4,11 @@ Tests pagination, retry logic, auth recovery, evidence filtering,
 and structured logging with mocked HTTP responses.
 """
 
-from datetime import datetime
-import json
-import time
 import unittest
+from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 from pydantic import HttpUrl
-
-from src.auth.exceptions import AuthenticationError
 
 
 def _make_alert(alert_id: str = "ALT-001") -> dict:
@@ -53,7 +49,11 @@ class TestDefenderO365DataFetcher(unittest.TestCase):
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
-            "value": [_make_alert("ALT-001"), _make_alert("ALT-002"), _make_alert("ALT-003")],
+            "value": [
+                _make_alert("ALT-001"),
+                _make_alert("ALT-002"),
+                _make_alert("ALT-003"),
+            ],
         }
         mock_session.get.return_value = mock_response
         mock_session_class.return_value = mock_session
@@ -101,7 +101,11 @@ class TestDefenderO365DataFetcher(unittest.TestCase):
         response_page2 = MagicMock()
         response_page2.status_code = 200
         response_page2.json.return_value = {
-            "value": [_make_alert("ALT-003"), _make_alert("ALT-004"), _make_alert("ALT-005")],
+            "value": [
+                _make_alert("ALT-003"),
+                _make_alert("ALT-004"),
+                _make_alert("ALT-005"),
+            ],
         }
 
         mock_session.get.side_effect = [response_page1, response_page2]

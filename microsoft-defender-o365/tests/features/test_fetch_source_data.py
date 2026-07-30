@@ -26,6 +26,7 @@ from tests.conftest import (
 # Scenarios
 # --------
 
+
 # Scenario: Fetch alerts from a single page response
 @pytest.mark.parametrize(
     "alert_count",
@@ -62,7 +63,9 @@ def test_fetch_alerts_from_single_page(alert_count, source_config_fixture):
     [([2, 3], 5)],
     ids=["two_pages_5_alerts"],
 )
-def test_fetch_alerts_with_pagination(page_sizes, total_expected, source_config_fixture):
+def test_fetch_alerts_with_pagination(
+    page_sizes, total_expected, source_config_fixture
+):
     """Scenario: Fetch alerts with pagination."""
     mock_session = MagicMock()
     mock_auth = MagicMock()
