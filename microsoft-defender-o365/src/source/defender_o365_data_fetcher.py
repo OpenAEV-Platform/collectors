@@ -7,7 +7,6 @@ transient error handling.
 
 import logging
 import time
-from datetime import datetime
 from typing import Any
 from urllib.parse import urljoin, urlsplit
 
@@ -15,6 +14,7 @@ from pydantic import HttpUrl, ValidationError
 from requests import Session
 from requests.adapters import HTTPAdapter
 from src.auth.ms_graph_auth_client import MSGraphAuthClient
+from src.collector.protocols.data_fetcher import FetchParamsHook
 from src.collector.types.collector import SourceConfig
 from src.source.defender_o365_alert_model import DefenderO365Alert
 from src.source.source_data import MicrosoftDefenderO365SourceData
@@ -31,27 +31,26 @@ class DefenderO365DataFetcher:
     pagination, rate limiting (HTTP 429), and auth recovery (HTTP 401).
     """
 
-    def __init__(self, config: SourceConfig) -> None:
+    def __init__(
+        self,
+        config: SourceConfig,
+        fetch_params_hook: FetchParamsHook | None = None,
+    ) -> None:
         """Initialize the data fetcher.
 
         Args:
             config: Source configuration containing authentication and
                 connection parameters.
+            fetch_params_hook: Optional callable that receives the filter params
+                dict before the first request and returns the (possibly
+                modified) params dict. Use this to inject custom filters
+                such as a since_datetime clause without mutating fetcher
+                state.
         """
         self.config = config
         self.auth_client = MSGraphAuthClient(config)
-        self._since_datetime: datetime | None = None
+        self._fetch_params_hook = fetch_params_hook
         self._build_session()
-
-    @property
-    def since_datetime(self) -> datetime | None:
-        """The lower-bound datetime filter for alert fetching."""
-        return self._since_datetime
-
-    @since_datetime.setter
-    def since_datetime(self, value: datetime | None) -> None:
-        """Set the lower-bound datetime filter for alert fetching."""
-        self._since_datetime = value
 
     def _build_session(self) -> None:
         """Build requests.Session with urllib3 Retry adapter."""
@@ -97,28 +96,17 @@ class DefenderO365DataFetcher:
 
         return HttpUrl(urljoin(base, relative_path)).encoded_string()
 
-    def _build_filter_params(
-        self, since_datetime: datetime | None = None
-    ) -> dict[str, str]:
+    def _build_filter_params(self) -> dict[str, str]:
         """Build OData filter parameters from config.
 
-        Combines serviceSource filter with an optional createdDateTime lower
-        bound. Always orders results by createdDateTime descending (most
-        recent first).
-
-        Args:
-            since_datetime: If provided, only alerts created at or after
-                this time are returned.
+        Combines serviceSource filter. Always orders results by createdDateTime
+        descending (most recent first).
 
         Returns:
             Dict with $filter and $orderby parameters.
         """
-        filters = [f"serviceSource eq '{self.config.filter_service_source}'"]
-        if since_datetime is not None:
-            filters.append(f"createdDateTime ge '{since_datetime.isoformat()}'")
-
         return {
-            "$filter": " and ".join(filters),
+            "$filter": f"serviceSource eq '{self.config.filter_service_source}'",
             "$orderby": "createdDateTime desc",
         }
 
@@ -135,7 +123,11 @@ class DefenderO365DataFetcher:
             A list of MicrosoftDefenderO365SourceData instances.
         """
         url = self._build_url("security/alerts_v2")
-        params = self._build_filter_params(self._since_datetime)
+        params = self._build_filter_params()
+
+        if self._fetch_params_hook:
+            params = self._fetch_params_hook(params)
+
         all_alerts: list[dict[str, Any]] = []
         page_count = 0
 
@@ -146,6 +138,7 @@ class DefenderO365DataFetcher:
             while request_attempt < self.config.max_fetch_retries:
                 request_attempt += 1
 
+                breakpoint()
                 response = self.session.get(
                     url,
                     headers={"Authorization": f"Bearer {token}"},

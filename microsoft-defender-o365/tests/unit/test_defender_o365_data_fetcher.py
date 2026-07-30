@@ -307,12 +307,12 @@ class TestDefenderO365DataFetcher(unittest.TestCase):
 
     @patch("src.source.defender_o365_data_fetcher.MSGraphAuthClient")
     @patch("src.source.defender_o365_data_fetcher.Session")
-    def test_since_datetime_added_to_filter(
+    def test_fetch_params_hook_injects_filter_clause(
         self,
         mock_session_class,
         mock_auth_client,
     ):
-        """Then since_datetime property adds createdDateTime ge filter clause."""
+        """Then fetch_params_hook injects a filter clause without mutating fetcher state."""
         from src.source.defender_o365_data_fetcher import DefenderO365DataFetcher
 
         mock_session = MagicMock()
@@ -326,18 +326,76 @@ class TestDefenderO365DataFetcher(unittest.TestCase):
         mock_session.get.return_value = response
         mock_session_class.return_value = mock_session
 
+        # Fetch params hook: inject a since_datetime clause into the $filter
+        since = datetime(2026, 7, 1, 0, 0, 0)
+
+        def _since_hook(params: dict) -> dict:
+            current = params.get("$filter", "")
+            clause = f"createdDateTime ge '{since.isoformat()}'"
+            params["$filter"] = f"{current} and {clause}" if current else clause
+            return params
+
         # Execute
         config = self._make_config()
-        fetcher = DefenderO365DataFetcher(config)
-        since = datetime(2026, 7, 1, 0, 0, 0)
-        fetcher.since_datetime = since
+        fetcher = DefenderO365DataFetcher(config, fetch_params_hook=_since_hook)
         fetcher.fetch_data()
 
-        # Assert
+        # Assert: hook injected the clause into the request params
         call_args = mock_session.get.call_args
         params = call_args[1].get("params", {})
         self.assertIn("createdDateTime ge", params["$filter"])
         self.assertIn("2026-07-01T00:00:00", params["$filter"])
+
+    def test_source_handler_build_fetch_params_hook(self):
+        """Then DefenderO365SourceHandler.build_fetch_params_hook extracts end_date
+        from expectations and returns a hook that injects since_datetime."""
+        from pyoaev.signatures.types import SignatureTypes
+        from src.source.source_handler import DefenderO365SourceHandler
+
+        # Build a mock expectation with end_date signature
+        mock_expectation = MagicMock()
+        mock_sig = MagicMock()
+        mock_sig.type = SignatureTypes.SIG_TYPE_END_DATE
+        mock_sig.value = "2026-07-01T00:00:00"
+        mock_expectation.inject_expectation_signatures = [mock_sig]
+
+        batch = [mock_expectation]
+
+        # Execute
+        hook = DefenderO365SourceHandler.build_fetch_params_hook(batch)
+
+        # Assert: hook is not None
+        self.assertIsNotNone(hook)
+
+        # Assert: hook injects the since clause
+        params = {"$filter": "existing filter", "$orderby": "createdDateTime desc"}
+        result = hook(params)
+        self.assertIn("createdDateTime ge", result["$filter"])
+        self.assertIn("2026-07-01T00:00:00", result["$filter"])
+
+    def test_source_handler_build_fetch_params_hook_no_end_date(self):
+        """Then DefenderO365SourceHandler.build_fetch_params_hook returns None
+        when no end_date signatures are present."""
+        from src.source.source_handler import DefenderO365SourceHandler
+
+        # Build a mock expectation without end_date signature
+        mock_expectation = MagicMock()
+        mock_expectation.inject_expectation_signatures = []
+
+        batch = [mock_expectation]
+
+        # Execute
+        hook = DefenderO365SourceHandler.build_fetch_params_hook(batch)
+
+        # Assert: hook is None
+        self.assertIsNone(hook)
+
+    def test_base_source_handler_returns_none(self):
+        """Then the base SourceHandler.build_fetch_params_hook returns None by default."""
+        from src.collector.models.source import SourceHandler
+
+        hook = SourceHandler.build_fetch_params_hook([])
+        self.assertIsNone(hook)
 
 
 if __name__ == "__main__":
