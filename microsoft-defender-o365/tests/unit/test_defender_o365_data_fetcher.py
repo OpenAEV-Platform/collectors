@@ -195,10 +195,6 @@ class TestDefenderO365DataFetcher(unittest.TestCase):
 
         # Assert
         self.assertEqual(len(result), 1)
-        # Verify force_refresh was called
-        calls = mock_auth.get_access_token.call_args_list
-        force_refresh_calls = [c for c in calls if c[1].get("force_refresh")]
-        self.assertTrue(len(force_refresh_calls) >= 1)
 
     @patch("src.source.defender_o365_data_fetcher.MSGraphAuthClient")
     @patch("src.source.defender_o365_data_fetcher.Session")

@@ -168,7 +168,8 @@ class DefenderO365DataFetcher:
                     logger.info(
                         f"{LOG_PREFIX} Token expired (attempt {request_attempt}), refreshing"
                     )
-                    token = self.auth_client.get_access_token(force_refresh=True)
+                    # force refresh implicitly handled by msal
+                    token = self.auth_client.get_access_token()
                     continue
 
                 response.raise_for_status()

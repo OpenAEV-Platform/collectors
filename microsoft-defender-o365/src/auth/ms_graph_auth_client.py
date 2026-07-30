@@ -24,12 +24,8 @@ class MSGraphAuthClient:
                 client_credential=config.client_secret,
             )
 
-    def get_access_token(self, force_refresh: bool = False) -> str:
+    def get_access_token(self) -> str:
         """Returns a valid bearer token string.
-
-        Args:
-            force_refresh: If True, bypasses the MSAL token cache and forces
-                a fresh token acquisition from the STS.
 
         Returns:
             A valid bearer token string.
@@ -40,7 +36,6 @@ class MSGraphAuthClient:
         """
         result = self.app.acquire_token_for_client(
             scopes=["https://graph.microsoft.com/.default"],
-            force_refresh=force_refresh,
         )
 
         if access_token := result.get("access_token"):
