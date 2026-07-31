@@ -200,6 +200,4 @@ class DefenderO365DataFetcher:
         )
 
         # Wrap each alert in SourceData
-        return [
-            MicrosoftDefenderO365SourceData(raw_alert=alert) for alert in all_alerts
-        ]
+        return [MicrosoftDefenderO365SourceData(alert=alert) for alert in all_alerts]

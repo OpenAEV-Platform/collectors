@@ -71,7 +71,7 @@ class TestDefenderO365DataFetcher(unittest.TestCase):
         # Assert
         self.assertEqual(len(result), 3)
         for item in result:
-            self.assertIsNotNone(item.raw_alert)
+            self.assertIsNotNone(item.alert)
 
     @patch("src.source.defender_o365_data_fetcher.MSGraphAuthClient")
     @patch("src.source.defender_o365_data_fetcher.Session")

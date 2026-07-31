@@ -76,6 +76,8 @@ class TestDefenderO365Alert(unittest.TestCase):
             "status": "new",
             "severity": "high",
             "serviceSource": "microsoftDefenderForOffice365",
+            "firstActivityDateTime": "2026-07-05T02:32:00Z",
+            "lastActivityDateTime": "2026-07-05T02:33:00Z",
             "createdDateTime": "2026-07-05T14:00:00Z",
         }
 
@@ -121,7 +123,7 @@ class TestDefenderO365Alert(unittest.TestCase):
         self.assertIsInstance(compact, dict)
         self.assertEqual(
             set(compact.keys()),
-            {"id", "status", "alertWebUrl", "createdDateTime", "evidence"},
+            {"id", "status", "alertWebUrl", "firstActivityDateTime", "lastActivityDateTime", "createdDateTime", "evidence"},
         )
         self.assertEqual(compact["id"], "ALT-001")
         self.assertEqual(compact["status"], "new")
@@ -168,21 +170,29 @@ class TestDefenderO365Alert(unittest.TestCase):
         compact = alert.filter_evidence()
         self.assertEqual(compact["id"], "ALT-001")
         self.assertEqual(compact["status"], "new")
+        self.assertEqual(
+            compact["firstActivityDateTime"],
+            datetime.fromisoformat("2026-07-05T02:32:00+00:00"),
+        )
+        self.assertEqual(
+            compact["lastActivityDateTime"],
+            datetime.fromisoformat("2026-07-05T02:33:00+00:00"),
+        )
         self.assertIn("2026-07-05T14:00:00", compact["createdDateTime"])
         self.assertEqual(compact["evidence"], [])
-        self.assertEqual(len(compact.keys()), 5)
+        self.assertEqual(len(compact.keys()), 7)
 
 
 class TestSourceDataRewrite(unittest.TestCase):
-    """Test MicrosoftDefenderO365SourceData accepts raw_alert dict."""
+    """Test MicrosoftDefenderO365SourceData accepts alert dict."""
 
     def test_source_data_accepts_raw_alert(self) -> None:
-        """Then MicrosoftDefenderO365SourceData accepts raw_alert parameter."""
+        """Then MicrosoftDefenderO365SourceData accepts alert parameter."""
         from src.source.source_data import MicrosoftDefenderO365SourceData
 
         raw = {"id": "ALT-001", "title": "Test alert"}
-        data = MicrosoftDefenderO365SourceData(raw_alert=raw)
-        self.assertEqual(data.raw_alert, raw)
+        data = MicrosoftDefenderO365SourceData(alert=raw)
+        self.assertEqual(data.alert, raw)
 
     def test_source_data_backward_compat(self) -> None:
         """Then MicrosoftDefenderO365SourceData still works with no args."""
