@@ -15,23 +15,7 @@ pydantic-settings = "^2.14.0"
 requests = "^2.33.0"
 msal = "^1.37.0"
 orjson = "^3.11.9"
-
-[[tool.poetry.dependencies.pyoaev]]
-markers = "extra == 'prod' and extra != 'local' and extra != 'current'"
-version = "3.260731.0"
-
-[[tool.poetry.dependencies.pyoaev]]
-markers = "extra == 'local' and extra != 'current' and extra != 'prod'"
-path = "../../client-python"
-develop = true
-
-[tool.poetry.extras]
-prod = [
-    "pyoaev",
-]
-local = [
-    "pyoaev",
-]
+pyoaev = "3.260731.0"
 
 [tool.poetry.dependencies.python-slugify]
 extras = [
@@ -134,7 +118,7 @@ plugins = [
 ]
 
 [tool.cmw]
-install-command = "poetry install --extras local"
+install-command = "poetry install"
 config-dump-command = "poetry run python -m src --dump-config-schema"
 icon-path = "src/img/microsoft-defender-o365-logo.png"
 
