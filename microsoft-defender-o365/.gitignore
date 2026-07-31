@@ -1,5 +1,8 @@
 config.yml
 
+# Virtual environments
+.venv
+
 # Build artifacts
 dist
 
