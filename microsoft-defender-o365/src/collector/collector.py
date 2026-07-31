@@ -8,10 +8,7 @@ from src.collector.models.exception import (
     CollectorEngineConfigError,
     CollectorSetupError,
 )
-from src.collector.models.source import (
-    Source,
-    SourceHandler,
-)
+from src.collector.models.source import Source, SourceHandler
 from src.collector.protocols.engine import CollectorEngineProtocol
 from src.collector.protocols.source_handler import SourceHandlerProtocol
 from src.models.settings.config_loader import ConfigLoader

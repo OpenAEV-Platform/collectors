@@ -25,9 +25,17 @@ class MSGraphAuthClient:
             )
 
     def get_access_token(self) -> str:
-        """Returns a valid bearer token string."""
+        """Returns a valid bearer token string.
+
+        Returns:
+            A valid bearer token string.
+
+        Raises:
+            AuthenticationError: If MSAL returns an error response or a result
+                with no access_token.
+        """
         result = self.app.acquire_token_for_client(
-            scopes=["https://graph.microsoft.com/.default"]
+            scopes=["https://graph.microsoft.com/.default"],
         )
 
         if access_token := result.get("access_token"):
