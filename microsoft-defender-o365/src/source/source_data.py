@@ -67,25 +67,40 @@ class MicrosoftDefenderO365SourceData:
 
     def to_traces_data(self) -> TraceData:
         """Serialize traces data into TraceData."""
-        alert_web_url = self.alert.get("alertWebUrl") if self.alert else None
-        return TraceData(
-            alert_name=f"Alert {self.value}" if self.value else "",
-            alert_link=alert_web_url,
+
+        if not self.alert:
+            return TraceData(
+                alert_name="Microsoft Defender O365 Alert",
+                alert_link="https://security.microsoft.com",
+            )
+
+        alert_name = self.alert.get("title") or "Microsoft Defender O365 Alert"
+        alert_link = (
+            self.alert.get("alertWebUrl")
+            or self.alert.get("incidentWebUrl")
+            or "https://security.microsoft.com"
         )
+        alert_date = self._parse_datetime(self.alert.get("createdDateTime"))
+
+        kwargs: dict[str, str | datetime] = {
+            "alert_name": alert_name,
+            "alert_link": alert_link,
+        }
+        if alert_date is not None:
+            kwargs["alert_date"] = alert_date
+
+        return TraceData(**kwargs)
 
     def is_prevented(self) -> bool:
-        """Determine if the threat is prevented.
+        """Determine if the threat is prevented."""
+        return self.alert.get("status") in ["inProgress", "resolved"]
 
-        Status interpretation is out of scope for this chunk; returns False.
-        """
-        return False
-
-    def is_detected(self) -> bool:
+    @staticmethod
+    def is_detected() -> bool:
         """Determine if the threat is detected.
-
-        Status interpretation is out of scope for this chunk; returns False.
+        Since the object is created only if the alert exists, thus it's always detected
         """
-        return False
+        return True
 
     def __str__(self) -> str:
         """Str output of the source data for logging purposes."""
