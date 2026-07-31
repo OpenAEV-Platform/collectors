@@ -1,9 +1,9 @@
 import unittest
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import orjson
 import src.source.defender_o365_alert_model as module
+
 # module.DefenderO365Alert, AnalyzedMessageEvidence, EmailSender
 
 sample_zero = Path("./tests/functional/source/alert_sample_zero.json")
@@ -18,7 +18,7 @@ class TestO365AlertProcessing(unittest.TestCase):
         object_zero = module.DefenderO365Alert(**data_zero)
         required_zero = object_zero.filter_evidence()
         self.assertTrue(all(el is not None for el in required_zero.values()))
-        for evidence in required_zero['evidence']:
+        for evidence in required_zero["evidence"]:
             self.assertTrue(any(el for el in evidence.values()))
 
     def test_o365_alert_processing_sample_one(self):
@@ -26,7 +26,7 @@ class TestO365AlertProcessing(unittest.TestCase):
         object_one = module.DefenderO365Alert(**data_one)
         required_one = object_one.filter_evidence()
         self.assertTrue(all(el is not None for el in required_one.values()))
-        for evidence in required_one['evidence']:
+        for evidence in required_one["evidence"]:
             self.assertTrue(any(el for el in evidence.values()))
 
     def test_o365_alert_processing_sample_two(self):
@@ -34,7 +34,7 @@ class TestO365AlertProcessing(unittest.TestCase):
         object_two = module.DefenderO365Alert(**data_two)
         required_two = object_two.filter_evidence()
         self.assertTrue(all(el is not None for el in required_two.values()))
-        for evidence in required_two['evidence']:
+        for evidence in required_two["evidence"]:
             self.assertTrue(any(el for el in evidence.values()))
 
     def test_o365_alert_processing_sample_three(self):
@@ -42,5 +42,5 @@ class TestO365AlertProcessing(unittest.TestCase):
         object_three = module.DefenderO365Alert(**data_three)
         required_three = object_three.filter_evidence()
         self.assertTrue(all(el is not None for el in required_three.values()))
-        for evidence in required_three['evidence']:
+        for evidence in required_three["evidence"]:
             self.assertTrue(any(el for el in evidence.values()))
