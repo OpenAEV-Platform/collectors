@@ -7,10 +7,11 @@ Covers:
   - TraceData.model_dump() round-trip
 """
 
-from datetime import UTC, datetime
+from datetime import datetime
 
 import pytest
 from pydantic import AnyUrl
+from src.source.source_data import MicrosoftDefenderO365SourceData
 
 # --- GWT helpers (local to this module per CONTRIBUTING.md) ---
 
@@ -19,7 +20,6 @@ def _given_source_data_with_alert(
     title: str, alert_web_url: str | None, incident_web_url: str | None, created_dt: str
 ) -> "MicrosoftDefenderO365SourceData":
     """Given a DefenderO365SourceData wrapping a raw alert with the specified fields."""
-    from src.source.source_data import MicrosoftDefenderO365SourceData
 
     alert = {
         "id": "ALT-TEST-001",
