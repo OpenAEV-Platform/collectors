@@ -119,6 +119,19 @@ jobs:
             docker save -o ~/openaev/images/collector-mitre-attack openaev/collector-mitre-attack:${CIRCLE_SHA1}
             docker save -o ~/openaev/images/collector-mitre-attack-ubi9 openaev/collector-mitre-attack:${CIRCLE_SHA1}-ubi9
       - run:
+          working_directory: ~/openaev/microsoft-defender-o365
+          name: Build Docker image openaev/collector-microsoft-defender-o365
+          command: |
+            if [[ "${CIRCLE_BRANCH}" == "main" ]]; then
+              docker build --pull --progress=plain -t openaev/collector-microsoft-defender-o365:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
+              docker build --pull --progress=plain -t openaev/collector-microsoft-defender-o365:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
+            else 
+              docker build --pull --progress=plain -t openaev/collector-microsoft-defender-o365:${CIRCLE_SHA1} .
+              docker build --pull --progress=plain -t openaev/collector-microsoft-defender-o365:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 .
+            fi
+            docker save -o ~/openaev/images/collector-microsoft-defender-o365 openaev/collector-microsoft-defender-o365:${CIRCLE_SHA1}
+            docker save -o ~/openaev/images/collector-microsoft-defender-o365-ubi9 openaev/collector-microsoft-defender-o365:${CIRCLE_SHA1}-ubi9
+      - run:
           working_directory: ~/openaev/nvd-nist-cve
           name: Build Docker image openaev/nvd-nist-cve
           command: |
@@ -527,6 +540,13 @@ jobs:
             docker image load < collector-microsoft-defender-ubi9
             docker tag openaev/collector-microsoft-defender:${CIRCLE_SHA1}-ubi9 openaev/collector-microsoft-defender:${IMAGETAG}-ubi9
             docker tag openaev/collector-microsoft-defender:${CIRCLE_SHA1}-ubi9 openbas/collector-microsoft-defender:${IMAGETAG}-ubi9
+
+            docker image load < collector-microsoft-defender-o365
+            docker tag openaev/collector-microsoft-defender-o365:${CIRCLE_SHA1} openaev/collector-microsoft-defender-o3655:${IMAGETAG}
+            docker tag openaev/collector-microsoft-defender-o365:${CIRCLE_SHA1} openbas/collector-microsoft-defender-o365:${IMAGETAG}
+            docker image load < collector-microsoft-defender-o365-ubi9
+            docker tag openaev/collector-microsoft-defender-o365:${CIRCLE_SHA1}-ubi9 openaev/collector-microsoft-defender-o365:${IMAGETAG}-ubi9
+            docker tag openaev/collector-microsoft-defender-o365:${CIRCLE_SHA1}-ubi9 openbas/collector-microsoft-defender-o365:${IMAGETAG}-ubi9
             
             docker image load < collector-microsoft-sentinel
             docker tag openaev/collector-microsoft-sentinel:${CIRCLE_SHA1} openaev/collector-microsoft-sentinel:${IMAGETAG}
@@ -686,6 +706,10 @@ jobs:
             docker push openaev/collector-microsoft-defender:${IMAGETAG}-ubi9
             docker push openbas/collector-microsoft-defender:${IMAGETAG}
             docker push openbas/collector-microsoft-defender:${IMAGETAG}-ubi9
+            docker push openaev/collector-microsoft-defender-o365:${IMAGETAG}
+            docker push openaev/collector-microsoft-defender-o365:${IMAGETAG}-ubi9
+            docker push openbas/collector-microsoft-defender-o365:${IMAGETAG}
+            docker push openbas/collector-microsoft-defender-o365:${IMAGETAG}-ubi9
             docker push openaev/collector-microsoft-sentinel:${IMAGETAG}
             docker push openaev/collector-microsoft-sentinel:${IMAGETAG}-ubi9
             docker push openbas/collector-microsoft-sentinel:${IMAGETAG}
@@ -780,6 +804,8 @@ jobs:
               docker tag openaev/collector-tanium-threat-response:${IMAGETAG} openbas/collector-tanium-threat-response:latest
               docker tag openaev/collector-microsoft-defender:${IMAGETAG} openaev/collector-microsoft-defender:latest
               docker tag openaev/collector-microsoft-defender:${IMAGETAG} openbas/collector-microsoft-defender:latest
+              docker tag openaev/collector-microsoft-defender-o365:${IMAGETAG} openaev/collector-microsoft-defender-o365:latest
+              docker tag openaev/collector-microsoft-defender-o365:${IMAGETAG} openbas/collector-microsoft-defender-o365:latest
               docker tag openaev/collector-microsoft-sentinel:${IMAGETAG} openaev/collector-microsoft-sentinel:latest
               docker tag openaev/collector-microsoft-sentinel:${IMAGETAG} openbas/collector-microsoft-sentinel:latest
               docker tag openaev/collector-atomic-red-team:${IMAGETAG} openaev/collector-atomic-red-team:latest
@@ -837,6 +863,8 @@ jobs:
               docker push openbas/collector-tanium-threat-response:latest
               docker push openaev/collector-microsoft-defender:latest
               docker push openbas/collector-microsoft-defender:latest
+              docker push openaev/collector-microsoft-defender-o365:latest
+              docker push openbas/collector-microsoft-defender-o365:latest
               docker push openaev/collector-microsoft-sentinel:latest
               docker push openbas/collector-microsoft-sentinel:latest
               docker push openaev/collector-atomic-red-team:latest
