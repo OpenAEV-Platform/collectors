@@ -18,18 +18,12 @@ orjson = "^3.11.9"
 
 [[tool.poetry.dependencies.pyoaev]]
 markers = "extra == 'prod' and extra != 'local' and extra != 'current'"
-version = "2.260715.0"
+version = "3.260731.0"
 
 [[tool.poetry.dependencies.pyoaev]]
 markers = "extra == 'local' and extra != 'current' and extra != 'prod'"
 path = "../../client-python"
 develop = true
-
-[tool.poetry.dependencies.python-slugify]
-extras = [
-    "unidecode",
-]
-version = "^8.0.4"
 
 [tool.poetry.extras]
 prod = [
@@ -38,6 +32,12 @@ prod = [
 local = [
     "pyoaev",
 ]
+
+[tool.poetry.dependencies.python-slugify]
+extras = [
+    "unidecode",
+]
+version = "^8.0.4"
 
 [tool.poetry.group.dev.dependencies]
 black = "^26.3.0"
