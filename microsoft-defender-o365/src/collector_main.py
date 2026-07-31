@@ -15,6 +15,7 @@ from src.collector.models.source import Source
 from src.source.data_fetcher import MicrosoftDefenderO365DataFetcher
 from src.source.signatures import SUPPORTED_SIGNATURES
 from src.source.source_data import MicrosoftDefenderO365SourceData
+from src.source.source_handler import DefenderO365SourceHandler
 
 
 def main() -> None:
@@ -34,6 +35,7 @@ def main() -> None:
         base_collector = BaseCollector(
             name="Microsoft Defender O365 Collector",
             source=source,
+            source_handler_model=DefenderO365SourceHandler,
         )
         base_collector.start()
     except KeyboardInterrupt:

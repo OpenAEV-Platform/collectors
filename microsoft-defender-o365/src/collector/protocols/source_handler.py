@@ -7,14 +7,22 @@ from pyoaev.apis.inject_expectation.model.expectation import (
 from pyoaev.helpers import OpenAEVDetectionHelper
 from pyoaev.signatures.types import SignatureTypes
 from src.collector.models.data import OAEVData, TraceData
-from src.collector.protocols.data_fetcher import DataFetcherProtocol
+from src.collector.protocols.data_fetcher import DataFetcherProtocol, FetchParamsHook
 from src.collector.protocols.source_data import SourceDataProtocol
-from src.collector.types.collector import SignatureGroups, SourceConfig
+from src.collector.types.collector import (
+    ExpectationsList,
+    SignatureGroups,
+    SourceConfig,
+)
 
 
 @runtime_checkable
 class SourceHandlerProtocol(Protocol):
     def __init__(self, config: SourceConfig) -> None: ...
+
+    def build_fetch_params_hook(
+        self, batch: ExpectationsList
+    ) -> FetchParamsHook | None: ...
 
     def get_source_data(
         self, data_fetcher: DataFetcherProtocol

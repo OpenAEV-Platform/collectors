@@ -1,0 +1,103 @@
+{
+  "actorDisplayName": null,
+  "alertWebUrl": "https://security.microsoft.com/alerts/fa2d9ab3ff-f4e5-5c4c-dc00-084b52e1cf2c?tid=f65ad163-1b89-0000-b2a7-e70409495256",
+  "assignedTo": null,
+  "category": "InitialAccess",
+  "classification": null,
+  "comments": [],
+  "createdDateTime": "2023-05-12T12:14:31.8483227Z",
+  "description": "This alert is triggered when any email message is reported as junk by users -V1.0.0.0",
+  "detectionSource": "microsoftDefenderForOffice365",
+  "detectorId": "a0e277be-7157-4907-874e-93e7b5170657",
+  "determination": null,
+  "evidence": [
+    {
+      "@odata.type": "#microsoft.graph.security.mailboxEvidence",
+      "createdDateTime": "2023-05-12T12:14:33.3866667Z",
+      "displayName": "Eamon Hess",
+      "primaryAddress": "user4@example.com",
+      "remediationStatus": "none",
+      "remediationStatusDetails": null,
+      "roles": [],
+      "tags": [],
+      "userAccount": {
+        "accountName": "user4",
+        "azureAdUserId": "12145719-f684-456e-b8ba-f2f7c67ada56",
+        "displayName": null,
+        "domainName": "corp.example",
+        "userPrincipalName": "user4@example.com",
+        "userSid": "S-1-5-21-3978388234-3821721435-422805698-3556"
+      },
+      "verdict": "unknown"
+    },
+    {
+      "@odata.type": "#microsoft.graph.security.analyzedMessageEvidence",
+      "antiSpamDirection": null,
+      "attachmentsCount": 0,
+      "createdDateTime": "2023-05-12T12:14:33.3866667Z",
+      "deliveryAction": null,
+      "deliveryLocation": null,
+      "internetMessageId": null,
+      "language": null,
+      "networkMessageId": "8f9939a1-cc0f-4b68-0afc-08db52dcaf5f",
+      "p1Sender": {
+        "displayName": null,
+        "domainName": null,
+        "emailAddress": null
+      },
+      "p2Sender": {
+        "displayName": null,
+        "domainName": null,
+        "emailAddress": "James <2000@hotmail.com>"
+      },
+      "receivedDateTime": "2023-05-12T11:33:19Z",
+      "recipientEmailAddress": null,
+      "remediationStatus": "none",
+      "remediationStatusDetails": null,
+      "roles": [],
+      "senderIp": "",
+      "subject": "Er du gift eller single?",
+      "tags": [],
+      "threatDetectionMethods": [],
+      "threats": [],
+      "urlCount": 0,
+      "urls": [],
+      "urn": null,
+      "verdict": "unknown"
+    },
+    {
+      "@odata.type": "#microsoft.graph.security.userEvidence",
+      "createdDateTime": "2023-05-12T12:14:33.3866667Z",
+      "remediationStatus": "none",
+      "remediationStatusDetails": null,
+      "roles": [],
+      "tags": [],
+      "userAccount": {
+        "accountName": "user4",
+        "azureAdUserId": "12145719-f684-456e-b8ba-f2f7c67ada56",
+        "displayName": "Eamon Hess",
+        "domainName": "corp.example",
+        "userPrincipalName": "user4@example.com",
+        "userSid": "S-1-5-21-3978388234-3821721435-422805698-3556"
+      },
+      "verdict": "unknown"
+    }
+  ],
+  "firstActivityDateTime": "2023-05-12T12:09:43Z",
+  "id": "fa2d9ab3ff-f4e5-5c4c-dc00-08db52e1cf2c",
+  "incidentId": "1919",
+  "incidentWebUrl": "https://security.microsoft.com/incidents/1919?tid=f65ad163-1b89-0000-b2a7-e70409495256",
+  "lastActivityDateTime": "2023-05-12T12:09:43Z",
+  "lastUpdateDateTime": "2023-05-12T12:14:34.7266667Z",
+  "mitreTechniques": [],
+  "providerAlertId": "2d9ab3ff-f4e5-5c4c-dc00-08db52e1cf2c",
+  "recommendedActions": "",
+  "resolvedDateTime": null,
+  "serviceSource": "microsoftDefenderForOffice365",
+  "severity": "low",
+  "status": "new",
+  "tenantId": "f65ad163-1b89-0000-b2a7-e70409495256",
+  "threatDisplayName": null,
+  "threatFamilyName": null,
+  "title": "Email reported by user as junk"
+}
