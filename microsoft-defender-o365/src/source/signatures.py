@@ -2,7 +2,6 @@ from pyoaev.signatures.types import (  # type: ignore[import-untyped]  # noqa: F
     SignatureTypes,
 )
 
-<<<<<<< HEAD
 SUPPORTED_SIGNATURES: list[SignatureTypes] = [
     SignatureTypes.SIG_TYPE_START_DATE,
     SignatureTypes.SIG_TYPE_END_DATE,

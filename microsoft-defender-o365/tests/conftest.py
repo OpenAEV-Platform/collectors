@@ -16,11 +16,13 @@ import pytest
 from polyfactory.factories.pydantic_factory import ModelFactory
 from pydantic import BaseModel
 from pyoaev.client import OpenAEV
+from src.models.settings.source_configs import _ConfigLoaderSource
 
 if TYPE_CHECKING:
     from src.collector.engines.basic import BasicCollectorEngine
     from src.collector.models.source import Source
     from src.collector.protocols.source_handler import SourceHandlerProtocol
+
 from pyoaev.apis.inject_expectation.model.expectation import (
     DetectionExpectation,
     ExpectationSignature,
@@ -361,6 +363,11 @@ def _given_microsoft_defender_o365_stubbed_source_handler(
     from src.collector.protocols.source_handler import SourceHandlerProtocol
 
     source_handler = MagicMock(spec=SourceHandlerProtocol)
+    source_handler.config = _ConfigLoaderSource(
+        tenant_id="test-tenant-id",
+        client_id="test-client-id",
+        client_secret="test-client-secret",
+    )
     source_handler.get_source_data.return_value = stub_return_get_source_data
     source_handler.serialize_as_oaevdata.return_value = MagicMock()
     source_handler.get_expectation_signature_groups.return_value = {}
@@ -457,7 +464,6 @@ def source_config_fixture() -> "object":
     Builds a minimal _ConfigLoaderSource with the required authentication fields.
     The autouse dotenv isolation fixture ensures no local .env leaks in.
     """
-    from src.models.settings.source_configs import _ConfigLoaderSource
 
     config = _ConfigLoaderSource(
         tenant_id="test-tenant-id",

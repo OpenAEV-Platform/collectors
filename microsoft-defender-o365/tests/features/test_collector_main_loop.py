@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from src.collector.models.source import SourceHandler
+from src.source.source_handler import DefenderO365SourceHandler
 from tests.conftest import (
     DetectionExpectationFactory,
     _given_microsoft_defender_o365_collector_engine,
@@ -60,13 +61,12 @@ def test_collector_loop_completes_a_full_cycle_with_stubs(
         source, source_handler, oaev_api
     )
 
-    # When: one loop iteration is triggered
-    error = _when_microsoft_defender_o365_engine_cycle_triggered(engine)
+    with patch(
+        "src.source.defender_o365_data_fetcher.MSGraphAuthClient",
+        return_value=MagicMock(),
+    ):
+        error = _when_microsoft_defender_o365_engine_cycle_triggered(engine)
 
-    # Then: get_source_data, serialize_as_oaevdata, get_expectation_signature_groups,
-    # match_signature_groups_and_oaevdata, match_expectation_and_sourcedata and
-    # serialize_as_tracedata are each called exactly once, and no unhandled
-    # exception is raised
     _then_get_source_data_is_called_exactly_once(source_handler)
     _then_serialize_as_oaevdata_is_called_exactly_once(source_handler)
     _then_get_expectation_signature_groups_is_called_exactly_once(source_handler)
@@ -159,8 +159,34 @@ def test_loop_emits_log_prefix_log_messages_at_each_engine_step(
         source, source_handler, oaev_api
     )
 
-    # When: one engine cycle is triggered via run_engine()
-    with caplog.at_level(logging.INFO, logger="src.collector.engines.basic"):
+    mock_session = MagicMock()
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "value": [
+            {
+                "id": "ALT-001",
+                "title": "Phishing email detected",
+                "status": "new",
+                "severity": "high",
+                "createdDateTime": "2026-07-05T14:00:00Z",
+                "evidence": [],
+            }
+        ]
+    }
+    mock_session.get.return_value = mock_response
+
+    with (
+        caplog.at_level(logging.INFO, logger="src.collector.engines.basic"),
+        patch(
+            "src.source.defender_o365_data_fetcher.MSGraphAuthClient",
+            return_value=MagicMock(),
+        ),
+        patch(
+            "src.source.defender_o365_data_fetcher.Session",
+            return_value=mock_session,
+        ),
+    ):
         error = _when_microsoft_defender_o365_engine_cycle_triggered(engine)
 
     # Then: a log message containing "[BasicCollectorEngine]" together with
@@ -194,8 +220,14 @@ def _given_real_microsoft_defender_o365_source_handler() -> SourceHandler:
 
     """
     from src.collector.models.source import SourceHandler
+    from src.models.settings.source_configs import _ConfigLoaderSource
 
-    return SourceHandler(config=MagicMock())
+    config = _ConfigLoaderSource(
+        tenant_id="test-tenant-id",
+        client_id="test-client-id",
+        client_secret="test-client-secret",
+    )
+    return SourceHandler(config=config)
 
 
 def _given_collector_entry_point_dependencies_stubbed(
@@ -364,6 +396,7 @@ def _then_base_collector_is_instantiated_with_declared_source(
     mocks["BaseCollector"].assert_called_once_with(
         name="Microsoft Defender O365 Collector",
         source=mocks["Source"].return_value,
+        source_handler_model=DefenderO365SourceHandler,
     )
 
 
