@@ -542,7 +542,7 @@ jobs:
             docker tag openaev/collector-microsoft-defender:${CIRCLE_SHA1}-ubi9 openbas/collector-microsoft-defender:${IMAGETAG}-ubi9
 
             docker image load < collector-microsoft-defender-o365
-            docker tag openaev/collector-microsoft-defender-o365:${CIRCLE_SHA1} openaev/collector-microsoft-defender-o3655:${IMAGETAG}
+            docker tag openaev/collector-microsoft-defender-o365:${CIRCLE_SHA1} openaev/collector-microsoft-defender-o365:${IMAGETAG}
             docker tag openaev/collector-microsoft-defender-o365:${CIRCLE_SHA1} openbas/collector-microsoft-defender-o365:${IMAGETAG}
             docker image load < collector-microsoft-defender-o365-ubi9
             docker tag openaev/collector-microsoft-defender-o365:${CIRCLE_SHA1}-ubi9 openaev/collector-microsoft-defender-o365:${IMAGETAG}-ubi9
