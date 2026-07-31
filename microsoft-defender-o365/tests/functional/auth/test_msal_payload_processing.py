@@ -5,8 +5,8 @@ from unittest.mock import MagicMock, patch
 import orjson
 import src.auth.ms_graph_auth_client as module
 
-access_payload_path = Path("./tests/functional/access_token.json")
-error_payload_path = Path("./tests/functional/error_invalid_client.json")
+access_payload_path = Path("./tests/functional/auth/access_token.json")
+error_payload_path = Path("./tests/functional/auth/error_invalid_client.json")
 
 
 @patch.object(module, "ConfidentialClientApplication")
