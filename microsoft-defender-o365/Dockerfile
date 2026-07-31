@@ -30,7 +30,7 @@ RUN apk add --no-cache --virtual .build-deps \
 RUN pip install --no-cache-dir "poetry==$POETRY_VERSION"
 
 # Copy only dependency metadata first.
-COPY pyproject.toml poetry.lock ./
+COPY pyproject.toml ./
 
 # Cache package downloads to speed up subsequent builds.
 # Install production dependencies into the virtual environment.
