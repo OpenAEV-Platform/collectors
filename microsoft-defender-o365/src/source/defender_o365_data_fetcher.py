@@ -6,7 +6,6 @@ transient error handling.
 """
 
 import logging
-import time
 from typing import Any
 from urllib.parse import urljoin, urlsplit
 
@@ -61,6 +60,7 @@ class DefenderO365DataFetcher:
             status_forcelist=[500, 502, 503, 504],
             backoff_factor=0.5,
             backoff_jitter=0.2,
+            respect_retry_after_header=True,
         )
         adapter = HTTPAdapter(max_retries=retries)
         self.session.mount("https://", adapter)
@@ -114,9 +114,9 @@ class DefenderO365DataFetcher:
         """Retrieve all Defender O365 alerts from the Graph Security API.
 
         Follows @odata.nextLink pagination until no next page exists.
-        Handles HTTP 429 (time.sleep + retry) and HTTP 401 (token refresh
-        + single retry). Returns one MicrosoftDefenderO365SourceData
-        per alert, all pages merged. Results are ordered by createdDateTime
+        Handles HTTP 401 (token refresh + single retry).
+        Returns one MicrosoftDefenderO365SourceData per alert,
+        all pages merged. Results are ordered by createdDateTime
         descending (most recent first).
 
         Returns:
@@ -143,16 +143,6 @@ class DefenderO365DataFetcher:
                     headers={"Authorization": f"Bearer {token}"},
                     params=params,
                 )
-
-                # Handle rate limiting
-                if response.status_code == 429:
-                    retry_after = int(response.headers.get("Retry-After", 1))
-                    logger.warning(
-                        f"{LOG_PREFIX} Rate limited (attempt {request_attempt}), "
-                        f"sleeping {retry_after}s"
-                    )
-                    time.sleep(retry_after)
-                    continue
 
                 # Handle token expiry
                 if response.status_code == 401:
