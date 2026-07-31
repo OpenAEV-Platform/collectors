@@ -15,7 +15,6 @@ from unittest.mock import MagicMock
 import pytest
 from polyfactory.factories.pydantic_factory import ModelFactory
 from pydantic import BaseModel
-from pyoaev.apis.inject_expectation.model import DetectionExpectation
 from pyoaev.client import OpenAEV
 
 if TYPE_CHECKING:
@@ -445,6 +444,8 @@ def _then_microsoft_defender_o365_no_unhandled_exception_raised(
 
     """
     assert error is None, f"Unexpected exception raised: {error!r}"
+
+
 # Chunk6 (#501) - SourceConfig fixture for contract compliance tests
 # --------
 
