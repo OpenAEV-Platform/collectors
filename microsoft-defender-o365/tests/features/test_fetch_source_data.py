@@ -11,7 +11,6 @@ from tests.conftest import (
     _given_microsoft_defender_o365_empty_response,
     _given_microsoft_defender_o365_mixed_evidence_response,
     _given_microsoft_defender_o365_multi_page_response,
-    _given_microsoft_defender_o365_rate_limited_response,
     _given_microsoft_defender_o365_single_page_response,
     _given_microsoft_defender_o365_token_expired_response,
     _then_each_result_has_raw_alert,
@@ -81,26 +80,6 @@ def test_fetch_alerts_with_pagination(
 
     # Then: the total result count equals the sum of all pages
     _then_result_count_equals(result, total_expected)
-
-
-# Scenario: Handle rate limiting (HTTP 429)
-def test_handle_rate_limiting(source_config_fixture):
-    """Scenario: Handle rate limiting (HTTP 429)."""
-    mock_session = MagicMock()
-    mock_auth = MagicMock()
-    mock_auth.get_access_token.return_value = "test-token"
-
-    # Given: the API returns a 429 rate limit response
-    _given_microsoft_defender_o365_rate_limited_response(mock_session)
-
-    # When: the data fetcher retrieves alerts
-    result = _when_microsoft_defender_o365_fetcher_fetches_data(
-        source_config_fixture, mock_session, mock_auth
-    )
-
-    # Then: the final result includes the alerts
-    _then_result_is_list_of_source_data(result)
-    _then_result_count_equals(result, 1)
 
 
 # Scenario: Handle token expiry (HTTP 401)

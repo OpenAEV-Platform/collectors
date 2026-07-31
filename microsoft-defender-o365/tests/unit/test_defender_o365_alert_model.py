@@ -73,6 +73,7 @@ class TestDefenderO365Alert(unittest.TestCase):
         return {
             "id": "ALT-001",
             "title": "Phishing email detected",
+            "incidentWebUrl": "https://security.microsoft.com/incidents/",
             "status": "new",
             "severity": "high",
             "serviceSource": "microsoftDefenderForOffice365",
@@ -123,7 +124,17 @@ class TestDefenderO365Alert(unittest.TestCase):
         self.assertIsInstance(compact, dict)
         self.assertEqual(
             set(compact.keys()),
-            {"id", "status", "alertWebUrl", "firstActivityDateTime", "lastActivityDateTime", "createdDateTime", "evidence"},
+            {
+                "id",
+                "status",
+                "alertWebUrl",
+                "title",
+                "incidentWebUrl",
+                "firstActivityDateTime",
+                "lastActivityDateTime",
+                "createdDateTime",
+                "evidence",
+            },
         )
         self.assertEqual(compact["id"], "ALT-001")
         self.assertEqual(compact["status"], "new")
@@ -170,6 +181,10 @@ class TestDefenderO365Alert(unittest.TestCase):
         compact = alert.filter_evidence()
         self.assertEqual(compact["id"], "ALT-001")
         self.assertEqual(compact["status"], "new")
+        self.assertEqual(compact["title"], "Phishing email detected")
+        self.assertEqual(
+            compact["incidentWebUrl"], "https://security.microsoft.com/incidents/"
+        )
         self.assertEqual(
             compact["firstActivityDateTime"],
             datetime.fromisoformat("2026-07-05T02:32:00+00:00"),
@@ -180,7 +195,7 @@ class TestDefenderO365Alert(unittest.TestCase):
         )
         self.assertIn("2026-07-05T14:00:00", compact["createdDateTime"])
         self.assertEqual(compact["evidence"], [])
-        self.assertEqual(len(compact.keys()), 7)
+        self.assertEqual(len(compact.keys()), 9)
 
 
 class TestSourceDataRewrite(unittest.TestCase):
