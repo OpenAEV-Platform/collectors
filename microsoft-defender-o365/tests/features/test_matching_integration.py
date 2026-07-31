@@ -3,7 +3,6 @@
 Uses raw pytest with _given/_when/_then helpers. No pytest-bdd.
 """
 
-import pytest
 from tests.conftest import (
     _given_detection_expectation_with_supported_sigs,
     _given_empty_fetched_data,
@@ -15,7 +14,6 @@ from tests.conftest import (
     _then_all_results_invalid,
     _then_expectation_result_has_error,
     _then_expectation_result_is_valid_with_traces,
-    _then_expectation_result_is_valid_without_traces,
     _then_expectation_result_not_valid_no_traces,
     _then_only_supported_sigs_retained,
     _when_engine_processes_batch,

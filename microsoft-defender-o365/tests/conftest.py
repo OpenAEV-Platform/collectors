@@ -12,6 +12,11 @@ from unittest.mock import MagicMock
 import pytest
 from polyfactory.factories.pydantic_factory import ModelFactory
 from pydantic import BaseModel
+from pyoaev.apis.inject_expectation.model.expectation import (
+    DetectionExpectation,
+    ExpectationSignature,
+    PreventionExpectation,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -811,7 +816,7 @@ def _chunk8_state_isolation():
 
 def _given_detection_expectation_with_supported_sigs(
     exp_id: str = "exp-001",
-) -> "DetectionExpectation":
+) -> DetectionExpectation:
     """Given a DetectionExpectation with signatures matching the 5 supported types.
 
     Args:
@@ -822,10 +827,6 @@ def _given_detection_expectation_with_supported_sigs(
     """
     import uuid
 
-    from pyoaev.apis.inject_expectation.model.expectation import (
-        DetectionExpectation,
-        ExpectationSignature,
-    )
     from src.source.signatures import SUPPORTED_SIGNATURES
 
     return DetectionExpectation(
@@ -841,7 +842,7 @@ def _given_detection_expectation_with_supported_sigs(
     )
 
 
-def _given_prevention_expectation_with_supported_sigs() -> "PreventionExpectation":
+def _given_prevention_expectation_with_supported_sigs() -> PreventionExpectation:
     """Given a PreventionExpectation with signatures matching the 5 supported types.
 
     Returns:
@@ -849,10 +850,6 @@ def _given_prevention_expectation_with_supported_sigs() -> "PreventionExpectatio
     """
     import uuid
 
-    from pyoaev.apis.inject_expectation.model.expectation import (
-        ExpectationSignature,
-        PreventionExpectation,
-    )
     from src.source.signatures import SUPPORTED_SIGNATURES
 
     return PreventionExpectation(
@@ -868,7 +865,7 @@ def _given_prevention_expectation_with_supported_sigs() -> "PreventionExpectatio
     )
 
 
-def _given_expectation_with_unsupported_sigs() -> "DetectionExpectation":
+def _given_expectation_with_unsupported_sigs() -> DetectionExpectation:
     """Given an expectation with signatures including types NOT in SUPPORTED_SIGNATURES.
 
     Returns:
@@ -890,10 +887,7 @@ def _given_expectation_with_unsupported_sigs() -> "DetectionExpectation":
     sigs = [
         ExpectationSignature(type=sig_type, value=_sig_test_value_for_type(sig_type))
         for sig_type in SUPPORTED_SIGNATURES
-    ] + [
-        ExpectationSignature(type=t, value="unsupported-value")
-        for t in extra_types
-    ]
+    ] + [ExpectationSignature(type=t, value="unsupported-value") for t in extra_types]
 
     return DetectionExpectation(
         inject_expectation_id=uuid.uuid4(),
@@ -944,9 +938,7 @@ def _given_matching_alert_data(
         },
         SignatureTypes.SIG_TYPE_URL_HASH.value: {
             "type": "simple",
-            "data": [
-                "6e828dac1a6b547942ad393d0e3b5e37e50e974a86c8c61e5b77e6a0c7b7c6d"
-            ],
+            "data": ["6e828dac1a6b547942ad393d0e3b5e37e50e974a86c8c61e5b77e6a0c7b7c6d"],
         },
         SignatureTypes.SIG_TYPE_FILE_HASH.value: {
             "type": "simple",
@@ -1071,13 +1063,9 @@ def _when_engine_processes_batch(
     Returns:
         List of ExpectationResult objects.
     """
-    from unittest.mock import MagicMock, patch
-
     from pyoaev.helpers import OpenAEVDetectionHelper
     from src.collector.engines.basic import BasicCollectorEngine
-    from src.collector.models.data import OAEVData
     from src.collector.models.source import SourceHandler
-    from src.collector.protocols.data_fetcher import DataFetcherProtocol
     from src.models.settings.source_configs import _ConfigLoaderSource
     from src.source.signatures import SUPPORTED_SIGNATURES
 
@@ -1090,12 +1078,12 @@ def _when_engine_processes_batch(
         data = alert_data if alert_data else _CHUNK8_STATE.get("fetch_result", [])
 
     # Build signature groups for matching
-    sig_groups = SourceHandler.get_expectation_signature_groups(
+    SourceHandler.get_expectation_signature_groups(
         SUPPORTED_SIGNATURES, expectations[0]
     )
 
     # Detection helper that matches based on sig groups
-    helper = OpenAEVDetectionHelper(
+    OpenAEVDetectionHelper(
         logger=MagicMock(),
         relevant_signatures_types=SUPPORTED_SIGNATURES,
     )
@@ -1134,9 +1122,7 @@ def _when_engine_processes_batch(
 
     # Simple data fetcher class to avoid auth during test
     class MockDataFetcher(DefenderO365DataFetcher):
-        def __init__(
-            self, config, fetch_params_hook=None
-        ):
+        def __init__(self, config, fetch_params_hook=None):
             self.config = config
             self._fetch_params_hook = fetch_params_hook
 
@@ -1221,7 +1207,6 @@ def _then_only_supported_sigs_retained(sig_groups: dict) -> None:
     Args:
         sig_groups: The filtered signature groups dict.
     """
-    from pyoaev.signatures.types import SignatureTypes
     from src.source.signatures import SUPPORTED_SIGNATURES
 
     supported_values = {sig.value for sig in SUPPORTED_SIGNATURES}
