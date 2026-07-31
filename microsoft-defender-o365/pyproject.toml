@@ -15,7 +15,14 @@ pydantic-settings = "^2.14.0"
 requests = "^2.33.0"
 msal = "^1.37.0"
 orjson = "^3.11.9"
-pyoaev = "3.260731.0"
+pytest = "^9.1.1"
+
+[[tool.poetry.dependencies.pyoaev]]
+markers = "extra == 'prod'"
+version = "3.260731.0"
+[[tool.poetry.dependencies.pyoaev]]
+markers = "extra != 'prod'"
+version = "3.260731.0"
 
 [tool.poetry.dependencies.python-slugify]
 extras = [
@@ -31,7 +38,6 @@ mypy = "^1.17.1"
 pip-audit = "^2.9.0"
 pre-commit = "^4.6.0"
 ruff = "^0.14.13"
-pytest = "^9.1.1"
 
 [tool.poetry.group.test.dependencies]
 pytest = "^9.1.1"
