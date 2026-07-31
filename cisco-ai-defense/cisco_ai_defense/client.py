@@ -27,7 +27,7 @@ class CiscoAiDefenseClient:
         self.base_url = (config.get("cisco_base_url") or "").rstrip("/")
         self.api_key = config.get("cisco_api_key")
         self.auth_header = (
-            config.get("cisco_auth_header") or "X-Cisco-AI-Defense-Api-Key"
+            config.get("cisco_auth_header") or "x-cisco-ai-defense-tenant-api-key"
         )
         self.logger = logger
         self.session = requests.Session()

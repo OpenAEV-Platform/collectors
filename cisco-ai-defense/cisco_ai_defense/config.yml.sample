@@ -11,4 +11,4 @@ collector:
   log_level: 'error'
   base_url: 'ChangeMe'   # Cisco AI Defense inspection API base URL (region/tenant specific)
   api_key: 'ChangeMe'
-  auth_header: 'X-Cisco-AI-Defense-Api-Key'
+  auth_header: 'x-cisco-ai-defense-tenant-api-key'

@@ -15,7 +15,7 @@ def _build_client(**overrides):
     config = {
         "cisco_base_url": "https://example.test",
         "cisco_api_key": "secret-key",
-        "cisco_auth_header": "X-Cisco-AI-Defense-Api-Key",
+        "cisco_auth_header": "x-cisco-ai-defense-tenant-api-key",
     }
     config.update(overrides)
     return CiscoAiDefenseClient(config)
@@ -151,7 +151,7 @@ def test_scan_sends_auth_header_and_ordered_messages():
 
     args, kwargs = client.session.post.call_args
     assert args[0] == "https://example.test/api/v1/inspect/prompt"
-    assert kwargs["headers"]["X-Cisco-AI-Defense-Api-Key"] == "secret-key"
+    assert kwargs["headers"]["x-cisco-ai-defense-tenant-api-key"] == "secret-key"
     assert kwargs["json"]["messages"] == [
         {"role": "system", "content": "stay safe"},
         {"role": "user", "content": "hello"},
