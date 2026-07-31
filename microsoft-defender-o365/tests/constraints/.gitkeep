@@ -1,7 +1,11 @@
-# This directory will hold the UNHAPPY PATH (.feature) acceptance criteria
+# This directory holds the UNHAPPY PATH (.feature) acceptance criteria
 # for this collector, following BDD conventions.
 #
 # No unhappy path scenario was defined in PR #491 / issue #471 (chk1 - project
 # architecture setup); only happy path scenarios were provided, extracted to
-# ../features. This placeholder keeps the directory tracked in git until
-# constraint scenarios are added.
+# ../features. Chunk2 (issue #493) added the constraint scenarios below this
+# file. Chunk3 (issue #495 / PR #496 - base engine and main loop wiring) again
+# defined no unhappy path scenario; its happy path scenarios were extracted to
+# ../features. This placeholder documents that history and keeps the
+# directory tracked in git even if a future chunk removes all constraint
+# scenarios again.

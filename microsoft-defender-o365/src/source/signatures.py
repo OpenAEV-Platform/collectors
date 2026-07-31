@@ -1,4 +1,6 @@
-from pyoaev.signatures.types import SignatureTypes  # noqa: F401
+from pyoaev.signatures.types import (  # type: ignore[import-untyped]  # noqa: F401
+    SignatureTypes,
+)
 
 SUPPORTED_SIGNATURES: list[SignatureTypes] = [
     SignatureTypes.SIG_TYPE_START_DATE,

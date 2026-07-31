@@ -1,6 +1,6 @@
 import unittest
 
-import src.source.microsoft_defender_o365_signatures as module
+import src.source.signatures as module
 
 
 class TestSignatures(unittest.TestCase):

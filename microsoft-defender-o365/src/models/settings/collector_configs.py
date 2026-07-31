@@ -22,16 +22,13 @@ class _ConfigLoaderOAEV(ConfigBaseSettings):
     """
 
     url: HttpUrlToString = Field(
-        alias="OPENAEV_URL",
         description="The OpenAEV platform URL.",
     )
     token: str = Field(
-        alias="OPENAEV_TOKEN",
         description="The token for the OpenAEV platform.",
     )
     tenant_id: UUID | None = Field(
         default=None,
-        alias="OPENAEV_TENANT_ID",
         description="Identifier of the tenant within the OpenAEV platform. Used in multi-tenant environments to scope "
         "API requests and ensure data isolation between different tenants.",
     )
@@ -48,22 +45,18 @@ class _ConfigLoaderCollector(ConfigBaseSettings):
     name: str
 
     platform: str | None = Field(
-        alias="COLLECTOR_PLATFORM",
         default="EDR",
         description="Platform type for the collector (e.g., EDR, SIEM, etc.).",
     )
     log_level: LogLevel | None = Field(
-        alias="COLLECTOR_LOG_LEVEL",
         default="error",
         description="Determines the verbosity of the logs.",
     )
     period: timedelta | None = Field(
-        alias="COLLECTOR_PERIOD",
         default=timedelta(minutes=2),
         description="Duration between two scheduled runs of the collector (ISO 8601 format).",
     )
     icon_filepath: str | None = Field(
-        alias="COLLECTOR_ICON_FILEPATH",
         default="src/img/microsoft-defender-o365-logo.png",
         description="Path to the icon file of the collector.",
     )

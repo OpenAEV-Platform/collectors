@@ -1,15 +1,19 @@
 from pydantic import BaseModel
-from pyoaev.apis.inject_expectation.model.expectation import (
+from pyoaev.apis.inject_expectation.model.expectation import (  # type: ignore[import-untyped]
     DetectionExpectation,
     PreventionExpectation,
 )
-from pyoaev.helpers import OpenAEVDetectionHelper
-from pyoaev.signatures.types import SignatureTypes
+from pyoaev.helpers import OpenAEVDetectionHelper  # type: ignore[import-untyped]
+from pyoaev.signatures.types import SignatureTypes  # type: ignore[import-untyped]
 from src.collector.models.data import OAEVData, TraceData
-from src.collector.protocols.data_fetcher import DataFetcherProtocol
+from src.collector.protocols.data_fetcher import DataFetcherProtocol, FetchParamsHook
 from src.collector.protocols.source_data import SourceDataProtocol
 from src.collector.protocols.source_handler import SourceHandlerProtocol
-from src.collector.types.collector import SignatureGroups, SourceConfig
+from src.collector.types.collector import (
+    ExpectationsList,
+    SignatureGroups,
+    SourceConfig,
+)
 
 
 class Source(BaseModel):
@@ -43,6 +47,10 @@ class SourceHandler(SourceHandlerProtocol):
         attach the source handler object the source config provided through the base collector
         """
         self.config = config
+
+    @staticmethod
+    def build_fetch_params_hook(batch: ExpectationsList) -> FetchParamsHook | None:
+        return None
 
     @staticmethod
     def get_source_data(data_fetcher: DataFetcherProtocol) -> list[SourceDataProtocol]:
