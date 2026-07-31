@@ -138,7 +138,6 @@ class DefenderO365DataFetcher:
             while request_attempt < self.config.max_fetch_retries:
                 request_attempt += 1
 
-                breakpoint()
                 response = self.session.get(
                     url,
                     headers={"Authorization": f"Bearer {token}"},
