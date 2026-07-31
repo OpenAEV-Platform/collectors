@@ -1137,6 +1137,18 @@ def _given_matching_alert_data(
             "type": "simple",
             "data": ["header-val"],
         },
+        SignatureTypes.SIG_TYPE_START_DATE.value: {
+            "type": "simple",
+            "data": ["this.is.a.date"],
+        },
+        SignatureTypes.SIG_TYPE_END_DATE.value: {
+            "type": "simple",
+            "data": ["this.is.a.date"],
+        },
+        SignatureTypes.SIG_TYPE_PARENT_PROCESS_NAME.value: {
+            "type": "simple",
+            "data": ["parent/process.name"],
+        },
     }
     oaev_data.model_dump.return_value = sig_values
     for sig_type in SUPPORTED_SIGNATURES:
@@ -1200,6 +1212,18 @@ def _given_non_matching_alert_data() -> list:
         SignatureTypes.SIG_TYPE_EMAIL_CUSTOM_HEADER.value: {
             "type": "simple",
             "data": ["other-header"],
+        },
+        SignatureTypes.SIG_TYPE_START_DATE.value: {
+            "type": "simple",
+            "data": ["this.is.a.date"],
+        },
+        SignatureTypes.SIG_TYPE_END_DATE.value: {
+            "type": "simple",
+            "data": ["this.is.a.date"],
+        },
+        SignatureTypes.SIG_TYPE_PARENT_PROCESS_NAME.value: {
+            "type": "simple",
+            "data": ["parent/process.name"],
         },
     }
     oaev_data.model_dump.return_value = sig_values
@@ -1451,5 +1475,8 @@ def _sig_test_value_for_type(sig_type) -> str:
         SignatureTypes.SIG_TYPE_URL_HASH: "6e828dac1a6b547942ad393d0e3b5e37e50e974a86c8c61e5b77e6a0c7b7c6d",
         SignatureTypes.SIG_TYPE_FILE_HASH: "abc123",
         SignatureTypes.SIG_TYPE_EMAIL_CUSTOM_HEADER: "header-val",
+        SignatureTypes.SIG_TYPE_START_DATE: "this.is.a.date",
+        SignatureTypes.SIG_TYPE_END_DATE: "this.is.a.date",
+        SignatureTypes.SIG_TYPE_PARENT_PROCESS_NAME: "parent/process.name",
     }
     return VALUES.get(sig_type, "test-value")
