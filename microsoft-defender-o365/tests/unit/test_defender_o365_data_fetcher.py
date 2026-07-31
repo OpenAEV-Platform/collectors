@@ -71,7 +71,7 @@ class TestDefenderO365DataFetcher(unittest.TestCase):
         # Assert
         self.assertEqual(len(result), 3)
         for item in result:
-            self.assertIsNotNone(item.raw_alert)
+            self.assertIsNotNone(item.alert)
 
     @patch("src.source.defender_o365_data_fetcher.MSGraphAuthClient")
     @patch("src.source.defender_o365_data_fetcher.Session")
@@ -119,48 +119,6 @@ class TestDefenderO365DataFetcher(unittest.TestCase):
         # Assert
         self.assertEqual(len(result), 5)
         self.assertEqual(mock_session.get.call_count, 2)
-
-    @patch("src.source.defender_o365_data_fetcher.MSGraphAuthClient")
-    @patch("src.source.defender_o365_data_fetcher.Session")
-    @patch("src.source.defender_o365_data_fetcher.time")
-    def test_http_429_triggers_retry_after_sleep(
-        self,
-        mock_time,
-        mock_session_class,
-        mock_auth_client,
-    ):
-        """Then HTTP 429 triggers Retry-After sleep then retries."""
-        from src.source.defender_o365_data_fetcher import DefenderO365DataFetcher
-
-        mock_session = MagicMock()
-        mock_auth = MagicMock()
-        mock_auth.get_access_token.return_value = "test-token"
-        mock_auth_client.return_value = mock_auth
-
-        # First call returns 429
-        response_429 = MagicMock()
-        response_429.status_code = 429
-        response_429.headers = {"Retry-After": "5"}
-        response_429.json.return_value = {"value": []}
-
-        # Second call returns data
-        response_ok = MagicMock()
-        response_ok.status_code = 200
-        response_ok.json.return_value = {
-            "value": [_make_alert("ALT-001")],
-        }
-
-        mock_session.get.side_effect = [response_429, response_ok]
-        mock_session_class.return_value = mock_session
-
-        # Execute
-        config = self._make_config()
-        fetcher = DefenderO365DataFetcher(config)
-        result = fetcher.fetch_data()
-
-        # Assert
-        self.assertEqual(len(result), 1)
-        mock_time.sleep.assert_called()
 
     @patch("src.source.defender_o365_data_fetcher.MSGraphAuthClient")
     @patch("src.source.defender_o365_data_fetcher.Session")

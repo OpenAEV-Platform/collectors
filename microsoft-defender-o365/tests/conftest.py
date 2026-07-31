@@ -12,6 +12,11 @@ from unittest.mock import MagicMock
 import pytest
 from polyfactory.factories.pydantic_factory import ModelFactory
 from pydantic import BaseModel
+from pyoaev.apis.inject_expectation.model.expectation import (
+    DetectionExpectation,
+    ExpectationSignature,
+    PreventionExpectation,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -500,7 +505,7 @@ def _then_each_result_has_raw_alert(result) -> None:
         result: The fetch result to check.
     """
     for item in result:
-        assert hasattr(item, "raw_alert")
+        assert hasattr(item, "alert")
 
 
 def _then_result_count_equals(result, expected_count: int) -> None:
@@ -525,7 +530,7 @@ def _then_result_is_empty(result) -> None:
 def _then_only_analyzed_message_evidence_preserved(result) -> None:
     """Then only analyzedMessageEvidence items are preserved.
 
-    Checks that each raw_alert is a compact dict with id, status,
+    Checks that each alert is a compact dict with id, status,
     createdDateTime, and compacted evidence (urls, p1/p2 sender info,
     recipient email) rather than the full Graph payload.
 
@@ -542,8 +547,720 @@ def _then_only_analyzed_message_evidence_preserved(result) -> None:
         "recipient_email_address",
     }
     for item in result:
-        if item.raw_alert:
-            assert EXPECTED_ALERT_KEYS.issubset(item.raw_alert.keys())
-            for ev in item.raw_alert["evidence"]:
+        if item.alert:
+            assert EXPECTED_ALERT_KEYS.issubset(item.alert.keys())
+            for ev in item.alert["evidence"]:
                 assert isinstance(ev, dict)
                 assert EXPECTED_EVIDENCE_KEYS.issubset(ev.keys())
+
+
+# --------
+# Source Data to OAEVData mapping - GWT helpers
+# --------
+
+
+def _given_compacted_alert_with_full_evidence(
+    alert_id: str,
+    p1_sender: str,
+    p2_sender: str,
+    recipient: str,
+    url: str,
+) -> dict:
+    """Given a compacted alert with full evidence.
+
+    Args:
+        alert_id: The alert identifier.
+        p1_sender: The P1 sender email address.
+        p2_sender: The P2 sender email address.
+        recipient: The recipient email address.
+        url: The URL found in evidence.
+
+    Returns:
+        A compacted alert dict matching the structure produced by
+        DefenderO365Alert.filter_evidence().
+    """
+    return {
+        "id": alert_id,
+        "status": "new",
+        "alertWebUrl": "https://security.microsoft.com/alerts/" + alert_id,
+        "createdDateTime": "2026-07-01T08:00:00+00:00",
+        "evidence": [
+            {
+                "urls": [url],
+                "p1_sender_email": p1_sender,
+                "p1_sender_display_name": None,
+                "p2_sender_email": p2_sender,
+                "p2_sender_display_name": None,
+                "recipient_email_address": recipient,
+            }
+        ],
+    }
+
+
+def _given_compacted_alert_with_duplicate_sender() -> dict:
+    """Given a compacted alert with two evidence items sharing the same sender.
+
+    Returns:
+        A compacted alert dict with duplicate p1_sender_email values.
+    """
+    return {
+        "id": "ALT-002",
+        "status": "new",
+        "alertWebUrl": "https://security.microsoft.com/alerts/ALT-002",
+        "createdDateTime": "2026-07-01T09:00:00+00:00",
+        "evidence": [
+            {
+                "urls": [],
+                "p1_sender_email": "bad@evil.com",
+                "p1_sender_display_name": None,
+                "p2_sender_email": None,
+                "p2_sender_display_name": None,
+                "recipient_email_address": "victim@corp.com",
+            },
+            {
+                "urls": [],
+                "p1_sender_email": "bad@evil.com",
+                "p1_sender_display_name": None,
+                "p2_sender_email": None,
+                "p2_sender_display_name": None,
+                "recipient_email_address": "victim@corp.com",
+            },
+        ],
+    }
+
+
+def _given_compacted_alert_with_empty_evidence() -> dict:
+    """Given a compacted alert with an empty evidence list.
+
+    Returns:
+        A compacted alert dict with no evidence items.
+    """
+    return {
+        "id": "ALT-003",
+        "status": "active",
+        "alertWebUrl": "https://security.microsoft.com/alerts/ALT-003",
+        "createdDateTime": "2026-07-01T10:00:00+00:00",
+        "evidence": [],
+    }
+
+
+def _given_compacted_alert_with_merged_evidence() -> dict:
+    """Given a compacted alert with two distinct evidence items.
+
+    Returns:
+        A compacted alert dict whose evidence list must be merged
+        across items by to_oaev_data.
+    """
+    return {
+        "id": "ALT-004",
+        "status": "new",
+        "alertWebUrl": "https://security.microsoft.com/alerts/ALT-004",
+        "createdDateTime": "2026-07-01T11:00:00+00:00",
+        "evidence": [
+            {
+                "urls": ["https://url1.example.com/"],
+                "p1_sender_email": "sender1@evil.com",
+                "p1_sender_display_name": None,
+                "p2_sender_email": None,
+                "p2_sender_display_name": None,
+                "recipient_email_address": "victim1@corp.com",
+            },
+            {
+                "urls": ["https://url2.example.com/"],
+                "p1_sender_email": "sender2@evil.com",
+                "p1_sender_display_name": None,
+                "p2_sender_email": None,
+                "p2_sender_display_name": None,
+                "recipient_email_address": "victim2@corp.com",
+            },
+        ],
+    }
+
+
+def _when_source_data_to_oaev_data_is_called(alert_dict: dict):
+    """When to_oaev_data is called.
+
+    Instantiates MicrosoftDefenderO365SourceData with the provided
+    compacted alert dict and invokes to_oaev_data().
+
+    Args:
+        alert_dict: A compacted alert dict as produced by
+            DefenderO365Alert.filter_evidence().
+
+    Returns:
+        The OAEVData instance returned by to_oaev_data().
+    """
+    from src.source.source_data import MicrosoftDefenderO365SourceData
+
+    source_data = MicrosoftDefenderO365SourceData(alert=alert_dict)
+    return source_data.to_oaev_data()
+
+
+def _then_oaev_data_source_email_list(oaev_data, expected: list[str]) -> None:
+    """Then OAEVData[SIG_TYPE_SOURCE_EMAIL] is a list containing the expected emails.
+
+    Args:
+        oaev_data: The OAEVData instance under assertion.
+        expected: The expected list of sender email addresses.
+    """
+    from pyoaev.signatures.types import SignatureTypes
+
+    actual = oaev_data.model_dump().get(SignatureTypes.SIG_TYPE_SOURCE_EMAIL.value)
+    assert actual == expected, f"Expected {expected}, got {actual}"
+
+
+def _then_oaev_data_target_email_list(oaev_data, expected: list[str]) -> None:
+    """Then OAEVData[SIG_TYPE_TARGET_EMAIL] is a list containing the expected emails.
+
+    Args:
+        oaev_data: The OAEVData instance under assertion.
+        expected: The expected list of recipient email addresses.
+    """
+    from pyoaev.signatures.types import SignatureTypes
+
+    actual = oaev_data.model_dump().get(SignatureTypes.SIG_TYPE_TARGET_EMAIL.value)
+    assert actual == expected, f"Expected {expected}, got {actual}"
+
+
+def _then_oaev_data_url_hash_list(oaev_data, expected: list[str]) -> None:
+    """Then OAEVData[SIG_TYPE_URL_HASH] is a list containing the expected hash digests.
+
+    Args:
+        oaev_data: The OAEVData instance under assertion.
+        expected: The expected list of URL hash digests (SHA256, SHA1, MD5).
+    """
+    from pyoaev.signatures.types import SignatureTypes
+
+    actual = oaev_data.model_dump().get(SignatureTypes.SIG_TYPE_URL_HASH.value)
+    assert actual == expected, f"Expected {expected}, got {actual}"
+
+
+def _then_oaev_data_field_is_empty_string(oaev_data, field: str) -> None:
+    """Then OAEVData[field] is an empty string.
+
+    Args:
+        oaev_data: The OAEVData instance under assertion.
+        field: The signature type field key to check.
+    """
+    actual = oaev_data.model_dump().get(field)
+    assert actual == "", f"Expected empty string for {field}, got {actual!r}"
+
+
+def _then_oaev_data_field_is_empty_list(oaev_data, field: str) -> None:
+    """Then OAEVData[field] is an empty list.
+
+    Args:
+        oaev_data: The OAEVData instance under assertion.
+        field: The signature type field key to check.
+    """
+    actual = oaev_data.model_dump().get(field)
+    assert actual == [], f"Expected empty list for {field}, got {actual!r}"
+
+
+def _then_oaev_data_source_email_deduplicated(oaev_data, email: str) -> None:
+    """Then OAEVData[SIG_TYPE_SOURCE_EMAIL] contains exactly one entry for the email.
+
+    Args:
+        oaev_data: The OAEVData instance under assertion.
+        email: The email address that must appear exactly once.
+    """
+    from pyoaev.signatures.types import SignatureTypes
+
+    actual = oaev_data.model_dump().get(SignatureTypes.SIG_TYPE_SOURCE_EMAIL.value)
+    assert actual == [email], f"Expected [{email}], got {actual}"
+
+
+def _then_oaev_data_contains_hashes_from_both_urls(oaev_data, urls: list[str]) -> None:
+    """Then OAEVData[SIG_TYPE_URL_HASH] contains hashes derived from both URLs.
+
+    Verifies that SHA256, SHA1, and MD5 digests for each URL are present
+    in the URL hash list.
+
+    Args:
+        oaev_data: The OAEVData instance under assertion.
+        urls: The list of URLs whose hashes must be present.
+    """
+    import hashlib
+
+    from pyoaev.signatures.types import SignatureTypes
+
+    actual = oaev_data.model_dump().get(SignatureTypes.SIG_TYPE_URL_HASH.value)
+    for url in urls:
+        sha256 = hashlib.sha256(url.encode("utf-8")).hexdigest()
+        sha1 = hashlib.sha1(url.encode("utf-8")).hexdigest()
+        md5 = hashlib.md5(url.encode("utf-8")).hexdigest()
+        for digest in (sha256, sha1, md5):
+            assert digest in actual, f"Expected {digest} in {actual}"
+
+
+# --------
+# Chunk8 (#505) - Matching integration GWT helpers
+# --------
+
+#: Module-level state to control fetcher behaviour across test scenarios
+_CHUNK8_STATE: dict[str, object] = {}
+
+
+def _reset_chunk8_state() -> None:
+    """Clear chunk8 test state before each scenario."""
+    _CHUNK8_STATE.clear()
+
+
+@pytest.fixture(autouse=True)
+def _chunk8_state_isolation():
+    """Ensure chunk8 state is clean before and after each test."""
+    _reset_chunk8_state()
+    yield
+    _reset_chunk8_state()
+
+
+def _given_detection_expectation_with_supported_sigs(
+    exp_id: str = "exp-001",
+) -> DetectionExpectation:
+    """Given a DetectionExpectation with signatures matching the 5 supported types.
+
+    Args:
+        exp_id: The expectation identifier.
+
+    Returns:
+        A DetectionExpectation instance with signatures for each supported type.
+    """
+    import uuid
+
+    from src.source.signatures import SUPPORTED_SIGNATURES
+
+    return DetectionExpectation(
+        inject_expectation_id=uuid.uuid4(),
+        inject_expectation_signatures=[
+            ExpectationSignature(
+                type=sig_type,
+                value=_sig_test_value_for_type(sig_type),
+            )
+            for sig_type in SUPPORTED_SIGNATURES
+        ],
+        api_client=None,
+    )
+
+
+def _given_prevention_expectation_with_supported_sigs() -> PreventionExpectation:
+    """Given a PreventionExpectation with signatures matching the 5 supported types.
+
+    Returns:
+        A PreventionExpectation instance with signatures for each supported type.
+    """
+    import uuid
+
+    from src.source.signatures import SUPPORTED_SIGNATURES
+
+    return PreventionExpectation(
+        inject_expectation_id=uuid.uuid4(),
+        inject_expectation_signatures=[
+            ExpectationSignature(
+                type=sig_type,
+                value=_sig_test_value_for_type(sig_type),
+            )
+            for sig_type in SUPPORTED_SIGNATURES
+        ],
+        api_client=None,
+    )
+
+
+def _given_expectation_with_unsupported_sigs() -> DetectionExpectation:
+    """Given an expectation with signatures including types NOT in SUPPORTED_SIGNATURES.
+
+    Returns:
+        A DetectionExpectation with both supported and unsupported signature types.
+    """
+    import uuid
+
+    from pyoaev.apis.inject_expectation.model.expectation import (
+        DetectionExpectation,
+        ExpectationSignature,
+    )
+    from pyoaev.signatures.types import SignatureTypes
+    from src.source.signatures import SUPPORTED_SIGNATURES
+
+    # Add a signature type not in SUPPORTED_SIGNATURES
+    all_types = list(SignatureTypes)
+    extra_types = [t for t in all_types if t not in SUPPORTED_SIGNATURES][:2]
+
+    sigs = [
+        ExpectationSignature(type=sig_type, value=_sig_test_value_for_type(sig_type))
+        for sig_type in SUPPORTED_SIGNATURES
+    ] + [ExpectationSignature(type=t, value="unsupported-value") for t in extra_types]
+
+    return DetectionExpectation(
+        inject_expectation_id=uuid.uuid4(),
+        inject_expectation_signatures=sigs,
+        api_client=None,
+    )
+
+
+def _given_matching_alert_data(
+    prevention: bool = False,
+) -> list:
+    """Given source data producing OAEVData with matching values and correct detection.
+
+    Builds mock MicrosoftDefenderO365SourceData objects whose to_oaev_data()
+    returns values that match the expectation signatures, and whose
+    is_detected() / is_prevented() return the correct flag.
+
+    Args:
+        prevention: If True, is_prevented() returns True instead of is_detected().
+
+    Returns:
+        A list containing one mock source data object.
+    """
+    from unittest.mock import MagicMock
+
+    from pyoaev.signatures.types import SignatureTypes
+    from src.source.signatures import SUPPORTED_SIGNATURES
+
+    mock_sd = MagicMock()
+    oaev_data = MagicMock()
+
+    # to_oaev_data returns an OAEVData-like object with matching values
+    def to_oaev_data():
+        return oaev_data
+
+    mock_sd.to_oaev_data = to_oaev_data
+
+    # Set attribute access to return matching values in the structure
+    # expected by OpenAEVDetectionHelper.match_alert_elements
+    sig_values = {
+        SignatureTypes.SIG_TYPE_SOURCE_EMAIL.value: {
+            "type": "simple",
+            "data": ["bad@evil.com"],
+        },
+        SignatureTypes.SIG_TYPE_TARGET_EMAIL.value: {
+            "type": "simple",
+            "data": ["victim@corp.com"],
+        },
+        SignatureTypes.SIG_TYPE_URL_HASH.value: {
+            "type": "simple",
+            "data": ["6e828dac1a6b547942ad393d0e3b5e37e50e974a86c8c61e5b77e6a0c7b7c6d"],
+        },
+        SignatureTypes.SIG_TYPE_FILE_HASH.value: {
+            "type": "simple",
+            "data": ["abc123"],
+        },
+        SignatureTypes.SIG_TYPE_EMAIL_CUSTOM_HEADER.value: {
+            "type": "simple",
+            "data": ["header-val"],
+        },
+    }
+    oaev_data.model_dump.return_value = sig_values
+    for sig_type in SUPPORTED_SIGNATURES:
+        setattr(oaev_data, sig_type.value, sig_values[sig_type.value])
+
+    # Detection / prevention flags
+    mock_sd.is_detected.return_value = not prevention
+    mock_sd.is_prevented.return_value = prevention
+
+    # Trace data serialization
+    mock_trace = MagicMock()
+    mock_trace.model_dump.return_value = {
+        "alert_name": "Test Alert",
+        "alert_link": "https://security.microsoft.com/alerts/ALT-001",
+        "alert_date": "2026-07-01T08:00:00Z",
+    }
+    mock_sd.to_traces_data.return_value = mock_trace
+
+    return [mock_sd]
+
+
+def _given_non_matching_alert_data() -> list:
+    """Given source data producing OAEVData with non-matching values.
+
+    Returns:
+        A list containing one mock source data object with different values.
+    """
+    from unittest.mock import MagicMock
+
+    from pyoaev.signatures.types import SignatureTypes
+    from src.source.signatures import SUPPORTED_SIGNATURES
+
+    mock_sd = MagicMock()
+    oaev_data = MagicMock()
+
+    def to_oaev_data():
+        return oaev_data
+
+    mock_sd.to_oaev_data = to_oaev_data
+
+    # Values that won't match expectation signatures
+    sig_values = {
+        SignatureTypes.SIG_TYPE_SOURCE_EMAIL.value: {
+            "type": "simple",
+            "data": ["other@evil.com"],
+        },
+        SignatureTypes.SIG_TYPE_TARGET_EMAIL.value: {
+            "type": "simple",
+            "data": ["boss@corp.com"],
+        },
+        SignatureTypes.SIG_TYPE_URL_HASH.value: {
+            "type": "simple",
+            "data": [
+                "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+            ],
+        },
+        SignatureTypes.SIG_TYPE_FILE_HASH.value: {
+            "type": "simple",
+            "data": ["xyz789"],
+        },
+        SignatureTypes.SIG_TYPE_EMAIL_CUSTOM_HEADER.value: {
+            "type": "simple",
+            "data": ["other-header"],
+        },
+    }
+    oaev_data.model_dump.return_value = sig_values
+    for sig_type in SUPPORTED_SIGNATURES:
+        setattr(oaev_data, sig_type.value, sig_values[sig_type.value])
+
+    mock_sd.is_detected.return_value = True
+    mock_sd.is_prevented.return_value = False
+
+    mock_trace = MagicMock()
+    mock_trace.model_dump.return_value = {
+        "alert_name": "Test Alert",
+        "alert_link": "https://security.microsoft.com/alerts/ALT-002",
+        "alert_date": "2026-07-01T09:00:00Z",
+    }
+    mock_sd.to_traces_data.return_value = mock_trace
+
+    return [mock_sd]
+
+
+def _given_empty_fetched_data() -> None:
+    """Given fetch_data() returns empty list.
+
+    Sets chunk8 state so _when_engine_processes_batch returns [] for data.
+    """
+    _CHUNK8_STATE["fetch_result"] = []
+
+
+def _given_fetched_data_error() -> None:
+    """Given fetch_data() raises an exception.
+
+    Sets chunk8 state so _when_engine_processes_batch raises on fetch.
+    """
+    _CHUNK8_STATE["fetch_error"] = RuntimeError("Connection timeout")
+
+
+def _when_engine_processes_batch(
+    expectations: list,
+    alert_data: list,
+) -> list:
+    """When the engine processes the batch.
+
+    Instantiates a minimal BasicCollectorEngine with mocked dependencies
+    and calls _process_batch with the provided expectations and alert data.
+
+    Args:
+        expectations: List of expectation objects to process.
+        alert_data: List of source data objects (mocked).
+
+    Returns:
+        List of ExpectationResult objects.
+    """
+    from pyoaev.helpers import OpenAEVDetectionHelper
+    from src.collector.engines.basic import BasicCollectorEngine
+    from src.collector.models.source import SourceHandler
+    from src.models.settings.source_configs import _ConfigLoaderSource
+    from src.source.signatures import SUPPORTED_SIGNATURES
+
+    # Check for error scenario
+    if _CHUNK8_STATE.get("fetch_error"):
+        data = [
+            _CHUNK8_STATE["fetch_error"],
+        ]  # trigger error path
+    else:
+        data = alert_data if alert_data else _CHUNK8_STATE.get("fetch_result", [])
+
+    # Build signature groups for matching
+    SourceHandler.get_expectation_signature_groups(
+        SUPPORTED_SIGNATURES, expectations[0]
+    )
+
+    # Detection helper that matches based on sig groups
+    OpenAEVDetectionHelper(
+        logger=MagicMock(),
+        relevant_signatures_types=SUPPORTED_SIGNATURES,
+    )
+
+    # Mock the source handler to inject our data
+    mock_handler = MagicMock(spec=SourceHandler)
+    mock_handler.config = _ConfigLoaderSource(
+        tenant_id="test-tenant-id",
+        client_id="test-client-id",
+        client_secret="test-secret",
+    )
+
+    def get_source_data(fetcher):
+        if _CHUNK8_STATE.get("fetch_error"):
+            raise _CHUNK8_STATE["fetch_error"]
+        return data
+
+    mock_handler.get_source_data = get_source_data
+    mock_handler.serialize_as_oaevdata = SourceHandler.serialize_as_oaevdata
+    mock_handler.get_expectation_signature_groups = (
+        SourceHandler.get_expectation_signature_groups
+    )
+    mock_handler.match_signature_groups_and_oaevdata = (
+        SourceHandler.match_signature_groups_and_oaevdata
+    )
+    mock_handler.serialize_as_tracedata = SourceHandler.serialize_as_tracedata
+    mock_handler.match_expectation_and_sourcedata = (
+        SourceHandler.match_expectation_and_sourcedata
+    )
+    mock_handler.build_fetch_params_hook = SourceHandler.build_fetch_params_hook
+
+    # Build engine with real Source instance
+    from src.collector.models.source import Source
+    from src.source.defender_o365_data_fetcher import DefenderO365DataFetcher
+    from src.source.source_data import MicrosoftDefenderO365SourceData
+
+    # Simple data fetcher class to avoid auth during test
+    class MockDataFetcher(DefenderO365DataFetcher):
+        def __init__(self, config, fetch_params_hook=None):
+            self.config = config
+            self._fetch_params_hook = fetch_params_hook
+
+    mock_source = Source(
+        data_fetcher_model=MockDataFetcher,
+        source_data_model=MicrosoftDefenderO365SourceData,
+        signatures=SUPPORTED_SIGNATURES,
+    )
+
+    from pyoaev import OpenAEV
+
+    engine = BasicCollectorEngine(
+        name="Test Collector",
+        collector_id="test-collector-id",
+        source=mock_source,
+        source_handler=mock_handler,
+        oaev_api=MagicMock(spec=OpenAEV),
+    )
+    engine.configure_engine(MagicMock())
+
+    return engine._process_batch(expectations)
+
+
+def _when_source_handler_filters_sigs(expectation) -> dict:
+    """When SourceHandler.get_expectation_signature_groups filters signatures.
+
+    Args:
+        expectation: The expectation object to filter.
+
+    Returns:
+        The filtered signature groups dict.
+    """
+    from src.collector.models.source import SourceHandler
+    from src.source.signatures import SUPPORTED_SIGNATURES
+
+    return SourceHandler.get_expectation_signature_groups(
+        SUPPORTED_SIGNATURES, expectation
+    )
+
+
+# --------
+# Then helpers
+# --------
+
+
+def _then_expectation_result_is_valid_with_traces(result) -> None:
+    """Then ExpectationResult.is_valid is True and matched_alerts contains traces.
+
+    Args:
+        result: The ExpectationResult to check.
+    """
+    assert result.is_valid is True, f"Expected is_valid=True, got {result.is_valid}"
+    assert (
+        len(result.matched_alerts) > 0
+    ), f"Expected matched_alerts to be non-empty, got {result.matched_alerts}"
+
+
+def _then_expectation_result_is_valid_without_traces(result) -> None:
+    """Then ExpectationResult.is_valid is True.
+
+    Args:
+        result: The ExpectationResult to check.
+    """
+    assert result.is_valid is True, f"Expected is_valid=True, got {result.is_valid}"
+
+
+def _then_expectation_result_not_valid_no_traces(result) -> None:
+    """Then ExpectationResult.is_valid is False and matched_alerts is empty.
+
+    Args:
+        result: The ExpectationResult to check.
+    """
+    assert result.is_valid is False, f"Expected is_valid=False, got {result.is_valid}"
+    assert (
+        len(result.matched_alerts) == 0
+    ), f"Expected matched_alerts to be empty, got {result.matched_alerts}"
+
+
+def _then_only_supported_sigs_retained(sig_groups: dict) -> None:
+    """Then only signatures matching SUPPORTED_SIGNATURES are retained.
+
+    Args:
+        sig_groups: The filtered signature groups dict.
+    """
+    from src.source.signatures import SUPPORTED_SIGNATURES
+
+    supported_values = {sig.value for sig in SUPPORTED_SIGNATURES}
+    for sig_type_key in sig_groups:
+        assert (
+            sig_type_key in supported_values
+        ), f"Unexpected signature type '{sig_type_key}' in groups"
+
+
+def _then_all_results_invalid(results: list) -> None:
+    """Then all ExpectationResult objects have is_valid=False.
+
+    Args:
+        results: The list of ExpectationResult objects to check.
+    """
+    for result in results:
+        assert (
+            result.is_valid is False
+        ), f"Expected is_valid=False for {result.expectation_id}, got {result.is_valid}"
+
+
+def _then_expectation_result_has_error(result) -> None:
+    """Then ExpectationResult has is_valid=False and error_message set.
+
+    Args:
+        result: The ExpectationResult to check.
+    """
+    assert result.is_valid is False, f"Expected is_valid=False, got {result.is_valid}"
+    assert (
+        result.error_message is not None
+    ), f"Expected error_message to be set, got {result.error_message}"
+
+
+# --------
+# Internal helpers
+# --------
+
+
+def _sig_test_value_for_type(sig_type) -> str:
+    """Return a test-appropriate value for a signature type.
+
+    Args:
+        sig_type: A SignatureTypes enum value.
+
+    Returns:
+        A string value suitable for test expectations.
+    """
+    from pyoaev.signatures.types import SignatureTypes
+
+    VALUES = {
+        SignatureTypes.SIG_TYPE_SOURCE_EMAIL: "bad@evil.com",
+        SignatureTypes.SIG_TYPE_TARGET_EMAIL: "victim@corp.com",
+        SignatureTypes.SIG_TYPE_URL_HASH: "6e828dac1a6b547942ad393d0e3b5e37e50e974a86c8c61e5b77e6a0c7b7c6d",
+        SignatureTypes.SIG_TYPE_FILE_HASH: "abc123",
+        SignatureTypes.SIG_TYPE_EMAIL_CUSTOM_HEADER: "header-val",
+    }
+    return VALUES.get(sig_type, "test-value")
