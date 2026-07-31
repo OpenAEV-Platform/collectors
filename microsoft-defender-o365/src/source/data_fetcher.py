@@ -1,20 +1,12 @@
-from src.collector.types.collector import SourceConfig
-from src.source.source_data import MicrosoftDefenderO365SourceData
+"""Data fetcher for Microsoft Defender O365 alerts.
 
+Re-exports DefenderO365DataFetcher to maintain the existing import path
+for collector_main.py.
+"""
 
-class MicrosoftDefenderO365DataFetcher:
-    """
-    Placeholder data fetcher class, meant to follow the data fetcher protocol
-    """
+from src.source.defender_o365_data_fetcher import DefenderO365DataFetcher
 
-    def __init__(self, source_config: SourceConfig) -> None:
-        """attaching the source configuration to the data fetcher object"""
-        self.config = source_config
+# Alias for backward compatibility with existing import path
+MicrosoftDefenderO365DataFetcher = DefenderO365DataFetcher
 
-    def fetch_data(self) -> list[MicrosoftDefenderO365SourceData]:
-        """return placeholder data in the source data format"""
-        return [
-            MicrosoftDefenderO365SourceData(),
-            MicrosoftDefenderO365SourceData(),
-            MicrosoftDefenderO365SourceData(),
-        ]
+__all__ = ["MicrosoftDefenderO365DataFetcher", "DefenderO365DataFetcher"]
