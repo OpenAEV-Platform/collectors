@@ -37,7 +37,6 @@ COPY pyproject.toml ./
 RUN --mount=type=cache,target=/root/.cache \
     poetry install  \
     --only main  \
-    --extras prod  \
     --no-root
 
 # Optional override of the client-python dependency.
