@@ -11,7 +11,6 @@ from tests.conftest import (
     _given_microsoft_defender_o365_empty_response,
     _given_microsoft_defender_o365_mixed_evidence_response,
     _given_microsoft_defender_o365_multi_page_response,
-    _given_microsoft_defender_o365_rate_limited_response,
     _given_microsoft_defender_o365_single_page_response,
     _given_microsoft_defender_o365_token_expired_response,
     _then_each_result_has_raw_alert,
