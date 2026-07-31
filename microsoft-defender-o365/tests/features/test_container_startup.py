@@ -1,9 +1,9 @@
 """Essential tests for Microsoft Defender O365 container startup - Gherkin GWT Format."""
 
 from unittest.mock import MagicMock, patch
-from pytest import FixtureRequest
 
 import pytest
+from pytest import FixtureRequest
 
 # --------
 # Scenarios

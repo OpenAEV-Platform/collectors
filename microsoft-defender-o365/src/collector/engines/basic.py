@@ -169,13 +169,19 @@ class BasicCollectorEngine:
         batch_results = []
 
         try:
+            # (0) ask source handler to build a fetch params hook from the batch
+            fetch_params_hook = self.source_handler.build_fetch_params_hook(batch)
+
             # (1) fetch data
             self.logger.info(
                 f"{LOG_PREFIX} Fetching data providing "
                 f"data fetcher {self.data_fetcher_model} to source handler"
             )
             data = self.source_handler.get_source_data(
-                self.data_fetcher_model(self.config)
+                self.data_fetcher_model(
+                    self.source_handler.config,
+                    fetch_params_hook=fetch_params_hook,
+                )
             )
         except Exception as err:  # per batch
             batch_results = [
