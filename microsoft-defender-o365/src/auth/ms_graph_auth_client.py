@@ -13,15 +13,15 @@ class MSGraphAuthClient:
                 config.client_id,
                 authority=authority,
                 client_credential={
-                    "private_key": config.client_cert_data,
-                    "thumbprint": config.client_cert_thumbprint,
+                    "private_key": config.client_cert_data.get_secret_value(),
+                    "thumbprint": config.client_cert_thumbprint.get_secret_value(),
                 },
             )
         else:
             self.app = ConfidentialClientApplication(
                 config.client_id,
                 authority=authority,
-                client_credential=config.client_secret,
+                client_credential=config.client_secret.get_secret_value(),
             )
 
     def get_access_token(self) -> str:

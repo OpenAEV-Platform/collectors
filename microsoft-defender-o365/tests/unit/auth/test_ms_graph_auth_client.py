@@ -18,8 +18,10 @@ class TestMSGraphAuthClient(unittest.TestCase):
         config.tenant_id = sentinel.tenant_id
         config.use_certificate_auth = True
         config.client_id = sentinel.client_id
-        config.client_cert_data = sentinel.client_cert_data
-        config.client_cert_thumbprint = sentinel.client_cert_thumbprint
+        client_cert_data = MagicMock()
+        config.client_cert_data = client_cert_data
+        client_cert_thumbprint = MagicMock()
+        config.client_cert_thumbprint = client_cert_thumbprint
 
         auth_client = module.MSGraphAuthClient(config)
 
@@ -28,8 +30,8 @@ class TestMSGraphAuthClient(unittest.TestCase):
             sentinel.client_id,
             authority=m_authority_builder.return_value,
             client_credential={
-                "private_key": sentinel.client_cert_data,
-                "thumbprint": sentinel.client_cert_thumbprint,
+                "private_key": client_cert_data.get_secret_value.return_value,
+                "thumbprint": client_cert_thumbprint.get_secret_value.return_value,
             },
         )
         self.assertEqual(
@@ -43,7 +45,8 @@ class TestMSGraphAuthClient(unittest.TestCase):
         config.tenant_id = sentinel.tenant_id
         config.use_certificate_auth = False
         config.client_id = sentinel.client_id
-        config.client_secret = sentinel.client_secret
+        client_secret = MagicMock()
+        config.client_secret = client_secret
 
         auth_client = module.MSGraphAuthClient(config)
 
@@ -51,7 +54,7 @@ class TestMSGraphAuthClient(unittest.TestCase):
         m_confidential_client_application.assert_called_with(
             sentinel.client_id,
             authority=m_authority_builder.return_value,
-            client_credential=sentinel.client_secret,
+            client_credential=client_secret.get_secret_value.return_value,
         )
         self.assertEqual(
             auth_client.app, m_confidential_client_application.return_value

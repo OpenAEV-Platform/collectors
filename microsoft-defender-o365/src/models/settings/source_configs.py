@@ -34,12 +34,12 @@ class _ConfigLoaderSource(ConfigBaseSettings):
         description="Azure AD application client secret. Required unless "
         "use_certificate_auth is enabled.",
     )
-    client_cert_data: str | None = Field(
+    client_cert_data: SecretStr | None = Field(
         default=None,
         description="Content of the client certificate. Required when "
         "use_certificate_auth is enabled.",
     )
-    client_cert_thumbprint: str | None = Field(
+    client_cert_thumbprint: SecretStr | None = Field(
         default=None,
         description="Thumbprint of the client certificate. Required when "
         "use_certificate_auth is enabled.",
