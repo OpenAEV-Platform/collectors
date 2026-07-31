@@ -27,7 +27,7 @@ class DefenderO365DataFetcher:
     """Implements DataFetcherProtocol for Microsoft Defender O365 alerts.
 
     Fetches alerts from the Microsoft Graph Security API v2, handles
-    pagination, rate limiting (HTTP 429), and auth recovery (HTTP 401).
+    pagination and auth recovery (HTTP 401).
     """
 
     def __init__(
