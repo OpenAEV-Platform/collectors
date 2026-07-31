@@ -36,7 +36,6 @@ COPY pyproject.toml ./
 # Install production dependencies into the virtual environment.
 RUN --mount=type=cache,target=/root/.cache \
     poetry install  \
-    --only main  \
     --no-root
 
 # Optional override of the client-python dependency.

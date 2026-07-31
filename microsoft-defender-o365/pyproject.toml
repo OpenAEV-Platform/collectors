@@ -15,14 +15,13 @@ pydantic-settings = "^2.14.0"
 requests = "^2.33.0"
 msal = "^1.37.0"
 orjson = "^3.11.9"
-pytest = "^9.1.1"
+pyoaev = "3.260731.0"
 
-[[tool.poetry.dependencies.pyoaev]]
-markers = "extra == 'prod'"
-version = "3.260731.0"
-[[tool.poetry.dependencies.pyoaev]]
-markers = "extra != 'prod'"
-version = "3.260731.0"
+[tool.poetry.extras]
+prod = [
+]
+dev = [
+]
 
 [tool.poetry.dependencies.python-slugify]
 extras = [
