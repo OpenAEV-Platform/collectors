@@ -4,7 +4,8 @@ services:
     environment:
       - OPENAEV_URL=${OPENAEV_URL}
       - OPENAEV_TOKEN=${OPENAEV_TOKEN}
-      - OPENAEV_TENANT_ID=${OPENAEV_TENANT_ID}
+      # only required for multi-tenancy (Enterprise Edition), keep commented otherwise
+      # - OPENAEV_TENANT_ID=${OPENAEV_TENANT_ID}
       - COLLECTOR_ID=${COLLECTOR_ID}
       - COLLECTOR_NAME=${COLLECTOR_NAME:-"Tanium Threat Response"}
       - COLLECTOR_LOG_LEVEL=${COLLECTOR_LOG_LEVEL:-warn}

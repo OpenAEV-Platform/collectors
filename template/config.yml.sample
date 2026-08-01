@@ -1,7 +1,8 @@
 openaev:
   url: "http://change.me"  # base URL to reach the OpenAEV server
   token: "ChangeMe"  # admin account API token from the OpenAEV server
-#  tenant_id: "ChangeMe"  # tenant identifier for multi-tenant deployments
+  # only required for multi-tenancy (Enterprise Edition), keep commented otherwise
+  # tenant_id: "ChangeMe"  # tenant identifier for multi-tenant deployments
 
 collector:
   id: "ChangeMe"  # collector ID must be a unique string, e.g. UUIDv4
