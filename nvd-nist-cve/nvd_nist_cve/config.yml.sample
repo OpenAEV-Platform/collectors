@@ -1,7 +1,8 @@
 openaev:
   url: 'http://localhost:8080'  # Required
   token: 'ChangeMe' # Required
-# tenant_id: 'ChangeMe'
+  # only required for multi-tenancy (Enterprise Edition), keep commented otherwise
+  # tenant_id: 'ChangeMe'
 
 collector:
   id: 'ChangeMe' # Required
