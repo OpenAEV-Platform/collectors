@@ -140,9 +140,6 @@ class OpenAEVMicrosoftDefender(CollectorDaemon):
 
     # --- EXTRACTOR ---
 
-    def _extract_device(self, alert):
-        return alert.get("DeviceName", None)
-
     def _extract_parent_process_names(self, evidences):
         return [
             evidence.get("ParentProcessImageFileName")
