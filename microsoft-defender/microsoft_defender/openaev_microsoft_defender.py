@@ -1,9 +1,8 @@
 import asyncio
 import json
 import os
-from datetime import datetime
+from datetime import UTC, datetime
 
-import pytz
 import requests
 from azure.identity.aio import ClientSecretCredential
 from dateutil.parser import parse
@@ -192,12 +191,10 @@ class OpenAEVMicrosoftDefender(CollectorDaemon):
 
     def _is_prevented(self, evidences):
         return any(
-            [
-                evidence.get("LastRemediationState")
-                for evidence in evidences
-                if evidence.get("LastRemediationState")
-                in ["Prevented", "Blocked", "Remediated"]
-            ]
+            evidence.get("LastRemediationState")
+            for evidence in evidences
+            if evidence.get("LastRemediationState")
+            in ["Prevented", "Blocked", "Remediated"]
         )
 
     def _extract_alert_link(self, alert_data):
@@ -215,14 +212,7 @@ class OpenAEVMicrosoftDefender(CollectorDaemon):
             return evidence.get("FirstActivityTimestamp")
         if evidence.get("LastActivityTimestamp"):
             return evidence.get("LastActivityTimestamp")
-        return datetime.now(datetime.UTC).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
-
-    def _extract_alert_prevention_date(self, evidence):
-        if evidence.get("LastActivityTimestamp"):
-            return evidence.get("LastActivityTimestamp")
-        if evidence.get("FirstActivityTimestamp"):
-            return evidence.get("FirstActivityTimestamp")
-        return datetime.now(datetime.UTC).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
 
     # --- MATCHING ---
 
@@ -236,17 +226,13 @@ class OpenAEVMicrosoftDefender(CollectorDaemon):
 
         # No asset
         if expectation["inject_expectation_asset"] is None:
-            self.logger.info(
-                "Expectation has no asset."
-            )
+            self.logger.info("Expectation has no asset.")
             return False
 
         # No signatures to match against: the platform serializes the field as
         # null when an expectation has no signatures, so guard before iterating.
         if not expectation.get("inject_expectation_signatures"):
-            self.logger.info(
-                "Expectation has no signature."
-            )
+            self.logger.info("Expectation has no signature.")
             return False
 
         # Drop malformed signature entries (missing type or null value): a null
@@ -258,9 +244,7 @@ class OpenAEVMicrosoftDefender(CollectorDaemon):
             if signature.get("type") and signature.get("value")
         ]
         if not valid_signatures:
-            self.logger.info(
-                "Expectation has no valid signature."
-            )
+            self.logger.info("Expectation has no valid signature.")
             return False
 
         alert_data = {}
@@ -316,8 +300,7 @@ class OpenAEVMicrosoftDefender(CollectorDaemon):
         if match_result:
             if self._is_prevented(evidences):
                 return "PREVENTED"
-            else:
-                return "DETECTED"
+            return "DETECTED"
         return False
 
     # --- PROCESS ---
@@ -337,9 +320,7 @@ class OpenAEVMicrosoftDefender(CollectorDaemon):
             self.logger.info("No expectations found: skipping iteration.")
             return
 
-        limit_date = datetime.now().astimezone(pytz.UTC) - relativedelta(
-            minutes=self.scanning_delta
-        )
+        limit_date = datetime.now(UTC) - relativedelta(minutes=self.scanning_delta)
 
         # Retrieve alerts
         alerts = (
@@ -358,7 +339,7 @@ class OpenAEVMicrosoftDefender(CollectorDaemon):
             # Check expired expectation
             expectation_date = parse(
                 expectation["inject_expectation_created_at"]
-            ).astimezone(pytz.UTC)
+            ).astimezone(UTC)
             if expectation_date < limit_date:
                 self.logger.info(
                     "Expectation expired, failing inject "
