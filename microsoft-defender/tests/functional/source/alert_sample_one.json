@@ -1,0 +1,203 @@
+{
+  "actorDisplayName": null,
+  "alertWebUrl": "https://security.microsoft.com/alerts/fa22b933df-2da2-45d9-8a00-084b52fc3657?tid=f65ad163-1b89-0000-b2a7-e70409495256",
+  "assignedTo": "Automation",
+  "category": "InitialAccess",
+  "classification": null,
+  "comments": [],
+  "createdDateTime": "2023-05-12T15:27:46.4495785Z",
+  "description": "Emails with malicious URL that were delivered and later removed -V1.0.0.3",
+  "detectionSource": "microsoftDefenderForOffice365",
+  "detectorId": "8e6ba277-ef39-404e-aaf1-294f6d9a2b88",
+  "determination": null,
+  "evidence": [
+    {
+      "@odata.type": "#microsoft.graph.security.mailboxEvidence",
+      "createdDateTime": "2023-05-12T15:27:46.8733333Z",
+      "displayName": "Dennis Uber",
+      "primaryAddress": "user3@example.com",
+      "remediationStatus": "none",
+      "remediationStatusDetails": null,
+      "roles": [],
+      "tags": [],
+      "userAccount": {
+        "accountName": "user3",
+        "azureAdUserId": "6d4c2f48-1d1e-4c8f-8666-914b2085332c",
+        "displayName": null,
+        "domainName": "corp.example",
+        "userPrincipalName": "user3@example.com",
+        "userSid": "S-1-5-21-3978388234-3821721435-422805698-30771"
+      },
+      "verdict": "unknown"
+    },
+    {
+      "@odata.type": "#microsoft.graph.security.analyzedMessageEvidence",
+      "antiSpamDirection": null,
+      "attachmentsCount": 0,
+      "createdDateTime": "2023-05-12T15:27:46.8733333Z",
+      "deliveryAction": "blocked",
+      "deliveryLocation": "quarantine",
+      "internetMessageId": "<f9090520-2cb9-4ea0-bd24-9c60dbc7ccae@net.cl>",
+      "language": "en",
+      "networkMessageId": "000988fb-03e5-45e1-4bdb-08db52057b01",
+      "p1Sender": {
+        "displayName": null,
+        "domainName": "net.cl",
+        "emailAddress": "transport@net.cl"
+      },
+      "p2Sender": {
+        "displayName": "Igor Hansen",
+        "domainName": "net.cl",
+        "emailAddress": "transport@net.cl"
+      },
+      "receivedDateTime": "2023-05-11T09:53:55Z",
+      "recipientEmailAddress": "user3@example.com",
+      "remediationStatus": "none",
+      "remediationStatusDetails": null,
+      "roles": [],
+      "senderIp": null,
+      "subject": "﻿",
+      "tags": [],
+      "threatDetectionMethods": [
+        "UrlReputation"
+      ],
+      "threats": [
+        "ZapPhish",
+        "HighConfPhish"
+      ],
+      "urlCount": 1,
+      "urls": [
+        "https://6lbzjjmx.page.link/tobR"
+      ],
+      "urn": "urn:MailEntity:57fcb07489e43e24890b7a5a45a9701f",
+      "verdict": "unknown"
+    },
+    {
+      "@odata.type": "#microsoft.graph.security.userEvidence",
+      "createdDateTime": "2023-05-12T15:27:46.8733333Z",
+      "remediationStatus": "none",
+      "remediationStatusDetails": null,
+      "roles": [],
+      "tags": [],
+      "userAccount": {
+        "accountName": "user3",
+        "azureAdUserId": "6d4c2f48-1d1e-4c8f-8666-914b2085332c",
+        "displayName": "Dennis Uber",
+        "domainName": "corp.example",
+        "userPrincipalName": "user3@example.com",
+        "userSid": "S-1-5-21-3978388234-3821721435-422805698-30771"
+      },
+      "verdict": "unknown"
+    },
+    {
+      "@odata.type": "#microsoft.graph.security.urlEvidence",
+      "createdDateTime": "2023-05-12T15:29:58.5566667Z",
+      "remediationStatus": "none",
+      "remediationStatusDetails": null,
+      "roles": [],
+      "tags": [],
+      "url": "https://6lbzjjmx.page.link/tobR",
+      "verdict": "unknown"
+    },
+    {
+      "@odata.type": "#microsoft.graph.security.mailClusterEvidence",
+      "clusterBy": "BodyFingerprintBin1;P2SenderDomain;ContentType",
+      "clusterByValue": "4221675800;net.cl;1",
+      "createdDateTime": "2023-05-12T15:35:16.7833333Z",
+      "emailCount": 1,
+      "networkMessageIds": [
+        "000988fb-03e5-45e1-4bdb-08db52057b01"
+      ],
+      "query": "( (( (BodyFingerprintBin1:\"4221675800\") ) AND ( (P2SenderDomain:\"net.cl\") ) AND ( (ContentType: 1) )) AND NOT(XmiInfoTenantPolicyFinalVerdictSource:PhishEdu) AND NOT(XmiInfoTenantPolicyFinalVerdictSource:SecOps))",
+      "remediationStatus": "none",
+      "remediationStatusDetails": null,
+      "roles": [],
+      "tags": [],
+      "urn": "urn:MailClusterEntity:690556f08cd4e6234aed5cf64af6f84b",
+      "verdict": "unknown"
+    },
+    {
+      "@odata.type": "#microsoft.graph.security.mailClusterEvidence",
+      "clusterBy": "Subject;P2SenderDomain;AntispamDirection;ContentType",
+      "clusterByValue": "﻿;net.cl;1;1",
+      "createdDateTime": "2023-05-12T15:35:16.7833333Z",
+      "emailCount": 0,
+      "networkMessageIds": [],
+      "query": "( (( (Subject:\"﻿\") ) AND ( (P2SenderDomain:\"net.cl\") ) AND ( (AntispamDirection:\"1\") ) AND ( (ContentType: 1) )) AND NOT(XmiInfoTenantPolicyFinalVerdictSource:PhishEdu) AND NOT(XmiInfoTenantPolicyFinalVerdictSource:SecOps))",
+      "remediationStatus": "none",
+      "remediationStatusDetails": null,
+      "roles": [],
+      "tags": [],
+      "urn": "urn:MailClusterEntity:1317e7058019f7fe625ffa4fc8c6a594",
+      "verdict": "unknown"
+    },
+    {
+      "@odata.type": "#microsoft.graph.security.mailClusterEvidence",
+      "clusterBy": "NormalizedUrl;ContentType",
+      "clusterByValue": "https://6lbzjjmx.page.link/tobR;1",
+      "createdDateTime": "2023-05-12T15:35:16.7833333Z",
+      "emailCount": 1,
+      "networkMessageIds": [
+        "000988fb-03e5-45e1-4bdb-08db52057b01"
+      ],
+      "query": "( ((NormalizedUrl:\"https://6lbzjjmx.page.link/tobR\") AND (ContentType: 1)) AND NOT(XmiInfoTenantPolicyFinalVerdictSource:PhishEdu) AND NOT(XmiInfoTenantPolicyFinalVerdictSource:SecOps))",
+      "remediationStatus": "none",
+      "remediationStatusDetails": null,
+      "roles": [],
+      "tags": [],
+      "urn": "urn:MailClusterEntity:d58a37d8dfe457cb83ec94930eba13d7",
+      "verdict": "unknown"
+    },
+    {
+      "@odata.type": "#microsoft.graph.security.mailClusterEvidence",
+      "clusterBy": "BodyFingerprintBin1;SenderIp;ContentType",
+      "clusterByValue": "4221675800;164.77.92.48;1",
+      "createdDateTime": "2023-05-12T15:35:16.7833333Z",
+      "emailCount": 1,
+      "networkMessageIds": [
+        "000988fb-03e5-45e1-4bdb-08db52057b01"
+      ],
+      "query": "( (( (BodyFingerprintBin1:\"4221675800\") ) AND ( (SenderIp:\"164.77.92.48\") ) AND ( (ContentType: 1) )) AND NOT(XmiInfoTenantPolicyFinalVerdictSource:PhishEdu) AND NOT(XmiInfoTenantPolicyFinalVerdictSource:SecOps))",
+      "remediationStatus": "none",
+      "remediationStatusDetails": null,
+      "roles": [],
+      "tags": [],
+      "urn": "urn:MailClusterEntity:8b14169cc7c47855199616b952bc801c",
+      "verdict": "unknown"
+    },
+    {
+      "@odata.type": "#microsoft.graph.security.mailClusterEvidence",
+      "clusterBy": "Subject;SenderIp;AntispamDirection;ContentType",
+      "clusterByValue": "﻿;164.77.92.48;1;1",
+      "createdDateTime": "2023-05-12T15:35:16.7833333Z",
+      "emailCount": 0,
+      "networkMessageIds": [],
+      "query": "( (( (Subject:\"﻿\") ) AND ( (SenderIp:\"164.77.92.48\") ) AND ( (AntispamDirection:\"1\") ) AND ( (ContentType: 1) )) AND NOT(XmiInfoTenantPolicyFinalVerdictSource:PhishEdu) AND NOT(XmiInfoTenantPolicyFinalVerdictSource:SecOps))",
+      "remediationStatus": "none",
+      "remediationStatusDetails": null,
+      "roles": [],
+      "tags": [],
+      "urn": "urn:MailClusterEntity:ccaa53eb442a5877ad51a97d38fb6bc1",
+      "verdict": "unknown"
+    }
+  ],
+  "firstActivityDateTime": "2023-05-12T15:18:00.9290612Z",
+  "id": "fa22b933df-2da2-45d9-8a00-08db52fc3657",
+  "incidentId": "1920",
+  "incidentWebUrl": "https://security.microsoft.com/incidents/1920?tid=f65ad163-1b89-0000-b2a7-e70409495256",
+  "lastActivityDateTime": "2023-05-12T15:20:00.9290612Z",
+  "lastUpdateDateTime": "2023-05-12T15:47:16.79Z",
+  "mitreTechniques": [
+    "T1566.002"
+  ],
+  "providerAlertId": "22b933df-2da2-45d9-8a00-08db52fc3657",
+  "recommendedActions": "",
+  "resolvedDateTime": "2023-05-12T15:46:08.5Z",
+  "serviceSource": "microsoftDefenderForOffice365",
+  "severity": "informational",
+  "status": "resolved",
+  "tenantId": "f65ad163-1b89-0000-b2a7-e70409495256",
+  "threatDisplayName": null,
+  "threatFamilyName": null,
+  "title": "Email messages containing malicious URL removed after delivery​"
+}
