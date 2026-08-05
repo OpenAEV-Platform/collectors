@@ -1,3 +1,35 @@
+[tool.poetry.dependencies]
+python = "^3.11"
+msgraph-sdk = "1.40.0"
+msal = "1.33.0"
+python-dateutil = "^2.9.0"
+
+[[tool.poetry.dependencies.pyoaev]]
+markers = "extra == 'prod' and extra != 'dev'"
+version = "3.260904.0"
+source = "pypi"
+
+[[tool.poetry.dependencies.pyoaev]]
+markers = "extra == 'dev' and extra != 'prod'"
+path = "../../client-python"
+develop = true
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^9.0.0"
+
+[tool.poetry.extras]
+prod = [
+    "pyoaev",
+]
+dev = [
+    "pyoaev",
+]
+
+[tool.cmw]
+install-command = "poetry install --extras prod"
+config-dump-command = "poetry run python -m microsoft_defender.openaev_microsoft_defender --dump-config-schema"
+icon-path = "microsoft_defender/img/icon-microsoft-defender.png"
+
 [build-system]
 requires = [
     "poetry-core",
@@ -8,6 +40,7 @@ build-backend = "poetry.core.masonry.api"
 name = "openaev-microsoft-defender-collector"
 version = "3.260904.0"
 description = "A Collector for the Microsoft Defender security software"
+license = "Apache-2.0"
 readme = "README.md"
 authors = [
     { name = "Filigran", email = "contact@filigran.io" },
@@ -36,11 +69,11 @@ python-dateutil = "^2.9.0"
 
 [tool.poetry]
 packages = [
-    { include = "microsoft_defender" },
+    { include = "src" },
 ]
 
 [project.scripts]
-MicrosoftDefenderCollector = "microsoft_defender.__main__:main"
+MicrosoftDefenderCollector = "src.__main__:main"
 
 [tool.poetry.group.dev.dependencies]
 black = "^26.3.0"
