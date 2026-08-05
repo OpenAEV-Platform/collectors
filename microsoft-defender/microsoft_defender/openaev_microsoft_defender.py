@@ -239,11 +239,17 @@ class OpenAEVMicrosoftDefender(CollectorDaemon):
 
         # No asset
         if expectation["inject_expectation_asset"] is None:
+            self.logger.info(
+                "Expectation has no asset."
+            )
             return False
 
         # No signatures to match against: the platform serializes the field as
         # null when an expectation has no signatures, so guard before iterating.
         if not expectation.get("inject_expectation_signatures"):
+            self.logger.info(
+                "Expectation has no signature."
+            )
             return False
 
         # Drop malformed signature entries (missing type or null value): a null
@@ -255,6 +261,9 @@ class OpenAEVMicrosoftDefender(CollectorDaemon):
             if signature.get("type") and signature.get("value")
         ]
         if not valid_signatures:
+            self.logger.info(
+                "Expectation has no valid signature."
+            )
             return False
 
         alert_data = {}
