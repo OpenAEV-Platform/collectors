@@ -57,7 +57,7 @@ class _ConfigLoaderCollector(ConfigBaseSettings):
         description="Duration between two scheduled runs of the collector (ISO 8601 format).",
     )
     icon_filepath: str | None = Field(
-        default="src/img/microsoft-defender-o365-logo.png",
+        default="src/img/microsoft-defender-logo.png",
         description="Path to the icon file of the collector.",
     )
 
