@@ -8,9 +8,9 @@ import sys
 
 from src.collector.collector import BaseCollector
 from src.collector.models.source import Source
-from src.source.data_fetcher import MicrosoftDefenderDataFetcher
+from src.source.data_fetcher import DefenderDataFetcher
 from src.source.signatures import SUPPORTED_SIGNATURES
-from src.source.source_data import MicrosoftDefenderSourceData
+from src.source.source_data import Alert
 from src.source.source_handler import DefenderSourceHandler
 
 
@@ -24,8 +24,8 @@ def main() -> None:
 
     try:
         source = Source(
-            data_fetcher_model=MicrosoftDefenderDataFetcher,
-            source_data_model=MicrosoftDefenderSourceData,
+            data_fetcher_model=DefenderDataFetcher,
+            source_data_model=Alert,
             signatures=SUPPORTED_SIGNATURES,
         )
         base_collector = BaseCollector(
