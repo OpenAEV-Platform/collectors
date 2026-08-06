@@ -3,9 +3,11 @@ from typing import Annotated, Literal, Union
 from pydantic import BaseModel, Discriminator, Field, Tag
 from pydantic.networks import IPvAnyAddress
 
+from pyoaev.signatures.types import SignatureTypes
+
 
 class imageFile(BaseModel):
-    file_name: str = Field(..., alias="fileName")
+    file_name: str | None = Field(None, alias="fileName")
 
 
 class processEvidence(BaseModel):
@@ -22,16 +24,17 @@ class processEvidence(BaseModel):
         process_names = []
         command_lines = []
 
-        if self.image_file:
+        if self.image_file and self.image_file.file_name:
             process_names.append(self.image_file.file_name)
-        if self.parent_process_image_file:
+        if self.parent_process_image_file and self.parent_process_image_file.file_name:
             process_names.append(self.parent_process_image_file.file_name)
         if self.process_command_line:
             command_lines.append(self.process_command_line)
 
         return {
-            "process_names": process_names,
-            "command_lines": command_lines,
+            SignatureTypes.SIG_TYPE_PROCESS_NAME: process_names,
+            SignatureTypes.SIG_TYPE_PARENT_PROCESS_NAME: process_names,
+            SignatureTypes.SIG_TYPE_COMMAND_LINE: command_lines,
         }
 
 
@@ -63,8 +66,12 @@ class deviceEvidence(BaseModel):
             ip_addresses.extend(map(str, self.ip_interfaces))
 
         return {
-            "hostnames": hostnames,
-            "ip_addresses": ip_addresses,
+            SignatureTypes.SIG_TYPE_HOSTNAME: hostnames,
+            SignatureTypes.SIG_TYPE_TARGET_HOSTNAME_ADDRESS: hostnames,
+            SignatureTypes.SIG_TYPE_IPV4_ADDRESS: ip_addresses,
+            SignatureTypes.SIG_TYPE_IPV6_ADDRESS: ip_addresses,
+            SignatureTypes.SIG_TYPE_TARGET_IPV4_ADDRESS: ip_addresses,
+            SignatureTypes.SIG_TYPE_TARGET_IPV6_ADDRESS: ip_addresses,
         }
 
 
@@ -88,7 +95,7 @@ class fileEvidence(BaseModel):
             file_names.append(self.file_details.file_path)
 
         return {
-            "file_names": file_names,
+            SignatureTypes.SIG_TYPE_FILE_NAME: file_names,
         }
 
 
@@ -105,7 +112,10 @@ class ipEvidence(BaseModel):
             ip_addresses.append(str(self.ip_address))
 
         return {
-            "ip_addresses": ip_addresses,
+            SignatureTypes.SIG_TYPE_IPV4_ADDRESS: ip_addresses,
+            SignatureTypes.SIG_TYPE_IPV6_ADDRESS: ip_addresses,
+            SignatureTypes.SIG_TYPE_TARGET_IPV4_ADDRESS: ip_addresses,
+            SignatureTypes.SIG_TYPE_TARGET_IPV6_ADDRESS: ip_addresses,
         }
 
 
