@@ -122,6 +122,7 @@ def discriminate_evidence_type(model: dict) -> str:
         "fileEvidence",
         "deviceEvidence",
         "processEvidence",
+        "ipEvidence",
     ]:
         return odata_type
     return "generic"
