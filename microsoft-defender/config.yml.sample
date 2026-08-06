@@ -1,0 +1,23 @@
+openaev:
+  url: "http://change.me"  # base URL to reach the OpenAEV server
+  token: "ChangeMe"  # admin account API token from the OpenAEV server
+#  tenant_id: "ChangeMe"  # tenant identifier for multi-tenant deployments
+
+collector:
+  id: "ChangeMe"  # collector ID must be a unique string, e.g. UUIDv4
+#  name: "Microsoft Defender for Endpoint"  # name of the collector
+#  platform: "EDR"  # type of security platform this collector works for
+#  period: "PT2M"  # collection interval (ISO 8601 format)
+#  log_level: "error"  # determine the verbosity of the logs
+
+source:
+  tenant_id: "ChangeMe"  # tenant identifier used to authenticate against Microsoft Graph (mandatory)
+  client_id: "ChangeMe"  # Azure AD application (client) identifier (mandatory)
+#  use_certificate_auth: false  # whether to authenticate using a client certificate instead of a client secret
+  client_secret: "ChangeMe"  # Azure AD application client secret (mandatory unless certificate auth is used)
+#  client_cert_data: "ChangeMe"  # data of the client certificate (mandatory if certificate auth is used)
+#  client_cert_thumbprint: "ChangeMe"  # thumbprint of the client certificate (mandatory if certificate auth is used)
+#  base_url: "https://graph.microsoft.com/v1.0"  # base URL for the Microsoft Graph API
+#  filter_service_source: "microsoftDefenderForEndpoint"  # value used to filter Microsoft Graph security alerts
+#  rate_limit_requests_per_minute: 150  # maximum number of Microsoft Graph API requests issued per minute (must be >= 1)
+#  max_fetch_retries: 5  # maximum number of retries when fetching data from Microsoft Graph fails transiently
