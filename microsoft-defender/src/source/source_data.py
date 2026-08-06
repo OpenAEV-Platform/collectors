@@ -1,113 +1,88 @@
-import hashlib
+from collections import defaultdict
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
-from pyoaev.signatures.types import SignatureTypes
+from pydantic import AnyHttpUrl, BaseModel, Field, model_validator
 from src.collector.models.data import OAEVData, TraceData
+from src.source.models.evidences import Evidence, processEvidence
 
 
-class MicrosoftDefenderSourceData:
-    """Source data wrapper for Microsoft Defender alerts.
+class Alert(BaseModel):
+    id: str
+    title: str
+    status: Literal["unknown", "new", "inProgress", "resolved", "unknownFutureValue"]
+    service_source: str = Field(
+        ...,
+        alias="serviceSource",
+        description="The service or product that created this alert.",
+    )
+    alert_web_url: AnyHttpUrl = Field(
+        ...,
+        alias="alertWebUrl",
+        description="URL for the Microsoft 365 Defender portal alert page.",
+    )
+    created_date_time: datetime = Field(
+        ...,
+        alias="createdDateTime",
+        description="Time when Microsoft 365 Defender created the alert.",
+    )
+    evidence: list[Evidence]
+    raw: dict[str, Any] = Field(default_factory=dict)
 
-    Stores the raw alert dict verbatim so CHK.7 can serialize it without
-    information loss. Accepts raw_alert parameter while maintaining
-    backward compatibility with no-arg construction.
-    """
+    @model_validator(mode="before")
+    @classmethod
+    def save_raw_alert_if_missing_or_empty(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if not data.get("raw"):
+                data["raw"] = data
+        return data
 
-    def __init__(self, alert: dict[str, Any] | None = None) -> None:
-        """Initialize source data with optional raw alert dict.
+    def detect_implant(self):
+        for el in self.evidence:
+            if isinstance(el, processEvidence):
+                if el.image_file and el.image_file.file_name.startswith("oaev-implant"):
+                    return True
+                if (
+                    el.parent_process_image_file
+                    and el.parent_process_image_file.file_name.startswith(
+                        "oaev-implant"
+                    )
+                ):
+                    return True
+        return False
 
-        Args:
-            alert: The original Graph Security API alert dict, preserved
-                verbatim. If None, the instance is empty (no placeholder).
-        """
-        self.alert = alert
-        self.value = alert.get("id") if alert else None
+    def _extract_evidences(self):
+        """Cycle through all evidence to extract signature-related elements."""
+        evidences_data = defaultdict(list)
+
+        for el in self.evidence:
+            subdata = el.extract_evidences()
+            for key, value in subdata.items():
+                evidences_data[key].extend(value)
+
+        return evidences_data
 
     def to_oaev_data(self) -> OAEVData:
-        """Map alert fields to OAEVData keyed by signature type values."""
-
-        evidence = self.alert.get("evidence", {})
-        url_hashes = []
-        sender_emails = []
-        recipient_emails_address = []
-        for item in evidence:
-            p1_sender_email = item.get("p1_sender_email")
-            if p1_sender_email:
-                sender_emails.append(p1_sender_email)
-
-            p2_sender_email = item.get("p2_sender_email")
-            if p2_sender_email:
-                sender_emails.append(p2_sender_email)
-
-            recipient_email_address = item.get("recipient_email_address")
-            if recipient_email_address:
-                recipient_emails_address.append(recipient_email_address)
-
-            for url in item.get("urls", []):
-                url_hashes.append(hashlib.sha256(url.encode("utf-8")).hexdigest())
-                url_hashes.append(hashlib.sha1(url.encode("utf-8")).hexdigest())
-                url_hashes.append(hashlib.md5(url.encode("utf-8")).hexdigest())
-
-        source_emails = list(dict.fromkeys(sender_emails))
-        target_emails = list(dict.fromkeys(recipient_emails_address))
-        url_hashes = list(dict.fromkeys(url_hashes))
-        file_hash = ""
-        custom_header = ""
-
-        return OAEVData(
-            **{
-                SignatureTypes.SIG_TYPE_SOURCE_EMAIL.value: source_emails,
-                SignatureTypes.SIG_TYPE_TARGET_EMAIL.value: target_emails,
-                SignatureTypes.SIG_TYPE_URL_HASH.value: url_hashes,
-                SignatureTypes.SIG_TYPE_FILE_HASH.value: file_hash,
-                SignatureTypes.SIG_TYPE_EMAIL_CUSTOM_HEADER.value: custom_header,
-            }
-        )
+        """Serialize the evidence data as an OAEVData object."""
+        data = self._extract_evidences()
+        return OAEVData(**data)
 
     def to_traces_data(self) -> TraceData:
-        """Serialize traces data into TraceData."""
-
-        if not self.alert:
-            return TraceData(
-                alert_name="Microsoft Defender Alert",
-                alert_link="https://security.microsoft.com",
-            )
-
-        alert_name = self.alert.get("title") or "Microsoft Defender Alert"
-        alert_link = (
-            self.alert.get("alertWebUrl")
-            or self.alert.get("incidentWebUrl")
-            or "https://security.microsoft.com"
+        """Serialize metadata from the alert into a TraceData object."""
+        return TraceData(
+            alert_name=self.title,
+            alert_link=self.alert_web_url,
+            alert_date=self.created_date_time,
         )
-        alert_date = self._parse_datetime(self.alert.get("createdDateTime"))
-
-        kwargs: dict[str, str | datetime] = {
-            "alert_name": alert_name,
-            "alert_link": alert_link,
-        }
-        if alert_date is not None:
-            kwargs["alert_date"] = alert_date
-
-        return TraceData(**kwargs)
 
     def is_prevented(self) -> bool:
-        """Determine if the threat is prevented."""
-        return self.alert.get("status") in ["inProgress", "resolved"]
+        """Determine if the threat is/has been prevented."""
+        return self.status in ["inProgress", "resolved"]
 
-    @staticmethod
-    def is_detected() -> bool:
-        """Determine if the threat is detected.
-        Since the object is created only if the alert exists, thus it's always detected
-        """
+    def is_detected(self) -> bool:
+        """By essence, the element is detected if an alert has been created."""
         return True
 
     def __str__(self) -> str:
-        """Str output of the source data for logging purposes."""
-        return str(self.value) if self.value else "<empty>"
-
-    @staticmethod
-    def _parse_datetime(value: str | None) -> datetime | None:
-        if not value:
-            return None
-        return datetime.fromisoformat(value)
+        """Str output for logging purposes."""
+        return f"{self.service_source} alert id {self.id}: {self.title}"
