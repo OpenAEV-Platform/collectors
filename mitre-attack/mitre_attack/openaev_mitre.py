@@ -7,6 +7,31 @@ ENTERPRISE_ATTACK_URI = (
     "https://github.com/mitre/cti/raw/master/enterprise-attack/enterprise-attack.json"
 )
 
+# Canonical Enterprise ATT&CK matrix tactic order, keyed by tactic short name. Sent as phase_order
+# so the platform renders the ATT&CK tactics left-to-right in the canonical matrix sequence
+# (kill chain phases otherwise default to order 0 and fall back to alphabetical ordering).
+ATTACK_TACTIC_ORDER = {
+    "reconnaissance": 0,
+    "resource-development": 1,
+    "initial-access": 2,
+    "execution": 3,
+    "persistence": 4,
+    "privilege-escalation": 5,
+    "defense-evasion": 6,
+    "credential-access": 7,
+    "discovery": 8,
+    "lateral-movement": 9,
+    "collection": 10,
+    "command-and-control": 11,
+    "exfiltration": 12,
+    "impact": 13,
+}
+
+# Tactics absent from ATTACK_TACTIC_ORDER (e.g. introduced by a future ATT&CK release) are
+# ordered after all known tactics instead of at the front (order 0), so the canonical
+# ordering of the known phases is preserved.
+UNKNOWN_TACTIC_ORDER = max(ATTACK_TACTIC_ORDER.values()) + 1
+
 
 class OpenAEVMitre(CollectorDaemon):
     def __init__(
@@ -40,6 +65,9 @@ class OpenAEVMitre(CollectorDaemon):
                 "phase_shortname": phase_shortname,
                 "phase_name": phase_name,
                 "phase_description": phase_description,
+                "phase_order": ATTACK_TACTIC_ORDER.get(
+                    phase_shortname, UNKNOWN_TACTIC_ORDER
+                ),
             }
             kill_chain_phases.append(kill_chain_phase)
         result = self.api.kill_chain_phase.upsert(kill_chain_phases)
