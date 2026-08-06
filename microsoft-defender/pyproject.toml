@@ -14,8 +14,8 @@ pydantic = "^2.13.3"
 pydantic-settings = "^2.14.0"
 requests = "^2.33.0"
 msal = "^1.37.0"
-orjson = "^3.11.9"
 pyoaev = "3.260731.0"
+urllib3 = "^2.7.0"
 
 [tool.poetry.dependencies.python-slugify]
 extras = [
@@ -39,6 +39,7 @@ ruff = "^0.14.13"
 [tool.poetry.group.test.dependencies]
 pytest = "^9.1.1"
 polyfactory = "^2.22.2"
+orjson = "^3.11.9"
 
 [tool.pytest.ini_options]
 testpaths = [
