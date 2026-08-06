@@ -23,15 +23,15 @@ class ConfigLoaderCollector(_ConfigLoaderCollector):
     """Basic collector configurations.
 
     Extends the base collector configuration with specific default values
-    for the Microsoft Defender for Office 365 collector instance.
+    for the Microsoft Defender collector instance.
     """
 
     id: str = Field(
-        default="microsoft-defender-o365--0b13e3f7-5c9e-46f5-acc4-33032e9b4921",
+        default="microsoft-defender--0b13ecf7-5c9e-4ef5-acc4-a3032e9b4821",
         description="A unique UUIDv4 identifier for this collector instance.",
     )
     name: str = Field(
-        default="Microsoft Defender for Office 365",
+        default="Microsoft Defender for Endpoint",
         description="Name of the collector.",
     )
 
