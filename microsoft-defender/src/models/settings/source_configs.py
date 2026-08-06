@@ -1,4 +1,4 @@
-"""Configuration for Microsoft Defender for Office 365 business integration."""
+"""Configuration for Microsoft Defender for Endpoint business integration."""
 
 from pydantic import Field, HttpUrl, SecretStr, ValidationInfo, field_validator
 from pydantic_settings import SettingsConfigDict
@@ -9,7 +9,7 @@ class _ConfigLoaderSource(ConfigBaseSettings):
     """Source configuration settings.
 
     Contains authentication, connection, and rate-limiting parameters for the
-    Microsoft Defender for Office 365 source integration.
+    Microsoft Defender for Endpoint source integration.
     """
 
     model_config = SettingsConfigDict(
@@ -49,9 +49,9 @@ class _ConfigLoaderSource(ConfigBaseSettings):
         description="Base URL for the Microsoft Graph API.",
     )
     filter_service_source: str = Field(
-        default="microsoftDefenderForOffice365",
+        default="microsoftDefenderForEndpoint",
         description="Value used to filter Microsoft Graph security alerts down to those "
-        "produced by Microsoft Defender for Office 365.",
+        "produced by Microsoft Defender for Endpoint.",
     )
     rate_limit_requests_per_minute: int = Field(
         default=150,
