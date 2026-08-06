@@ -201,4 +201,3 @@ class DefenderDataFetcher:
 
         # Wrap each alert in SourceData
         return [MicrosoftDefenderSourceData(alert=alert) for alert in all_alerts]
-
