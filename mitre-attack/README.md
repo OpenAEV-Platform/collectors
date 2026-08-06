@@ -30,7 +30,8 @@ OpenAEV (Breach and Attack Simulation) relies on a shared library of kill chain 
 and organize the attacks it simulates. This collector keeps that library aligned with MITRE ATT&CK. On each run it
 fetches the Enterprise ATT&CK STIX bundle published in the public `mitre/cti` GitHub repository and upserts:
 
-- ATT&CK tactics as kill chain phases (kill chain name `mitre-attack`).
+- ATT&CK tactics as kill chain phases (kill chain name `mitre-attack`), each tagged with a canonical phase order so the
+  ATT&CK tactics render left-to-right in the canonical matrix sequence in OpenAEV.
 - ATT&CK techniques and sub-techniques as attack patterns, preserving the sub-technique to parent technique
   relationship, the associated kill chain phases, platforms, and required permissions.
 
@@ -124,7 +125,8 @@ On each run, the collector:
 1. Downloads the Enterprise ATT&CK STIX bundle from the public MITRE CTI GitHub repository.
 2. Splits the STIX objects into tactics (`x-mitre-tactic`), attack patterns (`attack-pattern`, excluding revoked ones),
    and `subtechnique-of` relationships.
-3. Upserts the tactics as kill chain phases (kill chain name `mitre-attack`).
+3. Upserts the tactics as kill chain phases (kill chain name `mitre-attack`), applying the canonical ATT&CK matrix
+   order as each phase's order.
 4. Upserts the techniques and sub-techniques as attack patterns, linking each to its kill chain phases and, for
    sub-techniques, to its parent technique.
 
