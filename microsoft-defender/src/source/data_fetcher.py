@@ -15,8 +15,7 @@ from requests.adapters import HTTPAdapter
 from src.auth.ms_graph_auth_client import MSGraphAuthClient
 from src.collector.protocols.data_fetcher import FetchParamsHook
 from src.collector.types.collector import SourceConfig
-from src.source.defender_alert_model import DefenderAlert
-from src.source.source_data import MicrosoftDefenderSourceData
+from src.source.source_data import Alert
 from urllib3.util import Retry
 
 LOG_PREFIX = "[DefenderDataFetcher]"
@@ -110,17 +109,17 @@ class DefenderDataFetcher:
             "$orderby": "createdDateTime desc",
         }
 
-    def fetch_data(self) -> list[MicrosoftDefenderSourceData]:
+    def fetch_data(self) -> list[Alert]:
         """Retrieve all Defender alerts from the Graph Security API.
 
         Follows @odata.nextLink pagination until no next page exists.
         Handles HTTP 401 (token refresh + single retry).
-        Returns one MicrosoftDefenderSourceData per alert,
+        Returns one Alert (SourceDataProtocol-valid) per alert,
         all pages merged. Results are ordered by createdDateTime
         descending (most recent first).
 
         Returns:
-            A list of MicrosoftDefenderSourceData instances.
+            A list of Alert instances.
         """
         url = self._build_url("security/alerts_v2")
         params = self._build_filter_params()
@@ -168,7 +167,7 @@ class DefenderDataFetcher:
             # Validate and filter each alert
             for raw_alert in value:
                 try:
-                    alert = DefenderAlert.model_validate(raw_alert)
+                    alert = Alert(**raw_alert)
                 except ValidationError as exc:
                     alert_id = (
                         raw_alert.get("id", "unknown")
@@ -179,10 +178,7 @@ class DefenderDataFetcher:
                         f"{LOG_PREFIX} Skipping malformed alert id={alert_id}: {exc}"
                     )
                     continue
-
-                # Compact: id, status, createdDateTime, filtered evidence
-                compact_alert = alert.filter_evidence()
-                all_alerts.append(compact_alert)
+                all_alerts.append(alert)
 
             # Follow pagination
             next_link = data.get("@odata.nextLink")
@@ -199,5 +195,4 @@ class DefenderDataFetcher:
             f"{LOG_PREFIX} Total: {len(all_alerts)} alerts across {page_count} pages"
         )
 
-        # Wrap each alert in SourceData
-        return [MicrosoftDefenderSourceData(alert=alert) for alert in all_alerts]
+        return all_alerts
