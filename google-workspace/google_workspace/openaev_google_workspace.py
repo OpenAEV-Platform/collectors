@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Optional
 
 import requests
 from google.oauth2 import service_account
+from google.oauth2.credentials import Credentials
 from google_workspace.configuration.config_loader import ConfigLoader
 from googleapiclient.discovery import build
 from pyoaev.configuration import Configuration
@@ -39,9 +40,57 @@ class OpenAEVGoogleWorkspace(CollectorDaemon):
             self.logger.warning(f"Failed to upsert tag {tag_name}: {e}")
             return None
 
+    @staticmethod
+    def _normalize_pem_text(value: str | None) -> str | None:
+        if value is None:
+            return None
+        return value.replace("\\n", "\n")
+
+    def _build_client_certificate_credentials(self) -> Credentials:
+        delegated_admin_email = self._configuration.get(
+            "google_workspace_delegated_admin_email"
+        )
+        if not delegated_admin_email:
+            raise ValueError("Google Workspace delegated admin email is required")
+
+        client_certificate = self._normalize_pem_text(
+            self._configuration.get("google_workspace_client_certificate")
+        )
+        client_private_key = self._normalize_pem_text(
+            self._configuration.get("google_workspace_client_private_key")
+        )
+        if not client_certificate:
+            raise ValueError(
+                "Google Workspace client certificate is required for client_certificate authentication"
+            )
+        if not client_private_key:
+            raise ValueError(
+                "Google Workspace client private key is required for client_certificate authentication"
+            )
+
+        # Google Admin SDK does not support direct client-certificate auth for this collector.
+        # We preserve explicit configuration validation and keep a clear error path.
+        raise NotImplementedError(
+            "google_workspace_auth_type=client_certificate is not supported by Google Admin SDK Directory API in this collector. "
+            "Use service_account authentication."
+        )
+
     def _get_service(self) -> Any:
         """Initialize and return Google Admin SDK service."""
-        # Parse service account JSON from environment or file
+        auth_type = (
+            self._configuration.get("google_workspace_auth_type") or ""
+        ).strip()
+        if not auth_type:
+            auth_type = "service_account"
+
+        if auth_type == "client_certificate":
+            credentials = self._build_client_certificate_credentials()
+            return build("admin", "directory_v1", credentials=credentials)
+        if auth_type != "service_account":
+            raise ValueError(
+                "google_workspace_auth_type must be either 'service_account' or 'client_certificate'"
+            )
+
         service_account_json_str = self._configuration.get(
             "google_workspace_service_account_json"
         )
@@ -341,7 +390,11 @@ if __name__ == "__main__":
         "GOOGLE_WORKSPACE_SERVICE_ACCOUNT_JSON",
         "GOOGLE_WORKSPACE_DELEGATED_ADMIN_EMAIL",
         "GOOGLE_WORKSPACE_CUSTOMER_ID",
+        "GOOGLE_WORKSPACE_AUTH_TYPE",
+        "GOOGLE_WORKSPACE_CLIENT_CERTIFICATE",
+        "GOOGLE_WORKSPACE_CLIENT_PRIVATE_KEY",
         "INCLUDE_SUSPENDED",
+        "SYNC_ALL_USERS",
     ]:
         if not os.environ.get(f"COLLECTOR_{key}") and os.environ.get(key):
             os.environ[f"COLLECTOR_{key}"] = os.environ.get(key)
