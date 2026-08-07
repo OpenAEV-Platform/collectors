@@ -27,11 +27,26 @@ class CollectorConfigOverride(ConfigLoaderCollector):
         description="Email of the admin user for domain-wide delegation",
     )
     google_workspace_customer_id: str = Field(
+        default="my_customer",
         description="Google Workspace customer ID or 'my_customer' for your own domain",
     )
+    google_workspace_auth_type: str = Field(
+        default="service_account",
+        description="Google Workspace authentication mode: 'service_account' or 'client_certificate'",
+    )
+    google_workspace_client_certificate: str | None = Field(
+        default=None,
+        description="PEM-encoded client certificate used for client certificate authentication",
+    )
+    google_workspace_client_private_key: str | None = Field(
+        default=None,
+        description="PEM-encoded private key matching the client certificate",
+    )
     include_suspended: bool = Field(
+        default=False,
         description="Whether to include suspended users in synchronization",
     )
     sync_all_users: bool = Field(
+        default=False,
         description="If true, sync all users; if false, only sync users who are group members",
     )
