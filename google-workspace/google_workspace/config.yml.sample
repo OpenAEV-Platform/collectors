@@ -12,5 +12,9 @@ collector:
   google_workspace_service_account_json: ''  # JSON string of service account credentials
   google_workspace_delegated_admin_email: ''  # Email of admin user for domain-wide delegation
   google_workspace_customer_id: 'my_customer'  # Customer ID or 'my_customer' for your own domain
+  google_workspace_auth_type: 'service_account'  # 'service_account' or 'client_certificate'
+  # Required only if google_workspace_auth_type is 'client_certificate'
+  # google_workspace_client_certificate: "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----"
+  # google_workspace_client_private_key: "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"
   include_suspended: false  # Whether to include suspended users
   sync_all_users: false  # If true, sync all users; if false, only sync users in groups
