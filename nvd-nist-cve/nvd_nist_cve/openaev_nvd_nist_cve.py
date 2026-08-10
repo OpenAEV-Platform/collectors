@@ -3,6 +3,7 @@ import os
 from nvd_nist_cve.configuration.config_loader import ConfigLoader
 from nvd_nist_cve.nvd_nist_cve_collector import NvdNistCveCollector
 
+
 def main():
     if not os.environ.get("NVDNISTCVE_API_BASE_URL") and os.environ.get(
         "NVD_NIST_CVE_API_BASE_URL"
