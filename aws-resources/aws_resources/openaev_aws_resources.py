@@ -7,12 +7,14 @@ from aws_resources.auth.roles_anywhere import (
     build_boto3_session,
     normalize_pem,
 )
+from aws_resources.configuration.collector_config_override import (
+    AUTH_TYPE_ROLES_ANYWHERE,
+    normalize_auth_type,
+)
 from aws_resources.configuration.config_loader import ConfigLoader
 from botocore.exceptions import ClientError, NoCredentialsError
 from pyoaev.configuration import Configuration
 from pyoaev.daemons import CollectorDaemon
-
-AUTH_TYPE_ROLES_ANYWHERE = "roles_anywhere"
 
 
 class OpenAEVAWSResources(CollectorDaemon):
@@ -27,9 +29,7 @@ class OpenAEVAWSResources(CollectorDaemon):
         )
 
         # AWS settings
-        self.auth_type = (
-            (self._configuration.get("aws_auth_type") or "credentials").strip().lower()
-        )
+        self.auth_type = normalize_auth_type(self._configuration.get("aws_auth_type"))
         self.access_key_id = self._configuration.get("aws_access_key_id")
         self.secret_access_key = self._configuration.get("aws_secret_access_key")
         self.session_token = self._configuration.get("aws_session_token")

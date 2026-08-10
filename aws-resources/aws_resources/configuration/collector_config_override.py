@@ -8,6 +8,28 @@ AUTH_TYPE_ROLES_ANYWHERE = "roles_anywhere"
 AUTH_TYPES = (AUTH_TYPE_CREDENTIALS, AUTH_TYPE_ROLES_ANYWHERE)
 
 
+def normalize_auth_type(value: object) -> object:
+    """Normalize an auth type, falling back to the default when unset.
+
+    Non-string values are returned untouched so that pydantic reports the type
+    error itself. Unknown modes raise, to fail fast on a typo rather than
+    silently falling back to credentials.
+    """
+    if value is None:
+        return AUTH_TYPE_CREDENTIALS
+    if not isinstance(value, str):
+        return value
+
+    normalized = value.strip().lower()
+    if not normalized:
+        return AUTH_TYPE_CREDENTIALS
+    if normalized not in AUTH_TYPES:
+        raise ValueError(
+            f"aws_auth_type must be one of {', '.join(AUTH_TYPES)}, got '{value}'"
+        )
+    return normalized
+
+
 class CollectorConfigOverride(ConfigLoaderCollector):
     id: str = Field(
         default="openaev_aws_resources",
@@ -99,19 +121,7 @@ class CollectorConfigOverride(ConfigLoaderCollector):
     @classmethod
     def _normalize_auth_type(cls, value: object) -> object:
         """Normalize the auth type and reject unknown modes."""
-        if value is None:
-            return AUTH_TYPE_CREDENTIALS
-        if not isinstance(value, str):
-            return value
-
-        normalized = value.strip().lower()
-        if not normalized:
-            return AUTH_TYPE_CREDENTIALS
-        if normalized not in AUTH_TYPES:
-            raise ValueError(
-                f"aws_auth_type must be one of {', '.join(AUTH_TYPES)}, got '{value}'"
-            )
-        return normalized
+        return normalize_auth_type(value)
 
     @model_validator(mode="after")
     def _validate_auth_type(self) -> "CollectorConfigOverride":
