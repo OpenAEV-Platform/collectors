@@ -16,7 +16,7 @@ from aws_resources.auth.roles_anywhere import (
     region_from_arn,
 )
 from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import ec, padding
+from cryptography.hazmat.primitives.asymmetric import ec, ed25519, padding
 from tests.conftest import PROFILE_ARN, ROLE_ARN, TRUST_ANCHOR_ARN
 
 
@@ -120,6 +120,36 @@ class TestSignerConstruction:
             RolesAnywhereError, match="Invalid IAM Roles Anywhere client certificate"
         ):
             make_signer(rsa_identity, certificate_pem="not a certificate")
+
+    @pytest.mark.parametrize("value", ["", None])
+    def test_missing_certificate_raises(self, rsa_identity, value):
+        with pytest.raises(RolesAnywhereError, match="client certificate is required"):
+            make_signer(rsa_identity, certificate_pem=value)
+
+    @pytest.mark.parametrize("value", ["", None])
+    def test_missing_private_key_raises(self, rsa_identity, value):
+        with pytest.raises(RolesAnywhereError, match="private key is required"):
+            make_signer(rsa_identity, private_key_pem=value)
+
+    def test_invalid_certificate_chain_raises(self, rsa_identity):
+        with pytest.raises(
+            RolesAnywhereError, match="Invalid IAM Roles Anywhere certificate chain"
+        ):
+            make_signer(rsa_identity, certificate_chain_pem="not a chain")
+
+    def test_unsupported_private_key_type_raises(self, rsa_identity):
+        """Ed25519 keys are valid PEM but unsupported by IAM Roles Anywhere."""
+        ed25519_key_pem = (
+            ed25519.Ed25519PrivateKey.generate()
+            .private_bytes(
+                serialization.Encoding.PEM,
+                serialization.PrivateFormat.PKCS8,
+                serialization.NoEncryption(),
+            )
+            .decode()
+        )
+        with pytest.raises(RolesAnywhereError, match="Unsupported private key type"):
+            make_signer(rsa_identity, private_key_pem=ed25519_key_pem)
 
 
 class TestSignedRequest:
