@@ -4,28 +4,41 @@ requires = [
 ]
 build-backend = "poetry.core.masonry.api"
 
+[project]
+name = "openaev-microsoft-defender-o365-collector"
+version = "3.260805.0"
+description = "Collector for Microsoft Defender for Office 365 (email-focused alerts) for OAEV."
+readme = "README.md"
+authors = [
+    { name = "Filigran", email = "contact@filigran.io" },
+]
+requires-python = ">=3.13,<4.0"
+dynamic = [
+    "dependencies",
+]
+
+[project.urls]
+Homepage = "https://filigran.io/"
+Repository = "https://github.com/OpenAEV-Platform/collectors/tree/main/microsoft-defender-o365"
+Documentation = "https://github.com/OpenAEV-Platform/collectors/blob/main/microsoft-defender-o365/README.md"
+Issues = "https://github.com/OpenAEV-Platform/collectors/issues"
+
+[tool.poetry.dependencies]
+pydantic = ">=2.13,<3"
+pydantic-settings = ">=2.14,<3"
+requests = ">=2.33,<3"
+pyoaev = "3.260805.0"
+python-slugify = { version = ">=8.0.4,<9", extras = ["unidecode"] }
+msal = "^1.37.0"
+orjson = "^3.11.9"
+
 [tool.poetry]
 packages = [
     { include = "src" },
 ]
 
-[tool.poetry.dependencies]
-pydantic = "^2.13.3"
-pydantic-settings = "^2.14.0"
-requests = "^2.33.0"
-msal = "^1.37.0"
-orjson = "^3.11.9"
-pyoaev = "3.260731.0"
-
-[tool.poetry.dependencies.python-slugify]
-extras = [
-    "unidecode",
-]
-version = "^8.0.4"
-
-[tool.poetry.extras]
-prod = []
-dev = []
+[project.scripts]
+MicrosoftDefenderO365Collector = "src.__main__:main"
 
 [tool.poetry.group.dev.dependencies]
 black = "^26.3.0"
@@ -73,7 +86,7 @@ exclude = [
     "site-packages",
     "venv",
 ]
-target-version = "py313"
+target-version = "py314"
 
 [tool.ruff.lint]
 ignore = [
@@ -126,16 +139,3 @@ install-command = "poetry install"
 config-dump-command = "poetry run python -m src --dump-config-schema"
 icon-path = "src/img/microsoft-defender-o365-logo.png"
 
-[project]
-name = "microsoft-defender-o365-collector"
-version = "3.260805.0"
-description = "Collector for Microsoft Defender for Office 365 (email-focused alerts) for OAEV."
-readme = "README.md"
-requires-python = ">=3.13,<4.0"
-dynamic = [
-    "dependencies",
-]
-Homepage = "https://filigran.io/"
-
-[project.scripts]
-MicrosoftDefenderO365Collector = "src.__main__:main"

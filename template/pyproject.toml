@@ -4,38 +4,39 @@ requires = [
 ]
 build-backend = "poetry.core.masonry.api"
 
+[project]
+name = "openaev-template-collector"
+version = "3.260805.0"
+description = "Collector template for OAEV."
+readme = "README.md"
+authors = [
+    { name = "Filigran", email = "contact@filigran.io" },
+]
+requires-python = ">=3.14,<4.0"
+dynamic = [
+    "dependencies",
+]
+
+[project.urls]
+Homepage = "https://filigran.io/"
+Repository = "https://github.com/OpenAEV-Platform/collectors/tree/main/template"
+Documentation = "https://github.com/OpenAEV-Platform/collectors/blob/main/template/README.md"
+Issues = "https://github.com/OpenAEV-Platform/collectors/issues"
+
+[tool.poetry.dependencies]
+pydantic = ">=2.13,<3"
+pydantic-settings = ">=2.14,<3"
+requests = ">=2.33,<3"
+pyoaev = "3.260805.0"
+python-slugify = { version = ">=8.0.4,<9", extras = ["unidecode"] }
+
 [tool.poetry]
 packages = [
     { include = "src" },
 ]
 
-[tool.poetry.dependencies]
-pydantic = "^2.13.3"
-pydantic-settings = "^2.14.0"
-requests = "^2.33.0"
-
-[[tool.poetry.dependencies.pyoaev]]
-markers = "extra == 'prod' and extra != 'local' and extra != 'current'"
-version = "3.260805.0"
-
-[[tool.poetry.dependencies.pyoaev]]
-markers = "extra == 'local' and extra != 'current' and extra != 'prod'"
-path = "../../client-python"
-develop = true
-
-[tool.poetry.dependencies.python-slugify]
-extras = [
-    "unidecode",
-]
-version = "^8.0.4"
-
-[tool.poetry.extras]
-prod = [
-    "pyoaev",
-]
-local = [
-    "pyoaev",
-]
+[project.scripts]
+TemplateCollector = "src.__main__:main"
 
 [tool.poetry.group.dev.dependencies]
 black = "^26.3.0"
@@ -83,7 +84,7 @@ exclude = [
     "site-packages",
     "venv",
 ]
-target-version = "py312"
+target-version = "py314"
 
 [tool.ruff.lint]
 ignore = [
@@ -132,20 +133,6 @@ plugins = [
 ]
 
 [tool.cmw]
-install-command = "poetry install --extras local"
+install-command = "poetry install"
 config-dump-command = "poetry run python -m src --dump-config-schema"
-icon-path = "src/img/change-me-logo.png"
-
-[project]
-name = "template-collector"
-version = "3.260805.0"
-description = "Collector template for OAEV."
-readme = "README.md"
-requires-python = ">=3.11,<4.0"
-dynamic = [
-    "dependencies",
-]
-Homepage = "https://filigran.io/"
-
-[project.scripts]
-TemplateCollector = "src.__main__:main"
+icon-path = "src/img/template-logo.png"

@@ -121,5 +121,5 @@ class OpenAEVPromptSecurity(CollectorDaemon):
                 self.logger.warning(f"Could not create expectation traces: {exc}")
 
 
-if __name__ == "__main__":
+def main():
     OpenAEVPromptSecurity(configuration=ConfigLoader().to_daemon_config()).start()

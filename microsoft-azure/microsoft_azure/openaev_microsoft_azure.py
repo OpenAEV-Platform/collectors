@@ -383,7 +383,7 @@ class OpenAEVMicrosoftAzure(CollectorDaemon):
             self.logger.error(f"Error during VM collection: {str(e)}")
 
 
-if __name__ == "__main__":
+def main():
     for key in [
         "MICROSOFT_AZURE_TENANT_ID",
         "MICROSOFT_AZURE_CLIENT_ID",

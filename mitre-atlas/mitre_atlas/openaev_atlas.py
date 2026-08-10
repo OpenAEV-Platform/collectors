@@ -162,5 +162,5 @@ class OpenAEVAtlas(CollectorDaemon):
         self._attack_patterns(attack_patterns, kill_chain_phases, relationships)
 
 
-if __name__ == "__main__":
+def main():
     OpenAEVAtlas(configuration=ConfigLoader().to_daemon_config()).start()

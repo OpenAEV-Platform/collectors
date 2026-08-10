@@ -90,17 +90,48 @@ Set your values in the `environment` section of the provided `docker-compose.yml
 docker compose up -d
 ```
 
-### Manual Deployment
+### Manual Deployment with Poetry
 
-Create a `src/config.yml` file from `src/config.yml.sample` and fill in your values, then install and run the collector:
+1. **Clone and Install Dependencies**:
+   ```bash
+   git clone <repository-url>
+   cd <your-collector>
+   poetry install
+   ```
 
-```shell
-poetry install --extras prod
-poetry run python -m src
+2. **Configure the Collector**:
+    - Copy `src/config.yml.sample` to `src/config.yml`
+    - Update configuration values or set environment variables
+
+3. **Run the Collector**:
+   ```bash
+   # Using Poetry
+   poetry run python -m src
+   
+   # Or 
+   poetry run PaloAltoCortexXDRCollector
+
+   # Or direct execution after installing the project and activating the virtual environment:
+   PaloAltoCortexXDRCollector
+   ```
+
+For local development against a checkout of [client-python](https://github.com/OpenAEV-Platform/client-python),
+The client-python repository must be cloned at the same level as the collectors repository, so that `../../client-python`
+resolves correctly from the collector directory.
+
+```
+parent-directory/ 
+├── collectors/
+│   └── <your-collector>/
+└── client-python/
 ```
 
-> For local development against a checkout of [client-python](https://github.com/OpenAEV-Platform/client-python)
-> (cloned next to this repository), use `poetry install --extras local` instead.
+Then install the local `client-python` version inside the <your-collector> environment:
+```bash
+poetry run pip install -e ../../client-python --force-reinstall
+```
+The `-e` option installs the package in editable mode, allowing local changes in `client-python` to be used immediately
+without reinstalling the package.
 
 ## Usage
 
