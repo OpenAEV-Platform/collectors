@@ -511,7 +511,7 @@ class OpenAEVMicrosoftIntune(CollectorDaemon):
             self.logger.error(f"Error during device collection: {str(e)}")
 
 
-if __name__ == "__main__":
+def main():
     for key in [
         "MICROSOFT_INTUNE_TENANT_ID",
         "MICROSOFT_INTUNE_CLIENT_ID",

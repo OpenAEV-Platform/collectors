@@ -197,5 +197,5 @@ class OpenAEVCrowdStrike(CollectorDaemon):
         )
 
 
-if __name__ == "__main__":
+def main():
     OpenAEVCrowdStrike(configuration=ConfigLoader().to_daemon_config()).start()

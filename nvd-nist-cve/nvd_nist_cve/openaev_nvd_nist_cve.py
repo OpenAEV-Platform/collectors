@@ -19,7 +19,7 @@ def main():
         raise
 
 
-if __name__ == "__main__":
+def main():
 
     if not os.environ.get("NVDNISTCVE_API_BASE_URL") and os.environ.get(
         "NVD_NIST_CVE_API_BASE_URL"

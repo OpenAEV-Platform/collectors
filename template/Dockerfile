@@ -1,5 +1,5 @@
 # Common base stage for shared environment configuration.
-FROM python:3.13-alpine AS base
+FROM python:3.14-alpine AS base
 
 # Python runtime and Poetry build configuration.
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -30,14 +30,13 @@ RUN apk add --no-cache --virtual .build-deps \
 RUN pip install --no-cache-dir "poetry==$POETRY_VERSION"
 
 # Copy only dependency metadata first.
-COPY pyproject.toml poetry.lock ./
+COPY pyproject.toml ./
 
 # Cache package downloads to speed up subsequent builds.
 # Install production dependencies into the virtual environment.
 RUN --mount=type=cache,target=/root/.cache \
     poetry install  \
     --only main  \
-    --extras prod  \
     --no-root
 
 # Optional override of the client-python dependency.

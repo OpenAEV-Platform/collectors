@@ -426,5 +426,5 @@ class OpenAEVAtomicRedTeam(CollectorDaemon):
         )
 
 
-if __name__ == "__main__":
+def main():
     OpenAEVAtomicRedTeam(configuration=ConfigLoader().to_daemon_config()).start()

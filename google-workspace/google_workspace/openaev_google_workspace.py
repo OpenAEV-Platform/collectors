@@ -336,7 +336,7 @@ class OpenAEVGoogleWorkspace(CollectorDaemon):
             raise
 
 
-if __name__ == "__main__":
+def main():
     for key in [
         "GOOGLE_WORKSPACE_SERVICE_ACCOUNT_JSON",
         "GOOGLE_WORKSPACE_DELEGATED_ADMIN_EMAIL",
