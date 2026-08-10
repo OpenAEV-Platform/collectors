@@ -26,11 +26,41 @@ class ConfigLoader(SettingsLoader):
                 },
                 "collector_icon_filepath": {"data": self.collector.icon_filepath},
                 # Aws resources
+                "aws_auth_type": {"data": self.collector.aws_auth_type},
                 "aws_access_key_id": {"data": self.collector.aws_access_key_id},
                 "aws_secret_access_key": {"data": self.collector.aws_secret_access_key},
                 "aws_session_token": {"data": self.collector.aws_session_token},
                 "aws_assume_role_arn": {"data": self.collector.aws_assume_role_arn},
                 "aws_regions": {"data": self.collector.aws_regions},
+                # IAM Roles Anywhere (client certificate based authentication)
+                "aws_roles_anywhere_trust_anchor_arn": {
+                    "data": self.collector.aws_roles_anywhere_trust_anchor_arn
+                },
+                "aws_roles_anywhere_profile_arn": {
+                    "data": self.collector.aws_roles_anywhere_profile_arn
+                },
+                "aws_roles_anywhere_role_arn": {
+                    "data": self.collector.aws_roles_anywhere_role_arn
+                },
+                "aws_roles_anywhere_certificate": {
+                    "data": self.collector.aws_roles_anywhere_certificate
+                },
+                "aws_roles_anywhere_private_key": {
+                    "data": self.collector.aws_roles_anywhere_private_key
+                },
+                "aws_roles_anywhere_certificate_chain": {
+                    "data": self.collector.aws_roles_anywhere_certificate_chain
+                },
+                "aws_roles_anywhere_private_key_passphrase": {
+                    "data": self.collector.aws_roles_anywhere_private_key_passphrase
+                },
+                "aws_roles_anywhere_region": {
+                    "data": self.collector.aws_roles_anywhere_region
+                },
+                "aws_roles_anywhere_session_duration": {
+                    "data": self.collector.aws_roles_anywhere_session_duration,
+                    "is_number": True,
+                },
             },
             config_base_model=self,
         )
