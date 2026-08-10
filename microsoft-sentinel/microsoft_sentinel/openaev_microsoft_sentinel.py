@@ -291,4 +291,3 @@ def main():
             os.environ[f"COLLECTOR_{key}"] = os.environ.get(key)
 
     OpenAEVMicrosoftSentinel(configuration=ConfigLoader().to_daemon_config()).start()
-
