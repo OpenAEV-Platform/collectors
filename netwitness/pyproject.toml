@@ -29,9 +29,11 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-pydantic = "^2.11.7"
-pydantic-settings = "^2.11.0"
-requests = "~2.33.0"
+pydantic = ">=2.13,<3"
+pydantic-settings = ">=2.14,<3"
+requests = ">=2.33,<3"
+pyoaev = "3.260805.0"
+python-slugify = { version = ">=8.0.4,<9", extras = ["unidecode"] }
 
 [project.scripts]
 NetWitnessCollector = "src.__main__:main"
