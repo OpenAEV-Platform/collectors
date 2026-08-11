@@ -36,6 +36,7 @@ executors:
   base_runner:
     docker:
       - image: cimg/base:stable
+    working_directory: ~/openaev
 
 commands:
   # Generate circleci config:
