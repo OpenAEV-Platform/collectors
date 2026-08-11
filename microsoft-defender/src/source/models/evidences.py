@@ -2,7 +2,6 @@ from typing import Annotated, Literal, Union
 
 from pydantic import BaseModel, Discriminator, Field, Tag
 from pydantic.networks import IPvAnyAddress
-
 from pyoaev.signatures.types import SignatureTypes
 
 
