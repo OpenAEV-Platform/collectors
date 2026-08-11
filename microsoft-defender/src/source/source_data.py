@@ -4,7 +4,7 @@ from typing import Any, Literal
 
 from pydantic import AnyHttpUrl, BaseModel, Field, model_validator
 from src.collector.models.data import OAEVData, TraceData
-from src.source.models.evidences import Evidence, processEvidence
+from src.source.models.evidences import Evidence
 
 
 class Alert(BaseModel):
@@ -37,28 +37,14 @@ class Alert(BaseModel):
                 data["raw"] = data
         return data
 
-    def detect_implant(self):
-        for el in self.evidence:
-            if isinstance(el, processEvidence):
-                if el.image_file and el.image_file.file_name.startswith("oaev-implant"):
-                    return True
-                if (
-                    el.parent_process_image_file
-                    and el.parent_process_image_file.file_name.startswith(
-                        "oaev-implant"
-                    )
-                ):
-                    return True
-        return False
-
     def _extract_evidences(self):
         """Cycle through all evidence to extract signature-related elements."""
-        evidences_data = defaultdict(list)
+        evidences_data = defaultdict(set)
 
         for el in self.evidence:
             subdata = el.extract_evidences()
             for key, value in subdata.items():
-                evidences_data[key].extend(value)
+                evidences_data[key].update(value)
 
         return evidences_data
 
