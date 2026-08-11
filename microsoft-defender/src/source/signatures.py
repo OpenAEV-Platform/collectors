@@ -1,17 +1,51 @@
+from pyoaev.signatures.signature_type import SignatureType
 from pyoaev.signatures.types import (  # type: ignore[import-untyped]  # noqa: F401
+    MatchTypes,
     SignatureTypes,
 )
 
-SUPPORTED_SIGNATURES: list[SignatureTypes] = [
-    SignatureTypes.SIG_TYPE_START_DATE,
-    SignatureTypes.SIG_TYPE_END_DATE,
-    SignatureTypes.SIG_TYPE_PROCESS_NAME,
-    SignatureTypes.SIG_TYPE_PARENT_PROCESS_NAME,
-    SignatureTypes.SIG_TYPE_COMMAND_LINE,
-    SignatureTypes.SIG_TYPE_FILE_NAME,
-    SignatureTypes.SIG_TYPE_HOSTNAME,
-    SignatureTypes.SIG_TYPE_IPV4_ADDRESS,
-    SignatureTypes.SIG_TYPE_TARGET_IPV4_ADDRESS,
-    SignatureTypes.SIG_TYPE_IPV6_ADDRESS,
-    SignatureTypes.SIG_TYPE_TARGET_IPV6_ADDRESS,
+SUPPORTED_SIGNATURES: list[SignatureType] = [
+    SignatureType(SignatureTypes.SIG_TYPE_START_DATE),
+    SignatureType(SignatureTypes.SIG_TYPE_END_DATE),
+    SignatureType(
+        SignatureTypes.SIG_TYPE_PROCESS_NAME,
+    ),
+    SignatureType(
+        SignatureTypes.SIG_TYPE_PARENT_PROCESS_NAME,
+    ),
+    SignatureType(
+        SignatureTypes.SIG_TYPE_COMMAND_LINE,
+        match_type=MatchTypes.MATCH_TYPE_FUZZY,
+        match_score=60,
+    ),
+    SignatureType(
+        SignatureTypes.SIG_TYPE_FILE_NAME,
+        match_type=MatchTypes.MATCH_TYPE_FUZZY,
+        match_score=80,
+    ),
+    SignatureType(
+        SignatureTypes.SIG_TYPE_HOSTNAME,
+        match_type=MatchTypes.MATCH_TYPE_FUZZY,
+        match_score=80,
+    ),
+    SignatureType(
+        SignatureTypes.SIG_TYPE_IPV4_ADDRESS,
+        match_type=MatchTypes.MATCH_TYPE_FUZZY,
+        match_score=80,
+    ),
+    SignatureType(
+        SignatureTypes.SIG_TYPE_TARGET_IPV4_ADDRESS,
+        match_type=MatchTypes.MATCH_TYPE_FUZZY,
+        match_score=80,
+    ),
+    SignatureType(
+        SignatureTypes.SIG_TYPE_IPV6_ADDRESS,
+        match_type=MatchTypes.MATCH_TYPE_FUZZY,
+        match_score=80,
+    ),
+    SignatureType(
+        SignatureTypes.SIG_TYPE_TARGET_IPV6_ADDRESS,
+        match_type=MatchTypes.MATCH_TYPE_FUZZY,
+        match_score=80,
+    ),
 ]
