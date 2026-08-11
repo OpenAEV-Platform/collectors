@@ -1,15 +1,18 @@
 from typing import Protocol, runtime_checkable
 
-from pyoaev.apis.inject_expectation.model.expectation import (
+from pyoaev.apis.inject_expectation.model.expectation import (  # type: ignore[import-untyped]
     DetectionExpectation,
     PreventionExpectation,
 )
-from pyoaev.helpers import OpenAEVDetectionHelper
-from pyoaev.signatures.types import SignatureTypes
+from pyoaev.helpers import OpenAEVDetectionHelper  # type: ignore[import-untyped]
+from pyoaev.signatures.signature_type import SignatureType
 from src.collector.models.data import OAEVData, TraceData
 from src.collector.protocols.data_fetcher import DataFetcherProtocol
 from src.collector.protocols.source_data import SourceDataProtocol
-from src.collector.types.collector import SignatureGroups, SourceConfig
+from src.collector.types.collector import (
+    SignatureGroups,
+    SourceConfig,
+)
 
 
 @runtime_checkable
@@ -24,7 +27,7 @@ class SourceHandlerProtocol(Protocol):
 
     def get_expectation_signature_groups(
         self,
-        signatures: list[SignatureTypes],
+        signatures: list[SignatureType],
         expectation: DetectionExpectation | PreventionExpectation,
     ) -> SignatureGroups: ...
 
