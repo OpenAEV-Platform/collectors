@@ -1,7 +1,15 @@
-from pyoaev.signatures.types import SignatureTypes
+from pyoaev.signatures.signature_type import SignatureType
+from pyoaev.signatures.types import (
+    MatchTypes,
+    SignatureTypes,
+)
 
-SUPPORTED_SIGNATURES = [
-    SignatureTypes.SIG_TYPE_END_DATE,
-    SignatureTypes.SIG_TYPE_START_DATE,
-    SignatureTypes.SIG_TYPE_PARENT_PROCESS_NAME,
+SUPPORTED_SIGNATURES: list[SignatureType] = [
+    SignatureType(SignatureTypes.SIG_TYPE_END_DATE),
+    SignatureType(SignatureTypes.SIG_TYPE_START_DATE),
+    SignatureType(
+        SignatureTypes.SIG_TYPE_PARENT_PROCESS_NAME,
+        match_type=MatchTypes.MATCH_TYPE_FUZZY,
+        match_score=60,
+    ),
 ]
