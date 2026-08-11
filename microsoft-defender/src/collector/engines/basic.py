@@ -7,7 +7,7 @@ from pyoaev.apis.inject_expectation.model import (  # type: ignore[import-untype
 )
 from pyoaev.client import OpenAEV  # type: ignore[import-untyped]
 from pyoaev.helpers import OpenAEVDetectionHelper  # type: ignore[import-untyped]
-from pyoaev.signatures.types import SignatureTypes  # type: ignore[import-untyped]
+from pyoaev.signatures.signature_type import SignatureType
 from src.collector.internals.oaev_uploaders import ExpectationUploader, TraceUploader
 from src.collector.models.exception import (
     CollectorEngineConfigError,
@@ -58,7 +58,7 @@ class BasicCollectorEngine:
         self.current_summary = ExpectationSummary()
         self.oaev_detection_helper = OpenAEVDetectionHelper(
             logger=self.logger,
-            relevant_signatures_types=self.source.signatures,
+            relevant_signatures_types=self.source.relevant_signatures_types,
         )
         self.expectation_uploader = ExpectationUploader(
             oaev_api=self.oaev_api,
@@ -77,12 +77,12 @@ class BasicCollectorEngine:
         return self.source.data_fetcher_model
 
     @property
-    def signatures(self) -> list[SignatureTypes]:
+    def signatures(self) -> list[SignatureType]:
         return self.source.signatures
 
     def configure_engine(self, config: SourceConfig) -> None:
         self.logger.info(
-            f"{LOG_PREFIX} Supported signatures: {[sig.value for sig in self.signatures]}"
+            f"{LOG_PREFIX} Supported signatures: {[sig.value for sig in self.source.relevant_signatures_types]}"
         )
         self.config = config
         self._reset_summary()
@@ -214,13 +214,17 @@ class BasicCollectorEngine:
                         )
                     )
 
-                    # (4) match signature (3) with oaevdata (2)
+                    # (4) match expectation signature (3) with oaevdata (2) according to signatures
                     flag = self.source_handler.match_signature_groups_and_oaevdata(
                         signature_groups,
                         oaev_data,
                         self.oaev_detection_helper,
+                        self.signatures,
                     )
                     if flag:
+                        self.logger.info(
+                            f"{LOG_PREFIX} Match for expectation {expectation.inject_expectation_id}"
+                        )
                         # (5) serialize data as tracedata
                         trace = self.source_handler.serialize_as_tracedata(element)
                         traces.append(trace.model_dump())
