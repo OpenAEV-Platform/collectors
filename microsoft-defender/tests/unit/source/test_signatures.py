@@ -12,7 +12,7 @@ class TestSignatures(unittest.TestCase):
 
     def test_types(self):
         for sig in module.SUPPORTED_SIGNATURES:
-            self.assertIsInstance(sig, module.SignatureTypes)
+            self.assertIsInstance(sig, module.SignatureType)
 
     def test_no_duplicate(self):
         for sig in module.SUPPORTED_SIGNATURES:
