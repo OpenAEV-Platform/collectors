@@ -127,6 +127,8 @@ class DefenderDataFetcher:
         if self._fetch_params_hook:
             params = self._fetch_params_hook(params)
 
+        logger.info(f"{LOG_PREFIX} Query url built, url: {url}, params: {params}")
+
         all_alerts: list[dict[str, Any]] = []
         page_count = 0
 
@@ -141,6 +143,10 @@ class DefenderDataFetcher:
                     url,
                     headers={"Authorization": f"Bearer {token}"},
                     params=params,
+                )
+
+                logger.info(
+                    f"Requesting with url {response.url}, reponse with status code {response.status_code}"
                 )
 
                 # Handle token expiry
