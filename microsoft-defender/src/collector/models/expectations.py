@@ -203,7 +203,7 @@ class ExpectationTrace(BaseModel):
         """
         matching_data = result.matched_alerts[0] or {}
         alert_name = matching_data.get("alert_name", f"{collector_name} Alert")
-        trace_link = matching_data.get("alert_link", "")
+        trace_link = str(matching_data.get("alert_link", ""))
         trace_date = datetime.now(UTC).replace(microsecond=0)
         date_str = trace_date.isoformat().replace("+00:00", "Z")
         return cls(
