@@ -16,7 +16,7 @@ class TestConverterParentProcessRawFallback:
 
     Tests the fallback behaviour when url_path does not contain parseable
     UUIDs but the _raw dict does contain the parent process name in the
-    format: oae-implant-{inject_uuid}-agent-{agent_uuid}
+    format: oaev-implant-{inject_uuid}-agent-{agent_uuid}
     """
 
     def test_extract_parent_process_name_from_url_path(self):
