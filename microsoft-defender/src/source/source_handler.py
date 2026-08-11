@@ -27,7 +27,7 @@ class DefenderSourceHandler(SourceHandler):
 
         def _hook(params: dict) -> dict:
             current = params.get("$filter", "")
-            clause = f"createdDateTime ge '{earliest.isoformat()}'"
+            clause = f"createdDateTime ge {earliest.astimezone().isoformat()}"
             params["$filter"] = f"{current} and {clause}" if current else clause
             return params
 
