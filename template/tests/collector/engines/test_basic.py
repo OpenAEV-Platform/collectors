@@ -394,6 +394,7 @@ class TestBasicCollectorEngine(unittest.TestCase):
             source_handler.get_expectation_signature_groups.return_value,
             source_handler.serialize_as_oaevdata.return_value,
             collector_engine.oaev_detection_helper,
+            source.signatures,
         )
         source_handler.serialize_as_tracedata.assert_called_with(data_element)
 
