@@ -19,7 +19,7 @@ class processEvidence(BaseModel):
     )
     process_command_line: str | None = Field(None, alias="processCommandLine")
 
-    def extract_evidences(self):
+    def extract_evidences(self) -> dict[SignatureTypes, list[str]]:
         process_names = []
         command_lines = []
 
@@ -49,7 +49,7 @@ class deviceEvidence(BaseModel):
     )
     ip_interfaces: list[IPvAnyAddress | None] = Field([], alias="ipInterfaces")
 
-    def extract_evidences(self):
+    def extract_evidences(self) -> dict[SignatureTypes, list[str]]:
         hostnames = []
         ip_addresses = []
 
@@ -85,7 +85,7 @@ class fileEvidence(BaseModel):
     )
     file_details: fileDetails | None = Field(None, alias="fileDetails")
 
-    def extract_evidences(self):
+    def extract_evidences(self) -> dict[SignatureTypes, list[str]]:
         file_names = []
 
         if self.file_details and self.file_details.file_name:
@@ -104,7 +104,7 @@ class ipEvidence(BaseModel):
     )
     ip_address: IPvAnyAddress | None = Field(None, alias="ipAddress")
 
-    def extract_evidences(self):
+    def extract_evidences(self) -> dict[SignatureTypes, list[str]]:
         ip_addresses = []
 
         if self.ip_address:
@@ -121,7 +121,7 @@ class ipEvidence(BaseModel):
 class genericEvidence(BaseModel):
     odata_type: str = Field(..., alias="@odata.type")
 
-    def extract_evidences(self):
+    def extract_evidences(self) -> dict[SignatureTypes, list[str]]:
         return {}
 
 
