@@ -6,7 +6,6 @@ from pyoaev.apis.inject_expectation.model.expectation import (  # type: ignore[i
 from pyoaev.helpers import OpenAEVDetectionHelper  # type: ignore[import-untyped]
 from pyoaev.signatures.signature_type import SignatureType
 from pyoaev.signatures.types import (  # type: ignore[import-untyped]  # noqa: F401
-    AlertData,
     SignatureTypes,
 )
 from src.collector.models.data import OAEVData, TraceData
@@ -14,6 +13,7 @@ from src.collector.protocols.data_fetcher import DataFetcherProtocol, FetchParam
 from src.collector.protocols.source_data import SourceDataProtocol
 from src.collector.protocols.source_handler import SourceHandlerProtocol
 from src.collector.types.collector import (
+    AlertData,
     ExpectationsList,
     SignatureGroups,
     SourceConfig,
