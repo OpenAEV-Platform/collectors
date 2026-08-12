@@ -6,7 +6,6 @@ transient error handling.
 """
 
 import logging
-from typing import Any
 from urllib.parse import urljoin, urlsplit
 
 from pydantic import HttpUrl, ValidationError
@@ -129,7 +128,7 @@ class DefenderDataFetcher:
 
         logger.info(f"{LOG_PREFIX} Query url built, url: {url}, params: {params}")
 
-        all_alerts: list[dict[str, Any]] = []
+        all_alerts: list[Alert] = []
         page_count = 0
 
         while url:

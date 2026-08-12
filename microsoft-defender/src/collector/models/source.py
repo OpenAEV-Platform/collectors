@@ -87,7 +87,7 @@ class SourceHandler(SourceHandlerProtocol):
         group the expectation's signatures according to the source provided signatures
         """
         supported_types = {sig.label for sig in signatures}
-        signature_groups: SignatureGroups = []
+        signature_groups: SignatureGroups = {}
         for expectation_sig in expectation.inject_expectation_signatures:
             # ignore unsupported signatures according to source
             if expectation_sig.type not in supported_types:
@@ -96,7 +96,7 @@ class SourceHandler(SourceHandlerProtocol):
             if expectation_sig.type == SignatureTypes.SIG_TYPE_END_DATE:
                 continue
             # create or append to a list of dict-serialized signature data
-            signature_groups.append(
+            signature_groups.setdefault(expectation_sig.type.value, []).append(
                 {"type": expectation_sig.type.value, "value": expectation_sig.value}
             )
         return signature_groups
@@ -118,42 +118,31 @@ class SourceHandler(SourceHandlerProtocol):
         alert_data = {}
         for signature in signatures:
             sig_value = signature.label.value
-            try:
-                value = getattr(oaev_data, sig_value)
-            except AttributeError:
-                pass
-            else:
-                alert_data[sig_value] = signature.make_struct_for_matching(value)
+            if sig_value in signature_groups:
+                try:
+                    value = getattr(oaev_data, sig_value)
+                except AttributeError:
+                    pass
+                else:
+                    alert_data[sig_value] = signature.make_struct_for_matching(value)
 
         if not alert_data:
             return False
 
-        available_expectation_signatures = set(sig["type"] for sig in signature_groups)
-        available_alert_signatures = set(sig for sig in alert_data)
-        available_signatures = available_expectation_signatures.intersection(
-            available_alert_signatures
-        )
-        signature_groups = [
-            element
-            for element in signature_groups
-            if element["type"] in available_signatures
-        ]
-        if not signature_groups:
-            return False
-
-        alert_data = {
-            key: value
-            for key, value in alert_data.items()
-            if key in available_signatures
-        }
-        if not alert_data:
-            return False
-
-        match_result = oaev_detection_helper.match_alert_elements(
-            signatures=signature_groups,
-            alert_data=alert_data,
-        )
-        return match_result
+        for sig_type, signature_data in signature_groups.items():
+            if sig_type not in alert_data:
+                # if an expected signature type is not available in the alert data,
+                # then no need to use the matcher
+                return False
+            match_result = oaev_detection_helper.match_alert_elements(
+                signature_data, alert_data[sig_type]
+            )
+            if not match_result:
+                # since matching must be done on all provided signatures,
+                # cf. behavior of the helper in pyoaev,
+                # fail-fast as soon as one misses
+                return False
+        return True
 
     @staticmethod
     def serialize_as_tracedata(data: SourceDataProtocol) -> TraceData:
