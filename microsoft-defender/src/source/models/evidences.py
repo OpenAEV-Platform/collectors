@@ -126,7 +126,9 @@ class genericEvidence(BaseModel):
 
 
 def discriminate_evidence_type(model: dict) -> str:
-    odata_type = model.get("@odata.type")
+    odata_type = model.get("@odata.type", "")
+    if not "." in odata_type:
+        return "generic"
     if odata_type.split(".")[-1] in [
         "fileEvidence",
         "deviceEvidence",
