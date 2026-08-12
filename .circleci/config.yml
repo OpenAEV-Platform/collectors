@@ -313,7 +313,7 @@ commands:
           command: |
             if [ "${HAS_TESTS_FILES}" = "true" ]; then
               echo "Running tests for << parameters.collector_name >>"
-              poetry run pytest
+              poetry run pytest -vv
             elif [ "${HAS_TESTS_DIRECTORY}" = "true" ]; then
               echo "WARNING: Tests directory exists but no test files were found for << parameters.collector_name >>"
               echo "WARNING: Skipping test dependencies installation"
