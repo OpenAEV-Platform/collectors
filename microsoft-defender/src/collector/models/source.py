@@ -145,7 +145,8 @@ class SourceHandler(SourceHandlerProtocol):
                 # then no need to use the matcher
                 return False
             match_result = oaev_detection_helper.match_alert_elements(
-                signature_data, alert_data[sig_type]
+                signatures=signature_data,
+                alert_data={sig_type: alert_data[sig_type]},
             )
             if not match_result:
                 # since matching must be done on all provided signatures,
