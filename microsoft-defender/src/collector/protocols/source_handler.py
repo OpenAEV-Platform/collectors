@@ -20,33 +20,36 @@ from src.collector.types.collector import (
 class SourceHandlerProtocol(Protocol):
     def __init__(self, config: SourceConfig) -> None: ...
 
-    def build_fetch_params_hook(
-        self, batch: ExpectationsList
-    ) -> FetchParamsHook | None: ...
+    @staticmethod
+    def build_fetch_params_hook(batch: ExpectationsList) -> FetchParamsHook | None: ...
 
+    @staticmethod
     def get_source_data(
-        self, data_fetcher: DataFetcherProtocol
+        data_fetcher: DataFetcherProtocol,
     ) -> list[SourceDataProtocol]: ...
 
-    def serialize_as_oaevdata(self, data: SourceDataProtocol) -> OAEVData: ...
+    @staticmethod
+    def serialize_as_oaevdata(data: SourceDataProtocol) -> OAEVData: ...
 
+    @staticmethod
     def get_expectation_signature_groups(
-        self,
         signatures: list[SignatureType],
         expectation: DetectionExpectation | PreventionExpectation,
     ) -> SignatureGroups: ...
 
+    @staticmethod
     def match_signature_groups_and_oaevdata(
-        self,
         signature_groups: SignatureGroups,
         oaev_data: OAEVData,
         oaev_detection_helper: OpenAEVDetectionHelper,
+        signatures: list[SignatureType],
     ) -> bool: ...
 
-    def serialize_as_tracedata(self, data: SourceDataProtocol) -> TraceData: ...
+    @staticmethod
+    def serialize_as_tracedata(data: SourceDataProtocol) -> TraceData: ...
 
+    @staticmethod
     def match_expectation_and_sourcedata(
-        self,
         expectation: DetectionExpectation | PreventionExpectation,
         data: SourceDataProtocol,
     ) -> tuple[bool, bool]: ...
