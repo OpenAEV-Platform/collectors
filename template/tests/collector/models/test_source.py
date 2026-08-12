@@ -200,13 +200,13 @@ class SourceHandlerTest(unittest.TestCase):
         source_handler = module.SourceHandler(config=config)
 
         alert_data = source_handler.get_alert_data_from_oaev_data(
-            signatures, oaev_data,
+            signatures,
+            oaev_data,
         )
 
         signature.make_struct_for_matching.assert_called_once_with(value)
         self.assertEqual(
-            alert_data,
-            {sig_value: signature.make_struct_for_matching.return_value}
+            alert_data, {sig_value: signature.make_struct_for_matching.return_value}
         )
 
     def test_get_alert_data_from_oaev_data_empty(self):
@@ -220,7 +220,8 @@ class SourceHandlerTest(unittest.TestCase):
         source_handler = module.SourceHandler(config=config)
 
         alert_data = source_handler.get_alert_data_from_oaev_data(
-            signatures, oaev_data,
+            signatures,
+            oaev_data,
         )
 
         signature.make_struct_for_matching.assert_not_called()
@@ -244,12 +245,13 @@ class SourceHandlerTest(unittest.TestCase):
         source_handler = module.SourceHandler(config=config)
 
         flag = source_handler.match_signature_groups_and_alert_data(
-            signature_groups, alert_data, oaev_detection_helper,
+            signature_groups,
+            alert_data,
+            oaev_detection_helper,
         )
 
         oaev_detection_helper.match_alert_elements.assert_called_with(
-            signatures=signature_groups[_type],
-            alert_data={_type: alert_data[_type]}
+            signatures=signature_groups[_type], alert_data={_type: alert_data[_type]}
         )
         self.assertTrue(flag)
 
@@ -268,12 +270,13 @@ class SourceHandlerTest(unittest.TestCase):
         source_handler = module.SourceHandler(config=config)
 
         flag = source_handler.match_signature_groups_and_alert_data(
-            signature_groups, alert_data, oaev_detection_helper,
+            signature_groups,
+            alert_data,
+            oaev_detection_helper,
         )
 
         oaev_detection_helper.match_alert_elements.assert_called_with(
-            signatures=signature_groups[_type],
-            alert_data={_type: alert_data[_type]}
+            signatures=signature_groups[_type], alert_data={_type: alert_data[_type]}
         )
         self.assertFalse(flag)
 
@@ -291,7 +294,9 @@ class SourceHandlerTest(unittest.TestCase):
         source_handler = module.SourceHandler(config=config)
 
         flag = source_handler.match_signature_groups_and_alert_data(
-            signature_groups, alert_data, oaev_detection_helper,
+            signature_groups,
+            alert_data,
+            oaev_detection_helper,
         )
 
         oaev_detection_helper.match_alert_elements.assert_not_called()
