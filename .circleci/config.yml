@@ -236,21 +236,24 @@ commands:
           name: Check collector structure
           working_directory: ~/openaev/<< parameters.collector_name >>
           command: |
-            echo "Checking collector: << parameters.collector_name >>"
+            echo "Checking collector structure: << parameters.collector_name >>"
             if [ ! -f pyproject.toml ]; then
               echo "ERROR: pyproject.toml not found"
               exit 1
             fi
+            echo "The collector has a pyproject.toml file"
 
             if [ ! -f Dockerfile ]; then
               echo "ERROR: Dockerfile not found"
               exit 1
             fi
+            echo "The collector has a Dockerfile file"
 
             if [ ! -f Dockerfile_ubi9 ]; then
               echo "ERROR: Dockerfile_ubi9 not found"
               exit 1
             fi
+            echo "The collector has a Dockerfile_ubi9 file"
             echo "Collector structure is valid."
 
   check_collector_tests:
@@ -262,12 +265,21 @@ commands:
           name: Check collector tests
           working_directory: ~/openaev/<< parameters.collector_name >>
           command: |
-            if [ -d tests ]; then
-              echo "Tests directory found"
-              echo "HAS_TESTS=true" >> "${BASH_ENV}"
+            if [ ! -d tests ]; then
+              echo "WARNING: Tests directory not found for << parameters.collector_name >>"
+              echo "HAS_TESTS_DIRECTORY=false" >> "${BASH_ENV}"
+              echo "HAS_TESTS_FILES=false" >> "${BASH_ENV}"
             else
-              echo "WARNING: tests directory not found for << parameters.collector_name >>"
-              echo "HAS_TESTS=false" >> "${BASH_ENV}"
+              echo "Tests directory found for << parameters.collector_name >>"
+              echo "HAS_TESTS_DIRECTORY=true" >> "${BASH_ENV}"
+            
+              if ! find tests -type f \( -name 'test_*.py' -o -name '*_test.py' \) -print -quit | grep -q .; then
+                echo "WARNING: Tests directory exists but no test files were found for << parameters.collector_name >>"
+                echo "HAS_TESTS_FILES=false" >> "${BASH_ENV}"
+              else
+                echo "Tests directory exists and tests files were found for << parameters.collector_name >>"
+                echo "HAS_TESTS_FILES=true" >> "${BASH_ENV}"
+              fi
             fi
 
   install_collector_test_dependencies:
@@ -279,10 +291,15 @@ commands:
           name: Install collector test dependencies
           working_directory: ~/openaev/<< parameters.collector_name >>
           command: |
-            if [ "${HAS_TESTS}" = "true" ]; then
+            if [ "${HAS_TESTS_FILES}" = "true" ]; then
+              echo "Running poetry install for << parameters.collector_name >>"
               poetry install --with test
+            elif [ "${HAS_TESTS_DIRECTORY}" = "true" ]; then
+              echo "WARNING: Tests directory exists but no test files were found for << parameters.collector_name >>"
+              echo "WARNING: Skipping test dependencies installation"
             else
-              echo "No tests found, skipping test dependencies installation"
+              echo "WARNING: Tests directory not found for << parameters.collector_name >>"
+              echo "WARNING: Skipping test dependencies installation"
             fi
 
   run_collector_tests:
@@ -294,11 +311,15 @@ commands:
           name: Run collector tests
           working_directory: ~/openaev/<< parameters.collector_name >>
           command: |
-            if [ "${HAS_TESTS}" = "true" ]; then
+            if [ "${HAS_TESTS_FILES}" = "true" ]; then
               echo "Running tests for << parameters.collector_name >>"
               poetry run pytest
+            elif [ "${HAS_TESTS_DIRECTORY}" = "true" ]; then
+              echo "WARNING: Tests directory exists but no test files were found for << parameters.collector_name >>"
+              echo "WARNING: Skipping test dependencies installation"
             else
-              echo "No tests found, skipping tests"
+              echo "WARNING: Tests directory not found for << parameters.collector_name >>"
+              echo "WARNING: Skipping test dependencies installation"
             fi
 
   # Docker commands
