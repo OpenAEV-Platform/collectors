@@ -6,6 +6,7 @@ from pyoaev.apis.inject_expectation.model.expectation import (  # type: ignore[i
 from pyoaev.helpers import OpenAEVDetectionHelper  # type: ignore[import-untyped]
 from pyoaev.signatures.signature_type import SignatureType
 from pyoaev.signatures.types import (  # type: ignore[import-untyped]  # noqa: F401
+    AlertData,
     SignatureTypes,
 )
 from src.collector.models.data import OAEVData, TraceData
@@ -102,30 +103,39 @@ class SourceHandler(SourceHandlerProtocol):
         return signature_groups
 
     @staticmethod
-    def match_signature_groups_and_oaevdata(
-        signature_groups: SignatureGroups,
-        oaev_data: OAEVData,
-        oaev_detection_helper: OpenAEVDetectionHelper,
+    def get_alert_data_from_oaev_data(
         signatures: list[SignatureType],
+        oaev_data: OAEVData,
+    ) -> AlertData:
+        """
+        Formatting the OAEVData into the expected matching format known as alert data in pyoaev,
+        based on the matching instructions provided in the SignatureType objects
+        """
+        alert_data: AlertData = {}
+        if not oaev_data:
+            return alert_data
+
+        for signature in signatures:
+            sig_value = signature.label.value
+            try:
+                value = getattr(oaev_data, sig_value)
+            except AttributeError:
+                pass
+            else:
+                alert_data[sig_value] = signature.make_struct_for_matching(value)
+        return alert_data
+
+    @staticmethod
+    def match_signature_groups_and_alert_data(
+        signature_groups: SignatureGroups,
+        alert_data: AlertData,
+        oaev_detection_helper: OpenAEVDetectionHelper,
     ) -> bool:
         """
         matching signatures extracted from an expectation and already filtered against source's signatures
-        against the fetched data serialized in an OAEVData format (signature types oriented formating)
+        against the fetched data serialized in an OAEVData format turned into alert data
+        (signature types oriented formating turned matching oriented formating)
         """
-        if not oaev_data:
-            return False
-
-        alert_data = {}
-        for signature in signatures:
-            sig_value = signature.label.value
-            if sig_value in signature_groups:
-                try:
-                    value = getattr(oaev_data, sig_value)
-                except AttributeError:
-                    pass
-                else:
-                    alert_data[sig_value] = signature.make_struct_for_matching(value)
-
         if not alert_data:
             return False
 
