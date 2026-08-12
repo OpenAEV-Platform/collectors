@@ -352,7 +352,7 @@ def _given_microsoft_defender_o365_stubbed_source_handler(
     Args:
         stub_return_get_source_data: Value returned by ``get_source_data``.
         stub_return_match_groups: Value returned by
-            ``match_signature_groups_and_oaevdata``.
+            ``match_signature_groups_and_alert_data``.
         stub_return_match_expectation: Value returned by
             ``match_expectation_and_sourcedata``.
 
@@ -371,7 +371,7 @@ def _given_microsoft_defender_o365_stubbed_source_handler(
     source_handler.get_source_data.return_value = stub_return_get_source_data
     source_handler.serialize_as_oaevdata.return_value = MagicMock()
     source_handler.get_expectation_signature_groups.return_value = {}
-    source_handler.match_signature_groups_and_oaevdata.return_value = (
+    source_handler.match_signature_groups_and_alert_data.return_value = (
         stub_return_match_groups
     )
     source_handler.serialize_as_tracedata.return_value.model_dump.return_value = {
@@ -1022,7 +1022,7 @@ def _given_detection_expectation_with_supported_sigs(
         inject_expectation_id=uuid.uuid4(),
         inject_expectation_signatures=[
             ExpectationSignature(
-                type=sig_type,
+                type=sig_type.label,
                 value=_sig_test_value_for_type(sig_type),
             )
             for sig_type in SUPPORTED_SIGNATURES
@@ -1045,7 +1045,7 @@ def _given_prevention_expectation_with_supported_sigs() -> PreventionExpectation
         inject_expectation_id=uuid.uuid4(),
         inject_expectation_signatures=[
             ExpectationSignature(
-                type=sig_type,
+                type=sig_type.label,
                 value=_sig_test_value_for_type(sig_type),
             )
             for sig_type in SUPPORTED_SIGNATURES
@@ -1074,7 +1074,9 @@ def _given_expectation_with_unsupported_sigs() -> DetectionExpectation:
     extra_types = [t for t in all_types if t not in SUPPORTED_SIGNATURES][:2]
 
     sigs = [
-        ExpectationSignature(type=sig_type, value=_sig_test_value_for_type(sig_type))
+        ExpectationSignature(
+            type=sig_type.label, value=_sig_test_value_for_type(sig_type.label)
+        )
         for sig_type in SUPPORTED_SIGNATURES
     ] + [ExpectationSignature(type=t, value="unsupported-value") for t in extra_types]
 
@@ -1152,7 +1154,7 @@ def _given_matching_alert_data(
     }
     oaev_data.model_dump.return_value = sig_values
     for sig_type in SUPPORTED_SIGNATURES:
-        setattr(oaev_data, sig_type.value, sig_values[sig_type.value])
+        setattr(oaev_data, sig_type.label.value, sig_values[sig_type.label.value])
 
     # Detection / prevention flags
     mock_sd.is_detected.return_value = not prevention
@@ -1228,7 +1230,7 @@ def _given_non_matching_alert_data() -> list:
     }
     oaev_data.model_dump.return_value = sig_values
     for sig_type in SUPPORTED_SIGNATURES:
-        setattr(oaev_data, sig_type.value, sig_values[sig_type.value])
+        setattr(oaev_data, sig_type.label.value, sig_values[sig_type.label.value])
 
     mock_sd.is_detected.return_value = True
     mock_sd.is_prevented.return_value = False
@@ -1319,8 +1321,8 @@ def _when_engine_processes_batch(
     mock_handler.get_expectation_signature_groups = (
         SourceHandler.get_expectation_signature_groups
     )
-    mock_handler.match_signature_groups_and_oaevdata = (
-        SourceHandler.match_signature_groups_and_oaevdata
+    mock_handler.match_signature_groups_and_alert_data = (
+        SourceHandler.match_signature_groups_and_alert_data
     )
     mock_handler.serialize_as_tracedata = SourceHandler.serialize_as_tracedata
     mock_handler.match_expectation_and_sourcedata = (
@@ -1422,7 +1424,7 @@ def _then_only_supported_sigs_retained(sig_groups: dict) -> None:
     """
     from src.source.signatures import SUPPORTED_SIGNATURES
 
-    supported_values = {sig.value for sig in SUPPORTED_SIGNATURES}
+    supported_values = {sig.label.value for sig in SUPPORTED_SIGNATURES}
     for sig_type_key in sig_groups:
         assert (
             sig_type_key in supported_values
