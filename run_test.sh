@@ -21,26 +21,13 @@ PYOAEV_BRANCH="main"
 
 # Discover collectors with test directories
 discover_collectors() {
-  find "$REPO_ROOT" -maxdepth 2 \( -name "test" -o -name "tests" \) -type d \
+  find "$REPO_ROOT" \
+    -mindepth 2 \
+    -maxdepth 2 \
+    -name "tests" \
+    -type d \
     | sed "s|^$REPO_ROOT/||; s|/test.*||" \
     | sort -u
-}
-
-# Detect install arguments for a collector's pyproject.toml
-get_install_args() {
-  local pyproject="$1/pyproject.toml"
-  local args="--extras prod"
-
-  if grep -q '\[tool\.poetry\.group\.test' "$pyproject" 2>/dev/null; then
-    args="$args --with test"
-  elif grep -q '\[tool\.poetry\.group\.dev' "$pyproject" 2>/dev/null; then
-    # microsoft-defender has pytest in dev group
-    if sed -n '/\[tool\.poetry\.group\.dev/,/\[/p' "$pyproject" | grep -q 'pytest'; then
-      args="$args --with dev"
-    fi
-  fi
-
-  echo "$args"
 }
 
 # Detect whether the collector uses pytest or unittest
@@ -80,14 +67,12 @@ run_collector_tests() {
   cd "$collector_dir"
 
   # Ensure Poetry is available
-  command -v poetry >/dev/null 2>&1 || pip install -q poetry==2.1.3
+  command -v poetry >/dev/null 2>&1 || pip install -q poetry==2.3.2
   poetry config installer.re-resolve false 2>/dev/null || true
 
   # Install collector dependencies
-  local install_args
-  install_args=$(get_install_args "$collector_dir")
-  echo "→ poetry install $install_args"
-  poetry install $install_args
+  echo "→ poetry install --with test"
+  poetry install --with test
 
   # Force-reinstall pyoaev from git (correct branch)
   echo "→ Installing pyoaev from branch $PYOAEV_BRANCH"
