@@ -37,7 +37,7 @@ class Alert(BaseModel):
                 data["raw"] = data
         return data
 
-    def _extract_evidences(self):
+    def _extract_evidences(self) -> defaultdict[str, set]:
         """Cycle through all evidence to extract signature-related elements."""
         evidences_data = defaultdict(set)
 
