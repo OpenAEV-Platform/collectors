@@ -18,8 +18,11 @@ class SourceHandlerProtocolTest(unittest.TestCase):
             def get_expectation_signature_groups(self, signatures, expectations):
                 return [{"foo": "bar"}]
 
-            def match_signature_groups_and_oaevdata(
-                self, signature_groups, oaev_data, oaev_detection_helper
+            def get_alert_data_from_oaev_data(self, signatures, oaev_data):
+                return {"foo": {}}
+
+            def match_signature_groups_and_alert_data(
+                self, signature_groups, alert_data, oaev_detection_helper
             ):
                 return True
 
@@ -41,8 +44,11 @@ class SourceHandlerProtocolTest(unittest.TestCase):
             def get_expectation_signature_groups(self, signatures, expectations):
                 return [{"foo": "bar"}]
 
-            def match_signature_groups_and_oaevdata(
-                self, signature_groups, oaev_data, oaev_detection_helper
+            def get_alert_data_from_oaev_data(self, signatures, oaev_data):
+                return {"foo": {}}
+
+            def match_signature_groups_and_alert_data(
+                self, signature_groups, alert_data, oaev_detection_helper
             ):
                 return True
 
@@ -68,8 +74,11 @@ class SourceHandlerProtocolTest(unittest.TestCase):
             def get_expectation_signature_groups(self, signatures, expectations):
                 return [{"foo": "bar"}]
 
-            def match_signature_groups_and_oaevdata(
-                self, signature_groups, oaev_data, oaev_detection_helper
+            def get_alert_data_from_oaev_data(self, signatures, oaev_data):
+                return {"foo": {}}
+
+            def match_signature_groups_and_alert_data(
+                self, signature_groups, alert_data, oaev_detection_helper
             ):
                 return True
 
@@ -97,8 +106,11 @@ class SourceHandlerProtocolTest(unittest.TestCase):
             def serialize_as_oaevdata(self, data):
                 return MagicMock()
 
-            def match_signature_groups_and_oaevdata(
-                self, signature_groups, oaev_data, oaev_detection_helper
+            def get_alert_data_from_oaev_data(self, signatures, oaev_data):
+                return {"foo": {}}
+
+            def match_signature_groups_and_alert_data(
+                self, signature_groups, alert_data, oaev_detection_helper
             ):
                 return True
 
@@ -185,8 +197,11 @@ class SourceHandlerProtocolTest(unittest.TestCase):
             def get_expectation_signature_groups(self, signatures, expectations):
                 return [{"foo": "bar"}]
 
-            def match_signature_groups_and_oaevdata(
-                self, signature_groups, oaev_data, oaev_detection_helper
+            def get_alert_data_from_oaev_data(self, signatures, oaev_data):
+                return {"foo": {}}
+
+            def match_signature_groups_and_alert_data(
+                self, signature_groups, alert_data, oaev_detection_helper
             ):
                 return True
 
