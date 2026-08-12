@@ -1,6 +1,6 @@
 import unittest
-from test.fixtures.crowdstrike_alerts_v2 import MOCKED_ALERT
-from test.fixtures.defaults import TestStrategy, get_default_collector
+from tests.fixtures.crowdstrike_alerts_v2 import MOCKED_ALERT
+from tests.fixtures.defaults import TestStrategy, get_default_collector
 from unittest.mock import patch
 
 from crowdstrike.query_strategy.alert import Item
