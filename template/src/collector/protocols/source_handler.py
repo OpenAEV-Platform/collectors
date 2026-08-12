@@ -10,6 +10,7 @@ from src.collector.models.data import OAEVData, TraceData
 from src.collector.protocols.data_fetcher import DataFetcherProtocol
 from src.collector.protocols.source_data import SourceDataProtocol
 from src.collector.types.collector import (
+    AlertData,
     SignatureGroups,
     SourceConfig,
 )
@@ -31,10 +32,16 @@ class SourceHandlerProtocol(Protocol):
         expectation: DetectionExpectation | PreventionExpectation,
     ) -> SignatureGroups: ...
 
-    def match_signature_groups_and_oaevdata(
+    def get_alert_data_from_oaev_data(
+        self,
+        signatures: list[SignatureType],
+        oaev_data: OAEVData,
+    ) -> AlertData: ...
+
+    def match_signature_groups_and_alert_data(
         self,
         signature_groups: SignatureGroups,
-        oaev_data: OAEVData,
+        alert_data: AlertData,
         oaev_detection_helper: OpenAEVDetectionHelper,
     ) -> bool: ...
 
