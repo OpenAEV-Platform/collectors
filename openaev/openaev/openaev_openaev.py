@@ -187,5 +187,5 @@ class OpenAEVOpenAEV(CollectorDaemon):
         )
 
 
-if __name__ == "__main__":
+def main():
     OpenAEVOpenAEV(configuration=ConfigLoader().to_daemon_config()).start()

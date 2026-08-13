@@ -4,42 +4,48 @@ requires = [
 ]
 build-backend = "poetry.core.masonry.api"
 
+[project]
+name = "openaev-netwitness-collector"
+version = "3.260805.0"
+description = "Collector for NetWitness."
+readme = "README.md"
+authors = [
+    { name = "Filigran", email = "contact@filigran.io" },
+]
+requires-python = ">=3.14,<4.0"
+dynamic = [
+    "dependencies",
+]
+
+[project.urls]
+Homepage = "https://filigran.io/"
+Repository = "https://github.com/OpenAEV-Platform/collectors/tree/main/netwitness"
+Documentation = "https://github.com/OpenAEV-Platform/collectors/blob/main/netwitness/README.md"
+Issues = "https://github.com/OpenAEV-Platform/collectors/issues"
+
 [tool.poetry]
 packages = [
     { include = "src" },
-    { include = "tests" },
 ]
 
 [tool.poetry.dependencies]
-pydantic = "^2.11.7"
-pydantic-settings = "^2.11.0"
-requests = "~2.33.0"
+pydantic = ">=2.13,<3"
+pydantic-settings = ">=2.14,<3"
+requests = ">=2.33,<3"
+pyoaev = "3.260805.0"
+python-slugify = { version = ">=8.0.4,<9", extras = ["unidecode"] }
 
-[[tool.poetry.dependencies.pyoaev]]
-markers = "extra == 'prod' and extra != 'local' and extra != 'current'"
-version = "3.260805.0"
-
-[[tool.poetry.dependencies.pyoaev]]
-markers = "extra == 'local' and extra != 'current' and extra != 'prod'"
-path = "../../client-python"
-develop = true
-
-[tool.poetry.extras]
-prod = [
-    "pyoaev",
-]
-local = [
-    "pyoaev",
-]
+[project.scripts]
+NetWitnessCollector = "src.__main__:main"
 
 [tool.poetry.group.dev.dependencies]
-isort = "^6.0.1"
-ruff = "^0.12.11"
-mypy = "^1.17.1"
-black = "^25.1.0"
+black = "^26.3.0"
 flake8 = "^7.3.0"
+isort = "^8.0.1"
+mypy = "^1.17.1"
 pip-audit = "^2.9.0"
-pre-commit = "^4.3.0"
+pre-commit = "^4.6.0"
+ruff = "^0.14.13"
 
 [tool.poetry.group.test.dependencies]
 pytest = "^9.0.0"
@@ -78,7 +84,7 @@ exclude = [
     "site-packages",
     "venv",
 ]
-target-version = "py312"
+target-version = "py314"
 
 [tool.ruff.lint]
 ignore = [
@@ -127,19 +133,6 @@ plugins = [
 ]
 
 [tool.cmw]
-install-command = "poetry install --extras local"
-config-dump-command = "poetry run python src --dump-config-schema"
+install-command = "poetry install"
+config-dump-command = "poetry run python -m src --dump-config-schema"
 icon-path = "src/img/netwitness-logo.png"
-
-[project]
-name = "NetWitnessCollector"
-version = "3.260805.0"
-description = "Collector for NetWitness."
-readme = "README.md"
-requires-python = ">=3.11,<3.14"
-dynamic = [
-    "dependencies",
-]
-
-[project.scripts]
-NetWitnessCollector = "src.__main__:main"

@@ -88,17 +88,48 @@ Create a `.env` file from `.env.sample` and fill in your values, then start the 
 docker compose up -d
 ```
 
-### Manual Deployment
+### Manual Deployment with Poetry
 
-Create a `config.yml` file from `config.yml.sample` and fill in your values, then install and run the collector:
+1. **Clone and Install Dependencies**:
+   ```bash
+   git clone <repository-url>
+   cd <your-collector>
+   poetry install
+   ```
 
-```shell
-poetry install --extras prod
-poetry run python -m tanium_threat_response.openaev_tanium_threat_response
+2. **Configure the Collector**:
+    - Copy `tanium_threat_response/config.yml.sample` to `tanium_threat_response/config.yml`
+    - Update configuration values or set environment variables
+
+3. **Run the Collector**:
+   ```bash
+   # Using Poetry
+   poetry run python -m tanium_threat_response
+   
+   # Or 
+   poetry run TaniumThreatResponseCollector
+
+   # Or direct execution after installing the project and activating the virtual environment:
+   TaniumThreatResponseCollector
+   ```
+
+For local development against a checkout of [client-python](https://github.com/OpenAEV-Platform/client-python),
+The client-python repository must be cloned at the same level as the collectors repository, so that `../../client-python`
+resolves correctly from the collector directory.
+
+```
+parent-directory/ 
+├── collectors/
+│   └── <your-collector>/
+└── client-python/
 ```
 
-> For local development against a checkout of [client-python](https://github.com/OpenAEV-Platform/client-python)
-> (cloned next to this repository), use `poetry install --extras dev` instead.
+Then install the local `client-python` version inside the <your-collector> environment:
+```bash
+poetry run pip install -e ../../client-python --force-reinstall
+```
+The `-e` option installs the package in editable mode, allowing local changes in `client-python` to be used immediately
+without reinstalling the package.
 
 ## Usage
 
