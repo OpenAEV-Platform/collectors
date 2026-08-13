@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Any, Literal
 
 from pydantic import AnyHttpUrl, BaseModel, Field, model_validator
+from pyoaev.signatures.types import SignatureTypes
 from src.collector.models.data import OAEVData, TraceData
 from src.source.models.evidences import Evidence
 
@@ -32,14 +33,13 @@ class Alert(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def save_raw_alert_if_missing_or_empty(cls, data: Any) -> Any:
-        if isinstance(data, dict):
-            if not data.get("raw"):
-                data["raw"] = data
+        if isinstance(data, dict) and not data.get("raw"):
+            return {**data, "raw": dict(data)}
         return data
 
-    def _extract_evidences(self) -> defaultdict[str, set]:
+    def _extract_evidences(self) -> defaultdict[SignatureTypes, set[str]]:
         """Cycle through all evidence to extract signature-related elements."""
-        evidences_data = defaultdict(set)
+        evidences_data: defaultdict[SignatureTypes, set[str]] = defaultdict(set)
 
         for el in self.evidence:
             subdata = el.extract_evidences()
