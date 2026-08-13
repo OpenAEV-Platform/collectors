@@ -10,16 +10,19 @@ from unittest.mock import MagicMock, patch
 
 from pydantic import HttpUrl
 
+import src.source.data_fetcher as module
+
 
 def _make_alert(alert_id: str = "ALT-001") -> dict:
     """Create a minimal valid alert dict."""
     return {
         "id": alert_id,
-        "title": "Phishing email detected",
+        "title": "Malicious software",
         "status": "new",
-        "severity": "high",
-        "serviceSource": "microsoftDefenderForOffice365",
+        "serviceSource": "microsoftDefenderForEndpoint",
+        "alertWebUrl": "https://security.microsoft.com/alerts/2adc66d2-5ad1-4c1c-8cd9-28ebca55995b?tid=4ad60791-cdca-478f-84e7-533c7d771946",
         "createdDateTime": "2026-07-05T14:00:00Z",
+        "evidence": [],
     }
 
 
@@ -34,16 +37,14 @@ class TestDefenderDataFetcher(unittest.TestCase):
         config.max_fetch_retries = 5
         return config
 
-    @patch("src.source.defender_data_fetcher.MSGraphAuthClient")
-    @patch("src.source.defender_data_fetcher.Session")
+    @patch.object(module, "MSGraphAuthClient")
+    @patch.object(module, "Session")
     def test_single_page_returns_alerts(
         self,
         mock_session_class,
         mock_auth_client,
     ):
         """Then single-page response returns alerts wrapped in SourceData."""
-        from src.source.defender_data_fetcher import DefenderDataFetcher
-
         # Setup mock session
         mock_session = MagicMock()
         mock_response = MagicMock()
@@ -65,24 +66,22 @@ class TestDefenderDataFetcher(unittest.TestCase):
 
         # Execute
         config = self._make_config()
-        fetcher = DefenderDataFetcher(config)
+        fetcher = module.DefenderDataFetcher(config)
         result = fetcher.fetch_data()
 
         # Assert
         self.assertEqual(len(result), 3)
         for item in result:
-            self.assertIsNotNone(item.alert)
+            self.assertIsNotNone(item)
 
-    @patch("src.source.defender_data_fetcher.MSGraphAuthClient")
-    @patch("src.source.defender_data_fetcher.Session")
+    @patch.object(module, "MSGraphAuthClient")
+    @patch.object(module, "Session")
     def test_pagination_merges_all_pages(
         self,
         mock_session_class,
         mock_auth_client,
     ):
         """Then multi-page pagination merges all alerts."""
-        from src.source.defender_data_fetcher import DefenderDataFetcher
-
         # Setup mock session with two pages
         mock_session = MagicMock()
         mock_auth = MagicMock()
@@ -113,23 +112,21 @@ class TestDefenderDataFetcher(unittest.TestCase):
 
         # Execute
         config = self._make_config()
-        fetcher = DefenderDataFetcher(config)
+        fetcher = module.DefenderDataFetcher(config)
         result = fetcher.fetch_data()
 
         # Assert
         self.assertEqual(len(result), 5)
         self.assertEqual(mock_session.get.call_count, 2)
 
-    @patch("src.source.defender_data_fetcher.MSGraphAuthClient")
-    @patch("src.source.defender_data_fetcher.Session")
+    @patch.object(module, "MSGraphAuthClient")
+    @patch.object(module, "Session")
     def test_http_401_triggers_token_refresh(
         self,
         mock_session_class,
         mock_auth_client,
     ):
         """Then HTTP 401 triggers token refresh then retries once."""
-        from src.source.defender_data_fetcher import DefenderDataFetcher
-
         mock_session = MagicMock()
         mock_auth = MagicMock()
         mock_auth.get_access_token.return_value = "test-token"
@@ -152,22 +149,20 @@ class TestDefenderDataFetcher(unittest.TestCase):
 
         # Execute
         config = self._make_config()
-        fetcher = DefenderDataFetcher(config)
+        fetcher = module.DefenderDataFetcher(config)
         result = fetcher.fetch_data()
 
         # Assert
         self.assertEqual(len(result), 1)
 
-    @patch("src.source.defender_data_fetcher.MSGraphAuthClient")
-    @patch("src.source.defender_data_fetcher.Session")
+    @patch.object(module, "MSGraphAuthClient")
+    @patch.object(module, "Session")
     def test_double_401_raises_authentication_error(
         self,
         mock_session_class,
         mock_auth_client,
     ):
         """Then double HTTP 401 returns empty list after token refresh."""
-        from src.source.defender_data_fetcher import DefenderDataFetcher
-
         mock_session = MagicMock()
         mock_auth = MagicMock()
         mock_auth.get_access_token.return_value = "test-token"
@@ -193,22 +188,20 @@ class TestDefenderDataFetcher(unittest.TestCase):
 
         # Execute
         config = self._make_config()
-        fetcher = DefenderDataFetcher(config)
+        fetcher = module.DefenderDataFetcher(config)
         result = fetcher.fetch_data()
 
         # Assert: double 401 returns empty list gracefully
         self.assertEqual(len(result), 0)
 
-    @patch("src.source.defender_data_fetcher.MSGraphAuthClient")
-    @patch("src.source.defender_data_fetcher.Session")
+    @patch.object(module, "MSGraphAuthClient")
+    @patch.object(module, "Session")
     def test_empty_response_returns_empty_list(
         self,
         mock_session_class,
         mock_auth_client,
     ):
         """Then empty response returns an empty list."""
-        from src.source.defender_data_fetcher import DefenderDataFetcher
-
         mock_session = MagicMock()
         mock_auth = MagicMock()
         mock_auth.get_access_token.return_value = "test-token"
@@ -222,22 +215,20 @@ class TestDefenderDataFetcher(unittest.TestCase):
 
         # Execute
         config = self._make_config()
-        fetcher = DefenderDataFetcher(config)
+        fetcher = module.DefenderDataFetcher(config)
         result = fetcher.fetch_data()
 
         # Assert
         self.assertEqual(len(result), 0)
 
-    @patch("src.source.defender_data_fetcher.MSGraphAuthClient")
-    @patch("src.source.defender_data_fetcher.Session")
+    @patch.object(module, "MSGraphAuthClient")
+    @patch.object(module, "Session")
     def test_odata_filter_included_in_request(
         self,
         mock_session_class,
         mock_auth_client,
     ):
         """Then the request contains $filter with serviceSource and $orderby."""
-        from src.source.defender_data_fetcher import DefenderDataFetcher
-
         mock_session = MagicMock()
         mock_auth = MagicMock()
         mock_auth.get_access_token.return_value = "test-token"
@@ -251,7 +242,7 @@ class TestDefenderDataFetcher(unittest.TestCase):
 
         # Execute
         config = self._make_config()
-        fetcher = DefenderDataFetcher(config)
+        fetcher = module.DefenderDataFetcher(config)
         fetcher.fetch_data()
 
         # Assert
@@ -263,16 +254,14 @@ class TestDefenderDataFetcher(unittest.TestCase):
         self.assertIn("$orderby", params)
         self.assertEqual(params["$orderby"], "createdDateTime desc")
 
-    @patch("src.source.defender_data_fetcher.MSGraphAuthClient")
-    @patch("src.source.defender_data_fetcher.Session")
+    @patch.object(module, "MSGraphAuthClient")
+    @patch.object(module, "Session")
     def test_fetch_params_hook_injects_filter_clause(
         self,
         mock_session_class,
         mock_auth_client,
     ):
         """Then fetch_params_hook injects a filter clause without mutating fetcher state."""
-        from src.source.defender_data_fetcher import DefenderDataFetcher
-
         mock_session = MagicMock()
         mock_auth = MagicMock()
         mock_auth.get_access_token.return_value = "test-token"
@@ -295,7 +284,7 @@ class TestDefenderDataFetcher(unittest.TestCase):
 
         # Execute
         config = self._make_config()
-        fetcher = DefenderDataFetcher(config, fetch_params_hook=_since_hook)
+        fetcher = module.DefenderDataFetcher(config, fetch_params_hook=_since_hook)
         fetcher.fetch_data()
 
         # Assert: hook injected the clause into the request params
