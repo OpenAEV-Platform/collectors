@@ -3,6 +3,9 @@ import unittest
 import src.source.models.evidences as module
 
 
+class FakeAlert(module.BaseModel):
+    evidence: module.Evidence
+
 class TestEvidence(unittest.TestCase):
     def test_process_evidence(self):
         process_data = {
@@ -11,17 +14,17 @@ class TestEvidence(unittest.TestCase):
             "parentProcessImageFile": {"fileName": "badc0ffee.exe"},
         }
 
-        process_evidence = module.Evidence(**process_data)
+        process_evidence = FakeAlert(evidence=process_data).evidence
 
         self.assertIsInstance(process_evidence, module.processEvidence)
         self.assertEqual(
-            process_data.odata_type, "#microsoft.graph.security.processEvidence"
+            process_evidence.odata_type, "#microsoft.graph.security.processEvidence"
         )
-        self.assertEqual(process_data.image_file.file_name, "deadbeef.exe")
+        self.assertEqual(process_evidence.image_file.file_name, "deadbeef.exe")
         self.assertEqual(
-            process_data.parent_process_image_file.file_name, "badc0ffee.exe"
+            process_evidence.parent_process_image_file.file_name, "badc0ffee.exe"
         )
-        self.assetIsNone(process_data.process_command_line)
+        self.assertIsNone(process_evidence.process_command_line)
 
         extracted_evidences = process_evidence.extract_evidences()
 
@@ -49,7 +52,7 @@ class TestEvidence(unittest.TestCase):
             "lastIpAddress": "1.2.3.4",
         }
 
-        device_evidence = module.Evidence(**device_data)
+        device_evidence = FakeAlert(evidence=device_data).evidence
 
         self.assertIsInstance(device_evidence, module.deviceEvidence)
         self.assertEqual(
@@ -57,7 +60,7 @@ class TestEvidence(unittest.TestCase):
         )
         self.assertEqual(device_evidence.device_dns_name, "me.here")
         self.assertEqual(device_evidence.host_name, "me")
-        self.assertEqual(device_evidence.last_ip_address, "1.2.3.4")
+        self.assertEqual(str(device_evidence.last_ip_address), "1.2.3.4")
         self.assertIsNone(device_evidence.last_external_ip_address)
 
         extracted_evidences = device_evidence.extract_evidences()
@@ -85,7 +88,7 @@ class TestEvidence(unittest.TestCase):
                 "filePath": "/this/is/myfile.exe",
             },
         }
-        file_evidence = module.Evidence(**file_data)
+        file_evidence = FakeAlert(evidence=file_data).evidence
 
         self.assertIsInstance(file_evidence, module.fileEvidence)
         self.assertEqual(
@@ -107,11 +110,11 @@ class TestEvidence(unittest.TestCase):
             "@odata.type": "#microsoft.graph.security.ipEvidence",
             "ipAddress": "1.2.3.4",
         }
-        ip_evidence = module.Evidence(**ip_data)
+        ip_evidence = FakeAlert(evidence=ip_data).evidence
 
         self.assertIsInstance(ip_evidence, module.ipEvidence)
         self.assertEqual(ip_evidence.odata_type, "#microsoft.graph.security.ipEvidence")
-        self.assertEqual(ip_evidence.ip_address, "1.2.3.4")
+        self.assertEqual(str(ip_evidence.ip_address), "1.2.3.4")
 
         extracted_evidences = ip_evidence.extract_evidences()
 
@@ -128,7 +131,7 @@ class TestEvidence(unittest.TestCase):
             "@odata.type": "#microsoft.graph.security.userEvidence",
             "key": "value",
         }
-        generic_evidence = module.Evidence(**generic_data)
+        generic_evidence = FakeAlert(evidence=generic_data).evidence
 
         self.assertIsInstance(generic_evidence, module.genericEvidence)
         self.assertEqual(
