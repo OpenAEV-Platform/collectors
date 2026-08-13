@@ -30,11 +30,14 @@ class processEvidence(BaseModel):
         if self.process_command_line:
             command_lines.append(self.process_command_line)
 
-        return {
-            SignatureTypes.SIG_TYPE_PROCESS_NAME: process_names,
-            SignatureTypes.SIG_TYPE_PARENT_PROCESS_NAME: process_names,
-            SignatureTypes.SIG_TYPE_COMMAND_LINE: command_lines,
-        }
+        extract = {}
+        if process_names:
+            extract[SignatureTypes.SIG_TYPE_PROCESS_NAME] = process_names
+            extract[SignatureTypes.SIG_TYPE_PARENT_PROCESS_NAME] = process_names
+        if command_lines:
+            extract[SignatureTypes.SIG_TYPE_COMMAND_LINE] = command_lines
+
+        return extract
 
 
 class deviceEvidence(BaseModel):
@@ -66,14 +69,17 @@ class deviceEvidence(BaseModel):
         if self.ip_interfaces:
             ip_addresses.extend(map(str, self.ip_interfaces))
 
-        return {
-            SignatureTypes.SIG_TYPE_HOSTNAME: hostnames,
-            SignatureTypes.SIG_TYPE_TARGET_HOSTNAME_ADDRESS: hostnames,
-            SignatureTypes.SIG_TYPE_IPV4_ADDRESS: ip_addresses,
-            SignatureTypes.SIG_TYPE_IPV6_ADDRESS: ip_addresses,
-            SignatureTypes.SIG_TYPE_TARGET_IPV4_ADDRESS: ip_addresses,
-            SignatureTypes.SIG_TYPE_TARGET_IPV6_ADDRESS: ip_addresses,
-        }
+        extract = {}
+        if hostnames:
+            extract[SignatureTypes.SIG_TYPE_HOSTNAME] = hostnames
+            extract[SignatureTypes.SIG_TYPE_TARGET_HOSTNAME_ADDRESS] = hostnames
+        if ip_addresses:
+            extract[SignatureTypes.SIG_TYPE_IPV4_ADDRESS] = ip_addresses
+            extract[SignatureTypes.SIG_TYPE_IPV6_ADDRESS] = ip_addresses
+            extract[SignatureTypes.SIG_TYPE_TARGET_IPV4_ADDRESS] = ip_addresses
+            extract[SignatureTypes.SIG_TYPE_TARGET_IPV6_ADDRESS] = ip_addresses
+
+        return extract
 
 
 class fileDetails(BaseModel):
@@ -95,9 +101,11 @@ class fileEvidence(BaseModel):
         if self.file_details and self.file_details.file_path:
             file_names.append(self.file_details.file_path)
 
-        return {
-            SignatureTypes.SIG_TYPE_FILE_NAME: file_names,
-        }
+        extract = {}
+        if file_names:
+            extract[SignatureTypes.SIG_TYPE_FILE_NAME] = file_names
+
+        return extract
 
 
 class ipEvidence(BaseModel):
@@ -112,12 +120,14 @@ class ipEvidence(BaseModel):
         if self.ip_address:
             ip_addresses.append(str(self.ip_address))
 
-        return {
-            SignatureTypes.SIG_TYPE_IPV4_ADDRESS: ip_addresses,
-            SignatureTypes.SIG_TYPE_IPV6_ADDRESS: ip_addresses,
-            SignatureTypes.SIG_TYPE_TARGET_IPV4_ADDRESS: ip_addresses,
-            SignatureTypes.SIG_TYPE_TARGET_IPV6_ADDRESS: ip_addresses,
-        }
+        extract = {}
+        if ip_addresses:
+            extract[SignatureTypes.SIG_TYPE_IPV4_ADDRESS] = ip_addresses
+            extract[SignatureTypes.SIG_TYPE_IPV6_ADDRESS] = ip_addresses
+            extract[SignatureTypes.SIG_TYPE_TARGET_IPV4_ADDRESS] = ip_addresses
+            extract[SignatureTypes.SIG_TYPE_TARGET_IPV6_ADDRESS] = ip_addresses
+
+        return extract
 
 
 class genericEvidence(BaseModel):
