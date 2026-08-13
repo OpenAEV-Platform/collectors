@@ -18,8 +18,12 @@ class DefenderO365SourceHandler(SourceHandler):
                 try:
                     dt = datetime.fromisoformat(sig.value)
 
-                    if not dt.tzinfo:
+                    if dt.tzinfo:
+                        # if there is a timezone, we convert it to UTC
                         dt = dt.astimezone(UTC)
+                    else:
+                        # we consider, if the END_DATE is naive, that is was produced as UTC
+                        dt = dt.replace(tzinfo=UTC)
                 except (ValueError, TypeError):
                     continue
                 if earliest is None or dt < earliest:
