@@ -47,7 +47,9 @@ class deviceEvidence(BaseModel):
     last_external_ip_address: IPvAnyAddress | None = Field(
         None, alias="lastExternalIpAddress"
     )
-    ip_interfaces: list[IPvAnyAddress | None] = Field([], alias="ipInterfaces")
+    ip_interfaces: list[IPvAnyAddress | None] = Field(
+        default_factory=list, alias="ipInterfaces"
+    )
 
     def extract_evidences(self) -> dict[SignatureTypes, list[str]]:
         hostnames = []
