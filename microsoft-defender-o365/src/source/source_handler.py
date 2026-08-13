@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
 from pyoaev.signatures.types import SignatureTypes
 from src.collector.models.source import SourceHandler
@@ -17,6 +17,13 @@ class DefenderO365SourceHandler(SourceHandler):
                     continue
                 try:
                     dt = datetime.fromisoformat(sig.value)
+
+                    if dt.tzinfo:
+                        # if there is a timezone, we convert it to UTC
+                        dt = dt.astimezone(UTC)
+                    else:
+                        # we consider, if the END_DATE is naive, that is was produced as UTC
+                        dt = dt.replace(tzinfo=UTC)
                 except (ValueError, TypeError):
                     continue
                 if earliest is None or dt < earliest:
@@ -27,7 +34,7 @@ class DefenderO365SourceHandler(SourceHandler):
 
         def _hook(params: dict) -> dict:
             current = params.get("$filter", "")
-            clause = f"createdDateTime ge '{earliest.isoformat()}'"
+            clause = f"createdDateTime ge {earliest.isoformat()}"
             params["$filter"] = f"{current} and {clause}" if current else clause
             return params
 
