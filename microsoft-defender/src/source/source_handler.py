@@ -12,7 +12,7 @@ class DefenderSourceHandler(SourceHandler):
     def build_fetch_params_hook(batch: ExpectationsList) -> FetchParamsHook | None:
         earliest: datetime | None = None
         for expectation in batch:
-            for sig in expectation.inject_expectation_signatures:
+            for sig in expectation.inject_expectation_signatures or []:
                 if sig.type != SignatureTypes.SIG_TYPE_END_DATE:
                     continue
                 try:
