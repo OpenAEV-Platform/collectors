@@ -160,6 +160,7 @@ class DefenderDataFetcher:
                 response.raise_for_status()
                 break
 
+            response.raise_for_status()
             data = response.json()
 
             if not isinstance(data, dict):
