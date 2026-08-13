@@ -227,7 +227,7 @@ class BasicCollectorEngine:
                         self.oaev_detection_helper,
                     )
                     if flag:
-                        self.logger.info(
+                        self.logger.debug(
                             f"{LOG_PREFIX} Match for expectation {expectation.inject_expectation_id}"
                         )
                         # (6) serialize data as tracedata

@@ -115,7 +115,6 @@ class SourceHandler(SourceHandlerProtocol):
         if not oaev_data:
             return alert_data
 
-        alert_data = {}
         for signature in signatures:
             sig_value = signature.label.value
             try:
@@ -135,7 +134,7 @@ class SourceHandler(SourceHandlerProtocol):
         """
         matching signatures extracted from an expectation and already filtered against source's signatures
         against the fetched data serialized in an OAEVData format turned into alert data
-        (signature types oriented formating turned matching oriented formating)
+        (signature types oriented formatting turned matching oriented formatting)
         """
         if not alert_data:
             return False

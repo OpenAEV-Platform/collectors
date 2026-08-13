@@ -3,7 +3,7 @@ from pyoaev.signatures.types import (  # type: ignore[import-untyped]  # noqa: F
     SignatureTypes,
 )
 
-SUPPORTED_SIGNATURES: list[SignatureTypes] = [
+SUPPORTED_SIGNATURES: list[SignatureType] = [
     SignatureType(SignatureTypes.SIG_TYPE_START_DATE),
     SignatureType(SignatureTypes.SIG_TYPE_END_DATE),
     SignatureType(SignatureTypes.SIG_TYPE_PARENT_PROCESS_NAME),
