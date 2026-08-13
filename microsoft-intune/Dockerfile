@@ -11,7 +11,7 @@ WORKDIR /collector
 # Builder stage for installing dependencies and creating the application environment.
 FROM base AS builder
 
-ENV POETRY_VERSION=2.1.3 \
+ENV POETRY_VERSION=2.3.2 \
     POETRY_NO_INTERACTION=1 \
     POETRY_VIRTUALENVS_CREATE=true \
     POETRY_VIRTUALENVS_IN_PROJECT=true
