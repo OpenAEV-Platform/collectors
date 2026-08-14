@@ -11,7 +11,7 @@
   "productName": "Microsoft Defender for Endpoint",
   "detectorId": "4a3ce35f-a961-46a1-9ce5-3e514c3714e6",
   "tenantId": "e15cdeca-e989-4b00-a5d7-5b3a34eff5f4",
-  "title": "Suspicious network share discovery ",
+  "title": "Suspicious network share discovery",
   "description": "A known technique was used to gather information about network shares accessible from this device. A threat actor might be attempting to identify shared folders and drives to find files of interest or perform lateral movement.",
   "recommendedActions": "A. Validate the alert.\n1. Review the alert and inspect the process initiating the suspicious command. Check the account used to launch the process.\n2. Check the device timeline for other suspicious activities.\n3. Locate unfamiliar processes in the process tree. Check files for prevalence, their locations, and digital signatures.\n4. Submit relevant files for deep analysis and review file behaviors.\n5. Identify unusual system activity with system owners.\n\nB. Scope the incident. Find related devices in the incident graph.\n\nC. Contain and mitigate the breach. Stop suspicious scripts or processes, isolate affected devices, decommission compromised accounts or reset passwords, block IP addresses and URLs, and install security updates.\n\nD. Contact your incident response team or contact Microsoft Support for investigation and remediation services.",
   "category": "Discovery",
