@@ -1075,7 +1075,7 @@ def _given_expectation_with_unsupported_sigs() -> DetectionExpectation:
 
     sigs = [
         ExpectationSignature(
-            type=sig_type.label, value=_sig_test_value_for_type(sig_type.label)
+            type=sig_type.label, value=_sig_test_value_for_type(sig_type)
         )
         for sig_type in SUPPORTED_SIGNATURES
     ] + [ExpectationSignature(type=t, value="unsupported-value") for t in extra_types]
@@ -1108,56 +1108,29 @@ def _given_matching_alert_data(
     from src.source.signatures import SUPPORTED_SIGNATURES
 
     mock_sd = MagicMock()
-    oaev_data = MagicMock()
 
-    # to_oaev_data returns an OAEVData-like object with matching values
-    def to_oaev_data():
-        return oaev_data
-
-    mock_sd.to_oaev_data = to_oaev_data
-
-    # Set attribute access to return matching values in the structure
-    # expected by OpenAEVDetectionHelper.match_alert_elements
     sig_values = {
-        SignatureTypes.SIG_TYPE_SOURCE_EMAIL.value: {
-            "type": "simple",
-            "data": ["bad@evil.com"],
-        },
-        SignatureTypes.SIG_TYPE_TARGET_EMAIL.value: {
-            "type": "simple",
-            "data": ["victim@corp.com"],
-        },
-        SignatureTypes.SIG_TYPE_URL_HASH.value: {
-            "type": "simple",
-            "data": ["6e828dac1a6b547942ad393d0e3b5e37e50e974a86c8c61e5b77e6a0c7b7c6d"],
-        },
-        SignatureTypes.SIG_TYPE_FILE_HASH.value: {
-            "type": "simple",
-            "data": ["abc123"],
-        },
-        SignatureTypes.SIG_TYPE_EMAIL_CUSTOM_HEADER.value: {
-            "type": "simple",
-            "data": ["header-val"],
-        },
-        SignatureTypes.SIG_TYPE_START_DATE.value: {
-            "type": "simple",
-            "data": ["this.is.a.date"],
-        },
-        SignatureTypes.SIG_TYPE_END_DATE.value: {
-            "type": "simple",
-            "data": ["this.is.a.date"],
-        },
-        SignatureTypes.SIG_TYPE_PARENT_PROCESS_NAME.value: {
-            "type": "simple",
-            "data": ["parent/process.name"],
-        },
+        SignatureTypes.SIG_TYPE_SOURCE_EMAIL.value: ["bad@evil.com"],
+        SignatureTypes.SIG_TYPE_TARGET_EMAIL.value: ["victim@corp.com"],
+        SignatureTypes.SIG_TYPE_URL_HASH.value: [
+            "6e828dac1a6b547942ad393d0e3b5e37e50e974a86c8c61e5b77e6a0c7b7c6d"
+        ],
+        SignatureTypes.SIG_TYPE_FILE_HASH.value: ["abc123"],
+        SignatureTypes.SIG_TYPE_EMAIL_CUSTOM_HEADER.value: ["header-val"],
+        SignatureTypes.SIG_TYPE_START_DATE.value: ["this.is.a.date"],
+        SignatureTypes.SIG_TYPE_END_DATE.value: ["this.is.a.date"],
+        SignatureTypes.SIG_TYPE_PARENT_PROCESS_NAME.value: ["parent/process.name"],
     }
+
+    oaev_data = MagicMock()
     oaev_data.model_dump.return_value = sig_values
     for sig_type in SUPPORTED_SIGNATURES:
         setattr(oaev_data, sig_type.label.value, sig_values[sig_type.label.value])
 
+    mock_sd.to_oaev_data.return_value = oaev_data
+
     # Detection / prevention flags
-    mock_sd.is_detected.return_value = not prevention
+    mock_sd.is_detected.return_value = True
     mock_sd.is_prevented.return_value = prevention
 
     # Trace data serialization
@@ -1184,53 +1157,25 @@ def _given_non_matching_alert_data() -> list:
     from src.source.signatures import SUPPORTED_SIGNATURES
 
     mock_sd = MagicMock()
-    oaev_data = MagicMock()
-
-    def to_oaev_data():
-        return oaev_data
-
-    mock_sd.to_oaev_data = to_oaev_data
 
     # Values that won't match expectation signatures
     sig_values = {
-        SignatureTypes.SIG_TYPE_SOURCE_EMAIL.value: {
-            "type": "simple",
-            "data": ["other@evil.com"],
-        },
-        SignatureTypes.SIG_TYPE_TARGET_EMAIL.value: {
-            "type": "simple",
-            "data": ["boss@corp.com"],
-        },
-        SignatureTypes.SIG_TYPE_URL_HASH.value: {
-            "type": "simple",
-            "data": [
-                "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
-            ],
-        },
-        SignatureTypes.SIG_TYPE_FILE_HASH.value: {
-            "type": "simple",
-            "data": ["xyz789"],
-        },
-        SignatureTypes.SIG_TYPE_EMAIL_CUSTOM_HEADER.value: {
-            "type": "simple",
-            "data": ["other-header"],
-        },
-        SignatureTypes.SIG_TYPE_START_DATE.value: {
-            "type": "simple",
-            "data": ["this.is.a.date"],
-        },
-        SignatureTypes.SIG_TYPE_END_DATE.value: {
-            "type": "simple",
-            "data": ["this.is.a.date"],
-        },
-        SignatureTypes.SIG_TYPE_PARENT_PROCESS_NAME.value: {
-            "type": "simple",
-            "data": ["parent/process.name"],
-        },
+        SignatureTypes.SIG_TYPE_SOURCE_EMAIL.value: ["other@evil.com"],
+        SignatureTypes.SIG_TYPE_TARGET_EMAIL.value: ["boss@corp.com"],
+        SignatureTypes.SIG_TYPE_URL_HASH.value: [
+            "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        ],
+        SignatureTypes.SIG_TYPE_FILE_HASH.value: ["xyz789"],
+        SignatureTypes.SIG_TYPE_EMAIL_CUSTOM_HEADER.value: ["other-header"],
+        SignatureTypes.SIG_TYPE_START_DATE.value: ["this.is.a.date"],
+        SignatureTypes.SIG_TYPE_END_DATE.value: ["this.is.a.date"],
+        SignatureTypes.SIG_TYPE_PARENT_PROCESS_NAME.value: ["parent/process.name"],
     }
+    oaev_data = MagicMock()
     oaev_data.model_dump.return_value = sig_values
     for sig_type in SUPPORTED_SIGNATURES:
         setattr(oaev_data, sig_type.label.value, sig_values[sig_type.label.value])
+    mock_sd.to_oaev_data.return_value = oaev_data
 
     mock_sd.is_detected.return_value = True
     mock_sd.is_prevented.return_value = False
@@ -1264,7 +1209,7 @@ def _given_fetched_data_error() -> None:
 
 def _when_engine_processes_batch(
     expectations: list,
-    alert_data: list,
+    source_data: list,
 ) -> list:
     """When the engine processes the batch.
 
@@ -1273,7 +1218,7 @@ def _when_engine_processes_batch(
 
     Args:
         expectations: List of expectation objects to process.
-        alert_data: List of source data objects (mocked).
+        source_data: List of source data objects (mocked).
 
     Returns:
         List of ExpectationResult objects.
@@ -1290,17 +1235,14 @@ def _when_engine_processes_batch(
             _CHUNK8_STATE["fetch_error"],
         ]  # trigger error path
     else:
-        data = alert_data if alert_data else _CHUNK8_STATE.get("fetch_result", [])
-
-    # Build signature groups for matching
-    SourceHandler.get_expectation_signature_groups(
-        SUPPORTED_SIGNATURES, expectations[0]
-    )
+        data = source_data if source_data else _CHUNK8_STATE.get("fetch_result", [])
 
     # Detection helper that matches based on sig groups
     OpenAEVDetectionHelper(
         logger=MagicMock(),
-        relevant_signatures_types=SUPPORTED_SIGNATURES,
+        relevant_signatures_types=[
+            signature.label for signature in SUPPORTED_SIGNATURES
+        ],
     )
 
     # Mock the source handler to inject our data
@@ -1320,6 +1262,9 @@ def _when_engine_processes_batch(
     mock_handler.serialize_as_oaevdata = SourceHandler.serialize_as_oaevdata
     mock_handler.get_expectation_signature_groups = (
         SourceHandler.get_expectation_signature_groups
+    )
+    mock_handler.get_alert_data_from_oaev_data = (
+        SourceHandler.get_alert_data_from_oaev_data
     )
     mock_handler.match_signature_groups_and_alert_data = (
         SourceHandler.match_signature_groups_and_alert_data
@@ -1481,4 +1426,4 @@ def _sig_test_value_for_type(sig_type) -> str:
         SignatureTypes.SIG_TYPE_END_DATE: "this.is.a.date",
         SignatureTypes.SIG_TYPE_PARENT_PROCESS_NAME: "parent/process.name",
     }
-    return VALUES.get(sig_type, "test-value")
+    return VALUES.get(sig_type.label, "test-value")
