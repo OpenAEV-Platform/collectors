@@ -6,6 +6,7 @@ import src.source.models.evidences as module
 class FakeAlert(module.BaseModel):
     evidence: module.Evidence
 
+
 class TestEvidence(unittest.TestCase):
     def test_process_evidence(self):
         process_data = {

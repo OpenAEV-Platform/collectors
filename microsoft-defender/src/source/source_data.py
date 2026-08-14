@@ -51,6 +51,7 @@ class Alert(BaseModel):
     def to_oaev_data(self) -> OAEVData:
         """Serialize the evidence data as an OAEVData object."""
         data = self._extract_evidences()
+        data = {sig_type.value: evidences for sig_type, evidences in data.items()}
         return OAEVData(**data)
 
     def to_traces_data(self) -> TraceData:
