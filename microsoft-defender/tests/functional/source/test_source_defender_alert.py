@@ -32,8 +32,8 @@ class TestAlertProcessing(unittest.TestCase):
         )
 
         trace_data = object_zero.to_traces_data()
-        self.assertTrue(trace_data.alert_name, "Suspicious network share discovery")
-        self.assertTrue(
-            trace_data.alert_link,
+        self.assertEqual(trace_data.alert_name, "Suspicious network share discovery")
+        self.assertEqual(
+            str(trace_data.alert_link),
             "https://security.microsoft.com/alerts/50c27011-725c-41d8-9090-efd4c10132c2?tid=e15cdeca-e989-4b00-a5d7-5b3a34eff5f4",
         )
