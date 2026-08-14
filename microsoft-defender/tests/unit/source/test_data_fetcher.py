@@ -8,9 +8,8 @@ import unittest
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
-from pydantic import HttpUrl
-
 import src.source.data_fetcher as module
+from pydantic import HttpUrl
 
 
 def _make_alert(alert_id: str = "ALT-001") -> dict:

@@ -23,7 +23,9 @@ class TestAlert(unittest.TestCase):
         self.assertEqual(alert.status, "inProgress")
         self.assertEqual(alert.service_source, "microsoftDefenderForEndpoint")
         self.assertEqual(str(alert.alert_web_url), "http://endpoint.tld/")
-        self.assertEqual(alert.created_date_time.isoformat(), "1987-06-05T04:03:02.100000")
+        self.assertEqual(
+            alert.created_date_time.isoformat(), "1987-06-05T04:03:02.100000"
+        )
         self.assertEqual(alert.evidence, [])
         self.assertEqual(alert.raw, data)
 
@@ -38,7 +40,7 @@ class TestAlert(unittest.TestCase):
             "evidence": [
                 {
                     "@odata.type": "#microsoft.graph.security.processEvidence",
-                    "imageFile": {"fileName": "cuckoo_agent.exe"}
+                    "imageFile": {"fileName": "cuckoo_agent.exe"},
                 },
             ],
         }
@@ -50,7 +52,10 @@ class TestAlert(unittest.TestCase):
         evidences = alert._extract_evidences()
 
         self.assertIn(module.SignatureTypes.SIG_TYPE_PARENT_PROCESS_NAME, evidences)
-        self.assertEqual(evidences[module.SignatureTypes.SIG_TYPE_PARENT_PROCESS_NAME], set(["cuckoo_agent.exe"]))
+        self.assertEqual(
+            evidences[module.SignatureTypes.SIG_TYPE_PARENT_PROCESS_NAME],
+            set(["cuckoo_agent.exe"]),
+        )
 
     def test_alert_to_oaev_data(self):
         data = {
@@ -63,7 +68,7 @@ class TestAlert(unittest.TestCase):
             "evidence": [
                 {
                     "@odata.type": "#microsoft.graph.security.processEvidence",
-                    "imageFile": {"fileName": "cuckoo_agent.exe"}
+                    "imageFile": {"fileName": "cuckoo_agent.exe"},
                 },
             ],
         }
@@ -86,7 +91,7 @@ class TestAlert(unittest.TestCase):
             "evidence": [
                 {
                     "@odata.type": "#microsoft.graph.security.processEvidence",
-                    "imageFile": {"fileName": "cuckoo_agent.exe"}
+                    "imageFile": {"fileName": "cuckoo_agent.exe"},
                 },
             ],
         }
@@ -110,7 +115,7 @@ class TestAlert(unittest.TestCase):
             "evidence": [
                 {
                     "@odata.type": "#microsoft.graph.security.processEvidence",
-                    "imageFile": {"fileName": "cuckoo_agent.exe"}
+                    "imageFile": {"fileName": "cuckoo_agent.exe"},
                 },
             ],
         }
@@ -118,7 +123,7 @@ class TestAlert(unittest.TestCase):
         alert = module.Alert(**data)
 
         self.assertTrue(alert.is_detected())
-        
+
         for status in ["inProgress", "resolved"]:
             alert.status = status
             self.assertTrue(alert.is_prevented())
