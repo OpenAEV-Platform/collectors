@@ -1321,6 +1321,9 @@ def _when_engine_processes_batch(
     mock_handler.get_expectation_signature_groups = (
         SourceHandler.get_expectation_signature_groups
     )
+    mock_handler.get_alert_data_from_oaev_data = (
+        SourceHandler.get_alert_data_from_oaev_data
+    )
     mock_handler.match_signature_groups_and_alert_data = (
         SourceHandler.match_signature_groups_and_alert_data
     )
