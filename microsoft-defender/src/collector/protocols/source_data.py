@@ -1,0 +1,16 @@
+from typing import Protocol, runtime_checkable
+
+from src.collector.models.data import OAEVData, TraceData
+
+
+@runtime_checkable
+class SourceDataProtocol(Protocol):
+    def to_oaev_data(self) -> OAEVData: ...
+
+    def to_traces_data(self) -> TraceData: ...
+
+    def is_prevented(self) -> bool: ...
+
+    def is_detected(self) -> bool: ...
+
+    def __str__(self) -> str: ...
