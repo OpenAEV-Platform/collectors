@@ -11,6 +11,18 @@ collector:
   log_level: 'error'
   microsoft_azure_tenant_id: ''
   microsoft_azure_client_id: ''
+  # Authentication: client secret (default) or client certificate.
   microsoft_azure_client_secret: ''
+  # Set to true to authenticate with a client certificate instead of a client secret.
+  # microsoft_azure_use_certificate_auth: false
+  # PEM encoded private key of the certificate registered on the Entra ID application.
+  # microsoft_azure_client_cert_data: |
+  #   -----BEGIN PRIVATE KEY-----
+  #   ChangeMe
+  #   -----END PRIVATE KEY-----
+  # SHA-1 thumbprint of that certificate.
+  # microsoft_azure_client_cert_thumbprint: ''
+  # Only required when the private key above is encrypted.
+  # microsoft_azure_client_cert_passphrase: ''
   microsoft_azure_subscription_id: ''
   microsoft_azure_resource_groups: ''  # Comma-separated list of resource groups, leave empty for all VMs in subscription

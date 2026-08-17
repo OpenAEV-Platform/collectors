@@ -23,6 +23,18 @@ class OpenAEVMicrosoftAzure(CollectorDaemon):
         self.tenant_id = self._configuration.get("microsoft_azure_tenant_id")
         self.client_id = self._configuration.get("microsoft_azure_client_id")
         self.client_secret = self._configuration.get("microsoft_azure_client_secret")
+        self.use_certificate_auth = bool(
+            self._configuration.get("microsoft_azure_use_certificate_auth")
+        )
+        self.client_cert_data = self._configuration.get(
+            "microsoft_azure_client_cert_data"
+        )
+        self.client_cert_thumbprint = self._configuration.get(
+            "microsoft_azure_client_cert_thumbprint"
+        )
+        self.client_cert_passphrase = self._configuration.get(
+            "microsoft_azure_client_cert_passphrase"
+        )
         self.subscription_id = self._configuration.get(
             "microsoft_azure_subscription_id"
         )
@@ -43,6 +55,38 @@ class OpenAEVMicrosoftAzure(CollectorDaemon):
 
         self.access_token = None
 
+    def _build_client_credential(self):
+        """Build the credential handed over to MSAL.
+
+        Deployments that do not opt into certificate authentication keep returning the
+        client secret string exactly as before, so their MSAL call is unchanged.
+
+        Returns:
+            The client secret string, or the MSAL certificate credential mapping.
+
+        Raises:
+            ValueError: If certificate authentication is enabled but the certificate
+                material is incomplete.
+
+        """
+        if not self.use_certificate_auth:
+            return self.client_secret
+
+        if not self.client_cert_data or not self.client_cert_thumbprint:
+            raise ValueError(
+                "Certificate authentication requires both "
+                "microsoft_azure_client_cert_data and "
+                "microsoft_azure_client_cert_thumbprint"
+            )
+
+        credential = {
+            "private_key": self.client_cert_data,
+            "thumbprint": self.client_cert_thumbprint,
+        }
+        if self.client_cert_passphrase:
+            credential["passphrase"] = self.client_cert_passphrase
+        return credential
+
     def _get_access_token(self):
         """Get Azure access token using client credentials."""
         try:
@@ -51,7 +95,7 @@ class OpenAEVMicrosoftAzure(CollectorDaemon):
             app = msal.ConfidentialClientApplication(
                 self.client_id,
                 authority=self.authority,
-                client_credential=self.client_secret,
+                client_credential=self._build_client_credential(),
             )
 
             result = app.acquire_token_silent(
@@ -388,6 +432,10 @@ if __name__ == "__main__":
         "MICROSOFT_AZURE_TENANT_ID",
         "MICROSOFT_AZURE_CLIENT_ID",
         "MICROSOFT_AZURE_CLIENT_SECRET",
+        "MICROSOFT_AZURE_USE_CERTIFICATE_AUTH",
+        "MICROSOFT_AZURE_CLIENT_CERT_DATA",
+        "MICROSOFT_AZURE_CLIENT_CERT_THUMBPRINT",
+        "MICROSOFT_AZURE_CLIENT_CERT_PASSPHRASE",
         "MICROSOFT_AZURE_SUBSCRIPTION_ID",
         "MICROSOFT_AZURE_RESOURCE_GROUPS",
     ]:
