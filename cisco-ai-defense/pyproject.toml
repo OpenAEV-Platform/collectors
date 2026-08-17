@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "openaev-cisco-ai-defense-collector"
-version = "3.260805.0"
+version = "3.260817.0"
 description = "A Collector validating Cisco AI Defense (Robust Intelligence) detection/prevention of AI adversarial injects"
 authors = [
     "Filigran <contact@filigran.io>",
@@ -17,7 +17,7 @@ requests = "^2.32.0"
 
 [[tool.poetry.dependencies.pyoaev]]
 markers = "extra == 'prod' and extra != 'dev'"
-version = "3.260805.0"
+version = "3.260817.0"
 source = "pypi"
 
 [[tool.poetry.dependencies.pyoaev]]
