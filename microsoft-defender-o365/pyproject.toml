@@ -128,7 +128,7 @@ icon-path = "src/img/microsoft-defender-o365-logo.png"
 
 [project]
 name = "microsoft-defender-o365-collector"
-version = "3.260818.0"
+version = "3.260818.1"
 description = "Collector for Microsoft Defender for Office 365 (email-focused alerts) for OAEV."
 readme = "README.md"
 requires-python = ">=3.13,<4.0"
