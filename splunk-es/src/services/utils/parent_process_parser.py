@@ -6,7 +6,7 @@ and reconstruct them for matching purposes.
 
 import logging
 import re
-from typing import Optional, Tuple
+from typing import Any, Optional, Tuple
 
 LOG_PREFIX = "[ParentProcessParser]"
 
@@ -22,6 +22,9 @@ class ParentProcessParser:
             r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
         )
         self.parent_process_pattern = r"oaev-implant-([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})-agent-([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})"
+        self._compiled_parent_process_re = re.compile(
+            self.parent_process_pattern, re.IGNORECASE
+        )
 
     def extract_uuids_from_parent_process_name(
         self, parent_process_name: str
@@ -187,6 +190,36 @@ class ParentProcessParser:
         except Exception as e:
             self.logger.error(f"{LOG_PREFIX} Error building URL path search query: {e}")
             return ""
+
+    def extract_parent_process_names_from_raw(
+        self, raw_data: dict[str, Any]
+    ) -> list[str]:
+        """Extract all parent process names from flattened _raw alert data.
+
+        Flattens the _raw dictionary to a single string and searches for
+        all occurrences of the parent process name pattern.
+
+        Args:
+            raw_data: The _raw dictionary from a SplunkESAlert.
+
+        Returns:
+            List of parent process names found, empty list if none.
+
+        """
+        if not raw_data:
+            return []
+
+        try:
+            raw_string = " ".join(str(v) for v in raw_data.values() if v is not None)
+            return [
+                match.group(0)
+                for match in self._compiled_parent_process_re.finditer(raw_string)
+            ]
+        except Exception as e:
+            self.logger.error(
+                f"{LOG_PREFIX} Error extracting parent process names from _raw: {e}"
+            )
+            return []
 
     def validate_uuid_format(self, uuid_string: str) -> bool:
         """Validate if string matches UUID format.
