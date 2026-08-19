@@ -60,18 +60,17 @@ class OpenAEVAWSResources(CollectorDaemon):
             certificate_chain_pem=normalize_pem(
                 self._configuration.get("aws_roles_anywhere_certificate_chain")
             ),
-            private_key_passphrase=(
-                self._configuration.get("aws_roles_anywhere_private_key_passphrase")
-                or None
+            private_key_passphrase=self._configuration.get(
+                "aws_roles_anywhere_private_key_passphrase"
             ),
             trust_anchor_arn=self._configuration.get(
                 "aws_roles_anywhere_trust_anchor_arn"
             ),
             profile_arn=self._configuration.get("aws_roles_anywhere_profile_arn"),
             role_arn=self._configuration.get("aws_roles_anywhere_role_arn"),
-            region=self._configuration.get("aws_roles_anywhere_region") or None,
-            session_duration=int(
-                self._configuration.get("aws_roles_anywhere_session_duration") or 3600
+            region=self._configuration.get("aws_roles_anywhere_region"),
+            session_duration=self._configuration.get(
+                "aws_roles_anywhere_session_duration"
             ),
             session_name="OpenAEVAWSCollector",
         )
