@@ -72,9 +72,9 @@ The collector is configured either through environment variables (recommended, r
 
 | Parameter             | config.yml                     | Docker environment variable          | Default | Mandatory | Description                                                                                       |
 |-----------------------|--------------------------------|--------------------------------------|---------|-----------|--------------------------------------------------------------------------------------------------|
-| AWS Auth Type         | `collector.aws_auth_type`         | `COLLECTOR_AWS_AUTH_TYPE`         | credentials | No    | Authentication mode: `credentials` (access keys / instance role) or `roles_anywhere` (X.509 client certificate). |
-| AWS Access Key ID     | `collector.aws_access_key_id`     | `COLLECTOR_AWS_ACCESS_KEY_ID`     | /       | No        | AWS access key ID. Optional if the collector uses an EC2 instance role or AssumeRole.             |
-| AWS Secret Access Key | `collector.aws_secret_access_key` | `COLLECTOR_AWS_SECRET_ACCESS_KEY` | /       | No        | AWS secret access key. Optional if the collector uses an EC2 instance role or AssumeRole.         |
+| AWS Auth Type         | `collector.aws_auth_type`         | `COLLECTOR_AWS_AUTH_TYPE`         | credential_provider_chain | No    | Authentication mode: `credential_provider_chain` (boto3's default credential resolution: environment, shared config, EC2/ECS instance role, ...), `credentials` (explicit static access key/secret), or `roles_anywhere` (X.509 client certificate). |
+| AWS Access Key ID     | `collector.aws_access_key_id`     | `COLLECTOR_AWS_ACCESS_KEY_ID`     | /       | Only for `credentials`   | AWS access key ID.             |
+| AWS Secret Access Key | `collector.aws_secret_access_key` | `COLLECTOR_AWS_SECRET_ACCESS_KEY` | /       | Only for `credentials`   | AWS secret access key.         |
 | AWS Session Token     | `collector.aws_session_token`     | `COLLECTOR_AWS_SESSION_TOKEN`     | /       | No        | AWS session token. Optional, used only for temporary credentials.                                |
 | AWS Assume Role ARN   | `collector.aws_assume_role_arn`   | `COLLECTOR_AWS_ASSUME_ROLE_ARN`   | /       | No        | ARN of an IAM role to assume after the initial authentication. Optional.                          |
 | AWS Regions           | `collector.aws_regions`           | `COLLECTOR_AWS_REGIONS`           | /       | No        | Comma-separated list of AWS regions to scan. Leave empty to auto-discover and scan all regions.   |
@@ -151,10 +151,11 @@ flowchart LR
 
 On each run, the collector:
 
-1. Initializes an AWS session. When `aws_auth_type` is `roles_anywhere`, it first exchanges the X.509 client certificate
-   for temporary credentials through the IAM Roles Anywhere `CreateSession` API; otherwise it uses the provided access
-   keys, or falls back to the default credential chain (for example an EC2 instance role) when no keys are set. It then
-   optionally assumes `aws_assume_role_arn` via STS.
+1. Initializes an AWS session based on `aws_auth_type`: `roles_anywhere` first exchanges the X.509 client certificate for
+   temporary credentials through the IAM Roles Anywhere `CreateSession` API; `credentials` uses the configured
+   `aws_access_key_id` / `aws_secret_access_key` (and optional `aws_session_token`); `credential_provider_chain` (the
+   default) delegates entirely to boto3's default credential resolution (environment, shared config, EC2/ECS instance
+   role, ...). It then optionally assumes `aws_assume_role_arn` via STS.
 2. Determines the regions to scan: the configured `aws_regions` list, or every enabled region discovered through
    `ec2:DescribeRegions` when the list is empty.
 3. Lists all EC2 instances per region using `ec2:DescribeInstances` (paginated), including stopped instances.
@@ -171,13 +172,13 @@ instance seen in a previous run is refreshed rather than duplicated.
 
 ## Required permissions and API endpoints
 
-- Authentication options (any one of):
-  - IAM user access keys (`aws_access_key_id` + `aws_secret_access_key`, optionally `aws_session_token`).
-  - An EC2 instance role / the default credential chain (leave the access keys empty).
-  - An IAM role to assume (`aws_assume_role_arn`), which additionally requires `sts:AssumeRole` on the caller and a
-    matching trust policy on the target role.
-  - IAM Roles Anywhere (`aws_auth_type = roles_anywhere`), which derives temporary credentials from an X.509 client
-    certificate. See [IAM Roles Anywhere authentication](#iam-roles-anywhere-authentication) below.
+- Authentication options (`aws_auth_type`):
+  - `credential_provider_chain` (default): boto3's default credential resolution, e.g. an EC2 instance role.
+  - `credentials`: IAM user access keys (`aws_access_key_id` + `aws_secret_access_key`, optionally `aws_session_token`).
+  - `roles_anywhere`: IAM Roles Anywhere, which derives temporary credentials from an X.509 client certificate. See
+    [IAM Roles Anywhere authentication](#iam-roles-anywhere-authentication) below.
+  - Any of the above can additionally assume an IAM role (`aws_assume_role_arn`), which requires `sts:AssumeRole` on
+    the caller and a matching trust policy on the target role.
 - Required IAM permissions:
   - `ec2:DescribeInstances` (list instances per region)
   - `ec2:DescribeRegions` (only when `aws_regions` is empty and regions are auto-discovered)

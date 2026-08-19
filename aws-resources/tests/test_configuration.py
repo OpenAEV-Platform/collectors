@@ -8,8 +8,8 @@ from aws_resources.auth.roles_anywhere import RolesAnywhereSigner, normalize_pem
 from aws_resources.configuration.collector_config_override import (
     AUTH_TYPE_CREDENTIALS,
     AUTH_TYPE_ROLES_ANYWHERE,
+    AWSAuthType,
     CollectorConfigOverride,
-    normalize_auth_type,
 )
 from pydantic import ValidationError
 from tests.conftest import PROFILE_ARN, ROLE_ARN, TRUST_ANCHOR_ARN
@@ -31,52 +31,57 @@ def roles_anywhere_config(identity, **overrides):
     return values
 
 
+def credentials_config(**overrides):
+    values = {
+        **BASE,
+        "aws_auth_type": AUTH_TYPE_CREDENTIALS,
+        "aws_access_key_id": "AKIA_TEST",
+        "aws_secret_access_key": "secret",
+    }
+    values.update(overrides)
+    return values
+
+
 class TestAuthTypeValidation:
-    def test_normalize_auth_type_passes_through_non_strings(self):
-        """Non-strings are left for pydantic to reject with a type error."""
-        assert normalize_auth_type(42) == 42
-
-    @pytest.mark.parametrize("value", [None, "", "   "])
-    def test_normalize_auth_type_defaults_when_unset(self, value):
-        assert normalize_auth_type(value) == AUTH_TYPE_CREDENTIALS
-
-    @pytest.mark.parametrize("value", ["ROLES_ANYWHERE", " Roles_Anywhere "])
-    def test_normalize_auth_type_normalizes_case_and_spacing(self, value):
-        assert normalize_auth_type(value) == AUTH_TYPE_ROLES_ANYWHERE
-
-    def test_normalize_auth_type_rejects_unknown_modes(self):
-        with pytest.raises(ValueError, match="aws_auth_type must be one of"):
-            normalize_auth_type("mtls")
-
-    def test_defaults_to_credentials_mode(self):
-        config = CollectorConfigOverride(**BASE)
-        assert config.aws_auth_type == AUTH_TYPE_CREDENTIALS
-
-    def test_credentials_mode_does_not_require_aws_keys(self):
-        config = CollectorConfigOverride(**BASE)
-        assert config.aws_access_key_id == ""
-        assert config.aws_secret_access_key == ""
-
-    def test_unknown_auth_type_is_rejected(self):
-        with pytest.raises(ValidationError, match="aws_auth_type must be one of"):
-            CollectorConfigOverride(**BASE, aws_auth_type="mtls")
-
-    @pytest.mark.parametrize("value", [None, "", "   "])
-    def test_empty_auth_type_falls_back_to_credentials(self, value):
-        config = CollectorConfigOverride(**BASE, aws_auth_type=value)
-        assert config.aws_auth_type == AUTH_TYPE_CREDENTIALS
-
-    def test_non_string_auth_type_is_rejected_by_the_type_check(self):
-        """Non-string values bypass normalization and fail pydantic's str check."""
-        with pytest.raises(ValidationError):
-            CollectorConfigOverride(**BASE, aws_auth_type=42)
-
     @pytest.mark.parametrize("value", ["ROLES_ANYWHERE", " Roles_Anywhere "])
     def test_auth_type_is_normalized(self, value, rsa_identity):
         config = CollectorConfigOverride(
             **roles_anywhere_config(rsa_identity, aws_auth_type=value)
         )
         assert config.aws_auth_type == AUTH_TYPE_ROLES_ANYWHERE
+
+    def test_defaults_to_credential_provider_chain_mode(self):
+        config = CollectorConfigOverride(**BASE)
+        assert config.aws_auth_type == AWSAuthType.CREDENTIAL_PROVIDER_CHAIN
+
+    def test_credential_provider_chain_mode_does_not_require_aws_keys(self):
+        config = CollectorConfigOverride(**BASE)
+        assert config.aws_access_key_id == ""
+        assert config.aws_secret_access_key == ""
+
+    def test_unknown_auth_type_is_rejected(self):
+        with pytest.raises(ValidationError):
+            CollectorConfigOverride(**BASE, aws_auth_type="mtls")
+
+    def test_non_string_auth_type_is_rejected_by_the_type_check(self):
+        """Non-string values bypass normalization and fail pydantic's type check."""
+        with pytest.raises(ValidationError):
+            CollectorConfigOverride(**BASE, aws_auth_type=42)
+
+    def test_credentials_mode_accepts_complete_config(self):
+        config = CollectorConfigOverride(**credentials_config())
+        assert config.aws_auth_type == AUTH_TYPE_CREDENTIALS
+        assert config.aws_access_key_id == "AKIA_TEST"
+        assert config.aws_secret_access_key == "secret"
+
+    @pytest.mark.parametrize(
+        "missing",
+        ["aws_access_key_id", "aws_secret_access_key"],
+    )
+    def test_credentials_mode_requires_each_field(self, missing):
+        values = credentials_config(**{missing: ""})
+        with pytest.raises(ValidationError, match=missing):
+            CollectorConfigOverride(**values)
 
     def test_roles_anywhere_mode_accepts_complete_config(self, rsa_identity):
         config = CollectorConfigOverride(**roles_anywhere_config(rsa_identity))
@@ -98,8 +103,12 @@ class TestAuthTypeValidation:
         with pytest.raises(ValidationError, match=missing):
             CollectorConfigOverride(**values)
 
-    def test_roles_anywhere_fields_not_required_in_credentials_mode(self):
-        config = CollectorConfigOverride(**BASE, aws_auth_type=AUTH_TYPE_CREDENTIALS)
+    def test_roles_anywhere_fields_not_required_in_credential_provider_chain_mode(
+        self,
+    ):
+        config = CollectorConfigOverride(
+            **BASE, aws_auth_type=AWSAuthType.CREDENTIAL_PROVIDER_CHAIN
+        )
         assert config.aws_roles_anywhere_trust_anchor_arn == ""
 
     @pytest.mark.parametrize("duration", [899, 43201])
@@ -138,13 +147,15 @@ class TestCollectorInitialisation:
         with patch.object(module.CollectorDaemon, "__init__", fake_daemon_init):
             return module.OpenAEVAWSResources(configuration)
 
-    def test_auth_type_is_normalized_from_configuration(self):
-        collector = self._build({"aws_auth_type": " ROLES_ANYWHERE "})
+    def test_auth_type_is_read_from_configuration(self):
+        collector = self._build({"aws_auth_type": AUTH_TYPE_ROLES_ANYWHERE})
         assert collector.auth_type == AUTH_TYPE_ROLES_ANYWHERE
 
-    def test_auth_type_defaults_to_credentials(self):
+    def test_auth_type_passes_through_missing_configuration_as_none(self):
+        """Normalization and defaulting happen in CollectorConfigOverride; the
+        collector simply reads whatever the configuration provides."""
         collector = self._build({})
-        assert collector.auth_type == AUTH_TYPE_CREDENTIALS
+        assert collector.auth_type is None
 
     def test_credentials_are_read_from_configuration(self):
         collector = self._build(
@@ -178,7 +189,7 @@ def build_collector(configuration):
     collector = object.__new__(OpenAEVAWSResources)
     collector._configuration = configuration
     collector.logger = MagicMock()
-    collector.auth_type = normalize_auth_type(configuration.get("aws_auth_type"))
+    collector.auth_type = configuration.get("aws_auth_type")
     collector.access_key_id = configuration.get("aws_access_key_id")
     collector.secret_access_key = configuration.get("aws_secret_access_key")
     collector.session_token = configuration.get("aws_session_token")
@@ -212,7 +223,7 @@ class TestSessionInitialisation:
     def test_default_credential_chain_is_used_without_keys(self):
         collector = build_collector(
             {
-                "aws_auth_type": AUTH_TYPE_CREDENTIALS,
+                "aws_auth_type": AWSAuthType.CREDENTIAL_PROVIDER_CHAIN,
                 "aws_access_key_id": "",
                 "aws_secret_access_key": "",
                 "aws_session_token": "",
@@ -227,7 +238,7 @@ class TestSessionInitialisation:
     def test_regions_are_discovered_when_not_configured(self):
         collector = build_collector(
             {
-                "aws_auth_type": AUTH_TYPE_CREDENTIALS,
+                "aws_auth_type": AWSAuthType.CREDENTIAL_PROVIDER_CHAIN,
                 "aws_access_key_id": "",
                 "aws_secret_access_key": "",
                 "aws_session_token": "",
@@ -245,7 +256,7 @@ class TestSessionInitialisation:
     def test_configured_regions_skip_discovery(self):
         collector = build_collector(
             {
-                "aws_auth_type": AUTH_TYPE_CREDENTIALS,
+                "aws_auth_type": AWSAuthType.CREDENTIAL_PROVIDER_CHAIN,
                 "aws_access_key_id": "",
                 "aws_secret_access_key": "",
                 "aws_session_token": "",
@@ -426,8 +437,19 @@ class TestDaemonConfigHints:
 
         return ConfigLoader().to_daemon_config()
 
-    def test_credentials_mode_is_exposed_by_default(self, monkeypatch):
-        configuration = self._load(monkeypatch, COLLECTOR_AWS_ACCESS_KEY_ID="AKIA_TEST")
+    def test_credential_provider_chain_mode_is_exposed_by_default(self, monkeypatch):
+        configuration = self._load(monkeypatch)
+        assert configuration.get("aws_auth_type") == (
+            AWSAuthType.CREDENTIAL_PROVIDER_CHAIN
+        )
+
+    def test_credentials_mode_settings_are_exposed(self, monkeypatch):
+        configuration = self._load(
+            monkeypatch,
+            COLLECTOR_AWS_AUTH_TYPE=AUTH_TYPE_CREDENTIALS,
+            COLLECTOR_AWS_ACCESS_KEY_ID="AKIA_TEST",
+            COLLECTOR_AWS_SECRET_ACCESS_KEY="secret",
+        )
         assert configuration.get("aws_auth_type") == AUTH_TYPE_CREDENTIALS
         assert configuration.get("aws_access_key_id") == "AKIA_TEST"
 
@@ -482,5 +504,5 @@ class TestDaemonConfigHints:
         assert signer.region == "eu-west-1"
 
     def test_invalid_auth_type_is_rejected_at_load_time(self, monkeypatch):
-        with pytest.raises(ValidationError, match="aws_auth_type must be one of"):
+        with pytest.raises(ValidationError):
             self._load(monkeypatch, COLLECTOR_AWS_AUTH_TYPE="mtls")
