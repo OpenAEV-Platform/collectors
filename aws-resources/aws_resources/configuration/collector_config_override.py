@@ -75,38 +75,38 @@ class CollectorConfigOverride(ConfigLoaderCollector):
         default="",
         description="Comma-separated list of AWS regions",
     )
-    aws_roles_anywhere_trust_anchor_arn: str = Field(
-        default="",
+    aws_roles_anywhere_trust_anchor_arn: str | None = Field(
+        default=None,
         description="IAM Roles Anywhere trust anchor ARN (required for 'roles_anywhere')",
     )
-    aws_roles_anywhere_profile_arn: str = Field(
-        default="",
+    aws_roles_anywhere_profile_arn: str | None = Field(
+        default=None,
         description="IAM Roles Anywhere profile ARN (required for 'roles_anywhere')",
     )
-    aws_roles_anywhere_role_arn: str = Field(
-        default="",
+    aws_roles_anywhere_role_arn: str | None = Field(
+        default=None,
         description="ARN of the IAM role to assume through IAM Roles Anywhere "
         "(required for 'roles_anywhere')",
     )
-    aws_roles_anywhere_certificate: str = Field(
-        default="",
+    aws_roles_anywhere_certificate: str | None = Field(
+        default=None,
         description="PEM-encoded X.509 client certificate (required for 'roles_anywhere')",
     )
-    aws_roles_anywhere_private_key: str = Field(
-        default="",
+    aws_roles_anywhere_private_key: str | None = Field(
+        default=None,
         description="PEM-encoded private key matching the client certificate "
         "(required for 'roles_anywhere')",
     )
-    aws_roles_anywhere_certificate_chain: str = Field(
-        default="",
+    aws_roles_anywhere_certificate_chain: str | None = Field(
+        default=None,
         description="Optional PEM-encoded intermediate certificate chain",
     )
-    aws_roles_anywhere_private_key_passphrase: str = Field(
-        default="",
+    aws_roles_anywhere_private_key_passphrase: str | None = Field(
+        default=None,
         description="Optional passphrase protecting the private key",
     )
-    aws_roles_anywhere_region: str = Field(
-        default="",
+    aws_roles_anywhere_region: str | None = Field(
+        default=None,
         description="AWS region of the IAM Roles Anywhere endpoint. Derived from the "
         "trust anchor ARN when left empty",
     )
