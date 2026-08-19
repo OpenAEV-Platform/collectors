@@ -103,13 +103,11 @@ class TestAuthTypeValidation:
         with pytest.raises(ValidationError, match=missing):
             CollectorConfigOverride(**values)
 
-    def test_roles_anywhere_fields_not_required_in_credential_provider_chain_mode(
-        self,
-    ):
+    def test_roles_anywhere_fields_default_to_none(self):
         config = CollectorConfigOverride(
             **BASE, aws_auth_type=AWSAuthType.CREDENTIAL_PROVIDER_CHAIN
         )
-        assert config.aws_roles_anywhere_trust_anchor_arn == ""
+        assert config.aws_roles_anywhere_trust_anchor_arn is None
 
     @pytest.mark.parametrize("duration", [899, 43201])
     def test_session_duration_bounds_are_enforced(self, duration, rsa_identity):
