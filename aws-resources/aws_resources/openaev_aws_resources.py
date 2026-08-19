@@ -7,10 +7,7 @@ from aws_resources.auth.roles_anywhere import (
     build_boto3_session,
     normalize_pem,
 )
-from aws_resources.configuration.collector_config_override import (
-    AUTH_TYPE_ROLES_ANYWHERE,
-    normalize_auth_type,
-)
+from aws_resources.configuration.collector_config_override import AWSAuthType
 from aws_resources.configuration.config_loader import ConfigLoader
 from botocore.exceptions import ClientError, NoCredentialsError
 from pyoaev.configuration import Configuration
@@ -29,7 +26,7 @@ class OpenAEVAWSResources(CollectorDaemon):
         )
 
         # AWS settings
-        self.auth_type = normalize_auth_type(self._configuration.get("aws_auth_type"))
+        self.auth_type = self._configuration.get("aws_auth_type")
         self.access_key_id = self._configuration.get("aws_access_key_id")
         self.secret_access_key = self._configuration.get("aws_secret_access_key")
         self.session_token = self._configuration.get("aws_session_token")
@@ -87,11 +84,11 @@ class OpenAEVAWSResources(CollectorDaemon):
     def _init_aws_session(self):
         """Initialize AWS session with credentials."""
         try:
-            if self.auth_type == AUTH_TYPE_ROLES_ANYWHERE:
+            if self.auth_type == AWSAuthType.ROLES_ANYWHERE:
                 # Certificate-anchored pre-auth stage: exchange the X.509 identity
                 # for temporary credentials, then keep using standard SigV4.
                 self.base_session = self._build_roles_anywhere_session()
-            elif self.access_key_id and self.secret_access_key:
+            elif self.auth_type == AWSAuthType.CREDENTIALS:
                 session_args = {
                     "aws_access_key_id": self.access_key_id,
                     "aws_secret_access_key": self.secret_access_key,
@@ -100,7 +97,9 @@ class OpenAEVAWSResources(CollectorDaemon):
                     session_args["aws_session_token"] = self.session_token
                 self.base_session = boto3.Session(**session_args)
             else:
-                # Use instance role or default credentials
+                # AWSAuthType.CREDENTIAL_PROVIDER_CHAIN: delegate to boto3's
+                # default credential chain (environment, shared config, EC2/ECS
+                # instance role, ...).
                 self.base_session = boto3.Session()
 
             # If assume role is configured, assume the role
