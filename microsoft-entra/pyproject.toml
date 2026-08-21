@@ -25,6 +25,9 @@ markers = "extra == 'dev' and extra != 'prod'"
 path = "../../client-python"
 develop = true
 
+[tool.poetry.group.dev.dependencies]
+pytest = "^9.0.0"
+
 [tool.poetry.extras]
 prod = [
     "pyoaev",

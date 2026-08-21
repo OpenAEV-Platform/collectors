@@ -4,7 +4,7 @@ import sys
 import types
 from datetime import datetime, timezone
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 
 def _install_dependency_stubs() -> None:
@@ -167,6 +167,69 @@ def test_process_alerts_updates_detection_and_creates_trace():
     request_body = post_mock.await_args.kwargs["body"]
     assert request_body.query == TH_API_QUERY
     assert request_body.timespan
+
+
+def test_process_message_runs_process_alerts_via_asyncio_run():
+    """_process_message must build the graph client and drive
+    _process_alerts through asyncio.run (not the deprecated
+    get_event_loop()/run_until_complete() pattern), so it works
+    correctly even when no event loop already exists on the thread."""
+    collector = OpenAEVMicrosoftDefender.__new__(OpenAEVMicrosoftDefender)
+    collector.logger = MagicMock()
+    collector.scopes = ["https://graph.microsoft.com/.default"]
+    collector._configuration = MagicMock()
+    collector._configuration.get.side_effect = lambda key: f"value-{key}"
+    collector._process_alerts = AsyncMock()
+
+    with patch(
+        "microsoft_defender.openaev_microsoft_defender.ClientSecretCredential"
+    ) as mock_credential, patch(
+        "microsoft_defender.openaev_microsoft_defender.GraphServiceClient"
+    ) as mock_graph_client, patch(
+        "microsoft_defender.openaev_microsoft_defender.asyncio.run"
+    ) as mock_asyncio_run:
+        graph_client_instance = MagicMock()
+        mock_graph_client.return_value = graph_client_instance
+
+        collector._process_message()
+
+        mock_credential.assert_called_once_with(
+            tenant_id="value-microsoft_defender_tenant_id",
+            client_id="value-microsoft_defender_client_id",
+            client_secret="value-microsoft_defender_client_secret",
+        )
+        mock_graph_client.assert_called_once_with(
+            mock_credential.return_value, scopes=collector.scopes
+        )
+        mock_asyncio_run.assert_called_once()
+        collector._process_alerts.assert_called_once_with(graph_client_instance)
+
+
+def test_process_message_asyncio_run_works_without_existing_event_loop():
+    """Regression test for the Python 3.14 incompatibility: asyncio.run()
+    must be able to execute _process_alerts even when the current thread
+    has no running/current event loop (unlike the old get_event_loop()
+    pattern, which raised RuntimeError in that situation)."""
+    collector = OpenAEVMicrosoftDefender.__new__(OpenAEVMicrosoftDefender)
+    collector.logger = MagicMock()
+    collector.scopes = ["https://graph.microsoft.com/.default"]
+    collector._configuration = MagicMock()
+    collector._configuration.get.return_value = "value"
+    collector._process_alerts = AsyncMock()
+
+    with patch(
+        "microsoft_defender.openaev_microsoft_defender.ClientSecretCredential"
+    ), patch("microsoft_defender.openaev_microsoft_defender.GraphServiceClient"):
+        # Ensure there is no current event loop set on this thread, mirroring
+        # the daemon runtime environment where the bug was originally caught.
+        try:
+            asyncio.set_event_loop(None)
+        except RuntimeError:
+            pass
+
+        collector._process_message()
+
+    collector._process_alerts.assert_awaited_once()
 
 
 def test_match_alert_returns_false_when_signatures_are_null():
