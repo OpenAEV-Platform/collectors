@@ -103,7 +103,7 @@ class CollectorConfigOverride(ConfigLoaderCollector):
 
     microsoft_azure_client_secret: SecretStr | None = Field(
         default=None,
-        description="Azure AD application client secret for Microsoft Sentinel. "
+        description="Azure AD application client secret for Microsoft Azure. "
         "Required unless microsoft_azure_use_certificate_auth is enabled.",
     )
 
@@ -126,10 +126,10 @@ class CollectorConfigOverride(ConfigLoaderCollector):
     )
 
     microsoft_azure_subscription_id: str = Field(
-        description="Azure subscription ID containing the Sentinel workspace.",
+        description="Azure subscription ID containing the virtual machines to collect.",
     )
     microsoft_azure_resource_groups: str = Field(
-        description="Azure resource group containing the Sentinel workspace.",
+        description="Comma-separated Azure resource groups containing the virtual machines to collect.",
     )
 
     @field_validator("microsoft_azure_client_cert_data", mode="before")
