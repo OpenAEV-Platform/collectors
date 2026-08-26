@@ -21,7 +21,19 @@ class OpenAEVMicrosoftIntune(CollectorDaemon):
         # Intune settings
         self.tenant_id = self._configuration.get("microsoft_intune_tenant_id")
         self.client_id = self._configuration.get("microsoft_intune_client_id")
+        self.use_certificate_auth = bool(
+            self._configuration.get("microsoft_intune_use_certificate_auth")
+        )
         self.client_secret = self._configuration.get("microsoft_intune_client_secret")
+        self.client_cert_data = self._configuration.get(
+            "microsoft_intune_client_cert_data"
+        )
+        self.client_cert_thumbprint = self._configuration.get(
+            "microsoft_intune_client_cert_thumbprint"
+        )
+        self.client_cert_passphrase = self._configuration.get(
+            "microsoft_intune_client_cert_passphrase"
+        )
         self.device_filter = self._configuration.get("microsoft_intune_device_filter")
         self.device_groups = self._configuration.get("microsoft_intune_device_groups")
 
@@ -42,10 +54,20 @@ class OpenAEVMicrosoftIntune(CollectorDaemon):
         try:
             import msal
 
+            if self.use_certificate_auth:
+                client_credential = {
+                    "private_key": self.client_cert_data,
+                    "thumbprint": self.client_cert_thumbprint,
+                }
+                if self.client_cert_passphrase:
+                    client_credential["passphrase"] = self.client_cert_passphrase
+            else:
+                client_credential = self.client_secret
+
             app = msal.ConfidentialClientApplication(
                 self.client_id,
                 authority=self.authority,
-                client_credential=self.client_secret,
+                client_credential=client_credential,
             )
 
             result = app.acquire_token_silent(
