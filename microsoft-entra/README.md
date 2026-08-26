@@ -69,7 +69,11 @@ The collector is configured either through environment variables (recommended, r
 |---------------------|----------------------------------------|------------------------------------------|---------|-----------|-----------------------------------------------------------------------------------------|
 | Entra Tenant ID     | `collector.microsoft_entra_tenant_id`     | `COLLECTOR_MICROSOFT_ENTRA_TENANT_ID`     | /       | Yes       | The Microsoft Entra ID (Azure AD) tenant ID used for authentication.                     |
 | Entra Client ID     | `collector.microsoft_entra_client_id`     | `COLLECTOR_MICROSOFT_ENTRA_CLIENT_ID`     | /       | Yes       | The application (client) ID of the Entra ID app registration.                             |
-| Entra Client Secret | `collector.microsoft_entra_client_secret` | `COLLECTOR_MICROSOFT_ENTRA_CLIENT_SECRET` | /       | Yes       | The client secret of the Entra ID app registration.                                      |
+| Use Certificate Auth | `collector.microsoft_entra_use_certificate_auth` | `COLLECTOR_MICROSOFT_ENTRA_USE_CERTIFICATE_AUTH` | false   | No        | When `true`, authenticate with an Entra app certificate instead of a client secret.      |
+| Entra Client Secret | `collector.microsoft_entra_client_secret` | `COLLECTOR_MICROSOFT_ENTRA_CLIENT_SECRET` | /       | Only when `use_certificate_auth=false` | The client secret of the Entra ID app registration. |
+| Entra Client Certificate Private Key | `collector.microsoft_entra_client_cert_data` | `COLLECTOR_MICROSOFT_ENTRA_CLIENT_CERT_DATA` | / | Only when `use_certificate_auth=true` | PEM-encoded private key for the certificate credential. |
+| Entra Client Certificate Thumbprint | `collector.microsoft_entra_client_cert_thumbprint` | `COLLECTOR_MICROSOFT_ENTRA_CLIENT_CERT_THUMBPRINT` | / | Only when `use_certificate_auth=true` | SHA-1 thumbprint of the uploaded Entra app certificate. |
+| Entra Client Certificate Passphrase | `collector.microsoft_entra_client_cert_passphrase` | `COLLECTOR_MICROSOFT_ENTRA_CLIENT_CERT_PASSPHRASE` | / | No | Passphrase for encrypted private keys. |
 | Include External    | `collector.include_external`              | `COLLECTOR_INCLUDE_EXTERNAL`              | false   | No        | Whether guest users (those with `#EXT#` in their user principal name) are imported.       |
 
 ## Deployment
@@ -133,8 +137,9 @@ flowchart LR
 
 On each run, the collector:
 
-1. Authenticates to Microsoft Entra ID with the application client credentials (`ClientSecretCredential`) and builds a
-   Microsoft Graph client scoped to `https://graph.microsoft.com/.default`.
+1. Authenticates to Microsoft Entra ID and builds a Microsoft Graph client scoped to `https://graph.microsoft.com/.default`:
+   - `ClientSecretCredential` when `microsoft_entra_use_certificate_auth=false`
+   - `CertificateCredential` when `microsoft_entra_use_certificate_auth=true`
 2. Lists all groups (`/groups`, paginated) and upserts each as an OpenAEV team.
 3. For each group, lists its members (`/groups/{id}/members`, paginated) and keeps only user objects
    (`#microsoft.graph.user`) that have a mail address.
@@ -148,8 +153,9 @@ The synchronization is incremental from the platform's point of view: teams and 
 
 ## Required permissions and API endpoints
 
-- Authentication: Microsoft Entra ID application (client credentials) - tenant ID, application (client) ID and client
-  secret.
+- Authentication: Microsoft Entra ID application (client credentials):
+  - Secret mode: tenant ID, application (client) ID and client secret
+  - Certificate mode: tenant ID, application (client) ID, certificate private key (PEM), and certificate thumbprint
 - Required Microsoft Graph application permission (admin consent required): `Directory.Read.All`, which allows reading
   groups, group members and user profiles.
 - API endpoints used:
@@ -162,7 +168,9 @@ The synchronization is incremental from the platform's point of view: teams and 
 
 Set `COLLECTOR_LOG_LEVEL=debug` to get verbose logs, including each team and player upsert. Common issues:
 
-- Authentication failures: confirm the tenant ID, client ID and client secret, and that the secret has not expired.
+- Authentication failures:
+  - Secret mode: confirm tenant ID/client ID/client secret and that the secret has not expired.
+  - Certificate mode: confirm tenant ID/client ID/private key/thumbprint, and that the matching certificate public key is registered on the Entra app.
 - No players imported: confirm that admin consent was granted for `Directory.Read.All`, and remember that only members
   of a group are imported. Guest users are skipped unless `include_external` is set to `true`.
 
