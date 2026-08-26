@@ -35,15 +35,6 @@ class ConfigLoader(SettingsLoader):
                 "google_workspace_customer_id": {
                     "data": self.collector.google_workspace_customer_id
                 },
-                "google_workspace_auth_type": {
-                    "data": self.collector.google_workspace_auth_type
-                },
-                "google_workspace_client_certificate": {
-                    "data": self.collector.google_workspace_client_certificate
-                },
-                "google_workspace_client_private_key": {
-                    "data": self.collector.google_workspace_client_private_key
-                },
                 "include_suspended": {"data": self.collector.include_suspended},
                 "sync_all_users": {"data": self.collector.sync_all_users},
             },
