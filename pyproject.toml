@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "collectors"
 version = "3.260827.0"
-description = "A collection of Collectors for interfacing with security software"
+description = "A collection of Collectors for interfacing with security software."
 authors = [
     "Filigran <contact@filigran.io>",
 ]
