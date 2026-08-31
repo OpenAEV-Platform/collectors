@@ -132,8 +132,8 @@ class SplunkESResponse(BaseModel):
                 rule_name=raw_result.get("rule_name"),
                 event_type=raw_result.get("event_type"),
                 severity=raw_result.get("severity"),
-                _raw=raw_result,
             )
+            alert._raw = raw_result
             alerts.append(alert)
 
         return cls(results=alerts)
