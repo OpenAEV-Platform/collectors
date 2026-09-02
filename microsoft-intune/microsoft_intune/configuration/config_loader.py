@@ -32,8 +32,36 @@ class ConfigLoader(SettingsLoader):
                 "microsoft_intune_client_id": {
                     "data": self.collector.microsoft_intune_client_id
                 },
+                "microsoft_intune_use_certificate_auth": {
+                    "data": self.collector.microsoft_intune_use_certificate_auth
+                },
                 "microsoft_intune_client_secret": {
-                    "data": self.collector.microsoft_intune_client_secret.get_secret_value()
+                    "data": (
+                        self.collector.microsoft_intune_client_secret.get_secret_value()
+                        if self.collector.microsoft_intune_client_secret
+                        else None
+                    )
+                },
+                "microsoft_intune_client_cert_data": {
+                    "data": (
+                        self.collector.microsoft_intune_client_cert_data.get_secret_value()
+                        if self.collector.microsoft_intune_client_cert_data
+                        else None
+                    )
+                },
+                "microsoft_intune_client_cert_thumbprint": {
+                    "data": (
+                        self.collector.microsoft_intune_client_cert_thumbprint.get_secret_value()
+                        if self.collector.microsoft_intune_client_cert_thumbprint
+                        else None
+                    )
+                },
+                "microsoft_intune_client_cert_passphrase": {
+                    "data": (
+                        self.collector.microsoft_intune_client_cert_passphrase.get_secret_value()
+                        if self.collector.microsoft_intune_client_cert_passphrase
+                        else None
+                    )
                 },
                 "microsoft_intune_device_filter": {
                     "data": self.collector.microsoft_intune_device_filter

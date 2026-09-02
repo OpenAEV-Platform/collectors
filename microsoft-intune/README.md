@@ -71,7 +71,11 @@ The collector is configured either through environment variables (recommended, r
 |----------------------|-----------------------------------------|-------------------------------------------|---------|-----------|--------------------------------------------------------------------------------------------------------------------|
 | Intune Tenant ID     | `collector.microsoft_intune_tenant_id`     | `COLLECTOR_MICROSOFT_INTUNE_TENANT_ID`     | /       | Yes       | The Microsoft Entra ID (Azure AD) tenant ID used for authentication.                                                |
 | Intune Client ID     | `collector.microsoft_intune_client_id`     | `COLLECTOR_MICROSOFT_INTUNE_CLIENT_ID`     | /       | Yes       | The application (client) ID of the Entra ID app registration.                                                        |
-| Intune Client Secret | `collector.microsoft_intune_client_secret` | `COLLECTOR_MICROSOFT_INTUNE_CLIENT_SECRET` | /       | Yes       | The client secret of the Entra ID app registration.                                                                 |
+| Use Certificate Auth | `collector.microsoft_intune_use_certificate_auth` | `COLLECTOR_MICROSOFT_INTUNE_USE_CERTIFICATE_AUTH` | false | No | When `true`, authenticate with an Entra app certificate instead of a client secret. |
+| Intune Client Secret | `collector.microsoft_intune_client_secret` | `COLLECTOR_MICROSOFT_INTUNE_CLIENT_SECRET` | /       | Only when `use_certificate_auth=false` | The client secret of the Entra ID app registration. |
+| Intune Client Certificate Private Key | `collector.microsoft_intune_client_cert_data` | `COLLECTOR_MICROSOFT_INTUNE_CLIENT_CERT_DATA` | / | Only when `use_certificate_auth=true` | PEM-encoded private key for the certificate credential. |
+| Intune Client Certificate Thumbprint | `collector.microsoft_intune_client_cert_thumbprint` | `COLLECTOR_MICROSOFT_INTUNE_CLIENT_CERT_THUMBPRINT` | / | Only when `use_certificate_auth=true` | SHA-1 thumbprint of the uploaded Entra app certificate. |
+| Intune Client Certificate Passphrase | `collector.microsoft_intune_client_cert_passphrase` | `COLLECTOR_MICROSOFT_INTUNE_CLIENT_CERT_PASSPHRASE` | / | No | Passphrase for encrypted private keys. |
 | Intune Device Filter | `collector.microsoft_intune_device_filter` | `COLLECTOR_MICROSOFT_INTUNE_DEVICE_FILTER` | /       | No        | Optional OData `$filter` applied to managed devices, e.g. `operatingSystem eq 'Windows'`. Leave empty for all devices. |
 | Intune Device Groups | `collector.microsoft_intune_device_groups` | `COLLECTOR_MICROSOFT_INTUNE_DEVICE_GROUPS` | /       | No        | Optional comma-separated list of device group names or IDs to restrict the import. Leave empty for all devices.      |
 
@@ -131,8 +135,10 @@ flowchart LR
 
 On each run, the collector:
 
-1. Acquires an access token from Microsoft Entra ID using the application client credentials (MSAL), scoped to Microsoft
-   Graph (`https://graph.microsoft.com/.default`).
+1. Acquires an access token from Microsoft Entra ID using application client credentials (MSAL), scoped to Microsoft
+   Graph (`https://graph.microsoft.com/.default`):
+   - secret mode (`microsoft_intune_use_certificate_auth=false`)
+   - certificate mode (`microsoft_intune_use_certificate_auth=true`)
 2. When `microsoft_intune_device_groups` is set, resolves those groups (by display name or ID) through
    `/groups`, reads their device members through `/groups/{id}/members`, and keeps only devices in those groups.
 3. Lists managed devices through `/deviceManagement/managedDevices` (paginated), applying the optional
@@ -150,8 +156,9 @@ device seen in a previous run is refreshed rather than duplicated.
 
 ## Required permissions and API endpoints
 
-- Authentication: Microsoft Entra ID application (client credentials) - tenant ID, application (client) ID and client
-  secret.
+- Authentication: Microsoft Entra ID application (client credentials):
+  - Secret mode: tenant ID, application (client) ID and client secret
+  - Certificate mode: tenant ID, application (client) ID, certificate private key (PEM), and certificate thumbprint
 - Required Microsoft Graph application permissions (admin consent required):
   - `DeviceManagementManagedDevices.Read.All` - read the Intune managed devices (always required).
   - When device-group filtering is used (`microsoft_intune_device_groups`), the application additionally needs to read
@@ -169,7 +176,9 @@ device seen in a previous run is refreshed rather than duplicated.
 Set `COLLECTOR_LOG_LEVEL=debug` to get verbose logs, including the authentication result, the number of devices found,
 and each endpoint upsert. Common issues:
 
-- Authentication failures: confirm the tenant ID, client ID and client secret, and that the secret has not expired.
+- Authentication failures:
+  - Secret mode: confirm tenant ID/client ID/client secret and that the secret has not expired.
+  - Certificate mode: confirm tenant ID/client ID/private key/thumbprint, and that the matching certificate public key is registered on the Entra app.
 - No devices imported: confirm that admin consent was granted for `DeviceManagementManagedDevices.Read.All`, that the
   optional `microsoft_intune_device_filter` is a valid OData filter, and that any `microsoft_intune_device_groups`
   values match existing group names or IDs.

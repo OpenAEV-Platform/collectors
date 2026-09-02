@@ -11,6 +11,12 @@ collector:
   log_level: 'error'
   microsoft_intune_tenant_id: ''
   microsoft_intune_client_id: ''
-  microsoft_intune_client_secret: ''
+  microsoft_intune_use_certificate_auth: false
+  microsoft_intune_client_secret: ''  # required unless microsoft_intune_use_certificate_auth is true
+  # required when microsoft_intune_use_certificate_auth is true
+  # microsoft_intune_client_cert_data: "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"
+  # microsoft_intune_client_cert_thumbprint: "AB12CD34EF56AB12CD34EF56AB12CD34EF56AB12"
+  # optional, when the private key is encrypted
+  # microsoft_intune_client_cert_passphrase: ''
   microsoft_intune_device_filter: ''  # Optional OData filter e.g. "operatingSystem eq 'Windows'" or leave empty for all devices
   microsoft_intune_device_groups: ''  # Comma-separated list of device group names or IDs, leave empty for all devices
