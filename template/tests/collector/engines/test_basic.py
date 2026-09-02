@@ -390,9 +390,14 @@ class TestBasicCollectorEngine(unittest.TestCase):
             source.signatures, expectation3
         )
 
-        source_handler.match_signature_groups_and_oaevdata.assert_any_call(
-            source_handler.get_expectation_signature_groups.return_value,
+        source_handler.get_alert_data_from_oaev_data.assert_called_with(
+            source.signatures,
             source_handler.serialize_as_oaevdata.return_value,
+        )
+
+        source_handler.match_signature_groups_and_alert_data.assert_any_call(
+            source_handler.get_expectation_signature_groups.return_value,
+            source_handler.get_alert_data_from_oaev_data.return_value,
             collector_engine.oaev_detection_helper,
         )
         source_handler.serialize_as_tracedata.assert_called_with(data_element)
