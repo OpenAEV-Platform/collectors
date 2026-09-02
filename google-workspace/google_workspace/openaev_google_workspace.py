@@ -41,7 +41,6 @@ class OpenAEVGoogleWorkspace(CollectorDaemon):
 
     def _get_service(self) -> Any:
         """Initialize and return Google Admin SDK service."""
-        # Parse service account JSON from environment or file
         service_account_json_str = self._configuration.get(
             "google_workspace_service_account_json"
         )
@@ -341,7 +340,11 @@ if __name__ == "__main__":
         "GOOGLE_WORKSPACE_SERVICE_ACCOUNT_JSON",
         "GOOGLE_WORKSPACE_DELEGATED_ADMIN_EMAIL",
         "GOOGLE_WORKSPACE_CUSTOMER_ID",
+        "GOOGLE_WORKSPACE_AUTH_TYPE",
+        "GOOGLE_WORKSPACE_CLIENT_CERTIFICATE",
+        "GOOGLE_WORKSPACE_CLIENT_PRIVATE_KEY",
         "INCLUDE_SUSPENDED",
+        "SYNC_ALL_USERS",
     ]:
         if not os.environ.get(f"COLLECTOR_{key}") and os.environ.get(key):
             os.environ[f"COLLECTOR_{key}"] = os.environ.get(key)

@@ -27,11 +27,14 @@ class CollectorConfigOverride(ConfigLoaderCollector):
         description="Email of the admin user for domain-wide delegation",
     )
     google_workspace_customer_id: str = Field(
+        default="my_customer",
         description="Google Workspace customer ID or 'my_customer' for your own domain",
     )
     include_suspended: bool = Field(
+        default=False,
         description="Whether to include suspended users in synchronization",
     )
     sync_all_users: bool = Field(
+        default=False,
         description="If true, sync all users; if false, only sync users who are group members",
     )
