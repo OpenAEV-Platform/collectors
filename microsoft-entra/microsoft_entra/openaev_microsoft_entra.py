@@ -230,8 +230,7 @@ class OpenAEVMicrosoftEntra(CollectorDaemon):
         graph_client = GraphServiceClient(credential, scopes)  # type: ignore
 
         # Execute
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(self.create_groups(graph_client))
+        asyncio.run(self.create_groups(graph_client))
 
 
 if __name__ == "__main__":
