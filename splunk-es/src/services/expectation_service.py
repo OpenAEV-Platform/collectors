@@ -32,6 +32,8 @@ from .exception import (
     SplunkESServiceError,
     SplunkESValidationError,
 )
+from .models import SplunkESAlert
+from .utils.regex_engine import RegexSignatureEngine, Signature
 
 LOG_PREFIX = "[SplunkESExpectationService]"
 
@@ -73,6 +75,10 @@ class SplunkESExpectationService:
             )
             self.client_api = SplunkESClientAPI(config)
             self.converter = Converter()
+            self._regex_engine = RegexSignatureEngine()
+            self.logger.debug(
+                f"{LOG_PREFIX} Raw-text regex signature engine initialized for alert matching"
+            )
             self.logger.info(
                 f"{LOG_PREFIX} Splunk ES expectation service initialized successfully"
             )
@@ -309,9 +315,16 @@ class SplunkESExpectationService:
     ) -> dict[str, Any]:
         """Core logic for handling expectations.
 
+        Fetches raw Splunk ES alerts for the expectation's search signatures,
+        then matches the fetched alerts against the remaining expectation
+        signatures by searching each alert's raw event text
+        (``_raw``) with the raw-text regex signature engine.
+
         Args:
             expectation: The expectation to process.
-            detection_helper: OpenAEV detection helper instance.
+            detection_helper: OpenAEV detection helper instance (retained for
+                protocol compatibility; matching is delegated to the
+                raw-text regex engine and does not gate on this helper).
             expectation_type: Type of expectation ('detection').
 
         Returns:
@@ -347,18 +360,10 @@ class SplunkESExpectationService:
             )
 
             self.logger.debug(
-                f"{LOG_PREFIX} Converting Splunk ES data to OAEV format..."
-            )
-            oaev_data = self.converter.convert_data_to_oaev_data(splunk_es_data)
-            self.logger.debug(
-                f"{LOG_PREFIX} Converted to {len(oaev_data)} OAEV data items"
-            )
-
-            self.logger.debug(
-                f"{LOG_PREFIX} Matching data against expectation signatures..."
+                f"{LOG_PREFIX} Matching fetched alerts against expectation signatures via raw-text regex engine..."
             )
             result = self._match(
-                oaev_data, matching_signatures, detection_helper, expectation_type
+                splunk_es_data, matching_signatures, detection_helper, expectation_type
             )
 
             return result
@@ -432,21 +437,33 @@ class SplunkESExpectationService:
 
     def _match(
         self,
-        oaev_data: list[dict[str, Any]],
+        splunk_es_data: list[SplunkESAlert],
         matching_signatures: list[dict[str, str]],
         detection_helper: OpenAEVDetectionHelper,
         expectation_type: str,
     ) -> dict[str, Any]:
-        """Match OAEV data against expectation signatures.
+        """Match fetched Splunk ES alerts against expectation signatures.
+
+        Matching is delegated to the raw-text regex signature engine: each
+        alert's raw event text is searched for the literal values of the
+        matching signatures. The raw text is the alert's ``_raw`` field when
+        it holds a non-empty string, otherwise a flattened ``key=value``
+        representation of the whole raw row, so matching does not depend on
+        any particular structured field names.
 
         Args:
-            oaev_data: List of OAEV formatted data.
-            matching_signatures: Signatures to match against.
-            detection_helper: OpenAEV detection helper.
+            splunk_es_data: List of fetched Splunk ES alerts.
+            matching_signatures: Signatures to match against (date metadata
+                excluded upstream).
+            detection_helper: OpenAEV detection helper, retained in the
+                signature for protocol compatibility; it no longer gates
+                matching.
             expectation_type: Type of expectation ('detection').
 
         Returns:
-            Result dictionary with match status and matching data.
+            Result dictionary with match status and matching data (the
+            matched alert's converted data, or its raw row when conversion
+            yields nothing).
 
         Raises:
             SplunkESNoAlertsFoundError: If no data available for matching.
@@ -455,73 +472,52 @@ class SplunkESExpectationService:
 
         """
         try:
-            if not oaev_data:
-                self.logger.debug(f"{LOG_PREFIX} No OAEV data available for matching")
+            if not splunk_es_data:
+                self.logger.debug(f"{LOG_PREFIX} No alerts available for matching")
                 raise SplunkESNoAlertsFoundError("No data available for matching")
 
             self.logger.debug(
-                f"{LOG_PREFIX} Attempting to match {len(oaev_data)} data items against {len(matching_signatures)} signatures"
+                f"{LOG_PREFIX} Matching is delegated to the raw-text regex engine: "
+                f"{len(splunk_es_data)} alerts against {len(matching_signatures)} signatures "
+                f"(detection_helper retained for protocol compatibility, not used to gate)"
             )
 
-            for i, data_item in enumerate(oaev_data):
-                self.logger.debug(f"{i} data_item: {data_item}")
+            engine_signatures = [
+                Signature(type=sig["type"], value=sig["value"])
+                for sig in matching_signatures
+            ]
+
+            for i, alert in enumerate(splunk_es_data):
                 self.logger.debug(
-                    f"{LOG_PREFIX} Matching data item {i + 1}/{len(oaev_data)}"
+                    f"{LOG_PREFIX} Matching alert {i + 1}/{len(splunk_es_data)}"
                 )
 
-                available_signatures = [
-                    sig for sig in matching_signatures if sig["type"] in data_item
-                ]
+                raw_text = self._regex_engine.raw_text_from(alert._raw)
 
-                self.logger.debug(
-                    f"{LOG_PREFIX} Data item {i + 1} has {len(available_signatures)} available signatures out of {len(matching_signatures)} total signatures"
-                )
+                if raw_text and self._regex_engine.matches(raw_text, engine_signatures):
+                    self.logger.debug(f"{LOG_PREFIX} Match found for alert {i + 1}!")
 
-                if available_signatures:
-                    try:
-                        self.logger.debug(
-                            f"{LOG_PREFIX} Testing match for data item {i + 1} with {len(available_signatures)} signatures"
-                        )
-
-                        # Use detection_helper with filtered signatures per type
-                        if self._match_with_detection_helper(
-                            available_signatures, data_item, detection_helper
-                        ):
-                            self.logger.debug(
-                                f"{LOG_PREFIX} Match found for data item {i + 1}!"
-                            )
-
-                            self.logger.info(
-                                f"{LOG_PREFIX} Successful match found for {expectation_type} expectation"
-                            )
-                            self.logger.debug(
-                                f"{LOG_PREFIX} Matching data: {data_item}"
-                            )
-
-                            result = {
-                                "is_valid": True,
-                                "matching_data": [data_item],
-                                "total_data_found": len(oaev_data),
-                            }
-
-                            return result
-                        else:
-                            self.logger.debug(
-                                f"{LOG_PREFIX} No match for data item {i + 1}"
-                            )
-                            continue
-                    except Exception as e:
-                        self.logger.error(
-                            f"{LOG_PREFIX} Error during matching for data item {i + 1}: {e}"
-                        )
-                        raise SplunkESNoMatchingAlertsError() from e
-                else:
-                    self.logger.debug(
-                        f"{LOG_PREFIX} Data item {i + 1} has no available signatures to match against"
+                    self.logger.info(
+                        f"{LOG_PREFIX} Successful match found for {expectation_type} expectation"
                     )
 
+                    matched_item = self.converter._alert_data(alert)
+                    if not matched_item:
+                        matched_item = alert._raw or {}
+                    self.logger.debug(f"{LOG_PREFIX} Matching data: {matched_item}")
+
+                    result = {
+                        "is_valid": True,
+                        "matching_data": [matched_item],
+                        "total_data_found": len(splunk_es_data),
+                    }
+
+                    return result
+
+                self.logger.debug(f"{LOG_PREFIX} No match for alert {i + 1}")
+
             self.logger.info(
-                f"{LOG_PREFIX} No matching alerts found after checking {len(oaev_data)} data items"
+                f"{LOG_PREFIX} No matching alerts found after checking {len(splunk_es_data)} alerts"
             )
             raise SplunkESNoMatchingAlertsError()
 

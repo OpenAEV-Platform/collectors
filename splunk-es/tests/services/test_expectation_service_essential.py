@@ -12,9 +12,9 @@ from src.services.exception import (
     SplunkESValidationError,
 )
 from src.services.expectation_service import SplunkESExpectationService
+from src.services.models import SplunkESResponse
 from tests.services.fixtures.factories import (
     MockObjectsFactory,
-    TestDataFactory,
     create_test_config,
 )
 
@@ -145,19 +145,30 @@ class TestSplunkESExpectationServiceEssential:
         )
 
     def test_match_success(self):
-        """Test successful matching for detection expectation.
+        """Test successful matching for a detection expectation.
 
-        Verifies that the matching logic correctly identifies when OAEV data
-        matches expectation signatures and returns appropriate result data.
+        Verifies that the matching logic identifies a fetched alert whose raw
+        event text contains expectation signature values and returns that
+        alert's converted data as matching data.
         """
         config = create_test_config()
         service = SplunkESExpectationService(config=config)
 
-        oaev_data = TestDataFactory.create_oaev_detection_data()
+        raw_row = {
+            "_time": "2024-01-01T12:30:00Z",
+            "src_ip": "192.168.1.100",
+            "dst_ip": "10.0.0.50",
+            "_raw": (
+                "2024-01-01T12:30:00Z notable event src=192.168.1.100 "
+                "dst=10.0.0.50 process=test_process.exe"
+            ),
+        }
+        alerts = SplunkESResponse.from_raw_response({"results": [raw_row]}).results
+
         matching_signatures = [
             {
                 "type": "source_ipv4_address",
-                "value": oaev_data[0]["source_ipv4_address"]["data"],
+                "value": "192.168.1.100",
             },
             {
                 "type": "parent_process_name",
@@ -170,16 +181,19 @@ class TestSplunkESExpectationServiceEssential:
         )
 
         result = service._match(
-            oaev_data, matching_signatures, mock_detection_helper, "detection"
+            alerts, matching_signatures, mock_detection_helper, "detection"
         )
 
         assert result["is_valid"] is True  # noqa: S101
-        assert result["matching_data"] == [oaev_data[0]]  # noqa: S101
+        assert result["matching_data"] == [
+            service.converter._alert_data(alerts[0])
+        ]  # noqa: S101
+        assert result["total_data_found"] == 1  # noqa: S101
 
     def test_match_no_data_raises_exception(self):
         """Test matching with no data raises NoAlertsFound exception.
 
-        Verifies that attempting to match against empty data properly
+        Verifies that attempting to match against an empty alert list properly
         raises SplunkESNoAlertsFoundError.
         """
         config = create_test_config()
@@ -193,13 +207,20 @@ class TestSplunkESExpectationServiceEssential:
     def test_match_no_matching_alerts_raises_exception(self):
         """Test matching that finds no matches raises NoMatchingAlerts exception.
 
-        Verifies that when data is available but no matches are found,
-        the service raises SplunkESNoMatchingAlertsError.
+        Verifies that when alerts are available but none of their raw event
+        text contains the signature values, the service raises
+        SplunkESNoMatchingAlertsError.
         """
         config = create_test_config()
         service = SplunkESExpectationService(config=config)
 
-        oaev_data = TestDataFactory.create_oaev_detection_data()
+        raw_row = {
+            "_time": "2024-01-01T12:30:00Z",
+            "src_ip": "10.9.8.7",
+            "_raw": "2024-01-01T12:30:00Z unrelated benign event",
+        }
+        alerts = SplunkESResponse.from_raw_response({"results": [raw_row]}).results
+
         matching_signatures = [
             {"type": "source_ipv4_address", "value": "192.168.99.99"}  # Different IP
         ]
@@ -210,8 +231,104 @@ class TestSplunkESExpectationServiceEssential:
 
         with pytest.raises(SplunkESNoMatchingAlertsError):
             service._match(
-                oaev_data, matching_signatures, mock_detection_helper, "detection"
+                alerts, matching_signatures, mock_detection_helper, "detection"
             )
+
+    def test_match_email_signatures_against_raw(self):
+        """Test matching email-injector signatures against a raw event line.
+
+        Verifies that when a detection expectation carries only the five email
+        injector signature types (no IP or date signatures), matching still
+        works: the fetched alert's _raw event text is searched for the
+        signature values, and the matching alert is returned even though the
+        old structured-field matching path could never handle these types.
+        """
+        config = create_test_config()
+        service = SplunkESExpectationService(config=config)
+
+        email_signatures = {
+            "source_email": "attacker@evil.example",
+            "target_email": "victim@corp.example",
+            "url_hash": "d41d8cd98f00b204e9800998ecf8427e",
+            "file_hash": "deadbeefcafe",
+            "email_custom_header": "X-OpenAEV-Trace: 42",
+        }
+        mock_expectation = Mock()
+        mock_expectation.inject_expectation_id = "email-injector-1"
+        mock_expectation.inject_expectation_signatures = [
+            Mock(**{"type.value": sig_type, "value": value})
+            for sig_type, value in email_signatures.items()
+        ]
+
+        search_signatures, matching_signatures = service._extract_signatures(
+            mock_expectation
+        )
+
+        # No date signatures present, so nothing is filtered out.
+        assert len(search_signatures) == 5  # noqa: S101
+        assert len(matching_signatures) == 5  # noqa: S101
+
+        raw_row = {
+            "_time": "2024-01-01T12:30:00Z",
+            "_raw": (
+                "2024-01-01T12:30:00Z mail from attacker@evil.example to "
+                "victim@corp.example attachment deadbeefcafe url "
+                "d41d8cd98f00b204e9800998ecf8427e X-OpenAEV-Trace: 42"
+            ),
+        }
+        alerts = SplunkESResponse.from_raw_response({"results": [raw_row]}).results
+
+        mock_detection_helper = MockObjectsFactory.create_mock_detection_helper(
+            match_result=True
+        )
+
+        result = service._match(
+            alerts, matching_signatures, mock_detection_helper, "detection"
+        )
+
+        assert result["is_valid"] is True  # noqa: S101
+        assert len(result["matching_data"]) == 1  # noqa: S101
+        assert result["matching_data"][0] == (
+            service.converter._alert_data(alerts[0]) or alerts[0]._raw
+        )
+
+    def test_match_ignores_structured_field_requirements(self):
+        """Test matching works on the full raw row, not structured keys.
+
+        Verifies that an alert whose raw row has no _raw string field is
+        still matchable: the engine falls back to the flattened key=value
+        representation of the whole row, so matching does not depend on any
+        particular structured field names.
+        """
+        config = create_test_config()
+        service = SplunkESExpectationService(config=config)
+
+        mock_expectation = Mock()
+        mock_expectation.inject_expectation_id = "email-structured-1"
+        email_signature = Mock()
+        email_signature.type.value = "source_email"
+        email_signature.value = "attacker@evil.example"
+        mock_expectation.inject_expectation_signatures = [email_signature]
+
+        _, matching_signatures = service._extract_signatures(mock_expectation)
+
+        # No _raw string in the row: the flattened fields must carry the match.
+        raw_row = {
+            "_time": "2024-01-01T12:30:00Z",
+            "sender": "attacker@evil.example",
+        }
+        alerts = SplunkESResponse.from_raw_response({"results": [raw_row]}).results
+
+        mock_detection_helper = MockObjectsFactory.create_mock_detection_helper(
+            match_result=True
+        )
+
+        result = service._match(
+            alerts, matching_signatures, mock_detection_helper, "detection"
+        )
+
+        assert result["is_valid"] is True  # noqa: S101
+        assert len(result["matching_data"]) == 1  # noqa: S101
 
     def test_extract_signatures_filters_correctly(self):
         """Test signature extraction and filtering.
