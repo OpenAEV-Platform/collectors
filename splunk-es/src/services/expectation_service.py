@@ -40,21 +40,15 @@ class SplunkESExpectationService:
     """Splunk ES-specific service provider for expectation handling.
 
     This class contains all the business logic specific to Splunk ES:
-    - Which signature types to support (only IPV4/6 addresses)
+    - Which signature types to support (all types, dynamically from SignatureTypes)
     - How to fetch data from Splunk ES
     - How to validate expectations against data
     - How to handle batching and optimization
     """
 
-    SUPPORTED_SIGNATURES = [
-        SignatureTypes.SIG_TYPE_SOURCE_IPV4_ADDRESS,
-        SignatureTypes.SIG_TYPE_TARGET_IPV4_ADDRESS,
-        SignatureTypes.SIG_TYPE_SOURCE_IPV6_ADDRESS,
-        SignatureTypes.SIG_TYPE_TARGET_IPV6_ADDRESS,
-        SignatureTypes.SIG_TYPE_START_DATE,
-        SignatureTypes.SIG_TYPE_END_DATE,
-        SignatureTypes.SIG_TYPE_PARENT_PROCESS_NAME,
-    ]
+    # Dynamic support: every SignatureTypes member is supported, so this
+    # list tracks the upstream enum across pyoaev versions without hardcoding.
+    SUPPORTED_SIGNATURES = list(SignatureTypes)
 
     def __init__(self, config: ConfigLoader | None = None) -> None:
         """Initialize the Splunk ES service provider.
@@ -127,9 +121,9 @@ class SplunkESExpectationService:
 
         """
         self.logger.debug(
-            f"{LOG_PREFIX} Returning {len(self.SUPPORTED_SIGNATURES)} supported signature types"
+            f"{LOG_PREFIX} Returning {len(SignatureTypes)} supported signature types"
         )
-        return self.SUPPORTED_SIGNATURES
+        return list(SignatureTypes)
 
     def handle_batch_expectations(
         self,
@@ -407,11 +401,11 @@ class SplunkESExpectationService:
                 f"{LOG_PREFIX} Found {len(all_signatures)} total signatures in expectation"
             )
 
-            search_signatures = [
-                sig
-                for sig in all_signatures
-                if sig["type"] in [s.value for s in self.SUPPORTED_SIGNATURES]
-            ]
+            # All signature types are supported now: the search keeps the
+            # full list unfiltered (preserves fetch_with_retry's non-empty
+            # contract). Types not used by the query are carried by the
+            # matcher only.
+            search_signatures = all_signatures
 
             date_signature_types = [
                 SignatureTypes.SIG_TYPE_START_DATE.value,
@@ -424,7 +418,9 @@ class SplunkESExpectationService:
             ]
 
             self.logger.debug(
-                f"{LOG_PREFIX} Filtered to {len(search_signatures)} search signatures and {len(matching_signatures)} matching signatures"
+                f"{LOG_PREFIX} Using all {len(search_signatures)} signatures for search "
+                f"(no type filtering) and {len(matching_signatures)} matching signatures "
+                f"(date signatures excluded from matching)"
             )
 
             return search_signatures, matching_signatures
@@ -762,10 +758,10 @@ class SplunkESExpectationService:
         """
         info = {
             "service_name": "Splunk ES",
-            "supported_signatures": [sig.value for sig in self.SUPPORTED_SIGNATURES],
+            "supported_signatures": [sig.value for sig in SignatureTypes],
             "supports_detection": True,
             "supports_prevention": False,
-            "description": f"Splunk ES expectation validation service ({len(self.SUPPORTED_SIGNATURES)} signature types, detection only)",
+            "description": f"Splunk ES expectation validation service ({len(list(SignatureTypes))} signature types, detection only)",
         }
         self.logger.debug(f"{LOG_PREFIX} Service info: {info}")
         return info

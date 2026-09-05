@@ -152,7 +152,8 @@ class TestSplunkESClientAPIEssential:
         assert 'src_ip IN ("192.168.1.100")' in query  # noqa: S101
         assert 'dst_ip IN ("10.0.0.50")' in query  # noqa: S101
         assert "earliest=-" in query  # noqa: S101
-        assert "url_path" in query  # noqa: S101
+        # The minimal default template selects host fields (not url fields)
+        assert "host IN" in query  # noqa: S101
 
     def test_build_spl_query_with_custom_index(self):
         """Test SPL query building with custom alerts index.
@@ -234,6 +235,10 @@ class TestSplunkESClientAPIEssential:
                 "type": "parent_process_name",
                 "value": "oaev-implant-test-uuid-agent-test-uuid",
             },
+            {"type": "hostname", "value": "victim-host-01"},
+            # documents "query carries only enough filter": email-type
+            # signatures are carried by the matcher only, not by the query
+            {"type": "source_email", "value": "attacker@example.com"},
             {"type": "start_date", "value": "2024-01-01T00:00:00Z"},
             {"type": "end_date", "value": "2024-01-01T23:59:59Z"},
         ]
@@ -245,8 +250,15 @@ class TestSplunkESClientAPIEssential:
         assert criteria.parent_process_names == [  # noqa: S101
             "oaev-implant-test-uuid-agent-test-uuid"
         ]
+        assert criteria.hostnames == ["victim-host-01"]  # noqa: S101
         assert criteria.start_date == "2024-01-01T00:00:00Z"  # noqa: S101
         assert criteria.end_date == "2024-01-01T23:59:59Z"  # noqa: S101
+
+        # source_email must not be mapped into any query criteria field
+        assert "attacker@example.com" not in criteria.source_ips  # noqa: S101
+        assert "attacker@example.com" not in criteria.target_ips  # noqa: S101
+        assert "attacker@example.com" not in criteria.hostnames  # noqa: S101
+        assert "attacker@example.com" not in criteria.parent_process_names  # noqa: S101
 
     def test_prevention_expectation_not_supported(self):
         """Test that prevention expectations raise validation error.
@@ -265,12 +277,22 @@ class TestSplunkESClientAPIEssential:
         assert "Invalid expectation_type" in str(exc_info.value)  # noqa: S101
 
     def test_build_spl_query_with_parent_process_name(self):
-        """Test SPL query building with parent process name.
+        """Test SPL query building with parent process name via a custom template.
 
-        Verifies that parent process names are converted to URL path searches
-        with proper UUID extraction and AND logic with IPs.
+        The minimal default template no longer embeds implant conditions, so
+        this test uses a custom template that keeps the url_path/process
+        groups. UUID-derived implant URL conditions must still resolve.
         """
         config = create_test_config()
+        custom_template = (
+            "index={alerts_index} "
+            "(src_ip IN ({source_ips}) OR src IN ({source_ips}) "
+            "OR client_ip IN ({source_ips})) "
+            "(url_path IN ({implant_urls}) OR process_name IN ({implant_names})) "
+            "earliest={start_date} latest={end_date} "
+            "| table _time, src_ip, url_path | sort -_time"
+        )
+        config.splunk_es.query_template = custom_template
         client = SplunkESClientAPI(config=config)
 
         from src.services.models import SplunkESSearchCriteria
@@ -315,11 +337,12 @@ class TestSplunkESClientAPIEssential:
         # Should not have absolute dates when using time window
         assert "2024-" not in query  # noqa: S101
 
-    def test_build_spl_query_includes_all_url_fields(self):
-        """Test SPL query includes all URL field alternatives.
+    def test_build_spl_query_default_excludes_url_fields(self):
+        """Test that the minimal default template no longer selects URL fields.
 
-        Verifies that the query includes url_path, url, path, and query
-        fields in the table output for proper data collection.
+        URL/implant fields are only carried by custom templates; the default
+        enough-filter query must not include url_path, url, path, or query
+        field references anywhere.
         """
         config = create_test_config()
         client = SplunkESClientAPI(config=config)
@@ -332,19 +355,29 @@ class TestSplunkESClientAPIEssential:
 
         query = client._build_spl_query(search_criteria)
 
-        assert "url_path" in query  # noqa: S101
-        assert "url" in query  # noqa: S101
-        assert "path" in query  # noqa: S101
-        assert "query" in query  # noqa: S101
+        assert "url_path" not in query  # noqa: S101
+        assert "url" not in query  # noqa: S101
+        assert "path" not in query  # noqa: S101
+        assert "query" not in query  # noqa: S101
 
     @patch("requests.Session.post")
     def test_fetch_signatures_with_parent_process_name(self, mock_post):
-        """Test fetching signatures with parent process name.
+        """Test fetching signatures with parent process name via a custom template.
 
         Verifies that parent process name signatures are properly converted
-        to URL path searches and executed against the Splunk ES API.
+        to implant URL conditions by a custom template and executed against
+        the Splunk ES API.
         """
         config = create_test_config()
+        custom_template = (
+            "index={alerts_index} "
+            "(src_ip IN ({source_ips}) OR src IN ({source_ips}) "
+            "OR client_ip IN ({source_ips})) "
+            "(url_path IN ({implant_urls}) OR process_name IN ({implant_names})) "
+            "earliest={start_date} latest={end_date} "
+            "| table _time, src_ip, url_path | sort -_time"
+        )
+        config.splunk_es.query_template = custom_template
         client = SplunkESClientAPI(config=config)
 
         api_response_data = TestDataFactory.create_api_response_data()
@@ -409,12 +442,21 @@ class TestSplunkESClientAPIEssential:
         assert "query=" in url_query  # noqa: S101
 
     def test_build_spl_query_and_logic_with_parent_process(self):
-        """Test SPL query AND logic with parent process.
+        """Test SPL query AND logic with parent process via a custom template.
 
         Verifies that when parent process names are present, the query
         uses AND logic between IP conditions and URL path conditions.
         """
         config = create_test_config()
+        custom_template = (
+            "index={alerts_index} "
+            "(src_ip IN ({source_ips}) OR src IN ({source_ips})) "
+            "(dst_ip IN ({target_ips}) OR dest IN ({target_ips})) "
+            "(url_path IN ({implant_urls}) OR process_name IN ({implant_names})) "
+            "earliest={start_date} latest={end_date} "
+            "| table _time, src_ip, dst_ip, url_path | sort -_time"
+        )
+        config.splunk_es.query_template = custom_template
         client = SplunkESClientAPI(config=config)
 
         from src.services.models import SplunkESSearchCriteria

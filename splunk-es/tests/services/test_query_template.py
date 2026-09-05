@@ -261,19 +261,25 @@ class TestQueryTemplateResolution:
         assert "latest=now" in result
 
     def test_default_query_template_constant_format(self):
-        """Test that DEFAULT_QUERY_TEMPLATE has the expected placeholders."""
+        """Test that the minimal default template only carries enough-filter placeholders.
+
+        The default template no longer embeds implant URL/name conditions,
+        process-name conditions, or URL path fields; those are only available
+        through custom templates.
+        """
         assert "{alerts_index}" in DEFAULT_QUERY_TEMPLATE
         assert "{source_ips}" in DEFAULT_QUERY_TEMPLATE
         assert "{target_ips}" in DEFAULT_QUERY_TEMPLATE
-        assert "{implant_urls}" in DEFAULT_QUERY_TEMPLATE
-        assert "{implant_names}" in DEFAULT_QUERY_TEMPLATE
+        assert "{hostnames}" in DEFAULT_QUERY_TEMPLATE
         assert "{start_date}" in DEFAULT_QUERY_TEMPLATE
         assert "{end_date}" in DEFAULT_QUERY_TEMPLATE
-        assert "| table _time" in DEFAULT_QUERY_TEMPLATE
+        assert "| table" in DEFAULT_QUERY_TEMPLATE
         assert "| sort -_time" in DEFAULT_QUERY_TEMPLATE
-        assert "IN" in DEFAULT_QUERY_TEMPLATE
-        assert "process_name" in DEFAULT_QUERY_TEMPLATE
-        assert "parent_process_name" in DEFAULT_QUERY_TEMPLATE
+        assert "{implant_urls}" not in DEFAULT_QUERY_TEMPLATE
+        assert "{implant_names}" not in DEFAULT_QUERY_TEMPLATE
+        assert "process_name" not in DEFAULT_QUERY_TEMPLATE
+        assert "parent_process_name" not in DEFAULT_QUERY_TEMPLATE
+        assert "url_path" not in DEFAULT_QUERY_TEMPLATE
 
     def test_custom_template_with_subset_of_placeholders(self):
         """Test a template that only uses some placeholders."""
@@ -307,8 +313,13 @@ class TestImplantPlaceholders:
         config.splunk_es.query_template = query_template
         return SplunkESClientAPI(config=config)
 
-    def test_default_template_includes_implant_conditions_when_present(self):
-        """Test that implant process names resolve to url and name conditions."""
+    def test_default_template_no_longer_emits_implant_conditions(self):
+        """Test that the default template no longer embeds implant conditions.
+
+        Parent process names are carried by the matcher only; the default
+        query emits no implant URL/name conditions and no wildcard (*)
+        IN groups derived from the parent process.
+        """
         client = self._create_client()
         criteria = SplunkESSearchCriteria(
             source_ips=[],
@@ -320,19 +331,25 @@ class TestImplantPlaceholders:
 
         result = client._build_spl_query(criteria)
 
-        assert '"/oaev-implant-a1b2c3d4-agent-e5f6a7b8/callback"' in result
-        assert '"oaev-implant-a1b2c3d4-agent-e5f6a7b8"' in result
-        assert "url_path IN" in result
-        assert "process_name IN" in result
-        assert "parent_process_name IN" in result
+        assert "implant" not in result
+        assert "url_path" not in result
+        assert "process_name" not in result
+        assert "url_path IN (*)" not in result
+        assert "process_name IN (*)" not in result
 
-    def test_default_template_uses_wildcard_when_no_implants(self):
-        """Test that no implant names produces wildcard (*) for IN operator.
+    def test_custom_template_uses_wildcard_when_no_implants(self):
+        """Test that a custom implant template resolves to wildcard (*) when empty.
 
-        Same behavior as source_ips/target_ips: when empty, the placeholder
-        resolves to * (unquoted) so the IN clause matches everything.
+        Same behavior as source_ips/target_ips: when the implant list is
+        empty, the placeholder resolves to * (unquoted) so the IN clause
+        matches everything.
         """
-        client = self._create_client()
+        custom_template = (
+            "index={alerts_index} (url_path IN ({implant_urls}) OR process_name IN ({implant_names})) "
+            "earliest={start_date} latest={end_date} "
+            "| table _time, url_path | sort -_time"
+        )
+        client = self._create_client(query_template=custom_template)
         criteria = SplunkESSearchCriteria(
             source_ips=[],
             target_ips=[],
@@ -349,7 +366,12 @@ class TestImplantPlaceholders:
 
     def test_multiple_implants_quoted_for_in_operator(self):
         """Test that multiple implant names produce comma-separated quoted values."""
-        client = self._create_client()
+        custom_template = (
+            "index={alerts_index} (url_path IN ({implant_urls}) OR process_name IN ({implant_names})) "
+            "earliest={start_date} latest={end_date} "
+            "| table _time, url_path, process_name | sort -_time"
+        )
+        client = self._create_client(query_template=custom_template)
         criteria = SplunkESSearchCriteria(
             source_ips=[],
             target_ips=[],
@@ -389,8 +411,13 @@ class TestImplantPlaceholders:
         assert '"oaev-implant-a1b2c3d4-agent-e5f6a7b8"' in result
 
     def test_implant_url_format_includes_callback_suffix(self):
-        """Test that implant URL has the /{name}/callback format."""
-        client = self._create_client()
+        """Test that implant URL has the /{name}/callback format in a custom template."""
+        custom_template = (
+            "index={alerts_index} (url_path IN ({implant_urls})) "
+            "earliest={start_date} latest={end_date} "
+            "| table _time, url_path | sort -_time"
+        )
+        client = self._create_client(query_template=custom_template)
         criteria = SplunkESSearchCriteria(
             source_ips=[],
             target_ips=[],
@@ -405,7 +432,12 @@ class TestImplantPlaceholders:
 
     def test_implant_name_with_double_quote_is_escaped(self):
         """Test that double quotes in implant names are escaped to prevent SPL injection."""
-        client = self._create_client()
+        custom_template = (
+            "index={alerts_index} (url_path IN ({implant_urls}) OR process_name IN ({implant_names})) "
+            "earliest={start_date} latest={end_date} "
+            "| table _time, url_path, process_name | sort -_time"
+        )
+        client = self._create_client(query_template=custom_template)
         criteria = SplunkESSearchCriteria(
             source_ips=[],
             target_ips=[],

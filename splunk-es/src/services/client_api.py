@@ -37,19 +37,18 @@ DEFAULT_QUERY_TEMPLATE = (
     "(src_ip IN ({source_ips}) OR src IN ({source_ips}) OR source_ip IN ({source_ips}) OR client_ip IN ({source_ips})) "
     "(dst_ip IN ({target_ips}) OR dest IN ({target_ips}) OR dest_ip IN ({target_ips}) "
     "OR destination_ip IN ({target_ips}) OR server_ip IN ({target_ips})) "
-    "(url_path IN ({implant_urls}) OR url IN ({implant_urls}) OR path IN ({implant_urls}) "
-    "OR query IN ({implant_urls}) OR process_name IN ({implant_names}) "
-    "OR parent_process_name IN ({implant_names})) "
+    "(host IN ({hostnames}) OR hostname IN ({hostnames}) OR host_name IN ({hostnames})) "
     "earliest={start_date} latest={end_date} "
     "| table _time, src_ip, src, source_ip, client_ip, dst_ip, dest, dest_ip, "
-    "destination_ip, server_ip, signature, rule_name, event_type, severity, "
-    "url_path, url, path, query, process_name, parent_process_name, _raw | sort -_time"
+    "destination_ip, server_ip, host, hostname, signature, rule_name, event_type, "
+    "severity, _raw | sort -_time"
 )
 
 ALLOWED_PLACEHOLDERS = {
     "alerts_index",
     "source_ips",
     "target_ips",
+    "hostnames",
     "implant_urls",
     "implant_names",
     "ip_conditions",
@@ -260,9 +259,17 @@ class SplunkESClientAPI:
 
             source_ips = []
             target_ips = []
+            host_names = []
             parent_process_names = []
             start_date = None
             end_date = None
+
+            # String-keyed mapping (never attribute-accessing the enum) keeps
+            # this robust across pyoaev versions.
+            host_mapping = {
+                "hostname": host_names,
+                "target_hostname_address": host_names,
+            }
 
             for sig in search_signatures:
                 if not isinstance(sig, dict) or "type" not in sig or "value" not in sig:
@@ -274,16 +281,24 @@ class SplunkESClientAPI:
                     f"{LOG_PREFIX} Processing signature: {sig_type}={sig_value}"
                 )
 
-                if sig_type in ["source_ipv4_address", "source_ipv6_address"]:
+                if sig_type in ("source_ipv4_address", "source_ipv6_address"):
                     source_ips.append(sig_value)
-                elif sig_type in ["target_ipv4_address", "target_ipv6_address"]:
+                elif sig_type in ("target_ipv4_address", "target_ipv6_address"):
                     target_ips.append(sig_value)
+                elif sig_type in host_mapping:
+                    host_mapping[sig_type].append(sig_value)
                 elif sig_type == "parent_process_name":
                     parent_process_names.append(sig_value)
                 elif sig_type == "start_date":
                     start_date = sig_value
                 elif sig_type == "end_date":
                     end_date = sig_value
+                else:
+                    # The query carries only an "enough filter": all other
+                    # signature types are carried by the matcher only.
+                    self.logger.debug(
+                        f"{LOG_PREFIX} Signature type '{sig_type}' is carried by the matcher only, not by the query"
+                    )
 
             if not start_date and not end_date:
                 self.logger.info(
@@ -293,6 +308,7 @@ class SplunkESClientAPI:
             criteria = SplunkESSearchCriteria(
                 source_ips=source_ips,
                 target_ips=target_ips,
+                hostnames=host_names,
                 parent_process_names=parent_process_names,
                 start_date=start_date,
                 end_date=end_date,
@@ -300,7 +316,7 @@ class SplunkESClientAPI:
 
             self.logger.debug(
                 f"{LOG_PREFIX} Built search criteria: source_ips={len(source_ips)}, target_ips={len(target_ips)}, "
-                f"parent_process_names={len(parent_process_names)}, date_range={start_date} to {end_date}"
+                f"hostnames={len(host_names)}, parent_process_names={len(parent_process_names)}, date_range={start_date} to {end_date}"
             )
             return criteria
 
@@ -599,6 +615,7 @@ class SplunkESClientAPI:
             process_conditions_str = self._build_process_conditions(search_criteria)
             source_ips_str = self._build_ip_list(search_criteria.source_ips)
             target_ips_str = self._build_ip_list(search_criteria.target_ips)
+            hostnames_str = self._build_ip_list(search_criteria.hostnames or [])
             implant_urls_str = self._build_implant_url_list(
                 search_criteria.parent_process_names or []
             )
@@ -628,6 +645,7 @@ class SplunkESClientAPI:
                 alerts_index=self.alerts_index or "*",
                 source_ips=source_ips_str,
                 target_ips=target_ips_str,
+                hostnames=hostnames_str,
                 implant_urls=implant_urls_str,
                 implant_names=implant_names_str,
                 ip_conditions=ip_conditions_str,

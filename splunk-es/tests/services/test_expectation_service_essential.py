@@ -53,24 +53,15 @@ class TestSplunkESExpectationServiceEssential:
     def test_get_supported_signatures(self):
         """Test that service returns correct supported signatures.
 
-        Verifies that the service returns the expected list of signature types
-        it can process for expectation handling (only IP addresses and dates).
+        Verifies that the service dynamically supports every SignatureTypes
+        member instead of a hardcoded subset.
         """
         config = create_test_config()
         service = SplunkESExpectationService(config=config)
 
         signatures = service.get_supported_signatures()
 
-        expected_signatures = [
-            SignatureTypes.SIG_TYPE_SOURCE_IPV4_ADDRESS,
-            SignatureTypes.SIG_TYPE_TARGET_IPV4_ADDRESS,
-            SignatureTypes.SIG_TYPE_SOURCE_IPV6_ADDRESS,
-            SignatureTypes.SIG_TYPE_TARGET_IPV6_ADDRESS,
-            SignatureTypes.SIG_TYPE_START_DATE,
-            SignatureTypes.SIG_TYPE_END_DATE,
-            SignatureTypes.SIG_TYPE_PARENT_PROCESS_NAME,
-        ]
-        assert signatures == expected_signatures  # noqa: S101
+        assert signatures == list(SignatureTypes)  # noqa: S101
 
     def test_handle_batch_expectations_success(self):
         """Test successful batch expectation handling.
@@ -241,21 +232,36 @@ class TestSplunkESExpectationServiceEssential:
         mock_signature_date.type.value = "start_date"
         mock_signature_date.value = "2024-01-01T00:00:00Z"
 
+        # hostname was not in the old hardcoded supported set; it must
+        # survive the new unfiltered search-signature extraction
+        mock_signature_hostname = Mock()
+        mock_signature_hostname.type.value = "hostname"
+        mock_signature_hostname.value = "victim-host-01"
+
         mock_expectation.inject_expectation_signatures = [
             mock_signature_ip,
             mock_signature_date,
+            mock_signature_hostname,
         ]
 
         search_signatures, matching_signatures = service._extract_signatures(
             mock_expectation
         )
 
-        # Search signatures should include both
-        assert len(search_signatures) == 2  # noqa: S101
+        # All signatures are now supported: search keeps every signature
+        all_signatures = [
+            {"type": sig.type.value, "value": sig.value}
+            for sig in mock_expectation.inject_expectation_signatures
+        ]
+        assert search_signatures == all_signatures  # noqa: S101
+        assert len(search_signatures) == 3  # noqa: S101
 
-        # Matching signatures should exclude dates
-        assert len(matching_signatures) == 1  # noqa: S101
-        assert matching_signatures[0]["type"] == "source_ipv4_address"  # noqa: S101
+        # Matching signatures exclude only start_date/end_date
+        assert len(matching_signatures) == 2  # noqa: S101
+        assert [s["type"] for s in matching_signatures] == [  # noqa: S101
+            "source_ipv4_address",
+            "hostname",
+        ]
 
     def test_create_error_result_object(self):
         """Test creating error result objects from exceptions.
@@ -291,7 +297,9 @@ class TestSplunkESExpectationServiceEssential:
         assert info["supports_detection"] is True  # noqa: S101
         assert info["supports_prevention"] is False  # noqa: S101
         assert "supported_signatures" in info  # noqa: S101
-        assert len(info["supported_signatures"]) == 7  # noqa: S101
+        assert len(info["supported_signatures"]) == len(
+            list(SignatureTypes)
+        )  # noqa: S101
 
     def test_convert_dict_to_result(self):
         """Test converting dictionary results to ExpectationResult objects.
