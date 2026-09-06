@@ -468,3 +468,40 @@ class TestSplunkESExpectationServiceEssential:
         assert result.is_valid is True  # noqa: S101
         assert result.matched_alerts is not None  # noqa: S101
         assert result.expectation == mock_expectation  # noqa: S101
+
+    def test_match_implant_signature_via_callback_url_in_network_event(self):
+        """Test implant matching when only the callback URL appears (network event).
+
+        Network events never carry the .exe process name: the implant's
+        presence is only the two UUIDs inside the callback URL path. The
+        parent process name signature must still match, through the URL
+        rebuilt from those UUIDs, and the converted match data must carry
+        the reconstructed full implant process name.
+        """
+        config = create_test_config()
+        service = SplunkESExpectationService(config=config)
+
+        inject_uuid = "877b423b-ae91-4fc5-86c3-fa8ea3c938ba"
+        agent_uuid = "1402422f-2eaa-4fbd-80b2-b30df1b83b19"
+        implant_name = f"oaev-implant-{inject_uuid}-agent-{agent_uuid}"
+        url_path = f"/api/injects/{inject_uuid}/{agent_uuid}/executable-payload"
+
+        raw_row = {
+            "_time": "2024-01-01T12:30:00Z",
+            "src_ip": "192.168.1.100",
+            "url_path": url_path,
+            "_raw": (f"2024-01-01T12:30:00Z GET {url_path} HTTP/1.1"),
+        }
+        alerts = SplunkESResponse.from_raw_response({"results": [raw_row]}).results
+
+        result = service._match(
+            alerts,
+            [{"type": "parent_process_name", "value": implant_name}],
+            "detection",
+        )
+
+        assert result["is_valid"] is True  # noqa: S101
+        assert len(result["matching_data"]) == 1  # noqa: S101
+        # The converter rebuilds the full parent process name from the
+        # UUIDs in the callback URL, so the match data carries it.
+        assert implant_name in str(result["matching_data"][0])  # noqa: S101

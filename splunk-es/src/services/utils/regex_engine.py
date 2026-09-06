@@ -18,10 +18,22 @@ LOG_PREFIX = "[RegexSignatureEngine]"
 
 @dataclass(frozen=True)
 class Signature:
-    """A literal value to search for, labeled with a signature type."""
+    """A literal value to search for, labeled with a signature type.
+
+    Attributes:
+        type: Signature type label.
+        value: Primary literal value to search for.
+        alternates: Additional literal values representing the same
+            signature (for example, the implant callback URL rebuilt
+            from the UUIDs embedded in a parent process name); the
+            signature counts as found when any of its literals is
+            present.
+
+    """
 
     type: str
     value: str
+    alternates: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -74,6 +86,12 @@ class RegexSignatureEngine:
     lowercased before matching and whitespace runs in the text are
     collapsed to single spaces.
 
+    A signature may carry alternate literals, which are different
+    representations of the same value (for example, the implant callback
+    URL rebuilt from the UUIDs inside a parent process name). The
+    signature counts as found when its primary value or any of its
+    alternates is present.
+
     Match rule: with ``require_all=True`` every signature must be
     present; otherwise at least ``max(1, min_matches)`` signatures must
     be present. An empty signature list never matches.
@@ -123,7 +141,14 @@ class RegexSignatureEngine:
         matches: list[SignatureMatch] = []
         matched = 0
         for signature in signatures:
-            hit = self._pattern_for(signature.value).search(text)
+            # A signature is found when its primary value or any of its
+            # alternates (other representations of the same value) is
+            # present; the first hit wins and spans are tracked per hit.
+            hit: re.Match[str] | None = None
+            for candidate in (signature.value, *signature.alternates):
+                hit = self._pattern_for(candidate).search(text)
+                if hit is not None:
+                    break
             if hit is not None:
                 matched += 1
                 span: tuple[int, int] | None = (hit.start(), hit.end())

@@ -33,6 +33,7 @@ from .exception import (
     SplunkESValidationError,
 )
 from .models import SplunkESAlert
+from .utils.parent_process_parser import ParentProcessParser
 from .utils.regex_engine import RegexSignatureEngine, Signature
 
 LOG_PREFIX = "[SplunkESExpectationService]"
@@ -91,6 +92,7 @@ class SplunkESExpectationService:
             )
             self.client_api = SplunkESClientAPI(config)
             self.converter = Converter()
+            self.parent_process_parser = ParentProcessParser()
             self._regex_engine = RegexSignatureEngine()
             self.logger.debug(
                 f"{LOG_PREFIX} Raw-text regex signature engine initialized for alert matching"
@@ -459,9 +461,12 @@ class SplunkESExpectationService:
         matching signatures. The raw text is the alert's ``_raw`` field when
         it holds a non-empty string, otherwise a flattened ``key=value``
         representation of the whole raw row, so matching does not depend on
-        any particular structured field names. When the content set is
-        empty, the query's enough-filter is the only filter and the first
-        fetched alert is accepted.
+        any particular structured field names. An implant parent process
+        name signature additionally accepts, as its alternate literal, the
+        implant callback URL rebuilt from the UUIDs embedded in the name,
+        so network events that only expose the callback URL still match.
+        When the content set is empty, the query's enough-filter is the only
+        filter and the first fetched alert is accepted.
 
         Args:
             splunk_es_data: List of fetched Splunk ES alerts.
@@ -511,7 +516,11 @@ class SplunkESExpectationService:
             )
 
             engine_signatures = [
-                Signature(type=sig["type"], value=sig["value"])
+                Signature(
+                    type=sig["type"],
+                    value=sig["value"],
+                    alternates=self._implant_url_alternates(sig),
+                )
                 for sig in matching_signatures
             ]
 
@@ -556,6 +565,40 @@ class SplunkESExpectationService:
             raise
         except Exception as e:
             raise SplunkESMatchingError() from e
+
+    def _implant_url_alternates(self, sig: dict[str, str]) -> tuple[str, ...]:
+        """Build the callback-URL alternate literal for an implant signature.
+
+        A network event never carries the implant's .exe process name; it
+        only exposes the implant's callback URL, which embeds the same
+        two UUIDs. For a parent process name signature matching the implant
+        naming pattern, the callback URL is rebuilt from those UUIDs and
+        returned as the signature's alternate literal so the signature
+        also matches network events.
+
+        Args:
+            sig: A single matching signature (type and value).
+
+        Returns:
+            A tuple with the rebuilt callback URL for an implant parent
+            process name signature, or an empty tuple for every other
+            signature type and for values without the UUID pair.
+
+        """
+        if sig.get("type") != SignatureTypes.SIG_TYPE_PARENT_PROCESS_NAME.value:
+            return ()
+
+        uuids = self.parent_process_parser.extract_uuids_from_parent_process_name(
+            sig["value"]
+        )
+        if not uuids:
+            return ()
+
+        url_path = self.parent_process_parser.build_url_path(*uuids)
+        if not url_path:
+            return ()
+
+        return (url_path,)
 
     def _create_error_result(
         self,

@@ -266,3 +266,47 @@ class TestRegexSignatureEngine:
         engine_all = RegexSignatureEngine(require_all=True)
         assert engine_all.matches("only alpha here", sigs) is False  # noqa: S101
         assert engine_all.matches("alpha beta", sigs) is True  # noqa: S101
+
+    def test_alternate_literal_matches(self):
+        """A signature with alternates is found when any literal appears.
+
+        The primary value and every alternate literal represent the same
+        signature; the signature counts as found when the primary or any
+        alternate is present in the raw text.
+        """
+        engine = RegexSignatureEngine()
+        sig = Signature(
+            type="parent_process_name",
+            value="oaev-implant-aa-agent-bb",
+            alternates=("/api/injects/aa/bb/executable-payload",),
+        )
+        assert engine.matches("proc: oaeV-implant-AA-agent-BB", [sig])  # noqa: S101
+        assert (
+            engine.matches("GET /api/injects/aa/bb/executable-payload HTTP/1.1", [sig])
+            is True
+        )  # noqa: S101
+        assert engine.matches("unrelated text", [sig]) is False  # noqa: S101
+
+    def test_alternates_do_not_change_score_denominator(self):
+        """Alternates are extra literals of one signature, not extra signatures.
+
+        The score denominator stays the number of signatures; a signature
+        hit through an alternate counts once, exactly like a primary hit.
+        """
+        engine = RegexSignatureEngine()
+        sigs = [
+            Signature(
+                type="parent_process_name", value="aa-name", alternates=("aa-url",)
+            ),
+            Signature(type="other", value="bb"),
+        ]
+
+        result = engine.evaluate("aa-name and bb here", sigs)
+        assert result.total == 2  # noqa: S101
+        assert result.matched == 2  # noqa: S101
+        assert result.score == 1.0  # noqa: S101
+
+        result_alt = engine.evaluate("aa-url only here", sigs)
+        assert result_alt.matched == 1  # noqa: S101
+        assert result_alt.score == 0.5  # noqa: S101
+        assert result_alt.is_match is True  # noqa: S101

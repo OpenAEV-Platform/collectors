@@ -301,11 +301,13 @@ class TestSplunkESClientAPIEssential:
         assert "2024-" not in query  # noqa: S101
 
     def test_build_spl_query_default_excludes_url_fields(self):
-        """Test that the minimal default template no longer selects URL fields.
+        """Test that the default template's filter selects no URL fields.
 
-        The default enough-filter query must not include url_path, url,
-        path, or query field references anywhere; URL/implant signature
-        values are matched after the fetch on the raw event text instead.
+        The enough-filter must not reference url_path, url, path, or query
+        fields; the only url_path occurrence is in the | table projection,
+        so the converter can rebuild implant parent process names from the
+        callback URL for network events. URL/implant signature values are
+        matched after the fetch on the raw event text.
         """
         config = create_test_config()
         client = SplunkESClientAPI(config=config)
@@ -318,10 +320,13 @@ class TestSplunkESClientAPIEssential:
 
         query = client._build_spl_query(search_criteria)
 
-        assert "url_path" not in query  # noqa: S101
-        assert "url" not in query  # noqa: S101
-        assert "path" not in query  # noqa: S101
-        assert "query" not in query  # noqa: S101
+        filter_part = query.split("| table")[0]
+        assert "url" not in filter_part  # noqa: S101
+        assert "path" not in filter_part  # noqa: S101
+        assert "query" not in filter_part  # noqa: S101
+        # url_path is projected (not filtered) for implant-name rebuild.
+        assert "url_path" in query  # noqa: S101
+        assert "url_path" not in filter_part  # noqa: S101
 
     def test_parent_process_uuid_extraction(self):
         """Test UUID extraction from parent process names.
@@ -352,6 +357,28 @@ class TestSplunkESClientAPIEssential:
         assert "url=" in url_query  # noqa: S101
         assert "path=" in url_query  # noqa: S101
         assert "query=" in url_query  # noqa: S101
+
+    def test_parent_process_url_path_plain_builder(self):
+        """Test the plain callback URL builder used for raw-text matching.
+
+        The matcher needs the bare URL string (not an SPL condition) as an
+        alternate literal for implant parent process name signatures, so
+        this builds the plain path from the two UUIDs.
+        """
+        from src.services.utils.parent_process_parser import ParentProcessParser
+
+        parser = ParentProcessParser()
+
+        url_path = parser.build_url_path(
+            "12345678-1234-1234-1234-123456789abc",
+            "87654321-4321-4321-4321-cba987654321",
+        )
+
+        assert url_path == (
+            "/api/injects/12345678-1234-1234-1234-123456789abc/"
+            "87654321-4321-4321-4321-cba987654321/executable-payload"
+        )
+        assert parser.build_url_path("", "87654321-4321-4321-4321-cba987654321") == ""
 
     def test_build_spl_query_retry_time_extension(self):
         """Test SPL query time extension for retries.

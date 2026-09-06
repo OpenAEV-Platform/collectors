@@ -40,7 +40,7 @@ DEFAULT_QUERY_TEMPLATE = (
     "earliest={start_date} latest={end_date} "
     "| table _time, src_ip, src, source_ip, client_ip, dst_ip, dest, dest_ip, "
     "destination_ip, server_ip, host, hostname, signature, rule_name, event_type, "
-    "severity, _raw | sort -_time"
+    "severity, url_path, _raw | sort -_time"
 )
 
 ALLOWED_PLACEHOLDERS = {

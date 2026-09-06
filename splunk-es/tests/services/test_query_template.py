@@ -255,10 +255,12 @@ class TestQueryTemplateResolution:
     def test_default_query_template_constant_format(self):
         """Test that the minimal default template only carries enough-filter placeholders.
 
-        The default template no longer embeds implant URL/name conditions,
-        process-name conditions, or URL path fields; those placeholders are
-        rejected by the template validator, and signature matching happens
-        after the fetch on the raw event text.
+        The default template no longer embeds implant URL/name conditions
+        or process-name conditions; those placeholders are rejected by the
+        template validator, and signature matching happens after the fetch
+        on the raw event text. The projection does carry ``url_path`` (and
+        never any other URL field), because the converter rebuilds implant
+        parent process names from the callback URL in network events.
         """
         assert "{alerts_index}" in DEFAULT_QUERY_TEMPLATE
         assert "{source_ips}" in DEFAULT_QUERY_TEMPLATE
@@ -272,7 +274,13 @@ class TestQueryTemplateResolution:
         assert "{implant_names}" not in DEFAULT_QUERY_TEMPLATE
         assert "process_name" not in DEFAULT_QUERY_TEMPLATE
         assert "parent_process_name" not in DEFAULT_QUERY_TEMPLATE
-        assert "url_path" not in DEFAULT_QUERY_TEMPLATE
+
+        filter_part = DEFAULT_QUERY_TEMPLATE.split("| table")[0]
+        projection_part = DEFAULT_QUERY_TEMPLATE.split("| table")[1]
+        assert "url_path" not in filter_part
+        assert "url_path" in projection_part
+        assert "path" not in filter_part
+        assert "query" not in DEFAULT_QUERY_TEMPLATE
 
     def test_custom_template_with_subset_of_placeholders(self):
         """Test a template that only uses some placeholders."""
