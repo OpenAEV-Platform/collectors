@@ -1,4 +1,5 @@
 import unittest
+from datetime import datetime, timedelta, timezone
 from unittest.mock import ANY, MagicMock, patch
 from uuid import UUID
 
@@ -104,6 +105,64 @@ class TestSentinelOneExpectationService(unittest.TestCase):
             [expectation_zero]
         )
         self.assertEqual(batches, [[expectation_zero]])
+
+    @patch.object(module, "SignatureExtractor")
+    def test_get_fetch_time_window_with_start_date(self, m_signature_extractor, *_):
+        config = MagicMock()
+
+        service = module.SentinelOneExpectationService(config=config)
+        service.client_api.time_window = timedelta(hours=1)
+
+        batch = [MagicMock()]
+        end_date = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+        start_date = datetime(2024, 1, 1, 10, 0, 0, tzinfo=timezone.utc)
+        m_signature_extractor.extract_end_date.return_value = end_date
+        m_signature_extractor.extract_start_date.return_value = start_date
+
+        start, end = service._get_fetch_time_window(batch)
+
+        m_signature_extractor.extract_end_date.assert_called_once_with(batch)
+        m_signature_extractor.extract_start_date.assert_called_once_with(batch)
+        self.assertEqual(start, start_date)
+        self.assertEqual(end, end_date)
+
+    @patch.object(module, "SignatureExtractor")
+    def test_get_fetch_time_window_without_start_date(self, m_signature_extractor, *_):
+        config = MagicMock()
+
+        service = module.SentinelOneExpectationService(config=config)
+        service.client_api.time_window = timedelta(hours=1)
+
+        batch = [MagicMock()]
+        end_date = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+        m_signature_extractor.extract_end_date.return_value = end_date
+        m_signature_extractor.extract_start_date.return_value = None
+
+        start, end = service._get_fetch_time_window(batch)
+
+        self.assertEqual(start, end_date - timedelta(hours=1))
+        self.assertEqual(end, end_date)
+
+    @patch.object(module, "SignatureExtractor")
+    def test_get_fetch_time_window_with_start_date_after_end(
+        self, m_signature_extractor, *_
+    ):
+        config = MagicMock()
+
+        service = module.SentinelOneExpectationService(config=config)
+        service.client_api.time_window = timedelta(hours=1)
+
+        batch = [MagicMock()]
+        end_date = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+        m_signature_extractor.extract_end_date.return_value = end_date
+        m_signature_extractor.extract_start_date.return_value = datetime(
+            2024, 1, 2, 12, 0, 0, tzinfo=timezone.utc
+        )
+
+        start, end = service._get_fetch_time_window(batch)
+
+        self.assertEqual(start, end_date - timedelta(hours=1))
+        self.assertEqual(end, end_date)
 
     def test_update_failures(self, *_):
         config = MagicMock()

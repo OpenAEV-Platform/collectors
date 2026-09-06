@@ -324,10 +324,7 @@ class SentinelOneExpectationService:
                             )
 
                     if unique_sha1s:
-                        end_time = self._extract_end_date_from_batch(batch)
-                        if end_time is None:
-                            end_time = datetime.now(timezone.utc)
-                        start_time = end_time - self.client_api.time_window
+                        start_time, end_time = self._get_fetch_time_window(batch)
 
                         self.logger.debug(
                             f"{LOG_PREFIX} Batch {batch_idx}: Fetching DV events for {len(unique_sha1s)} unique SHA1s (from {len(threats)} threats) in single query for time window: {start_time} to {end_time}"
@@ -420,9 +417,50 @@ class SentinelOneExpectationService:
         end_date = SignatureExtractor.extract_end_date(batch)
         if end_date:
             self.logger.debug(
-                f"{LOG_PREFIX} Extracted end_date from signatures: {end_date}, start_date will be calculated from time_window"
+                f"{LOG_PREFIX} Extracted end_date from signatures: {end_date}"
             )
         return end_date
+
+    def _extract_start_date_from_batch(
+        self, batch: list[DetectionExpectation | PreventionExpectation] | None = None
+    ) -> datetime | None:
+        """Extract start_date from batch signatures.
+
+        Args:
+            batch: Batch of expectations to extract start_date from.
+
+        Returns:
+            start_date as datetime or None if no valid start_date signature found.
+
+        """
+        return SignatureExtractor.extract_start_date(batch)
+
+    def _get_fetch_time_window(
+        self,
+        batch: list[DetectionExpectation | PreventionExpectation] | None,
+    ) -> tuple[datetime, datetime]:
+        """Compute the fetch time window for a batch of expectations.
+
+        The window end comes from the end_date signature (or now if absent).
+        The window start is the start_date signature when present and not after
+        end; otherwise it falls back to end minus SENTINELONE_TIME_WINDOW.
+
+        Args:
+            batch: Optional batch of expectations to extract date filters from.
+
+        Returns:
+            Tuple of (start_time, end_time).
+
+        """
+        end_time = self._extract_end_date_from_batch(batch)
+        if end_time is None:
+            end_time = datetime.now(timezone.utc)
+
+        start_time = self._extract_start_date_from_batch(batch)
+        if start_time is None or start_time > end_time:
+            start_time = end_time - self.client_api.time_window
+
+        return start_time, end_time
 
     def _fetch_threats_for_time_window(
         self, batch: list[DetectionExpectation | PreventionExpectation] | None = None
@@ -440,12 +478,7 @@ class SentinelOneExpectationService:
 
         """
         try:
-            end_time = self._extract_end_date_from_batch(batch)
-
-            if end_time is None:
-                end_time = datetime.now(timezone.utc)
-
-            start_time = end_time - self.client_api.time_window
+            start_time, end_time = self._get_fetch_time_window(batch)
 
             self.logger.debug(
                 f"{LOG_PREFIX} Delegating threat fetching to FetcherThreat for time window: {start_time} to {end_time}"

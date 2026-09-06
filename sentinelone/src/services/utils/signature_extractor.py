@@ -86,6 +86,36 @@ class SignatureExtractor:
         return None
 
     @staticmethod
+    def extract_start_date(
+        batch: list["DetectionExpectation | PreventionExpectation"] | None = None,
+    ) -> datetime | None:
+        """Extract start_date from batch signatures.
+
+        Args:
+            batch: List of expectations to extract start_date from. If None, returns None.
+
+        Returns:
+            Parsed start_date as datetime or None if no valid start_date signature found.
+
+        """
+        if not batch:
+            return None
+
+        for expectation in batch:
+            for signature in expectation.inject_expectation_signatures:
+                if signature.type.value == "start_date":
+                    try:
+                        start_date = datetime.fromisoformat(
+                            signature.value.replace("Z", "+00:00")
+                        )
+                        if start_date.tzinfo is None:
+                            start_date = start_date.replace(tzinfo=timezone.utc)
+                        return start_date
+                    except (ValueError, AttributeError):
+                        continue
+        return None
+
+    @staticmethod
     def group_signatures_by_type(
         expectation: "DetectionExpectation | PreventionExpectation",
         supported_signatures: list[SignatureTypes] | None = None,

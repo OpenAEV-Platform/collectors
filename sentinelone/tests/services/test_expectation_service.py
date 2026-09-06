@@ -1,6 +1,7 @@
 """Essential tests for SentinelOne Expectation Service - Gherkin GWT Format."""
 
-from unittest.mock import Mock
+from datetime import datetime
+from unittest.mock import ANY, Mock
 from uuid import uuid4
 
 import pytest
@@ -185,6 +186,90 @@ def test_match_threats_to_expectations():
     _then_proper_matches_found(matches, threats, expectations)
     # Then: The match should succeed without requiring mitigation
     _then_match_succeeds_without_mitigation_requirement(matches)
+
+
+# Scenario: Fetch windows honor the signature start date
+def test_fetch_windows_use_signature_start_date():
+    """Scenario: Fetch windows use the signature start date when present."""
+    # Given: A detection helper
+    detection_helper = _given_mock_detection_helper()
+    # Given: A static expectation with start and end date signatures
+    static_expectation = _given_expectation_with_date_signatures(
+        start_date="2024-01-01T10:00:00Z",
+        end_date="2024-01-01T12:00:00Z",
+    )
+
+    # When: I handle the static expectation with Deep Visibility enabled
+    with _given_expectation_service_with_deep_visibility_enabled() as service:
+        mock_static_threats = _given_mock_static_threats_for_service(service)
+        mock_dv_events = _given_mock_deep_visibility_events_for_service(service)
+
+        with mock_static_threats as threats_mock, mock_dv_events as dv_mock:
+            _when_handle_batch_expectations(
+                service, [static_expectation], detection_helper
+            )
+
+    # Then: Both the threat and DV windows use the signature start and end dates
+    _then_fetch_windows_use_signature_dates(
+        threats_mock, dv_mock, "2024-01-01T10:00:00Z", "2024-01-01T12:00:00Z"
+    )
+
+
+# Scenario: Fetch windows fall back to time window without a start date
+def test_fetch_windows_fall_back_to_time_window_without_start_date():
+    """Scenario: Fetch windows fall back to time window without a start date."""
+    # Given: An initialized expectation service
+    service = _given_initialized_expectation_service()
+    # Given: An expectation without a start date signature
+    expectation = _given_expectation_with_date_signatures(
+        start_date=None, end_date="2024-01-01T12:00:00Z"
+    )
+
+    # When: I compute the fetch time window for the batch
+    start_time, end_time = _when_compute_fetch_time_window(service, [expectation])
+
+    # Then: The window spans end - SENTINELONE_TIME_WINDOW to end
+    _then_fetch_window_falls_back_to_time_window(
+        service, start_time, end_time, "2024-01-01T12:00:00Z"
+    )
+
+
+# Scenario: Fetch windows fall back to time window when start date is after end
+def test_fetch_windows_fall_back_to_time_window_when_start_after_end():
+    """Scenario: Fetch windows fall back to time window when start date is after end."""
+    # Given: An initialized expectation service
+    service = _given_initialized_expectation_service()
+    # Given: An expectation whose start date is after its end date
+    expectation = _given_expectation_with_date_signatures(
+        start_date="2024-01-02T12:00:00Z", end_date="2024-01-01T12:00:00Z"
+    )
+
+    # When: I compute the fetch time window for the batch
+    start_time, end_time = _when_compute_fetch_time_window(service, [expectation])
+
+    # Then: The window spans end - SENTINELONE_TIME_WINDOW to end
+    _then_fetch_window_falls_back_to_time_window(
+        service, start_time, end_time, "2024-01-01T12:00:00Z"
+    )
+
+
+# Scenario: Fetch windows fall back to time window when start date is unparsable
+def test_fetch_windows_fall_back_to_time_window_when_start_unparsable():
+    """Scenario: Fetch windows fall back to time window when start date is unparsable."""
+    # Given: An initialized expectation service
+    service = _given_initialized_expectation_service()
+    # Given: An expectation with an unparsable start date signature
+    expectation = _given_expectation_with_date_signatures(
+        start_date="not-a-date", end_date="2024-01-01T12:00:00Z"
+    )
+
+    # When: I compute the fetch time window for the batch
+    start_time, end_time = _when_compute_fetch_time_window(service, [expectation])
+
+    # Then: The window spans end - SENTINELONE_TIME_WINDOW to end
+    _then_fetch_window_falls_back_to_time_window(
+        service, start_time, end_time, "2024-01-01T12:00:00Z"
+    )
 
 
 # --------
@@ -426,6 +511,37 @@ def _given_static_expectation():
     return expectation
 
 
+# Given: An expectation with date signatures
+def _given_expectation_with_date_signatures(start_date: str | None, end_date: str):
+    """Create a static expectation with date signatures.
+
+    Args:
+        start_date: ISO 8601 start date signature value, or None to omit.
+        end_date: ISO 8601 end date signature value.
+
+    Returns:
+        Mock static expectation.
+
+    """
+    signatures = [
+        _create_mock_signature(
+            SignatureTypes.SIG_TYPE_TARGET_HOSTNAME_ADDRESS,
+            "static-host.example.com",
+        )
+    ]
+    if start_date is not None:
+        signatures.append(
+            _create_mock_signature(SignatureTypes.SIG_TYPE_START_DATE, start_date)
+        )
+    signatures.append(
+        _create_mock_signature(SignatureTypes.SIG_TYPE_END_DATE, end_date)
+    )
+
+    return _create_mock_expectation(
+        expectation_id="static_date_test_1", signatures=signatures
+    )
+
+
 # Given: Mock static threats for service
 def _given_mock_static_threats_for_service(service):
     """Set up mock static threats for the service.
@@ -651,6 +767,21 @@ def _when_check_expectation_matches_threat(service, expectation, threat):
     )
 
 
+# When: I compute the fetch time window for a batch
+def _when_compute_fetch_time_window(service, batch):
+    """Compute the fetch time window for a batch.
+
+    Args:
+        service: The expectation service instance.
+        batch: Batch of expectations.
+
+    Returns:
+        Tuple of (start_time, end_time).
+
+    """
+    return service._get_fetch_time_window(batch)
+
+
 # --------
 # Then Methods
 # --------
@@ -752,6 +883,46 @@ def _then_static_result_without_deep_visibility_returned(result, expectation):
     assert result[0].is_valid  # noqa: S101
 
 
+# Then: Both the threat and DV windows use the signature start and end dates
+def _then_fetch_windows_use_signature_dates(
+    threats_mock, dv_mock, start_date, end_date
+):
+    """Verify both fetchers received the signature-derived time window.
+
+    Args:
+        threats_mock: Mock of the threat fetcher time window fetch.
+        dv_mock: Mock of the Deep Visibility batch SHA1 fetch.
+        start_date: ISO 8601 start date signature value.
+        end_date: ISO 8601 end date signature value.
+
+    """
+    expected_start = _parse_date_signature(start_date)
+    expected_end = _parse_date_signature(end_date)
+
+    threats_mock.assert_called_once_with(
+        start_time=expected_start, end_time=expected_end, limit=1000
+    )
+    dv_mock.assert_called_once_with(ANY, expected_start, expected_end)
+
+
+# Then: The window spans end - SENTINELONE_TIME_WINDOW to end
+def _then_fetch_window_falls_back_to_time_window(
+    service, start_time, end_time, end_date
+):
+    """Verify the fetch window fell back to end - SENTINELONE_TIME_WINDOW.
+
+    Args:
+        service: The expectation service instance.
+        start_time: Computed window start.
+        end_time: Computed window end.
+        end_date: ISO 8601 end date signature value.
+
+    """
+    expected_end = _parse_date_signature(end_date)
+    assert start_time == expected_end - service.client_api.time_window  # noqa: S101
+    assert end_time == expected_end  # noqa: S101
+
+
 # --------
 # Helper Methods
 # --------
@@ -795,3 +966,16 @@ def _create_mock_expectation(expectation_id=None, signatures=None):
     expectation.inject_expectation_signatures = signatures
     expectation.id = expectation_id
     return expectation
+
+
+def _parse_date_signature(value: str) -> datetime:
+    """Parse an ISO 8601 date signature value.
+
+    Args:
+        value: ISO 8601 date string, e.g. "2024-01-01T12:00:00Z".
+
+    Returns:
+        Parsed datetime.
+
+    """
+    return datetime.fromisoformat(value.replace("Z", "+00:00"))
