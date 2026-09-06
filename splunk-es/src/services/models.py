@@ -17,9 +17,6 @@ class SplunkESSearchCriteria(BaseModel):
     target_ips: Optional[list[str]] = Field(
         default_factory=list, description="Target IP addresses to search for"
     )
-    parent_process_names: Optional[list[str]] = Field(
-        default_factory=list, description="Parent process names to search for"
-    )
     hostnames: Optional[list[str]] = Field(
         default_factory=list, description="Hostnames to search for"
     )
