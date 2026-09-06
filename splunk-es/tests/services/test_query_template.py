@@ -256,8 +256,9 @@ class TestQueryTemplateResolution:
         """Test that the minimal default template only carries enough-filter placeholders.
 
         The default template no longer embeds implant URL/name conditions,
-        process-name conditions, or URL path fields; those are only available
-        through custom templates.
+        process-name conditions, or URL path fields; those placeholders are
+        rejected by the template validator, and signature matching happens
+        after the fetch on the raw event text.
         """
         assert "{alerts_index}" in DEFAULT_QUERY_TEMPLATE
         assert "{source_ips}" in DEFAULT_QUERY_TEMPLATE

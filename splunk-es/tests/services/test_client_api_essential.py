@@ -303,9 +303,9 @@ class TestSplunkESClientAPIEssential:
     def test_build_spl_query_default_excludes_url_fields(self):
         """Test that the minimal default template no longer selects URL fields.
 
-        URL/implant fields are only carried by custom templates; the default
-        enough-filter query must not include url_path, url, path, or query
-        field references anywhere.
+        The default enough-filter query must not include url_path, url,
+        path, or query field references anywhere; URL/implant signature
+        values are matched after the fetch on the raw event text instead.
         """
         config = create_test_config()
         client = SplunkESClientAPI(config=config)
