@@ -1,6 +1,11 @@
-import os
-
 import boto3
+from aws_resources.auth.roles_anywhere import (
+    RolesAnywhereError,
+    RolesAnywhereSigner,
+    build_boto3_session,
+    normalize_pem,
+)
+from aws_resources.configuration.collector_config_override import AWSAuthType
 from aws_resources.configuration.config_loader import ConfigLoader
 from botocore.exceptions import ClientError, NoCredentialsError
 from pyoaev.configuration import Configuration
@@ -19,6 +24,7 @@ class OpenAEVAWSResources(CollectorDaemon):
         )
 
         # AWS settings
+        self.auth_type = self._configuration.get("aws_auth_type")
         self.access_key_id = self._configuration.get("aws_access_key_id")
         self.secret_access_key = self._configuration.get("aws_secret_access_key")
         self.session_token = self._configuration.get("aws_session_token")
@@ -40,11 +46,46 @@ class OpenAEVAWSResources(CollectorDaemon):
         self.base_session = None
         self.session = None
 
+    def _build_roles_anywhere_session(self):
+        """Derive a boto3 session from an X.509 identity via IAM Roles Anywhere."""
+        signer = RolesAnywhereSigner(
+            certificate_pem=normalize_pem(
+                self._configuration.get("aws_roles_anywhere_certificate")
+            ),
+            private_key_pem=normalize_pem(
+                self._configuration.get("aws_roles_anywhere_private_key")
+            ),
+            certificate_chain_pem=normalize_pem(
+                self._configuration.get("aws_roles_anywhere_certificate_chain")
+            ),
+            private_key_passphrase=self._configuration.get(
+                "aws_roles_anywhere_private_key_passphrase"
+            ),
+            trust_anchor_arn=self._configuration.get(
+                "aws_roles_anywhere_trust_anchor_arn"
+            ),
+            profile_arn=self._configuration.get("aws_roles_anywhere_profile_arn"),
+            role_arn=self._configuration.get("aws_roles_anywhere_role_arn"),
+            region=self._configuration.get("aws_roles_anywhere_region"),
+            session_duration=self._configuration.get(
+                "aws_roles_anywhere_session_duration"
+            ),
+            session_name="OpenAEVAWSCollector",
+        )
+        self.logger.info(
+            "Requesting temporary AWS credentials through IAM Roles Anywhere "
+            f"(region: {signer.region})"
+        )
+        return build_boto3_session(signer, boto3)
+
     def _init_aws_session(self):
         """Initialize AWS session with credentials."""
         try:
-            # Create base session with provided credentials or use instance role
-            if self.access_key_id and self.secret_access_key:
+            if self.auth_type == AWSAuthType.ROLES_ANYWHERE:
+                # Certificate-anchored pre-auth stage: exchange the X.509 identity
+                # for temporary credentials, then keep using standard SigV4.
+                self.base_session = self._build_roles_anywhere_session()
+            elif self.auth_type == AWSAuthType.CREDENTIALS:
                 session_args = {
                     "aws_access_key_id": self.access_key_id,
                     "aws_secret_access_key": self.secret_access_key,
@@ -53,7 +94,9 @@ class OpenAEVAWSResources(CollectorDaemon):
                     session_args["aws_session_token"] = self.session_token
                 self.base_session = boto3.Session(**session_args)
             else:
-                # Use instance role or default credentials
+                # AWSAuthType.CREDENTIAL_PROVIDER_CHAIN: delegate to boto3's
+                # default credential chain (environment, shared config, EC2/ECS
+                # instance role, ...).
                 self.base_session = boto3.Session()
 
             # If assume role is configured, assume the role
@@ -81,6 +124,9 @@ class OpenAEVAWSResources(CollectorDaemon):
             self.logger.error(
                 "No AWS credentials found. Please configure access keys or use instance role."
             )
+            raise
+        except RolesAnywhereError as e:
+            self.logger.error(f"IAM Roles Anywhere authentication failed: {str(e)}")
             raise
         except ClientError as e:
             self.logger.error(f"AWS client error: {str(e)}")
@@ -395,14 +441,4 @@ class OpenAEVAWSResources(CollectorDaemon):
 
 
 if __name__ == "__main__":
-    for key in [
-        "AWS_ACCESS_KEY",
-        "AWS_SECRET_ACCESS_KEY",
-        "AWS_SESSION_TOKEN",
-        "AWS_ASSUME_ROLE_ARN",
-        "AWS_REGIONS",
-    ]:
-        if not os.environ.get(f"COLLECTOR_{key}") and os.environ.get(key):
-            os.environ[f"COLLECTOR_{key}"] = os.environ.get(key)
-
     OpenAEVAWSResources(configuration=ConfigLoader().to_daemon_config()).start()
