@@ -176,13 +176,7 @@ class TestSplunkESExpectationServiceEssential:
             },
         ]
 
-        mock_detection_helper = MockObjectsFactory.create_mock_detection_helper(
-            match_result=True
-        )
-
-        result = service._match(
-            alerts, matching_signatures, mock_detection_helper, "detection"
-        )
+        result = service._match(alerts, matching_signatures, "detection")
 
         assert result["is_valid"] is True  # noqa: S101
         assert result["matching_data"] == [
@@ -199,10 +193,8 @@ class TestSplunkESExpectationServiceEssential:
         config = create_test_config()
         service = SplunkESExpectationService(config=config)
 
-        mock_detection_helper = MockObjectsFactory.create_mock_detection_helper()
-
         with pytest.raises(SplunkESNoAlertsFoundError):
-            service._match([], [], mock_detection_helper, "detection")
+            service._match([], [], "detection")
 
     def test_match_no_matching_alerts_raises_exception(self):
         """Test matching that finds no matches raises NoMatchingAlerts exception.
@@ -225,14 +217,8 @@ class TestSplunkESExpectationServiceEssential:
             {"type": "source_ipv4_address", "value": "192.168.99.99"}  # Different IP
         ]
 
-        mock_detection_helper = MockObjectsFactory.create_mock_detection_helper(
-            match_result=False
-        )
-
         with pytest.raises(SplunkESNoMatchingAlertsError):
-            service._match(
-                alerts, matching_signatures, mock_detection_helper, "detection"
-            )
+            service._match(alerts, matching_signatures, "detection")
 
     def test_match_email_signatures_against_raw(self):
         """Test matching email-injector signatures against a raw event line.
@@ -278,13 +264,7 @@ class TestSplunkESExpectationServiceEssential:
         }
         alerts = SplunkESResponse.from_raw_response({"results": [raw_row]}).results
 
-        mock_detection_helper = MockObjectsFactory.create_mock_detection_helper(
-            match_result=True
-        )
-
-        result = service._match(
-            alerts, matching_signatures, mock_detection_helper, "detection"
-        )
+        result = service._match(alerts, matching_signatures, "detection")
 
         assert result["is_valid"] is True  # noqa: S101
         assert len(result["matching_data"]) == 1  # noqa: S101
@@ -319,13 +299,7 @@ class TestSplunkESExpectationServiceEssential:
         }
         alerts = SplunkESResponse.from_raw_response({"results": [raw_row]}).results
 
-        mock_detection_helper = MockObjectsFactory.create_mock_detection_helper(
-            match_result=True
-        )
-
-        result = service._match(
-            alerts, matching_signatures, mock_detection_helper, "detection"
-        )
+        result = service._match(alerts, matching_signatures, "detection")
 
         assert result["is_valid"] is True  # noqa: S101
         assert len(result["matching_data"]) == 1  # noqa: S101

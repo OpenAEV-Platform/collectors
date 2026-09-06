@@ -127,9 +127,9 @@ class SplunkESExpectationService:
 
         """
         self.logger.debug(
-            f"{LOG_PREFIX} Returning {len(SignatureTypes)} supported signature types"
+            f"{LOG_PREFIX} Returning {len(self.SUPPORTED_SIGNATURES)} supported signature types"
         )
-        return list(SignatureTypes)
+        return list(self.SUPPORTED_SIGNATURES)
 
     def handle_batch_expectations(
         self,
@@ -362,9 +362,7 @@ class SplunkESExpectationService:
             self.logger.debug(
                 f"{LOG_PREFIX} Matching fetched alerts against expectation signatures via raw-text regex engine..."
             )
-            result = self._match(
-                splunk_es_data, matching_signatures, detection_helper, expectation_type
-            )
+            result = self._match(splunk_es_data, matching_signatures, expectation_type)
 
             return result
 
@@ -439,7 +437,6 @@ class SplunkESExpectationService:
         self,
         splunk_es_data: list[SplunkESAlert],
         matching_signatures: list[dict[str, str]],
-        detection_helper: OpenAEVDetectionHelper,
         expectation_type: str,
     ) -> dict[str, Any]:
         """Match fetched Splunk ES alerts against expectation signatures.
@@ -455,9 +452,6 @@ class SplunkESExpectationService:
             splunk_es_data: List of fetched Splunk ES alerts.
             matching_signatures: Signatures to match against (date metadata
                 excluded upstream).
-            detection_helper: OpenAEV detection helper, retained in the
-                signature for protocol compatibility; it no longer gates
-                matching.
             expectation_type: Type of expectation ('detection').
 
         Returns:
@@ -478,8 +472,7 @@ class SplunkESExpectationService:
 
             self.logger.debug(
                 f"{LOG_PREFIX} Matching is delegated to the raw-text regex engine: "
-                f"{len(splunk_es_data)} alerts against {len(matching_signatures)} signatures "
-                f"(detection_helper retained for protocol compatibility, not used to gate)"
+                f"{len(splunk_es_data)} alerts against {len(matching_signatures)} signatures"
             )
 
             engine_signatures = [
@@ -501,9 +494,8 @@ class SplunkESExpectationService:
                         f"{LOG_PREFIX} Successful match found for {expectation_type} expectation"
                     )
 
-                    matched_item = self.converter._alert_data(alert)
-                    if not matched_item:
-                        matched_item = alert._raw or {}
+                    converted = self.converter.convert_data_to_oaev_data(alert)
+                    matched_item = converted[0] if converted else (alert._raw or {})
                     self.logger.debug(f"{LOG_PREFIX} Matching data: {matched_item}")
 
                     result = {
@@ -529,135 +521,6 @@ class SplunkESExpectationService:
             raise
         except Exception as e:
             raise SplunkESMatchingError() from e
-
-    def _match_with_detection_helper(
-        self,
-        signatures: list[dict[str, str]],
-        data_item: dict[str, Any],
-        detection_helper: OpenAEVDetectionHelper,
-    ) -> bool:
-        """Match signatures using detection_helper with proper OR logic.
-
-        Args:
-            signatures: List of signature dictionaries.
-            data_item: OAEV data item to match against.
-            detection_helper: OpenAEV detection helper instance.
-
-        Returns:
-            True if matching succeeds, False otherwise.
-
-        Logic:
-        1. Parent process: MUST match exactly (if present) - stop if False
-        2. Source IPs: Call detection_helper for each IP individually, stop at first match (OR logic)
-        3. Target IPs: Call detection_helper for each IP individually, stop at first match (OR logic)
-        4. Must have parent_process=True AND (at least one src_ip=True OR at least one dst_ip=True)
-
-        """
-        try:
-            signature_groups: dict[str, list[dict[str, str]]] = {}
-            for sig in signatures:
-                sig_type = sig["type"]
-                if sig_type not in signature_groups:
-                    signature_groups[sig_type] = []
-                signature_groups[sig_type].append(sig)
-
-            self.logger.debug(
-                f"{LOG_PREFIX} Processing {len(signature_groups)} signature groups"
-            )
-
-            parent_process_match = False
-            source_ip_match = False
-            target_ip_match = False
-
-            if "parent_process_name" in signature_groups:
-                parent_sigs = signature_groups["parent_process_name"]
-                self.logger.debug(
-                    f"{LOG_PREFIX} Checking parent process with {len(parent_sigs)} signatures"
-                )
-
-                filtered_data = {
-                    k: v for k, v in data_item.items() if k == "parent_process_name"
-                }
-
-                parent_process_match = detection_helper.match_alert_elements(
-                    parent_sigs, filtered_data
-                )
-
-                self.logger.debug(
-                    f"{LOG_PREFIX} Parent process match: {parent_process_match}"
-                )
-
-                if not parent_process_match:
-                    self.logger.debug(f"{LOG_PREFIX} Parent process failed - stopping")
-                    return False
-
-            source_ip_types = ["source_ipv4_address", "source_ipv6_address"]
-            for ip_type in source_ip_types:
-                if ip_type in signature_groups and ip_type in data_item:
-                    ip_sigs = signature_groups[ip_type]
-                    self.logger.debug(
-                        f"{LOG_PREFIX} Checking {ip_type} with {len(ip_sigs)} signatures"
-                    )
-
-                    for sig in ip_sigs:
-                        filtered_data = {ip_type: data_item[ip_type]}
-                        if detection_helper.match_alert_elements([sig], filtered_data):
-                            self.logger.debug(
-                                f"{LOG_PREFIX} ✓ {ip_type} signature matched: {sig['value']}"
-                            )
-                            source_ip_match = True
-                            break
-
-                    if source_ip_match:
-                        break
-
-            target_ip_types = ["target_ipv4_address", "target_ipv6_address"]
-            for ip_type in target_ip_types:
-                if ip_type in signature_groups and ip_type in data_item:
-                    ip_sigs = signature_groups[ip_type]
-                    self.logger.debug(
-                        f"{LOG_PREFIX} Checking {ip_type} with {len(ip_sigs)} signatures"
-                    )
-
-                    for sig in ip_sigs:
-                        filtered_data = {ip_type: data_item[ip_type]}
-                        if detection_helper.match_alert_elements([sig], filtered_data):
-                            self.logger.debug(
-                                f"{LOG_PREFIX} ✓ {ip_type} signature matched: {sig['value']}"
-                            )
-                            target_ip_match = True
-                            break
-
-                    if target_ip_match:
-                        break
-
-            has_source_sigs = any(t in signature_groups for t in source_ip_types)
-            has_target_sigs = any(t in signature_groups for t in target_ip_types)
-
-            self.logger.debug(
-                f"{LOG_PREFIX} Match results - Parent: {parent_process_match}, "
-                f"Source IP: {source_ip_match} (required: {has_source_sigs}), "
-                f"Target IP: {target_ip_match} (required: {has_target_sigs})"
-            )
-
-            if not parent_process_match:
-                return False
-
-            if has_source_sigs and has_target_sigs:
-                result = source_ip_match or target_ip_match
-            elif has_source_sigs:
-                result = source_ip_match
-            elif has_target_sigs:
-                result = target_ip_match
-            else:
-                result = True
-
-            self.logger.debug(f"{LOG_PREFIX} Final match result: {result}")
-            return result
-
-        except Exception as e:
-            self.logger.error(f"{LOG_PREFIX} Error in detection_helper matching: {e}")
-            return False
 
     def _create_error_result(
         self,
@@ -754,10 +617,10 @@ class SplunkESExpectationService:
         """
         info = {
             "service_name": "Splunk ES",
-            "supported_signatures": [sig.value for sig in SignatureTypes],
+            "supported_signatures": [sig.value for sig in self.SUPPORTED_SIGNATURES],
             "supports_detection": True,
             "supports_prevention": False,
-            "description": f"Splunk ES expectation validation service ({len(list(SignatureTypes))} signature types, detection only)",
+            "description": f"Splunk ES expectation validation service ({len(self.SUPPORTED_SIGNATURES)} signature types, detection only)",
         }
         self.logger.debug(f"{LOG_PREFIX} Service info: {info}")
         return info
