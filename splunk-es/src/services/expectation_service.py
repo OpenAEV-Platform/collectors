@@ -52,6 +52,22 @@ class SplunkESExpectationService:
     # list tracks the upstream enum across pyoaev versions without hardcoding.
     SUPPORTED_SIGNATURES = list(SignatureTypes)
 
+    # Signature types the SPL query already filters on (the enough-filter):
+    # source/target IPs, both hostname flavors, and the date bounds. They
+    # never participate in raw-text matching.
+    _FILTER_SIGNATURE_TYPES = frozenset(
+        {
+            "source_ipv4_address",
+            "source_ipv6_address",
+            "target_ipv4_address",
+            "target_ipv6_address",
+            "hostname",
+            "target_hostname_address",
+            "start_date",
+            "end_date",
+        }
+    )
+
     def __init__(self, config: ConfigLoader | None = None) -> None:
         """Initialize the Splunk ES service provider.
 
@@ -406,24 +422,21 @@ class SplunkESExpectationService:
 
             # All signature types are supported now: the search keeps the
             # full list unfiltered (preserves fetch_with_retry's non-empty
-            # contract). Types not used by the query are carried by the
-            # matcher only.
+            # contract). Filter types (IPs, hostnames, dates) are the
+            # enough-filter the query already applies; content types are
+            # carried by the matcher only.
             search_signatures = all_signatures
 
-            date_signature_types = [
-                SignatureTypes.SIG_TYPE_START_DATE.value,
-                SignatureTypes.SIG_TYPE_END_DATE.value,
-            ]
             matching_signatures = [
                 sig
                 for sig in search_signatures
-                if sig["type"] not in date_signature_types
+                if sig["type"] not in self._FILTER_SIGNATURE_TYPES
             ]
 
             self.logger.debug(
                 f"{LOG_PREFIX} Using all {len(search_signatures)} signatures for search "
-                f"(no type filtering) and {len(matching_signatures)} matching signatures "
-                f"(date signatures excluded from matching)"
+                f"(no type filtering) and {len(matching_signatures)} content signatures "
+                f"(filter types excluded from matching)"
             )
 
             return search_signatures, matching_signatures
@@ -446,12 +459,15 @@ class SplunkESExpectationService:
         matching signatures. The raw text is the alert's ``_raw`` field when
         it holds a non-empty string, otherwise a flattened ``key=value``
         representation of the whole raw row, so matching does not depend on
-        any particular structured field names.
+        any particular structured field names. When the content set is
+        empty, the query's enough-filter is the only filter and the first
+        fetched alert is accepted.
 
         Args:
             splunk_es_data: List of fetched Splunk ES alerts.
-            matching_signatures: Signatures to match against (date metadata
-                excluded upstream).
+            matching_signatures: Content signatures to match against (filter
+                types excluded upstream; empty means accept what the query
+                fetched).
             expectation_type: Type of expectation ('detection').
 
         Returns:
@@ -469,6 +485,25 @@ class SplunkESExpectationService:
             if not splunk_es_data:
                 self.logger.debug(f"{LOG_PREFIX} No alerts available for matching")
                 raise SplunkESNoAlertsFoundError("No data available for matching")
+
+            if not matching_signatures:
+                # No content signatures: the query's enough-filter is the only
+                # filter, so accept what it fetched.
+                self.logger.debug(
+                    f"{LOG_PREFIX} No content signatures: accepting fetched alerts "
+                    f"(query already filtered)"
+                )
+                alert = splunk_es_data[0]
+                converted = self.converter.convert_data_to_oaev_data(alert)
+                matched_item = converted[0] if converted else (alert._raw or {})
+                self.logger.info(
+                    f"{LOG_PREFIX} Successful match found for {expectation_type} expectation"
+                )
+                return {
+                    "is_valid": True,
+                    "matching_data": [matched_item],
+                    "total_data_found": len(splunk_es_data),
+                }
 
             self.logger.debug(
                 f"{LOG_PREFIX} Matching is delegated to the raw-text regex engine: "

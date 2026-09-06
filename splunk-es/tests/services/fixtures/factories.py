@@ -190,18 +190,19 @@ class MockObjectsFactory:
         return mock_client
 
     @staticmethod
-    def create_mock_detection_helper(match_result: bool = True):
+    def create_mock_detection_helper():
         """Create mock detection helper.
 
-        Args:
-            match_result: Whether the helper should return matches (default True).
+        The helper is retained for protocol compatibility only: Splunk ES
+        matching is delegated to the raw-text regex engine, so the mock
+        always reports a match and no test depends on its outcome.
 
         Returns:
             Mock OpenAEVDetectionHelper instance.
 
         """
         mock_helper = Mock()
-        mock_helper.match_alert_elements.return_value = match_result
+        mock_helper.match_alert_elements.return_value = True
         return mock_helper
 
     @staticmethod

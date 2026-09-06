@@ -45,7 +45,7 @@ def mock_detection_helper():
         Mock OpenAEV detection helper that returns True for matches.
 
     """
-    return MockObjectsFactory.create_mock_detection_helper(match_result=True)
+    return MockObjectsFactory.create_mock_detection_helper()
 
 
 @pytest.fixture

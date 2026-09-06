@@ -148,8 +148,9 @@ class TestSplunkESExpectationServiceEssential:
         """Test successful matching for a detection expectation.
 
         Verifies that the matching logic identifies a fetched alert whose raw
-        event text contains expectation signature values and returns that
-        alert's converted data as matching data.
+        event text contains the content signature value (filter types are
+        excluded upstream) and returns that alert's converted data as
+        matching data.
         """
         config = create_test_config()
         service = SplunkESExpectationService(config=config)
@@ -165,11 +166,9 @@ class TestSplunkESExpectationServiceEssential:
         }
         alerts = SplunkESResponse.from_raw_response({"results": [raw_row]}).results
 
+        # Content-only: filter types (IPs, hostnames, dates) are excluded
+        # upstream by _extract_signatures; the matcher only sees content.
         matching_signatures = [
-            {
-                "type": "source_ipv4_address",
-                "value": "192.168.1.100",
-            },
             {
                 "type": "parent_process_name",
                 "value": "test_process.exe",
@@ -219,6 +218,53 @@ class TestSplunkESExpectationServiceEssential:
 
         with pytest.raises(SplunkESNoMatchingAlertsError):
             service._match(alerts, matching_signatures, "detection")
+
+    def test_match_accepts_fetched_when_no_content_signatures(self):
+        """Test that a filter-only expectation accepts what the query fetched.
+
+        When an expectation carries only filter-type signatures (IP, date),
+        the matching set is empty: the SPL query's enough-filter is the only
+        filter, so every fetched alert is accepted without a content check.
+        """
+        config = create_test_config()
+        service = SplunkESExpectationService(config=config)
+
+        mock_expectation = Mock()
+        mock_expectation.inject_expectation_id = "filter-only-1"
+
+        mock_signature_ip = Mock()
+        mock_signature_ip.type.value = "source_ipv4_address"
+        mock_signature_ip.value = "192.168.1.100"
+
+        mock_signature_date = Mock()
+        mock_signature_date.type.value = "start_date"
+        mock_signature_date.value = "2024-01-01T00:00:00Z"
+
+        mock_expectation.inject_expectation_signatures = [
+            mock_signature_ip,
+            mock_signature_date,
+        ]
+
+        search_signatures, matching_signatures = service._extract_signatures(
+            mock_expectation
+        )
+
+        # Both signatures are filter types, so the content set is empty.
+        assert len(search_signatures) == 2  # noqa: S101
+        assert matching_signatures == []  # noqa: S101
+
+        raw_row = {
+            "_time": "2024-01-01T12:30:00Z",
+            "src_ip": "192.168.1.100",
+            "_raw": "2024-01-01T12:30:00Z notable event with no signature text",
+        }
+        alerts = SplunkESResponse.from_raw_response({"results": [raw_row]}).results
+
+        result = service._match(alerts, matching_signatures, "detection")
+
+        assert result["is_valid"] is True  # noqa: S101
+        assert len(result["matching_data"]) == 1  # noqa: S101
+        assert result["total_data_found"] == 1  # noqa: S101
 
     def test_match_email_signatures_against_raw(self):
         """Test matching email-injector signatures against a raw event line.
@@ -304,16 +350,19 @@ class TestSplunkESExpectationServiceEssential:
         assert result["is_valid"] is True  # noqa: S101
         assert len(result["matching_data"]) == 1  # noqa: S101
 
-    def test_extract_signatures_filters_correctly(self):
-        """Test signature extraction and filtering.
+    def test_extract_signatures_excludes_filter_types(self):
+        """Test signature extraction separates query filters from content.
 
-        Verifies that signature extraction properly separates search signatures
-        from matching signatures, excluding date metadata from matching.
+        Verifies that every signature goes into the search list (the query
+        needs them all to build its enough-filter) while matching receives
+        only content signatures: the IP, hostname, and date types are the
+        filter types the SPL query already applies, so the regex engine
+        must not double-filter on them.
         """
         config = create_test_config()
         service = SplunkESExpectationService(config=config)
 
-        # Create mock expectation with mixed signature types
+        # Create mock expectation with mixed filter and content types
         mock_expectation = Mock()
         mock_signature_ip = Mock()
         mock_signature_ip.type.value = "source_ipv4_address"
@@ -323,35 +372,38 @@ class TestSplunkESExpectationServiceEssential:
         mock_signature_date.type.value = "start_date"
         mock_signature_date.value = "2024-01-01T00:00:00Z"
 
-        # hostname was not in the old hardcoded supported set; it must
-        # survive the new unfiltered search-signature extraction
+        # hostname is a filter type too: the query already constrains on it
         mock_signature_hostname = Mock()
         mock_signature_hostname.type.value = "hostname"
         mock_signature_hostname.value = "victim-host-01"
+
+        # content type: carried by the matcher, not by the query
+        mock_signature_ppn = Mock()
+        mock_signature_ppn.type.value = "parent_process_name"
+        mock_signature_ppn.value = "implant-agent.exe"
 
         mock_expectation.inject_expectation_signatures = [
             mock_signature_ip,
             mock_signature_date,
             mock_signature_hostname,
+            mock_signature_ppn,
         ]
 
         search_signatures, matching_signatures = service._extract_signatures(
             mock_expectation
         )
 
-        # All signatures are now supported: search keeps every signature
+        # Search keeps every signature (the query needs the full enough-filter)
         all_signatures = [
             {"type": sig.type.value, "value": sig.value}
             for sig in mock_expectation.inject_expectation_signatures
         ]
         assert search_signatures == all_signatures  # noqa: S101
-        assert len(search_signatures) == 3  # noqa: S101
+        assert len(search_signatures) == 4  # noqa: S101
 
-        # Matching signatures exclude only start_date/end_date
-        assert len(matching_signatures) == 2  # noqa: S101
-        assert [s["type"] for s in matching_signatures] == [  # noqa: S101
-            "source_ipv4_address",
-            "hostname",
+        # Matching receives only the content signature; filter types are excluded
+        assert matching_signatures == [  # noqa: S101
+            {"type": "parent_process_name", "value": "implant-agent.exe"}
         ]
 
     def test_create_error_result_object(self):
