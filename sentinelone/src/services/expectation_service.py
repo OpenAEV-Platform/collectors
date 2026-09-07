@@ -16,6 +16,7 @@ from .client_api import SentinelOneClientAPI
 from .converter import SentinelOneConverter
 from .exception import SentinelOneAPIError, SentinelOneExpectationError
 from .fetcher_deep_visibility import FetcherDeepVisibility
+from .fetcher_sdl import FetcherSDL
 from .fetcher_threat import FetcherThreat
 from .fetcher_threat_events import FetcherThreatEvents
 from .model_threat import SentinelOneThreat
@@ -71,9 +72,14 @@ class SentinelOneExpectationService:
         self.threat_events_fetcher: FetcherThreatEvents = FetcherThreatEvents(
             self.client_api
         )
-        self.deep_visibility_fetcher: FetcherDeepVisibility = FetcherDeepVisibility(
-            self.client_api
-        )
+        if self.client_api.is_self_hosted:
+            self.deep_visibility_fetcher: FetcherDeepVisibility | FetcherSDL = (
+                FetcherDeepVisibility(self.client_api)
+            )
+            self.logger.debug(f"{LOG_PREFIX} Deep-search backend: DV 1.0 (self-hosted)")
+        else:
+            self.deep_visibility_fetcher = FetcherSDL(self.client_api)
+            self.logger.debug(f"{LOG_PREFIX} Deep-search backend: SDL v2 (SaaS)")
 
         self.failure_tracker: defaultdict = defaultdict(int)
         self.max_failure = 5
