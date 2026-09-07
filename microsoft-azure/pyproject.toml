@@ -34,6 +34,14 @@ dev = [
     "pyoaev",
 ]
 
+[tool.poetry.group.test.dependencies]
+pytest = "^9.0.0"
+
+[tool.pytest.ini_options]
+testpaths = [
+    "./tests",
+]
+
 [tool.cmw]
 install-command = "poetry install --extras prod"
 config-dump-command = "poetry run python -m microsoft_azure.openaev_microsoft_azure --dump-config-schema"

@@ -38,8 +38,9 @@ synchronization on every run: VMs are upserted (created or updated) so existing 
 
 - OpenAEV Platform >= 1.19.0
 - A Microsoft Azure subscription containing Virtual Machines
-- A Microsoft Entra ID application registration (client ID + client secret) granted the `Reader` role on the target
-  subscription
+- A Microsoft Entra ID application registration granted the `Reader` role on the target subscription, holding either:
+  - a client secret (default), or
+  - a client certificate uploaded to the application registration, when using certificate authentication
 - For a manual (non-Docker) deployment: Python >= 3.11 and [Poetry](https://python-poetry.org/) >= 2.1
 
 ## Configuration variables
@@ -71,9 +72,46 @@ The collector is configured either through environment variables (recommended, r
 |----------------------|-----------------------------------------|-------------------------------------------|---------|-----------|----------------------------------------------------------------------------------------------------|
 | Azure Tenant ID      | `collector.microsoft_azure_tenant_id`       | `COLLECTOR_MICROSOFT_AZURE_TENANT_ID`       | /       | Yes       | The Microsoft Entra ID (Azure AD) tenant ID used for authentication.                                |
 | Azure Client ID      | `collector.microsoft_azure_client_id`       | `COLLECTOR_MICROSOFT_AZURE_CLIENT_ID`       | /       | Yes       | The application (client) ID of the Entra ID app registration.                                        |
-| Azure Client Secret  | `collector.microsoft_azure_client_secret`   | `COLLECTOR_MICROSOFT_AZURE_CLIENT_SECRET`   | /       | Yes       | The client secret of the Entra ID app registration.                                                 |
+| Azure Client Secret  | `collector.microsoft_azure_client_secret`   | `COLLECTOR_MICROSOFT_AZURE_CLIENT_SECRET`   | /       | Conditional | The client secret of the Entra ID app registration. Required unless certificate authentication is enabled.  |
 | Azure Subscription ID| `collector.microsoft_azure_subscription_id` | `COLLECTOR_MICROSOFT_AZURE_SUBSCRIPTION_ID` | /       | Yes       | The Azure subscription ID whose Virtual Machines are imported.                                       |
 | Azure Resource Groups| `collector.microsoft_azure_resource_groups` | `COLLECTOR_MICROSOFT_AZURE_RESOURCE_GROUPS` | /       | No        | Comma-separated list of resource groups to scan. Leave empty to import all VMs in the subscription.  |
+
+#### Certificate authentication (optional)
+
+By default the collector authenticates with a client secret and nothing below needs to be set. Set
+`COLLECTOR_MICROSOFT_AZURE_USE_CERTIFICATE_AUTH` to `true` to authenticate with a client certificate instead, which
+avoids storing a long-lived shared secret. The collector then signs an OAuth2 client assertion with the certificate
+private key, exactly like the other Microsoft collectors.
+
+| Parameter               | config.yml                                        | Docker environment variable                       | Default | Mandatory   | Description                                                                                     |
+|-------------------------|---------------------------------------------------|---------------------------------------------------|---------|-------------|-------------------------------------------------------------------------------------------------|
+| Use Certificate Auth    | `collector.microsoft_azure_use_certificate_auth`   | `COLLECTOR_MICROSOFT_AZURE_USE_CERTIFICATE_AUTH`   | false   | No          | Authenticate with a client certificate instead of a client secret.                              |
+| Client Certificate Key  | `collector.microsoft_azure_client_cert_data`       | `COLLECTOR_MICROSOFT_AZURE_CLIENT_CERT_DATA`       | /       | Conditional | PEM encoded private key of the certificate. Required when certificate auth is enabled.          |
+| Certificate Thumbprint  | `collector.microsoft_azure_client_cert_thumbprint` | `COLLECTOR_MICROSOFT_AZURE_CLIENT_CERT_THUMBPRINT` | /       | Conditional | SHA-1 thumbprint of the certificate. Required when certificate auth is enabled.                 |
+| Certificate Passphrase  | `collector.microsoft_azure_client_cert_passphrase` | `COLLECTOR_MICROSOFT_AZURE_CLIENT_CERT_PASSPHRASE` | /       | No          | Passphrase protecting the private key. Only needed when the private key is encrypted.           |
+
+To set it up:
+
+1. Upload the certificate (public part, `.cer` / `.pem` / `.crt`) to your Entra ID app registration, under
+   **Certificates & secrets** > **Certificates**.
+2. Copy the SHA-1 thumbprint shown by the portal into `COLLECTOR_MICROSOFT_AZURE_CLIENT_CERT_THUMBPRINT`. Values copied
+   from `openssl x509 -fingerprint` or the Windows certificate manager are accepted too: colons, dashes and spaces are
+   stripped automatically.
+3. Provide the matching PEM private key in `COLLECTOR_MICROSOFT_AZURE_CLIENT_CERT_DATA`. Environment variables cannot
+   contain real newlines, so escape them as `\n`:
+
+```shell
+COLLECTOR_MICROSOFT_AZURE_CLIENT_CERT_DATA="-----BEGIN PRIVATE KEY-----\nMIIEvQIBADAN...\n-----END PRIVATE KEY-----"
+```
+
+In a `config.yml` file, use a YAML block scalar instead:
+
+```yaml
+microsoft_azure_client_cert_data: |
+  -----BEGIN PRIVATE KEY-----
+  MIIEvQIBADAN...
+  -----END PRIVATE KEY-----
+```
 
 ## Deployment
 
@@ -133,7 +171,8 @@ flowchart LR
 On each run, the collector:
 
 1. Acquires an access token from Microsoft Entra ID using the application client credentials (MSAL), scoped to Azure
-   Resource Manager (`https://management.azure.com/.default`).
+   Resource Manager (`https://management.azure.com/.default`). The credential is either the client secret (default) or a
+   client assertion signed with the configured client certificate.
 2. Lists Virtual Machines through Azure Resource Manager: all VMs in the subscription
    (`/providers/Microsoft.Compute/virtualMachines`, API version `2023-03-01`) when `microsoft_azure_resource_groups` is
    empty, or only the VMs in the listed resource groups otherwise.
@@ -154,8 +193,8 @@ seen in a previous run is refreshed rather than duplicated.
 
 ## Required permissions and API endpoints
 
-- Authentication: Microsoft Entra ID application (client credentials) - tenant ID, application (client) ID and client
-  secret.
+- Authentication: Microsoft Entra ID application (client credentials) - tenant ID, application (client) ID and either a
+  client secret (default) or a client certificate registered on the application.
 - Required Azure role: the application's service principal must hold the `Reader` role (or another role that grants
   read access to Compute and Network resources) on the target subscription so it can list VMs, network interfaces and
   public IP addresses.
@@ -176,6 +215,8 @@ Set `COLLECTOR_LOG_LEVEL=debug` to get verbose logs, including the authenticatio
 each endpoint upsert. Common issues:
 
 - Authentication failures: confirm the tenant ID, client ID and client secret, and that the secret has not expired.
+- Certificate authentication failures (`AADSTS700027`): confirm the certificate is uploaded to the app registration,
+  that the thumbprint matches that certificate, and that the private key corresponds to the uploaded certificate.
 - No VMs imported: confirm the service principal has the `Reader` role on the subscription, that the subscription ID is
   correct, and that the VMs are in a `Succeeded` provisioning state with at least one IP address.
 
