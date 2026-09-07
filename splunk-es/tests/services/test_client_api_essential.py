@@ -178,7 +178,8 @@ class TestSplunkESClientAPIEssential:
         assert "index=custom_security" in query  # noqa: S101
 
     @patch("requests.Session.post")
-    def test_fetch_signatures_no_data_returns_empty(self, mock_post):
+    @patch("src.services.client_api.time.sleep")
+    def test_fetch_signatures_no_data_returns_empty(self, mock_sleep, mock_post):
         """Test behavior when no alerts are found.
 
         Verifies that when Splunk ES returns no results,
@@ -199,7 +200,8 @@ class TestSplunkESClientAPIEssential:
         assert result == []  # noqa: S101
 
     @patch("requests.Session.post")
-    def test_fetch_signatures_exception_handling(self, mock_post):
+    @patch("src.services.client_api.time.sleep")
+    def test_fetch_signatures_exception_handling(self, mock_sleep, mock_post):
         """Test exception handling in fetch_signatures.
 
         Verifies that API errors are properly caught and wrapped
