@@ -1,4 +1,5 @@
 import unittest
+from datetime import datetime, timedelta, timezone
 from unittest.mock import ANY, MagicMock, patch
 from uuid import UUID
 
@@ -40,8 +41,8 @@ class TestSentinelOneExpectationService(unittest.TestCase):
         self.assertEqual(
             service.deep_visibility_fetcher, m_fetcher_deep_visibility.return_value
         )
-        self.assertIsInstance(service.failure_tracker, module.defaultdict)
-        self.assertEqual(service.max_failure, 5)
+        self.assertIsInstance(service.first_attempt_at, dict)
+        self.assertEqual(service.retry_window, config.sentinelone.retry_window)
         m_api.assert_called_once_with(config)
         m_converter.assert_called_once()
         m_fetcher_threat.assert_called_once_with(m_api.return_value)
@@ -61,6 +62,44 @@ class TestSentinelOneExpectationService(unittest.TestCase):
                 module.SignatureTypes.SIG_TYPE_END_DATE,
             ],
         )
+
+    def test_expectation_does_not_match_when_signature_data_is_missing(
+        self,
+        _m_api,
+        m_converter,
+        *_,
+    ):
+        """A required signature with no converted data is a clean non-match."""
+        config = MagicMock()
+        service = module.SentinelOneExpectationService(config=config)
+        service.logger = MagicMock()
+
+        expectation = MagicMock()
+        signature = MagicMock()
+        signature.type = module.SignatureTypes.SIG_TYPE_PARENT_PROCESS_NAME
+        signature.value = "expected-parent.exe"
+        expectation.inject_expectation_signatures = [signature]
+
+        threat = MagicMock()
+        threat.threat_id = "threat-without-parent-process"
+        m_converter.return_value.convert_threats_to_oaev.return_value = [
+            {
+                "target_hostname_address": {
+                    "type": "simple",
+                    "data": ["host.example.com"],
+                }
+            }
+        ]
+        detection_helper = MagicMock()
+
+        result = service._expectation_matches_threat_data(
+            expectation, threat, [], detection_helper
+        )
+
+        self.assertFalse(result)
+        logged_calls = " ".join(str(call) for call in service.logger.method_calls)
+        self.assertNotIn("KeyError", logged_calls)
+        detection_helper.match_alert_elements.assert_not_called()
 
     @patch.object(module.SentinelOneExpectationService, "_process_expectation_batch")
     @patch.object(module.SentinelOneExpectationService, "_create_expectation_batches")
@@ -105,37 +144,179 @@ class TestSentinelOneExpectationService(unittest.TestCase):
         )
         self.assertEqual(batches, [[expectation_zero]])
 
-    def test_update_failures(self, *_):
+    @patch.object(module, "SignatureExtractor")
+    def test_get_fetch_time_window_with_start_date(self, m_signature_extractor, *_):
+        """A valid start date anchors the window start; the window ends at
+        now.
+
+        The signature end date is no longer read for this window.
+        """
         config = MagicMock()
 
         service = module.SentinelOneExpectationService(config=config)
+        service.client_api.time_window = timedelta(hours=1)
+
+        batch = [MagicMock()]
+        end_date = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+        start_date = datetime(2024, 1, 1, 10, 0, 0, tzinfo=timezone.utc)
+        m_signature_extractor.extract_start_date.return_value = start_date
+
+        start, end = service._get_fetch_time_window(batch)
+
+        m_signature_extractor.extract_end_date.assert_not_called()
+        m_signature_extractor.extract_start_date.assert_called_once_with(batch)
+        self.assertEqual(start, start_date)
+        self.assertNotEqual(end, end_date)
+        self.assertLess(abs(end - datetime.now(timezone.utc)), timedelta(minutes=1))
+
+    @patch.object(module, "SignatureExtractor")
+    def test_get_fetch_time_window_without_start_date(self, m_signature_extractor, *_):
+        """Without a start date the threat window falls back to
+        now - SENTINELONE_TIME_WINDOW.
+
+        The window spans now - SENTINELONE_TIME_WINDOW to now.
+        """
+        config = MagicMock()
+
+        service = module.SentinelOneExpectationService(config=config)
+        service.client_api.time_window = timedelta(hours=1)
+
+        batch = [MagicMock()]
+        m_signature_extractor.extract_start_date.return_value = None
+
+        start, end = service._get_fetch_time_window(batch)
+
+        m_signature_extractor.extract_end_date.assert_not_called()
+        self.assertEqual(start, end - timedelta(hours=1))
+        self.assertLess(abs(end - datetime.now(timezone.utc)), timedelta(minutes=1))
+
+    @patch.object(module, "SignatureExtractor")
+    def test_get_fetch_time_window_with_start_date_in_future(
+        self, m_signature_extractor, *_
+    ):
+        """A start date in the future is anomalous; the window falls back
+        to now - SENTINELONE_TIME_WINDOW.
+
+        The window spans now - SENTINELONE_TIME_WINDOW to now.
+        """
+        config = MagicMock()
+
+        service = module.SentinelOneExpectationService(config=config)
+        service.client_api.time_window = timedelta(hours=1)
+
+        batch = [MagicMock()]
+        m_signature_extractor.extract_start_date.return_value = datetime(
+            2999, 1, 1, 12, 0, 0, tzinfo=timezone.utc
+        )
+
+        start, end = service._get_fetch_time_window(batch)
+
+        self.assertEqual(start, end - timedelta(hours=1))
+        self.assertLess(abs(end - datetime.now(timezone.utc)), timedelta(minutes=1))
+
+    def test_get_deep_visibility_fetch_window(self, *_):
+        """The DV event window ignores the signature dates and spans exactly
+        the configured lookback, ending at the reference time."""
+        config = MagicMock()
+
+        service = module.SentinelOneExpectationService(config=config)
+        service.client_api.deep_visibility_lookback = timedelta(hours=6)
+
+        now = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+        start, end = service._get_deep_visibility_fetch_window(now=now)
+
+        self.assertEqual(end, now)
+        self.assertEqual(start, now - timedelta(hours=6))
+
+    def test_update_failures(self, *_):
+        """Valid results close the lifecycle; in-window failures stay held
+        pending; failures after the window are the final attempt (verdict)."""
+        config = MagicMock()
+
+        service = module.SentinelOneExpectationService(config=config)
+        service.retry_window = timedelta(minutes=10)
+
+        now = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
 
         uuid_zero = "6b7d53b5-2828-4be8-a797-a5193c615ec5"
         result_zero = MagicMock()
         result_zero.is_valid = True
         result_zero.expectation_id = uuid_zero
+        service.first_attempt_at[uuid_zero] = now - timedelta(minutes=2)
 
         uuid_one = "2930a07a-7077-478b-a7d0-27699a03edf3"
         result_one = MagicMock()
         result_one.is_valid = False
         result_one.expectation_id = uuid_one
-        service.failure_tracker[uuid_one] = 2
+        service.first_attempt_at[uuid_one] = now - timedelta(minutes=5)
 
         uuid_two = "adccb725-9769-4856-bbc3-1cdc1ff98a26"
         result_two = MagicMock()
         result_two.is_valid = False
         result_two.expectation_id = uuid_two
-        service.failure_tracker[uuid_two] = 5
+        service.first_attempt_at[uuid_two] = now - timedelta(minutes=15)
 
         m_results = [result_zero, result_one, result_two]
 
-        results = service._update_failures(m_results)
+        with patch.object(
+            module.SentinelOneExpectationService, "_now", return_value=now
+        ):
+            results = service._update_failures(m_results)
 
         self.assertNotEqual(len(m_results), len(results))
         self.assertEqual(len(results), 2)
-        self.assertEqual(service.failure_tracker[uuid_one], 3)
-        self.assertNotIn(uuid_two, service.failure_tracker)
-        self.assertNotIn(uuid_zero, service.failure_tracker)
+        self.assertIn(result_zero, results)
+        self.assertNotIn(result_one, results)
+        self.assertIn(result_two, results)
+        self.assertNotIn(uuid_zero, service.first_attempt_at)
+        self.assertIn(uuid_one, service.first_attempt_at)
+        self.assertNotIn(uuid_two, service.first_attempt_at)
+
+    def test_update_failures_first_attempt_opens_retry_window(self, *_):
+        """The first failed attempt opens the retry window anchored at that
+        moment and emits no verdict (re-fetched on the next cycle)."""
+        config = MagicMock()
+
+        service = module.SentinelOneExpectationService(config=config)
+        service.retry_window = timedelta(minutes=10)
+
+        now = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+        uuid = "1e0f7b3c-5a2d-4f8e-9c1b-2d3e4f5a6b7c"
+        result = MagicMock()
+        result.is_valid = False
+        result.expectation_id = uuid
+
+        with patch.object(
+            module.SentinelOneExpectationService, "_now", return_value=now
+        ):
+            results = service._update_failures([result])
+
+        self.assertEqual(results, [])
+        self.assertIn(uuid, service.first_attempt_at)
+        self.assertEqual(service.first_attempt_at[uuid], now)
+
+    def test_update_failures_at_window_boundary_stays_pending(self, *_):
+        """An attempt at exactly retry_window since the first attempt is still
+        in-window (the boundary is inclusive); only the next cycle degrades."""
+        config = MagicMock()
+
+        service = module.SentinelOneExpectationService(config=config)
+        service.retry_window = timedelta(minutes=10)
+
+        now = datetime(2024, 1, 1, 12, 10, 0, tzinfo=timezone.utc)
+        uuid = "8c4a6d1e-3b7f-4e2a-8f0d-5c9e1b2a3d4f"
+        result = MagicMock()
+        result.is_valid = False
+        result.expectation_id = uuid
+        service.first_attempt_at[uuid] = now - timedelta(minutes=10)
+
+        with patch.object(
+            module.SentinelOneExpectationService, "_now", return_value=now
+        ):
+            results = service._update_failures([result])
+
+        self.assertEqual(results, [])
+        self.assertIn(uuid, service.first_attempt_at)
 
     def test_update_date_in_case_of_failures(self, *_):
         config = MagicMock()
@@ -143,7 +324,9 @@ class TestSentinelOneExpectationService(unittest.TestCase):
         service = module.SentinelOneExpectationService(config=config)
 
         uuid = UUID("feb4be6f-72c7-4212-8984-a7d7c42178f0")
-        service.failure_tracker[str(uuid)] = 1
+        service.first_attempt_at[str(uuid)] = datetime(
+            2026, 5, 4, 3, 0, 0, tzinfo=timezone.utc
+        )
 
         expectation = MagicMock()
         expectation.inject_expectation_id = uuid
@@ -157,7 +340,12 @@ class TestSentinelOneExpectationService(unittest.TestCase):
 
         batch = [expectation]
 
-        service._update_date_in_case_of_failures(batch)
+        with patch.object(
+            module.SentinelOneExpectationService,
+            "_now",
+            return_value=datetime(2026, 5, 4, 3, 5, 0, tzinfo=timezone.utc),
+        ):
+            service._update_date_in_case_of_failures(batch)
 
         self.assertNotEqual(signature.value, signature_value)
 

@@ -165,11 +165,15 @@ class ConfigLoader(ConfigBaseSettings):
                     "data": self.sentinelone.api_key.get_secret_value()
                 },
                 "sentinelone_time_window": {"data": self.sentinelone.time_window},
+                "sentinelone_retry_window": {"data": self.sentinelone.retry_window},
                 "sentinelone_expectation_batch_size": {
                     "data": self.sentinelone.expectation_batch_size
                 },
                 "sentinelone_enable_deep_visibility_search": {
                     "data": self.sentinelone.enable_deep_visibility_search
+                },
+                "sentinelone_deep_visibility_lookback": {
+                    "data": self.sentinelone.deep_visibility_lookback
                 },
                 "sentinelone_disable_strict_end_date": {
                     "data": self.sentinelone.disable_strict_end_date

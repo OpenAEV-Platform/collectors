@@ -144,6 +144,10 @@ class ExpectationResult(BaseModel):
 
     expectation_id: str = Field(..., description="ID of the processed expectation")
     is_valid: bool = Field(..., description="Whether the expectation was validated")
+    is_pending: bool = Field(
+        False,
+        description="Whether this result is held pending a transient fetch failure.",
+    )
     expectation: Any | None = Field(None, description="The original expectation object")
     matched_alerts: list[dict[str, Any]] | None = Field(
         None, description="List of alerts that matched this expectation"

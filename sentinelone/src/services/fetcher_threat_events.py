@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from .client_api import SentinelOneClientAPI
 
 LOG_PREFIX = "[SentinelOneThreatEventsFetcher]"
+MAX_PAGES = 200
 
 
 class FetcherThreatEvents:
@@ -108,17 +109,34 @@ class FetcherThreatEvents:
         """
         try:
             endpoint = f"{self.client_api.base_url}/web/api/v2.1/threats/{threat.threat_id}/explore/events"
-            params = {"limit": limit}
+            events: list[dict[str, Any]] = []
+            cursor: str | None = None
+            seen_cursors: set[str] = set()
 
-            self.logger.debug(
-                f"{LOG_PREFIX} Making API call to fetch events for threat {threat.threat_id}"
-            )
+            for _page_number in range(1, MAX_PAGES + 1):
+                params: dict[str, Any] = {"limit": limit}
+                if cursor is not None:
+                    params["cursor"] = cursor
 
-            response = self.client_api.session.get(endpoint, params=params)
-            response.raise_for_status()
+                self.logger.debug(
+                    f"{LOG_PREFIX} Making API call to fetch events for threat {threat.threat_id}"
+                )
 
-            json_data = response.json()
-            events = json_data.get("data", [])
+                response = self.client_api.session.get(
+                    endpoint, params=params, timeout=30
+                )
+                response.raise_for_status()
+
+                json_data = response.json()
+                events.extend(json_data.get("data", []))
+
+                pagination = json_data.get("pagination") or {}
+                next_cursor = pagination.get("nextCursor")
+                if not next_cursor or next_cursor in seen_cursors:
+                    break
+
+                seen_cursors.add(next_cursor)
+                cursor = next_cursor
 
             self.logger.debug(
                 f"{LOG_PREFIX} Retrieved {len(events)} events for threat {threat.threat_id}"
