@@ -1,6 +1,12 @@
 import unittest
 from datetime import datetime
-from test.fixtures.crowdstrike_alerts_v2 import (
+from unittest.mock import patch
+
+from pydantic import ValidationError
+from pyoaev.exceptions import OpenAEVError
+from pyoaev.signatures.signature_type import SignatureType
+from pyoaev.signatures.types import MatchTypes, SignatureTypes
+from tests.fixtures.crowdstrike_alerts_v2 import (
     ALERT_DATA,
     GET_ALERTS_V2_FAILURE_RESPONSE,
     GET_ALERTS_V2_SUCCESS_RESPONSE,
@@ -9,13 +15,7 @@ from test.fixtures.crowdstrike_alerts_v2 import (
     QUERY_ALERTS_V2_FAILURE_RESPONSE,
     QUERY_ALERTS_V2_SUCCESS_RESPONSE,
 )
-from test.fixtures.defaults import DEFAULT_SIGNATURE_TYPES, get_default_api_handler
-from unittest.mock import patch
-
-from pydantic import ValidationError
-from pyoaev.exceptions import OpenAEVError
-from pyoaev.signatures.signature_type import SignatureType
-from pyoaev.signatures.types import MatchTypes, SignatureTypes
+from tests.fixtures.defaults import DEFAULT_SIGNATURE_TYPES, get_default_api_handler
 
 from crowdstrike.query_strategy.alert import Alert, Item
 

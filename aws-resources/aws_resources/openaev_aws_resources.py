@@ -394,7 +394,7 @@ class OpenAEVAWSResources(CollectorDaemon):
             self.logger.error(f"Error during EC2 collection: {str(e)}")
 
 
-if __name__ == "__main__":
+def main():
     for key in [
         "AWS_ACCESS_KEY",
         "AWS_SECRET_ACCESS_KEY",
