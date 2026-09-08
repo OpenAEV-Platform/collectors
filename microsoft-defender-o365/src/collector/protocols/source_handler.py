@@ -5,11 +5,14 @@ from pyoaev.apis.inject_expectation.model.expectation import (  # type: ignore[i
     PreventionExpectation,
 )
 from pyoaev.helpers import OpenAEVDetectionHelper  # type: ignore[import-untyped]
-from pyoaev.signatures.types import SignatureTypes  # type: ignore[import-untyped]
+from pyoaev.signatures.signature_type import (
+    SignatureType,  # type: ignore[import-untyped]
+)
 from src.collector.models.data import OAEVData, TraceData
 from src.collector.protocols.data_fetcher import DataFetcherProtocol, FetchParamsHook
 from src.collector.protocols.source_data import SourceDataProtocol
 from src.collector.types.collector import (
+    AlertData,
     ExpectationsList,
     SignatureGroups,
     SourceConfig,
@@ -32,14 +35,20 @@ class SourceHandlerProtocol(Protocol):
 
     def get_expectation_signature_groups(
         self,
-        signatures: list[SignatureTypes],
+        signatures: list[SignatureType],
         expectation: DetectionExpectation | PreventionExpectation,
     ) -> SignatureGroups: ...
 
-    def match_signature_groups_and_oaevdata(
+    def get_alert_data_from_oaev_data(
+        self,
+        signatures: list[SignatureType],
+        oaev_data: OAEVData,
+    ) -> AlertData: ...
+
+    def match_signature_groups_and_alert_data(
         self,
         signature_groups: SignatureGroups,
-        oaev_data: OAEVData,
+        alert_data: AlertData,
         oaev_detection_helper: OpenAEVDetectionHelper,
     ) -> bool: ...
 
