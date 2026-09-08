@@ -153,6 +153,36 @@ class ParentProcessParser:
             self.logger.error(f"{LOG_PREFIX} Error extracting UUIDs from URL path: {e}")
             return None
 
+    def build_url_path(self, inject_uuid: str, agent_uuid: str) -> str:
+        """Build the plain implant callback URL path from UUIDs.
+
+        Args:
+            inject_uuid: The inject UUID.
+            agent_uuid: The agent UUID.
+
+        Returns:
+            The callback URL path string, or an empty string when a UUID
+            is missing.
+
+        Example:
+            Input: inject_uuid='877b423b-ae91-4fc5-86c3-fa8ea3c938ba',
+                   agent_uuid='1402422f-2eaa-4fbd-80b2-b30df1b83b19'
+            Output: '/api/injects/877b423b-ae91-4fc5-86c3-fa8ea3c938ba/1402422f-2eaa-4fbd-80b2-b30df1b83b19/executable-payload'
+
+        """
+        if not inject_uuid or not agent_uuid:
+            self.logger.warning(f"{LOG_PREFIX} Missing UUIDs for URL path construction")
+            return ""
+
+        try:
+            url_path = f"/api/injects/{inject_uuid}/{agent_uuid}/executable-payload"
+            self.logger.debug(f"{LOG_PREFIX} Built URL path: {url_path}")
+            return url_path
+
+        except Exception as e:
+            self.logger.error(f"{LOG_PREFIX} Error building URL path: {e}")
+            return ""
+
     def build_url_path_search_query(self, inject_uuid: str, agent_uuid: str) -> str:
         """Build URL path search query from UUIDs.
 
@@ -174,7 +204,9 @@ class ParentProcessParser:
             return ""
 
         try:
-            url_path = f"/api/injects/{inject_uuid}/{agent_uuid}/executable-payload"
+            url_path = self.build_url_path(inject_uuid, agent_uuid)
+            if not url_path:
+                return ""
 
             url_fields = ["url_path", "url", "path", "query"]
             url_conditions = []

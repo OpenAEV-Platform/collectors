@@ -23,7 +23,6 @@ from .exception import (
     SplunkESValidationError,
 )
 from .models import SplunkESAlert, SplunkESResponse, SplunkESSearchCriteria
-from .utils.parent_process_parser import ParentProcessParser
 
 LOG_PREFIX = "[SplunkESClientAPI]"
 
@@ -37,24 +36,18 @@ DEFAULT_QUERY_TEMPLATE = (
     "(src_ip IN ({source_ips}) OR src IN ({source_ips}) OR source_ip IN ({source_ips}) OR client_ip IN ({source_ips})) "
     "(dst_ip IN ({target_ips}) OR dest IN ({target_ips}) OR dest_ip IN ({target_ips}) "
     "OR destination_ip IN ({target_ips}) OR server_ip IN ({target_ips})) "
-    "(url_path IN ({implant_urls}) OR url IN ({implant_urls}) OR path IN ({implant_urls}) "
-    "OR query IN ({implant_urls}) OR process_name IN ({implant_names}) "
-    "OR parent_process_name IN ({implant_names})) "
+    "(host IN ({hostnames}) OR hostname IN ({hostnames}) OR host_name IN ({hostnames})) "
     "earliest={start_date} latest={end_date} "
     "| table _time, src_ip, src, source_ip, client_ip, dst_ip, dest, dest_ip, "
-    "destination_ip, server_ip, signature, rule_name, event_type, severity, "
-    "url_path, url, path, query, process_name, parent_process_name, _raw | sort -_time"
+    "destination_ip, server_ip, host, hostname, signature, rule_name, event_type, "
+    "severity, url_path, _raw | sort -_time"
 )
 
 ALLOWED_PLACEHOLDERS = {
     "alerts_index",
     "source_ips",
     "target_ips",
-    "implant_urls",
-    "implant_names",
-    "ip_conditions",
-    "process_conditions",
-    "time_window",
+    "hostnames",
     "start_date",
     "end_date",
 }
@@ -130,7 +123,6 @@ class SplunkESClientAPI:
 
         try:
             self.session = self._create_session()
-            self.parent_process_parser = ParentProcessParser()
         except Exception as e:
             raise SplunkESSessionError(f"Failed to create HTTP session: {e}") from e
 
@@ -260,9 +252,16 @@ class SplunkESClientAPI:
 
             source_ips = []
             target_ips = []
-            parent_process_names = []
+            host_names = []
             start_date = None
             end_date = None
+
+            # String-keyed mapping (never attribute-accessing the enum) keeps
+            # this robust across pyoaev versions.
+            host_mapping = {
+                "hostname": host_names,
+                "target_hostname_address": host_names,
+            }
 
             for sig in search_signatures:
                 if not isinstance(sig, dict) or "type" not in sig or "value" not in sig:
@@ -274,16 +273,22 @@ class SplunkESClientAPI:
                     f"{LOG_PREFIX} Processing signature: {sig_type}={sig_value}"
                 )
 
-                if sig_type in ["source_ipv4_address", "source_ipv6_address"]:
+                if sig_type in ("source_ipv4_address", "source_ipv6_address"):
                     source_ips.append(sig_value)
-                elif sig_type in ["target_ipv4_address", "target_ipv6_address"]:
+                elif sig_type in ("target_ipv4_address", "target_ipv6_address"):
                     target_ips.append(sig_value)
-                elif sig_type == "parent_process_name":
-                    parent_process_names.append(sig_value)
+                elif sig_type in host_mapping:
+                    host_mapping[sig_type].append(sig_value)
                 elif sig_type == "start_date":
                     start_date = sig_value
                 elif sig_type == "end_date":
                     end_date = sig_value
+                else:
+                    # The query carries only an "enough filter": all other
+                    # signature types are carried by the matcher only.
+                    self.logger.debug(
+                        f"{LOG_PREFIX} Signature type '{sig_type}' is carried by the matcher only, not by the query"
+                    )
 
             if not start_date and not end_date:
                 self.logger.info(
@@ -293,14 +298,14 @@ class SplunkESClientAPI:
             criteria = SplunkESSearchCriteria(
                 source_ips=source_ips,
                 target_ips=target_ips,
-                parent_process_names=parent_process_names,
+                hostnames=host_names,
                 start_date=start_date,
                 end_date=end_date,
             )
 
             self.logger.debug(
                 f"{LOG_PREFIX} Built search criteria: source_ips={len(source_ips)}, target_ips={len(target_ips)}, "
-                f"parent_process_names={len(parent_process_names)}, date_range={start_date} to {end_date}"
+                f"hostnames={len(host_names)}, date_range={start_date} to {end_date}"
             )
             return criteria
 
@@ -595,16 +600,9 @@ class SplunkESClientAPI:
 
         """
         try:
-            ip_conditions_str = self._build_ip_conditions(search_criteria)
-            process_conditions_str = self._build_process_conditions(search_criteria)
             source_ips_str = self._build_ip_list(search_criteria.source_ips)
             target_ips_str = self._build_ip_list(search_criteria.target_ips)
-            implant_urls_str = self._build_implant_url_list(
-                search_criteria.parent_process_names or []
-            )
-            implant_names_str = self._build_implant_name_list(
-                search_criteria.parent_process_names or []
-            )
+            hostnames_str = self._build_ip_list(search_criteria.hostnames or [])
             time_window_seconds = int(self.time_window.total_seconds())
             earliest_seconds = time_window_seconds + extend_end_seconds
 
@@ -628,11 +626,7 @@ class SplunkESClientAPI:
                 alerts_index=self.alerts_index or "*",
                 source_ips=source_ips_str,
                 target_ips=target_ips_str,
-                implant_urls=implant_urls_str,
-                implant_names=implant_names_str,
-                ip_conditions=ip_conditions_str,
-                process_conditions=process_conditions_str,
-                time_window=earliest_seconds,
+                hostnames=hostnames_str,
                 start_date=start_date_str,
                 end_date=end_date_str,
             )
@@ -655,67 +649,17 @@ class SplunkESClientAPI:
         except Exception as e:
             raise SplunkESValidationError(f"Failed to build SPL query: {e}") from e
 
-    def _build_ip_conditions(self, search_criteria: SplunkESSearchCriteria) -> str:
-        """Build IP filter conditions from search criteria.
-
-        Args:
-            search_criteria: SplunkESSearchCriteria with source/target IPs.
-
-        Returns:
-            IP conditions string for SPL query, or empty string if no IPs.
-
-        """
-        ip_conditions = []
-
-        src_fields = ["src_ip", "src", "source_ip", "client_ip"]
-        for ip in search_criteria.source_ips:
-            ip_conditions.extend([f"{field}={ip}" for field in src_fields])
-
-        dst_fields = ["dst_ip", "dest", "dest_ip", "destination_ip", "server_ip"]
-        for ip in search_criteria.target_ips:
-            ip_conditions.extend([f"{field}={ip}" for field in dst_fields])
-
-        if ip_conditions:
-            return f"({' OR '.join(ip_conditions)})"
-        return ""
-
-    def _build_process_conditions(self, search_criteria: SplunkESSearchCriteria) -> str:
-        """Build parent process / URL path conditions from search criteria.
-
-        Args:
-            search_criteria: SplunkESSearchCriteria with parent process names.
-
-        Returns:
-            Process conditions string for SPL query, or empty string if none.
-
-        """
-        url_path_conditions = []
-
-        for parent_process_name in search_criteria.parent_process_names:
-            uuids = self.parent_process_parser.extract_uuids_from_parent_process_name(
-                parent_process_name
-            )
-            if uuids:
-                inject_uuid, agent_uuid = uuids
-                url_path_query = self.parent_process_parser.build_url_path_search_query(
-                    inject_uuid, agent_uuid
-                )
-                if url_path_query:
-                    url_path_conditions.append(url_path_query)
-                    self.logger.debug(
-                        f"{LOG_PREFIX} Added URL path condition for parent process: {url_path_query}"
-                    )
-
-        if url_path_conditions:
-            return f"({' OR '.join(url_path_conditions)})"
-        return ""
-
     @staticmethod
     def _build_ip_list(ips: list[str]) -> str:
-        """Build a quoted comma-separated IP list for Splunk IN operator.
+        """Build a quoted comma-separated value list for Splunk IN operator.
+
+        Values (IP addresses or hostnames) are wrapped in double quotes for
+        SPL; embedded double quotes are backslash-escaped so freer-form
+        values such as attacker-influenced hostnames cannot break out of
+        the string literal (SPL quote injection).
 
         Args:
-            ips: List of IP addresses.
+            ips: List of values to quote.
 
         Returns:
             Quoted CSV string for Splunk IN(), or "*" if empty.
@@ -723,40 +667,4 @@ class SplunkESClientAPI:
         """
         if not ips:
             return "*"
-        return ",".join(f'"{ip}"' for ip in ips)
-
-    @staticmethod
-    def _build_implant_url_list(parent_process_names: list[str]) -> str:
-        """Build a quoted comma-separated implant callback URL list for Splunk IN operator.
-
-        Args:
-            parent_process_names: List of implant process names.
-
-        Returns:
-            Quoted CSV string for Splunk IN(), or ``"*"`` (wildcard) if empty.
-
-        """
-        if not parent_process_names:
-            return "*"
-        return ",".join(
-            f'"/{name.replace(chr(34), chr(92) + chr(34))}/callback"'
-            for name in parent_process_names
-        )
-
-    @staticmethod
-    def _build_implant_name_list(parent_process_names: list[str]) -> str:
-        """Build a quoted comma-separated implant process name list for Splunk IN operator.
-
-        Args:
-            parent_process_names: List of implant process names.
-
-        Returns:
-            Quoted CSV string for Splunk IN(), or ``"*"`` (wildcard) if empty.
-
-        """
-        if not parent_process_names:
-            return "*"
-        return ",".join(
-            f'"{name.replace(chr(34), chr(92) + chr(34))}"'
-            for name in parent_process_names
-        )
+        return ",".join(f'"{ip.replace(chr(34), chr(92) + chr(34))}"' for ip in ips)
