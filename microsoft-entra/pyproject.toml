@@ -48,13 +48,13 @@ pip-audit = "^2.9.0"
 pre-commit = "^4.6.0"
 ruff = "^0.14.13"
 
-#[tool.poetry.group.test.dependencies]
-#pytest = "^9.0.0"
+[tool.poetry.group.test.dependencies]
+pytest = "^9.0.0"
 
-#[tool.pytest.ini_options]
-#testpaths = [
-#    "./tests",
-#]
+[tool.pytest.ini_options]
+testpaths = [
+    "./tests",
+]
 
 [tool.ruff]
 exclude = [
