@@ -127,5 +127,5 @@ class OpenAEVLakeraGuard(CollectorDaemon):
                 self.logger.warning(f"Could not create expectation traces: {exc}")
 
 
-if __name__ == "__main__":
+def main():
     OpenAEVLakeraGuard(configuration=ConfigLoader().to_daemon_config()).start()

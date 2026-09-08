@@ -457,7 +457,7 @@ class OpenAEVMicrosoftDefender(CollectorDaemon):
         asyncio.run(self._process_alerts(graph_client))
 
 
-if __name__ == "__main__":
+def main():
     for key in [
         "MICROSOFT_DEFENDER_TENANT_ID",
         "MICROSOFT_DEFENDER_CLIENT_ID",

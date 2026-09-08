@@ -518,5 +518,5 @@ class OpenAEVXtmOne(CollectorDaemon):
             self._validate_expectations()
 
 
-if __name__ == "__main__":
+def main():
     OpenAEVXtmOne(configuration=ConfigLoader().to_daemon_config()).start()

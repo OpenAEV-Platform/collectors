@@ -121,5 +121,5 @@ class OpenAEVCiscoAiDefense(CollectorDaemon):
                 self.logger.warning(f"Could not create expectation traces: {exc}")
 
 
-if __name__ == "__main__":
+def main():
     OpenAEVCiscoAiDefense(configuration=ConfigLoader().to_daemon_config()).start()

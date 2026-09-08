@@ -343,7 +343,7 @@ class OpenAEVTaniumThreatResponse(CollectorDaemon):
         )
 
 
-if __name__ == "__main__":
+def main():
     for key in [
         "TANIUM_URL",
         "TANIUM_URL_CONSOLE",

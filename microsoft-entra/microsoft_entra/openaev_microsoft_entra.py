@@ -233,7 +233,7 @@ class OpenAEVMicrosoftEntra(CollectorDaemon):
         asyncio.run(self.create_groups(graph_client))
 
 
-if __name__ == "__main__":
+def main():
     for key in [
         "MICROSOFT_ENTRA_TENANT_ID",
         "MICROSOFT_ENTRA_CLIENT_ID",

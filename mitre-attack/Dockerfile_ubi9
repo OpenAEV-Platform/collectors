@@ -1,16 +1,16 @@
 FROM registry.access.redhat.com/ubi9/ubi-minimal AS base
 
 RUN set -eux; \
-    microdnf -y --setopt=install_weak_deps=0 install python3.12; \
+    microdnf -y --setopt=install_weak_deps=0 install python3.14; \
     microdnf clean all;
 
 
 FROM base AS builder
 
 RUN set -eux; \
-    microdnf -y --setopt=install_weak_deps=0 install python3.12-pip; \
-    pip3.12 install poetry==2.1.3; \
-    microdnf -y remove python3.12-pip; \
+    microdnf -y --setopt=install_weak_deps=0 install python3.14-pip; \
+    pip3.14 install poetry==2.3.2; \
+    microdnf -y remove python3.14-pip; \
     microdnf clean all;
 
 WORKDIR /collector
@@ -27,17 +27,17 @@ WORKDIR /collector
 COPY --from=builder /collector/ ./
 
 RUN set -eux; \
-    microdnf -y --setopt=install_weak_deps=0 install python3.12-pip; \
-    (cd dist && pip3.12 install --no-cache-dir "$(ls *.whl)[prod]"); \
+    microdnf -y --setopt=install_weak_deps=0 install python3.14-pip; \
+    (cd dist && pip3.14 install --no-cache-dir "$(ls *.whl)"); \
     if [ -n "${PYOAEV_GIT_BRANCH_OVERRIDE}" ] ; then \
         echo "Forcing specific version of client-python"; \
         microdnf -y --setopt=install_weak_deps=0 install git-core; \
-        pip3.12 uninstall -y pyoaev; \
-        pip3.12 install git+https://github.com/OpenAEV-Platform/client-python@${PYOAEV_GIT_BRANCH_OVERRIDE}; \
+        pip3.14 uninstall -y pyoaev; \
+        pip3.14 install git+https://github.com/OpenAEV-Platform/client-python@${PYOAEV_GIT_BRANCH_OVERRIDE}; \
         microdnf -y remove git-core; \
     fi; \
-    microdnf -y remove python3.12-pip; \
+    microdnf -y remove python3.14-pip; \
     microdnf clean all;
 
-CMD ["python3.12", "-m", "mitre_attack.openaev_mitre"]
+CMD ["python3.14", "-m", "mitre_attack"]
 

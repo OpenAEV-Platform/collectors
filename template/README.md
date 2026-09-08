@@ -37,7 +37,7 @@ Do not hesitate to check the `CONTRIBUTING.md` for more details regarding the co
 ## Requirements
 
 - OpenAEV Platform
-- Python 3.11+
+- Python 3.14+
 
 ## Configuration
 
@@ -119,8 +119,8 @@ export SOURCE_KEY="value"
 1. **Clone and Install Dependencies**:
    ```bash
    git clone <repository-url>
-   cd template
-   poetry install --extras local
+   cd <your-collector>
+   poetry install
    ```
 
 2. **Configure the Collector**:
@@ -131,10 +131,31 @@ export SOURCE_KEY="value"
    ```bash
    # Using Poetry
    poetry run python -m src
+   
+   # Or 
+   poetry run TemplateCollector
 
-   # Or direct execution after installation
+   # Or direct execution after installing the project and activating the virtual environment:
    TemplateCollector
    ```
+
+For local development against a checkout of [client-python](https://github.com/OpenAEV-Platform/client-python),
+The client-python repository must be cloned at the same level as the collectors repository, so that `../../client-python`
+resolves correctly from the collector directory.
+
+```
+parent-directory/ 
+├── collectors/
+│   └── <your-collector>/
+└── client-python/
+```
+
+Then install the local `client-python` version inside the <your-collector> environment:
+```bash
+poetry run pip install -e ../../client-python --force-reinstall
+```
+The `-e` option installs the package in editable mode, allowing local changes in `client-python` to be used immediately
+without reinstalling the package.
 
 ### Docker Deployment
 

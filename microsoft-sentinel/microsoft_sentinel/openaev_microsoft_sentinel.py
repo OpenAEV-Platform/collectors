@@ -277,7 +277,7 @@ class OpenAEVMicrosoftSentinel(CollectorDaemon):
         self._process_alerts()
 
 
-if __name__ == "__main__":
+def main():
     for key in [
         "MICROSOFT_SENTINEL_TENANT_ID",
         "MICROSOFT_SENTINEL_CLIENT_ID",
@@ -291,6 +291,3 @@ if __name__ == "__main__":
             os.environ[f"COLLECTOR_{key}"] = os.environ.get(key)
 
     OpenAEVMicrosoftSentinel(configuration=ConfigLoader().to_daemon_config()).start()
-
-
-# Avoir un bandeau pour limiter la casse: quand on a Sentinel qui tourne sans Defender -> ça ne marche pas

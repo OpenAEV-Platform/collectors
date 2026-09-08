@@ -93,24 +93,30 @@ Returns a paginated list of incidents. Each incident may contain embedded XDR al
 
 ## Prerequisites
 
-- Python 3.12+
+- Python 3.14+
 - Cortex XSOAR API credentials (API Key ID and API Key)
 - Poetry or uv (for dependency management)
 - Docker (optional, for containerized deployment)
 
 ## Installation
 
-### Using Poetry
+### Manual Deployment
 
-```bash
-poetry install --extras local
-```
+**Clone and Install Dependencies**:
+   ```bash
+   git clone <repository-url>
+   cd <your-collector>
+   ```
 
-### Using uv
-
-```bash
-uv sync
-```
+**Using Poetry**
+    ```bash
+    poetry install
+    ```
+    
+**Using uv**
+    ```bash
+    uv sync
+    ```
 
 ## Configuration
 
@@ -179,18 +185,37 @@ The collector supports two authentication modes:
 Both modes include the `x-xdr-auth-id` header with the API Key ID.
 
 ## Running the Collector
+   ```bash
+   # Using UV
+   uv run python -m src
+       
+   # Using Poetry
+   poetry run python -m src
+   
+   # Or 
+   poetry run PaloAltoCortexXSOARCollector
 
-### With Poetry
+   # Or direct execution after installing the project and activating the virtual environment:
+   PaloAltoCortexXSOARCollector
+   ```
 
-```bash
-poetry run python -m src
+For local development against a checkout of [client-python](https://github.com/OpenAEV-Platform/client-python),
+The client-python repository must be cloned at the same level as the collectors repository, so that `../../client-python`
+resolves correctly from the collector directory.
+
+```
+parent-directory/ 
+├── collectors/
+│   └── <your-collector>/
+└── client-python/
 ```
 
-### With uv
-
+Then install the local `client-python` version inside the <your-collector> environment:
 ```bash
-uv run python -m src
+poetry run pip install -e ../../client-python --force-reinstall
 ```
+The `-e` option installs the package in editable mode, allowing local changes in `client-python` to be used immediately
+without reinstalling the package.
 
 ### Using Docker
 

@@ -1,12 +1,517 @@
 version: 2.1
+
+setup: true
+
 orbs:
   slack: circleci/slack@5.2.3
   kubernetes: circleci/kubernetes@1.3.1
-jobs:
-  ensure_formatting:
+  continuation: circleci/continuation@1.1.0
+
+executors:
+  # Used by build_docker_images and publish_docker_images
+  docker_builder:
     docker:
-      - image: cimg/python:3.13
+      - image: cimg/base:stable-20.04
+    working_directory: ~/openaev
+
+  # Used by test
+  python_test:
+    docker:
+      - image: cimg/python:3.14
+    working_directory: ~/openaev
+
+  # Used by ensure_formatting
+  python_check:
+    docker:
+      - image: cimg/python:3.14
     working_directory: ~/repo
+
+  # Used by linter
+  flake8_check:
+    docker:
+      - image: alpine/flake8
+    working_directory: ~/repo
+
+  # Used by setup, deploy_testing and notifications
+  base_runner:
+    docker:
+      - image: cimg/base:stable
+    working_directory: ~/openaev
+
+commands:
+  # Generate circleci config:
+  generate_circleci_config:
+    steps:
+      - run:
+          name: Generate CircleCI configuration
+          working_directory: ~/openaev
+          command: |
+            set -e
+
+            GENERATED_CONFIG="/tmp/generated_config.yml"
+
+            # Collectors excluded completely from the workflow.
+            # Example: "collectorname|othercollectorname"
+            EXCLUDED_COLLECTORS=""
+
+            # Collectors that are tested and built, but not published.
+            # Example: "collectorname|othercollectorname"
+            EXCLUDED_FOR_PUBLISH="template"
+
+            echo "Generating CircleCI configuration..."
+
+            # Discover collectors with pyproject.toml
+            collectors=$(
+              find . \
+                -mindepth 2 \
+                -maxdepth 2 \
+                -name pyproject.toml \
+                -print \
+                | sed 's|^\./||' \
+                | sed 's|/pyproject.toml$||' \
+                | sort \
+                | grep -Ev "^(${EXCLUDED_COLLECTORS})$" || true
+            )
+
+            published_collectors=$(
+              echo "${collectors}" |
+                grep -Ev "^(${EXCLUDED_FOR_PUBLISH})$" || true
+            )
+
+            if [ -z "${published_collectors}" ]; then
+              echo "No publishable collectors found"
+              exit 1
+            fi
+
+            echo "Collectors found:"
+            if [ -n "${collectors}" ]; then
+              echo "${collectors}"
+            else
+              echo "No collectors found"
+              exit 1
+            fi
+
+            # Copy the current configuration without setup mode
+            # and without the static workflow.
+            sed \
+              -e '/^setup: true$/d' \
+              -e '/^workflows:$/,$d' \
+              .circleci/config.yml > "${GENERATED_CONFIG}"
+
+            echo "Generating workflow..."
+
+            # Static workflow jobs.
+            echo "workflows:
+              openaev:
+                jobs:
+                  - ensure_formatting:
+                      filters:
+                        tags:
+                          only: /^[0-9]+\.[0-9]+\.[0-9]+$/
+
+                  - linter:
+                      filters:
+                        tags:
+                          only: /^[0-9]+\.[0-9]+\.[0-9]+$/" \
+              >> "${GENERATED_CONFIG}"
+
+            # Generate test, build and publish jobs for every collector.
+            for collector_name in ${collectors}; do
+
+              echo "
+                  - test:
+                      name: test-${collector_name}
+                      collector_name: ${collector_name}
+                      filters:
+                        tags:
+                          only: /^[0-9]+\.[0-9]+\.[0-9]+$/
+
+                  - build_docker_images:
+                      name: build-${collector_name}
+                      collector_name: ${collector_name}
+                      requires:
+                        - ensure_formatting
+                        - linter
+                        - test-${collector_name}
+                      filters:
+                        tags:
+                          only: /^[0-9]+\.[0-9]+\.[0-9]+$/
+              " >> "${GENERATED_CONFIG}"
+            done
+
+            for collector_name in ${published_collectors}; do
+              echo "
+                  - publish_docker_images:
+                      name: publish-${collector_name}
+                      collector_name: ${collector_name}
+                      requires:
+                        - build-${collector_name}
+                      filters:
+                        tags:
+                          only: /^[0-9]+\.[0-9]+\.[0-9]+$/
+                        branches:
+                          only:
+                            - main
+              " >> "${GENERATED_CONFIG}"
+            done
+
+            # Deploy testing after all collectors have been published.
+            echo "
+                  - deploy_testing:
+                      requires:
+            " >> "${GENERATED_CONFIG}"
+
+            for collector_name in ${published_collectors}; do
+              echo "                      - publish-${collector_name}" \
+                >> "${GENERATED_CONFIG}"
+            done
+
+            echo "
+                      filters:
+                        branches:
+                          only:
+                            - main
+
+                  - notify_rolling:
+                      requires:
+                        - deploy_testing
+
+                  - notify:
+                      requires:
+            " >> "${GENERATED_CONFIG}"
+
+            # Notify after all collectors have been published.
+            for collector_name in ${published_collectors}; do
+              echo "                      - publish-${collector_name}" \
+                >> "${GENERATED_CONFIG}"
+            done
+
+            echo "
+                      filters:
+                        tags:
+                          only: /^[0-9]+\.[0-9]+\.[0-9]+$/
+                        branches:
+                          ignore: /.*/
+            " >> "${GENERATED_CONFIG}"
+
+            echo ""
+            echo "Generated CircleCI configuration:"
+            cat "${GENERATED_CONFIG}"
+
+  # Initial commands
+  install_alpine_dependencies:
+    steps:
+      - run:
+          name: Install Alpine dependencies
+          command: |
+            apk --no-cache add curl gettext bash
+
+  install_poetry:
+    steps:
+      - run:
+          name: Install Poetry
+          command: |
+            pip install poetry==2.3.2
+            poetry config installer.re-resolve false
+
+  notify_slack_success:
+    steps:
+      - slack/notify:
+          event: pass
+          template: basic_success_1
+
+  notify_slack_failure:
+    steps:
+      - slack/notify:
+          event: fail
+          template: basic_fail_1
+
+  # Tests commands
+  check_collector:
+    parameters:
+      collector_name:
+        type: string
+    steps:
+      - run:
+          name: Check collector structure
+          working_directory: ~/openaev/<< parameters.collector_name >>
+          command: |
+            echo "Checking collector structure: << parameters.collector_name >>"
+            if [ ! -f pyproject.toml ]; then
+              echo "ERROR: pyproject.toml not found"
+              exit 1
+            fi
+            echo "The collector has a pyproject.toml file"
+
+            if [ ! -f Dockerfile ]; then
+              echo "ERROR: Dockerfile not found"
+              exit 1
+            fi
+            echo "The collector has a Dockerfile file"
+
+            if [ ! -f Dockerfile_ubi9 ]; then
+              echo "ERROR: Dockerfile_ubi9 not found"
+              exit 1
+            fi
+            echo "The collector has a Dockerfile_ubi9 file"
+            echo "Collector structure is valid."
+
+  check_collector_tests:
+    parameters:
+      collector_name:
+        type: string
+    steps:
+      - run:
+          name: Check collector tests
+          working_directory: ~/openaev/<< parameters.collector_name >>
+          command: |
+            if [ ! -d tests ]; then
+              echo "WARNING: Tests directory not found for << parameters.collector_name >>"
+              echo "HAS_TESTS_DIRECTORY=false" >> "${BASH_ENV}"
+              echo "HAS_TESTS_FILES=false" >> "${BASH_ENV}"
+            else
+              echo "Tests directory found for << parameters.collector_name >>"
+              echo "HAS_TESTS_DIRECTORY=true" >> "${BASH_ENV}"
+            
+              if ! find tests -type f \( -name 'test_*.py' -o -name '*_test.py' \) -print -quit | grep -q .; then
+                echo "WARNING: Tests directory exists but no test files were found for << parameters.collector_name >>"
+                echo "HAS_TESTS_FILES=false" >> "${BASH_ENV}"
+              else
+                echo "Tests directory exists and tests files were found for << parameters.collector_name >>"
+                echo "HAS_TESTS_FILES=true" >> "${BASH_ENV}"
+              fi
+            fi
+
+  install_collector_test_dependencies:
+    parameters:
+      collector_name:
+        type: string
+    steps:
+      - run:
+          name: Install collector test dependencies
+          working_directory: ~/openaev/<< parameters.collector_name >>
+          command: |
+            if [ "${HAS_TESTS_FILES}" = "true" ]; then
+              echo "Running poetry install for << parameters.collector_name >>"
+              poetry install --with test
+            elif [ "${HAS_TESTS_DIRECTORY}" = "true" ]; then
+              echo "WARNING: Tests directory exists but no test files were found for << parameters.collector_name >>"
+              echo "WARNING: Skipping test dependencies installation"
+            else
+              echo "WARNING: Tests directory not found for << parameters.collector_name >>"
+              echo "WARNING: Skipping test dependencies installation"
+            fi
+
+  run_collector_tests:
+    parameters:
+      collector_name:
+        type: string
+    steps:
+      - run:
+          name: Run collector tests
+          working_directory: ~/openaev/<< parameters.collector_name >>
+          command: |
+            if [ "${HAS_TESTS_FILES}" = "true" ]; then
+              echo "Running tests for << parameters.collector_name >>"
+              poetry run pytest -vv
+            elif [ "${HAS_TESTS_DIRECTORY}" = "true" ]; then
+              echo "WARNING: Tests directory exists but no test files were found for << parameters.collector_name >>"
+              echo "WARNING: Skipping test dependencies installation"
+            else
+              echo "WARNING: Tests directory not found for << parameters.collector_name >>"
+              echo "WARNING: Skipping test dependencies installation"
+            fi
+
+  # Docker commands
+  build_image:
+    parameters:
+      collector_name:
+        type: string
+    steps:
+      - run:
+          name: Build collector images
+          working_directory: ~/openaev/<< parameters.collector_name >>
+          command: |
+            EXTRA=""
+
+            if [ "${CIRCLE_BRANCH}" = "main" ]; then
+              EXTRA="--build-arg PYOAEV_GIT_BRANCH_OVERRIDE=${CIRCLE_BRANCH}"
+            fi
+
+            echo "Building collector: << parameters.collector_name >>"
+            echo "Image tag: ${CIRCLE_SHA1}"
+            echo "Build arguments: ${EXTRA}"
+
+            docker build --pull --progress=plain ${EXTRA} -t openaev/collector-<< parameters.collector_name >>:${CIRCLE_SHA1} .
+            docker build --pull --progress=plain -f Dockerfile_ubi9 ${EXTRA} -t openaev/collector-<< parameters.collector_name >>:${CIRCLE_SHA1}-ubi9 .
+
+  save_image:
+    parameters:
+      collector_name:
+        type: string
+    steps:
+      - run:
+          name: Save << parameters.collector_name >>
+          command: |
+            mkdir -p ~/openaev/images
+            docker save -o ~/openaev/images/collector-<< parameters.collector_name >> openaev/collector-<< parameters.collector_name >>:${CIRCLE_SHA1}
+            docker save -o ~/openaev/images/collector-<< parameters.collector_name >>-ubi9 openaev/collector-<< parameters.collector_name >>:${CIRCLE_SHA1}-ubi9
+
+  fetch_git_tags:
+    steps:
+      - run:
+          name: Fetch Git tags
+          working_directory: ~/openaev
+          command: git fetch --tags --force
+
+  set_image_tag:
+    steps:
+      - run:
+          name: Set image tag
+          working_directory: ~/openaev
+          command: |
+            if [ -n "${CIRCLE_TAG}" ]; then
+              IMAGETAG="${CIRCLE_TAG}"
+            elif [ "${CIRCLE_BRANCH}" = "main" ]; then
+              IMAGETAG="rolling"
+            else
+              echo "Tag supplied or branch is not 'main' (was: '${CIRCLE_BRANCH}')"
+              exit 1
+            fi
+            echo "IMAGETAG=${IMAGETAG}" >> "${BASH_ENV}"
+            echo "Image tag: ${IMAGETAG}"
+
+  set_latest_version:
+    steps:
+      - run:
+          name: Set latest semantic version
+          working_directory: ~/openaev
+          command: |
+            LATEST_SEMANTIC_VERSION=$(git tag --sort=-v:refname | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | head -n 1)
+
+            if [ -n "${CIRCLE_TAG}" ] && [ "${CIRCLE_TAG}" = "${LATEST_SEMANTIC_VERSION}" ]; then
+              IS_LATEST="true"
+            else
+              IS_LATEST="false"
+            fi
+            echo "IS_LATEST=${IS_LATEST}" >> "${BASH_ENV}"
+            echo "Latest semantic version: ${LATEST_SEMANTIC_VERSION}"
+            echo "IS_LATEST=${IS_LATEST}"
+
+  load_image:
+    parameters:
+      collector_name:
+        type: string
+    steps:
+      - run:
+          name: Load << parameters.collector_name >>
+          working_directory: ~/openaev/images
+          command: |
+            docker image load < collector-<< parameters.collector_name >>
+            docker image load < collector-<< parameters.collector_name >>-ubi9
+
+  tag_image:
+    parameters:
+      collector_name:
+        type: string
+    steps:
+      - run:
+          name: Tag << parameters.collector_name >>
+          command: |
+            if [ "<< parameters.collector_name >>" = "openaev" ]; then
+              OPENBAS_COLLECTOR_NAME="openbas"
+            else
+              OPENBAS_COLLECTOR_NAME="<< parameters.collector_name >>"
+            fi
+
+            docker tag openaev/collector-<< parameters.collector_name >>:${CIRCLE_SHA1} openaev/collector-<< parameters.collector_name >>:${IMAGETAG}
+            docker tag openaev/collector-<< parameters.collector_name >>:${CIRCLE_SHA1} openbas/collector-${OPENBAS_COLLECTOR_NAME}:${IMAGETAG}
+
+            docker tag openaev/collector-<< parameters.collector_name >>:${CIRCLE_SHA1}-ubi9 openaev/collector-<< parameters.collector_name >>:${IMAGETAG}-ubi9
+            docker tag openaev/collector-<< parameters.collector_name >>:${CIRCLE_SHA1}-ubi9 openbas/collector-${OPENBAS_COLLECTOR_NAME}:${IMAGETAG}-ubi9
+
+  tag_latest_image:
+    parameters:
+      collector_name:
+        type: string
+    steps:
+      - run:
+          name: Tag latest << parameters.collector_name >> images
+          command: |
+            if [ "${IS_LATEST}" = "true" ]; then
+
+              if [ "<< parameters.collector_name >>" = "openaev" ]; then
+                OPENBAS_COLLECTOR_NAME="openbas"
+              else
+                OPENBAS_COLLECTOR_NAME="<< parameters.collector_name >>"
+              fi
+
+              docker tag openaev/collector-<< parameters.collector_name >>:${IMAGETAG} openaev/collector-<< parameters.collector_name >>:latest
+              docker tag openaev/collector-<< parameters.collector_name >>:${IMAGETAG} openbas/collector-${OPENBAS_COLLECTOR_NAME}:latest
+
+              docker tag openaev/collector-<< parameters.collector_name >>:${IMAGETAG}-ubi9 openaev/collector-<< parameters.collector_name >>:latest-ubi9
+              docker tag openaev/collector-<< parameters.collector_name >>:${IMAGETAG}-ubi9 openbas/collector-${OPENBAS_COLLECTOR_NAME}:latest-ubi9
+            fi
+
+  docker_login:
+    steps:
+      - run:
+          name: Login to Docker Hub
+          command: echo "$DOCKERHUB_PASS" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+
+  push_image:
+    parameters:
+      collector_name:
+        type: string
+    steps:
+      - run:
+          name: Push << parameters.collector_name >>
+          command: |
+            if [ "<< parameters.collector_name >>" = "openaev" ]; then
+              OPENBAS_COLLECTOR_NAME="openbas"
+            else
+              OPENBAS_COLLECTOR_NAME="<< parameters.collector_name >>"
+            fi
+
+            docker push openaev/collector-<< parameters.collector_name >>:${IMAGETAG}
+            docker push openbas/collector-${OPENBAS_COLLECTOR_NAME}:${IMAGETAG}
+
+            docker push openaev/collector-<< parameters.collector_name >>:${IMAGETAG}-ubi9
+            docker push openbas/collector-${OPENBAS_COLLECTOR_NAME}:${IMAGETAG}-ubi9
+
+  push_latest_image:
+    parameters:
+      collector_name:
+        type: string
+    steps:
+      - run:
+          name: Push latest << parameters.collector_name >> images
+          command: |
+            if [ "${IS_LATEST}" = "true" ]; then
+              if [ "<< parameters.collector_name >>" = "openaev" ]; then
+                OPENBAS_COLLECTOR_NAME="openbas"
+              else
+                OPENBAS_COLLECTOR_NAME="<< parameters.collector_name >>"
+              fi
+
+              docker push openaev/collector-<< parameters.collector_name >>:latest
+              docker push openbas/collector-${OPENBAS_COLLECTOR_NAME}:latest
+
+              docker push openaev/collector-<< parameters.collector_name >>:latest-ubi9
+              docker push openbas/collector-${OPENBAS_COLLECTOR_NAME}:latest-ubi9
+            fi
+
+jobs:
+  setup:
+    executor: base_runner
+    steps:
+      - checkout
+      - generate_circleci_config
+      - continuation/continue:
+          configuration_path: /tmp/generated_config.yml
+
+  ensure_formatting:
+    executor: python_check
     steps:
       - checkout
       - run:
@@ -21,969 +526,105 @@ jobs:
       - run:
           name: run black check
           command: black --check .
-      - slack/notify:
-          event: fail
-          template: basic_fail_1
+      - notify_slack_failure
+
   linter:
-    docker:
-      - image: alpine/flake8
-    working_directory: ~/repo
+    executor: flake8_check
     steps:
       - checkout
-      - run: apk update && apk upgrade && apk --no-cache add curl gettext bash
+      - install_alpine_dependencies
       - run:
           name: flake8
           command: flake8 --ignore=E,W ~/repo
-      - slack/notify:
-          event: fail
-          template: basic_fail_1
+      - notify_slack_failure
+
   test:
-    working_directory: ~/openaev
-    docker:
-      - image: cimg/python:3.13
+    executor: python_test
+    parameters:
+      collector_name:
+        type: string
     steps:
       - checkout
-      - setup_remote_docker
-      - run: # this is only to satisfy poetry; not used
-          working_directory: ~/
-          name: Clone pyoaev
-          command: |
-            git clone -b main https://github.com/OpenAEV-Platform/client-python
-      - run:
-          working_directory: ~/openaev/crowdstrike
-          name: Install poetry
-          command: pip install poetry==2.1.3 && poetry config installer.re-resolve false
-      - run:
-          working_directory: ~/openaev/crowdstrike
-          name: install crowdstrike
-          command: |
-            poetry install --extras prod
-      - run:
-          working_directory: ~/openaev/crowdstrike
-          name: Overwrite pyoaev with correct version from CI
-          command: |
-            poetry run pip install --force-reinstall git+https://github.com/OpenAEV-Platform/client-python.git@main
-      - run:
-          working_directory: ~/openaev/crowdstrike
-          name: Tests for crowdstrike collector
-          command: poetry run python -m unittest
-      - run:
-          working_directory: ~/openaev/palo-alto-cortex-xdr
-          name: Install dependencies for palo-alto-cortex-xdr
-          command: poetry run pip install pytest factory-boy pyoaev
-      - run:
-          working_directory: ~/openaev/palo-alto-cortex-xdr
-          name: Tests for palo-alto-cortex-xdr collector
-          command: poetry run pytest
-      - run:
-          working_directory: ~/openaev/palo-alto-cortex-xsoar
-          name: Install dependencies for palo-alto-cortex-xsoar
-          command: poetry run pip install pytest factory-boy pyoaev msticpy
-      - run:
-          working_directory: ~/openaev/palo-alto-cortex-xsoar
-          name: Tests for palo-alto-cortex-xsoar collector
-          command: poetry run pytest
+      - install_poetry
+      - check_collector:
+          collector_name: << parameters.collector_name >>
+      - check_collector_tests:
+          collector_name: << parameters.collector_name >>
+      - install_collector_test_dependencies:
+          collector_name: << parameters.collector_name >>
+      - run_collector_tests:
+          collector_name: << parameters.collector_name >>
+      - notify_slack_failure
+
   build_docker_images:
-    working_directory: ~/openaev
-    docker:
-      - image: cimg/base:stable-20.04
+    executor: docker_builder
+    parameters:
+      collector_name:
+        type: string
     steps:
       - checkout
       - setup_remote_docker
-      - run:
-          name: Prepare images directory
-          command: |
-            mkdir -p ~/openaev/images
-      - run:
-          working_directory: ~/openaev
-          name: Replace pyoaev requirement of stable version with latest release branch code
-          # We safely expand the CIRCLE_BRANCH variable because the CircleCI filters already enforce a strict release/x.x.x pattern using regex
-          command: |
-            if [ "${CIRCLE_BRANCH}" = "main" ]; then
-              find . -name pyproject.toml | xargs -I ___ sed "s|branch = 'main'|branch = '${CIRCLE_BRANCH}'|" -i ___;
-            fi;
-      - run:
-          working_directory: ~/openaev/mitre-attack
-          name: Build Docker image openaev/collector-mitre-attack
-          command: |
-            if [[ "${CIRCLE_BRANCH}" == "main" ]]; then
-              docker build --pull --progress=plain -t openaev/collector-mitre-attack:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
-              docker build --pull --progress=plain -t openaev/collector-mitre-attack:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
-            else 
-              docker build --pull --progress=plain -t openaev/collector-mitre-attack:${CIRCLE_SHA1} .
-              docker build --pull --progress=plain -t openaev/collector-mitre-attack:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 .
-            fi
-            docker save -o ~/openaev/images/collector-mitre-attack openaev/collector-mitre-attack:${CIRCLE_SHA1}
-            docker save -o ~/openaev/images/collector-mitre-attack-ubi9 openaev/collector-mitre-attack:${CIRCLE_SHA1}-ubi9
-      - run:
-          working_directory: ~/openaev/microsoft-defender-o365
-          name: Build Docker image openaev/collector-microsoft-defender-o365
-          command: |
-            if [[ "${CIRCLE_BRANCH}" == "main" ]]; then
-              docker build --pull --progress=plain -t openaev/collector-microsoft-defender-o365:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
-              docker build --pull --progress=plain -t openaev/collector-microsoft-defender-o365:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
-            else 
-              docker build --pull --progress=plain -t openaev/collector-microsoft-defender-o365:${CIRCLE_SHA1} .
-              docker build --pull --progress=plain -t openaev/collector-microsoft-defender-o365:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 .
-            fi
-            docker save -o ~/openaev/images/collector-microsoft-defender-o365 openaev/collector-microsoft-defender-o365:${CIRCLE_SHA1}
-            docker save -o ~/openaev/images/collector-microsoft-defender-o365-ubi9 openaev/collector-microsoft-defender-o365:${CIRCLE_SHA1}-ubi9
-      - run:
-          working_directory: ~/openaev/nvd-nist-cve
-          name: Build Docker image openaev/nvd-nist-cve
-          command: |
-            if [[ "${CIRCLE_BRANCH}" == "main" ]]; then
-              docker build --pull --progress=plain -t openaev/collector-nvd-nist-cve:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
-              docker build --pull --progress=plain -t openaev/collector-nvd-nist-cve:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
-            else 
-              docker build --pull --progress=plain -t openaev/collector-nvd-nist-cve:${CIRCLE_SHA1} .
-              docker build --pull --progress=plain -t openaev/collector-nvd-nist-cve:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 .
-            fi
-            docker save -o ~/openaev/images/collector-nvd-nist-cve openaev/collector-nvd-nist-cve:${CIRCLE_SHA1}
-            docker save -o ~/openaev/images/collector-nvd-nist-cve-ubi9 openaev/collector-nvd-nist-cve:${CIRCLE_SHA1}-ubi9
-      - run:
-          working_directory: ~/openaev/microsoft-entra
-          name: Build Docker image openaev/collector-microsoft-entra
-          command: |
-            if [[ "${CIRCLE_BRANCH}" == "main" ]]; then
-              docker build --pull --progress=plain -t openaev/collector-microsoft-entra:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
-              docker build --pull --progress=plain -t openaev/collector-microsoft-entra:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
-            else 
-              docker build --pull --progress=plain -t openaev/collector-microsoft-entra:${CIRCLE_SHA1} .
-              docker build --pull --progress=plain -t openaev/collector-microsoft-entra:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 .
-            fi
-            docker save -o ~/openaev/images/collector-microsoft-entra openaev/collector-microsoft-entra:${CIRCLE_SHA1}
-            docker save -o ~/openaev/images/collector-microsoft-entra-ubi9 openaev/collector-microsoft-entra:${CIRCLE_SHA1}-ubi9
-      - run:
-          working_directory: ~/openaev/tanium-threat-response
-          name: Build Docker image openaev/collector-tanium-threat-response
-          command: |
-            if [[ "${CIRCLE_BRANCH}" == "main" ]]; then
-              docker build --pull --progress=plain -t openaev/collector-tanium-threat-response:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
-              docker build --pull --progress=plain -t openaev/collector-tanium-threat-response:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
-            else 
-              docker build --pull --progress=plain -t openaev/collector-tanium-threat-response:${CIRCLE_SHA1} .
-              docker build --pull --progress=plain -t openaev/collector-tanium-threat-response:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 .
-            fi
-            docker save -o ~/openaev/images/collector-tanium-threat-response openaev/collector-tanium-threat-response:${CIRCLE_SHA1}
-            docker save -o ~/openaev/images/collector-tanium-threat-response-ubi9 openaev/collector-tanium-threat-response:${CIRCLE_SHA1}-ubi9
-      - run:
-          working_directory: ~/openaev/microsoft-defender
-          name: Build Docker image openaev/collector-microsoft-defender
-          command: |
-            if [[ "${CIRCLE_BRANCH}" == "main" ]]; then
-              docker build --pull --progress=plain -t openaev/collector-microsoft-defender:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
-              docker build --pull --progress=plain -t openaev/collector-microsoft-defender:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
-            else 
-              docker build --pull --progress=plain -t openaev/collector-microsoft-defender:${CIRCLE_SHA1} .
-              docker build --pull --progress=plain -t openaev/collector-microsoft-defender:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 .
-            fi
-            docker save -o ~/openaev/images/collector-microsoft-defender openaev/collector-microsoft-defender:${CIRCLE_SHA1}
-            docker save -o ~/openaev/images/collector-microsoft-defender-ubi9 openaev/collector-microsoft-defender:${CIRCLE_SHA1}-ubi9
-      - run:
-          working_directory: ~/openaev/microsoft-sentinel
-          name: Build Docker image openaev/collector-microsoft-sentinel
-          command: |
-            if [[ "${CIRCLE_BRANCH}" == "main" ]]; then
-              docker build --pull --progress=plain -t openaev/collector-microsoft-sentinel:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
-              docker build --pull --progress=plain -t openaev/collector-microsoft-sentinel:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
-            else 
-              docker build --pull --progress=plain -t openaev/collector-microsoft-sentinel:${CIRCLE_SHA1} .
-              docker build --pull --progress=plain -t openaev/collector-microsoft-sentinel:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 .
-            fi
-            docker save -o ~/openaev/images/collector-microsoft-sentinel openaev/collector-microsoft-sentinel:${CIRCLE_SHA1}
-            docker save -o ~/openaev/images/collector-microsoft-sentinel-ubi9 openaev/collector-microsoft-sentinel:${CIRCLE_SHA1}-ubi9
-      - run:
-          working_directory: ~/openaev/atomic-red-team
-          name: Build Docker image openaev/collector-atomic-red-team
-          command: |
-            if [[ "${CIRCLE_BRANCH}" == "main" ]]; then
-              docker build --pull --progress=plain -t openaev/collector-atomic-red-team:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
-              docker build --pull --progress=plain -t openaev/collector-atomic-red-team:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
-            else 
-              docker build --pull --progress=plain -t openaev/collector-atomic-red-team:${CIRCLE_SHA1} .
-              docker build --pull --progress=plain -t openaev/collector-atomic-red-team:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 .
-            fi
-            docker save -o ~/openaev/images/collector-atomic-red-team openaev/collector-atomic-red-team:${CIRCLE_SHA1}
-            docker save -o ~/openaev/images/collector-atomic-red-team-ubi9 openaev/collector-atomic-red-team:${CIRCLE_SHA1}-ubi9
-      - run:
-          working_directory: ~/openaev/crowdstrike
-          name: Build Docker image openaev/collector-crowdstrike
-          command: |
-            if [[ "${CIRCLE_BRANCH}" == "main" ]]; then
-              docker build --pull --progress=plain -t openaev/collector-crowdstrike:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
-              docker build --pull --progress=plain -t openaev/collector-crowdstrike:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
-            else 
-              docker build --pull --progress=plain -t openaev/collector-crowdstrike:${CIRCLE_SHA1} .
-              docker build --pull --progress=plain -t openaev/collector-crowdstrike:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 .
-            fi
-            docker save -o ~/openaev/images/collector-crowdstrike openaev/collector-crowdstrike:${CIRCLE_SHA1}
-            docker save -o ~/openaev/images/collector-crowdstrike-ubi9 openaev/collector-crowdstrike:${CIRCLE_SHA1}-ubi9
-      - run:
-          working_directory: ~/openaev/sentinelone
-          name: Build Docker image openaev/collector-sentinelone
-          command: |
-            if [[ "${CIRCLE_BRANCH}" == "main" ]]; then
-              docker build --pull --progress=plain -t openaev/collector-sentinelone:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
-              docker build --pull --progress=plain -t openaev/collector-sentinelone:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
-            else 
-              docker build --pull --progress=plain -t openaev/collector-sentinelone:${CIRCLE_SHA1} .
-              docker build --pull --progress=plain -t openaev/collector-sentinelone:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 .
-            fi
-            docker save -o ~/openaev/images/collector-sentinelone openaev/collector-sentinelone:${CIRCLE_SHA1}
-            docker save -o ~/openaev/images/collector-sentinelone-ubi9 openaev/collector-sentinelone:${CIRCLE_SHA1}-ubi9
-      - run:
-          working_directory: ~/openaev/splunk-es
-          name: Build Docker image openaev/collector-splunk-es
-          command: |
-            if [[ "${CIRCLE_BRANCH}" == "main" ]]; then
-              docker build --pull --progress=plain -t openaev/collector-splunk-es:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
-              docker build --pull --progress=plain -t openaev/collector-splunk-es:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
-            else 
-              docker build --pull --progress=plain -t openaev/collector-splunk-es:${CIRCLE_SHA1} .
-              docker build --pull --progress=plain -t openaev/collector-splunk-es:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 .
-            fi
-            docker save -o ~/openaev/images/collector-splunk-es openaev/collector-splunk-es:${CIRCLE_SHA1}
-            docker save -o ~/openaev/images/collector-splunk-es-ubi9 openaev/collector-splunk-es:${CIRCLE_SHA1}-ubi9
-      - run:
-          working_directory: ~/openaev/logrhythm
-          name: Build Docker image openaev/collector-logrhythm
-          command: |
-            if [[ "${CIRCLE_BRANCH}" == "main" ]]; then
-              docker build --pull --progress=plain -t openaev/collector-logrhythm:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
-              docker build --pull --progress=plain -t openaev/collector-logrhythm:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
-            else 
-              docker build --pull --progress=plain -t openaev/collector-logrhythm:${CIRCLE_SHA1} .
-              docker build --pull --progress=plain -t openaev/collector-logrhythm:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 .
-            fi
-            docker save -o ~/openaev/images/collector-logrhythm openaev/collector-logrhythm:${CIRCLE_SHA1}
-            docker save -o ~/openaev/images/collector-logrhythm-ubi9 openaev/collector-logrhythm:${CIRCLE_SHA1}-ubi9
-      - run:
-          working_directory: ~/openaev/elastic
-          name: Build Docker image openaev/collector-elastic
-          command: |
-            if [[ "${CIRCLE_BRANCH}" == "main" ]]; then
-              docker build --pull --progress=plain -t openaev/collector-elastic:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
-              docker build --pull --progress=plain -t openaev/collector-elastic:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
-            else 
-              docker build --pull --progress=plain -t openaev/collector-elastic:${CIRCLE_SHA1} .
-              docker build --pull --progress=plain -t openaev/collector-elastic:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 .
-            fi
-            docker save -o ~/openaev/images/collector-elastic openaev/collector-elastic:${CIRCLE_SHA1}
-            docker save -o ~/openaev/images/collector-elastic-ubi9 openaev/collector-elastic:${CIRCLE_SHA1}-ubi9
-      - run:
-          working_directory: ~/openaev/netwitness
-          name: Build Docker image openaev/collector-netwitness
-          command: |
-            if [[ "${CIRCLE_BRANCH}" == "main" ]]; then
-              docker build --pull --progress=plain -t openaev/collector-netwitness:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
-              docker build --pull --progress=plain -t openaev/collector-netwitness:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
-            else 
-              docker build --pull --progress=plain -t openaev/collector-netwitness:${CIRCLE_SHA1} .
-              docker build --pull --progress=plain -t openaev/collector-netwitness:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 .
-            fi
-            docker save -o ~/openaev/images/collector-netwitness openaev/collector-netwitness:${CIRCLE_SHA1}
-            docker save -o ~/openaev/images/collector-netwitness-ubi9 openaev/collector-netwitness:${CIRCLE_SHA1}-ubi9
-      - run:
-          working_directory: ~/openaev/qradar
-          name: Build Docker image openaev/collector-qradar
-          command: |
-            if [[ "${CIRCLE_BRANCH}" == "main" ]]; then
-              docker build --pull --progress=plain -t openaev/collector-qradar:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
-              docker build --pull --progress=plain -t openaev/collector-qradar:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
-            else 
-              docker build --pull --progress=plain -t openaev/collector-qradar:${CIRCLE_SHA1} .
-              docker build --pull --progress=plain -t openaev/collector-qradar:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 .
-            fi
-            docker save -o ~/openaev/images/collector-qradar openaev/collector-qradar:${CIRCLE_SHA1}
-            docker save -o ~/openaev/images/collector-qradar-ubi9 openaev/collector-qradar:${CIRCLE_SHA1}-ubi9
-      - run:
-          working_directory: ~/openaev/openaev
-          name: Build Docker image openaev/collector-openaev
-          command: |
-            if [[ "${CIRCLE_BRANCH}" == "main" ]]; then
-              docker build --pull --progress=plain -t openaev/collector-openaev:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
-              docker build --pull --progress=plain -t openaev/collector-openaev:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
-            else 
-              docker build --pull --progress=plain -t openaev/collector-openaev:${CIRCLE_SHA1} .
-              docker build --pull --progress=plain -t openaev/collector-openaev:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 .
-            fi
-            docker save -o ~/openaev/images/collector-openaev openaev/collector-openaev:${CIRCLE_SHA1}
-            docker save -o ~/openaev/images/collector-openaev-ubi9 openaev/collector-openaev:${CIRCLE_SHA1}-ubi9
-      - run:
-          working_directory: ~/openaev/microsoft-azure
-          name: Build Docker image openaev/collector-microsoft-azure
-          command: |
-            if [[ "${CIRCLE_BRANCH}" == "main" ]]; then
-              docker build --pull --progress=plain -t openaev/collector-microsoft-azure:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
-              docker build --pull --progress=plain -t openaev/collector-microsoft-azure:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
-            else 
-              docker build --pull --progress=plain -t openaev/collector-microsoft-azure:${CIRCLE_SHA1} .
-              docker build --pull --progress=plain -t openaev/collector-microsoft-azure:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 .
-            fi
-            docker save -o ~/openaev/images/collector-microsoft-azure openaev/collector-microsoft-azure:${CIRCLE_SHA1}
-            docker save -o ~/openaev/images/collector-microsoft-azure-ubi9 openaev/collector-microsoft-azure:${CIRCLE_SHA1}-ubi9
-      - run:
-          working_directory: ~/openaev/microsoft-intune
-          name: Build Docker image openaev/collector-microsoft-intune
-          command: |
-            if [[ "${CIRCLE_BRANCH}" == "main" ]]; then
-              docker build --pull --progress=plain -t openaev/collector-microsoft-intune:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
-              docker build --pull --progress=plain -t openaev/collector-microsoft-intune:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
-            else 
-              docker build --pull --progress=plain -t openaev/collector-microsoft-intune:${CIRCLE_SHA1} .
-              docker build --pull --progress=plain -t openaev/collector-microsoft-intune:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 .
-            fi
-            docker save -o ~/openaev/images/collector-microsoft-intune openaev/collector-microsoft-intune:${CIRCLE_SHA1}
-            docker save -o ~/openaev/images/collector-microsoft-intune-ubi9 openaev/collector-microsoft-intune:${CIRCLE_SHA1}-ubi9
-      - run:
-          working_directory: ~/openaev/aws-resources
-          name: Build Docker image openaev/collector-aws-resources
-          command: |
-            if [[ "${CIRCLE_BRANCH}" == "main" ]]; then
-              docker build --pull --progress=plain -t openaev/collector-aws-resources:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
-              docker build --pull --progress=plain -t openaev/collector-aws-resources:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
-            else 
-              docker build --pull --progress=plain -t openaev/collector-aws-resources:${CIRCLE_SHA1} .
-              docker build --pull --progress=plain -t openaev/collector-aws-resources:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 .
-            fi
-            docker save -o ~/openaev/images/collector-aws-resources openaev/collector-aws-resources:${CIRCLE_SHA1}
-            docker save -o ~/openaev/images/collector-aws-resources-ubi9 openaev/collector-aws-resources:${CIRCLE_SHA1}-ubi9
-      - run:
-          working_directory: ~/openaev/google-workspace
-          name: Build Docker image openaev/collector-google-workspace
-          command: |
-            if [[ "${CIRCLE_BRANCH}" == "main" ]]; then
-              docker build --pull --progress=plain -t openaev/collector-google-workspace:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
-              docker build --pull --progress=plain -t openaev/collector-google-workspace:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
-            else 
-              docker build --pull --progress=plain -t openaev/collector-google-workspace:${CIRCLE_SHA1} .
-              docker build --pull --progress=plain -t openaev/collector-google-workspace:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 .
-            fi
-            docker save -o ~/openaev/images/collector-google-workspace openaev/collector-google-workspace:${CIRCLE_SHA1}
-            docker save -o ~/openaev/images/collector-google-workspace-ubi9 openaev/collector-google-workspace:${CIRCLE_SHA1}-ubi9
-      - run:
-          working_directory: ~/openaev/palo-alto-cortex-xdr
-          name: Build Docker image openaev/collector-palo-alto-cortex-xdr
-          command: |
-            if [[ "${CIRCLE_BRANCH}" == "main" ]]; then
-              docker build --pull --progress=plain -t openaev/collector-palo-alto-cortex-xdr:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
-              docker build --pull --progress=plain -t openaev/collector-palo-alto-cortex-xdr:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
-            else 
-              docker build --pull --progress=plain -t openaev/collector-palo-alto-cortex-xdr:${CIRCLE_SHA1} .
-              docker build --pull --progress=plain -t openaev/collector-palo-alto-cortex-xdr:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 .
-            fi
-            docker save -o ~/openaev/images/collector-palo-alto-cortex-xdr openaev/collector-palo-alto-cortex-xdr:${CIRCLE_SHA1}
-            docker save -o ~/openaev/images/collector-palo-alto-cortex-xdr-ubi9 openaev/collector-palo-alto-cortex-xdr:${CIRCLE_SHA1}-ubi9
-      - run:
-          working_directory: ~/openaev/palo-alto-cortex-xsoar
-          name: Build Docker image openaev/collector-palo-alto-cortex-xsoar
-          command: |
-            if [[ "${CIRCLE_BRANCH}" == "main" ]]; then
-              docker build --pull --progress=plain -t openaev/collector-palo-alto-cortex-xsoar:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
-              docker build --pull --progress=plain -t openaev/collector-palo-alto-cortex-xsoar:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
-            else 
-              docker build --pull --progress=plain -t openaev/collector-palo-alto-cortex-xsoar:${CIRCLE_SHA1} .
-              docker build --pull --progress=plain -t openaev/collector-palo-alto-cortex-xsoar:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 .
-            fi
-              docker save -o ~/openaev/images/collector-palo-alto-cortex-xsoar openaev/collector-palo-alto-cortex-xsoar:${CIRCLE_SHA1}
-              docker save -o ~/openaev/images/collector-palo-alto-cortex-xsoar-ubi9 openaev/collector-palo-alto-cortex-xsoar:${CIRCLE_SHA1}-ubi9
-      - run:
-          working_directory: ~/openaev/cisco-ai-defense
-          name: Build Docker image openaev/collector-cisco-ai-defense
-          command: |
-            if [[ "${CIRCLE_BRANCH}" == "main" ]]; then
-              docker build --pull --progress=plain -t openaev/collector-cisco-ai-defense:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
-            else
-              docker build --pull --progress=plain -t openaev/collector-cisco-ai-defense:${CIRCLE_SHA1} .
-            fi
-            docker save -o ~/openaev/images/collector-cisco-ai-defense openaev/collector-cisco-ai-defense:${CIRCLE_SHA1}
-      - run:
-          working_directory: ~/openaev/hiddenlayer
-          name: Build Docker image openaev/collector-hiddenlayer
-          command: |
-            if [[ "${CIRCLE_BRANCH}" == "main" ]]; then
-              docker build --pull --progress=plain -t openaev/collector-hiddenlayer:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
-              docker build --pull --progress=plain -t openaev/collector-hiddenlayer:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
-            else
-              docker build --pull --progress=plain -t openaev/collector-hiddenlayer:${CIRCLE_SHA1} .
-              docker build --pull --progress=plain -t openaev/collector-hiddenlayer:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 .
-            fi
-            docker save -o ~/openaev/images/collector-hiddenlayer openaev/collector-hiddenlayer:${CIRCLE_SHA1}
-            docker save -o ~/openaev/images/collector-hiddenlayer-ubi9 openaev/collector-hiddenlayer:${CIRCLE_SHA1}-ubi9
-      - run:
-          working_directory: ~/openaev/lakera-guard
-          name: Build Docker image openaev/collector-lakera-guard
-          command: |
-            if [[ "${CIRCLE_BRANCH}" == "main" ]]; then
-              docker build --pull --progress=plain -t openaev/collector-lakera-guard:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
-            else
-              docker build --pull --progress=plain -t openaev/collector-lakera-guard:${CIRCLE_SHA1} .
-            fi
-            docker save -o ~/openaev/images/collector-lakera-guard openaev/collector-lakera-guard:${CIRCLE_SHA1}
-      - run:
-          working_directory: ~/openaev/mitre-atlas
-          name: Build Docker image openaev/collector-mitre-atlas
-          command: |
-            if [[ "${CIRCLE_BRANCH}" == "main" ]]; then
-              docker build --pull --progress=plain -t openaev/collector-mitre-atlas:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
-            else
-              docker build --pull --progress=plain -t openaev/collector-mitre-atlas:${CIRCLE_SHA1} .
-            fi
-            docker save -o ~/openaev/images/collector-mitre-atlas openaev/collector-mitre-atlas:${CIRCLE_SHA1}
-      - run:
-          working_directory: ~/openaev/prisma-airs
-          name: Build Docker image openaev/collector-prisma-airs
-          command: |
-            if [[ "${CIRCLE_BRANCH}" == "main" ]]; then
-              docker build --pull --progress=plain -t openaev/collector-prisma-airs:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
-            else
-              docker build --pull --progress=plain -t openaev/collector-prisma-airs:${CIRCLE_SHA1} .
-            fi
-            docker save -o ~/openaev/images/collector-prisma-airs openaev/collector-prisma-airs:${CIRCLE_SHA1}
-      - run:
-          working_directory: ~/openaev/prompt-security
-          name: Build Docker image openaev/collector-prompt-security
-          command: |
-            if [[ "${CIRCLE_BRANCH}" == "main" ]]; then
-              docker build --pull --progress=plain -t openaev/collector-prompt-security:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
-            else
-              docker build --pull --progress=plain -t openaev/collector-prompt-security:${CIRCLE_SHA1} .
-            fi
-            docker save -o ~/openaev/images/collector-prompt-security openaev/collector-prompt-security:${CIRCLE_SHA1}
-      - run:
-          working_directory: ~/openaev/xtm-one
-          name: Build Docker image openaev/collector-xtm-one
-          command: |
-            if [[ "${CIRCLE_BRANCH}" == "main" ]]; then
-              docker build --pull --progress=plain -t openaev/collector-xtm-one:${CIRCLE_SHA1} --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
-              docker build --pull --progress=plain -t openaev/collector-xtm-one:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 --build-arg PYOAEV_GIT_BRANCH_OVERRIDE="${CIRCLE_BRANCH}" .
-            else
-              docker build --pull --progress=plain -t openaev/collector-xtm-one:${CIRCLE_SHA1} .
-              docker build --pull --progress=plain -t openaev/collector-xtm-one:${CIRCLE_SHA1}-ubi9 -f Dockerfile_ubi9 .
-            fi
-            docker save -o ~/openaev/images/collector-xtm-one openaev/collector-xtm-one:${CIRCLE_SHA1}
-            docker save -o ~/openaev/images/collector-xtm-one-ubi9 openaev/collector-xtm-one:${CIRCLE_SHA1}-ubi9
+      - build_image:
+          collector_name: << parameters.collector_name >>
+      - save_image:
+          collector_name: << parameters.collector_name >>
       - persist_to_workspace:
           root: ~/openaev
           paths:
             - images
-      - slack/notify:
-          event: fail
-          template: basic_fail_1
-  publish_images:
-    working_directory: ~/openaev
-    docker:
-      - image: cimg/base:stable-20.04
+      - notify_slack_failure
+
+  publish_docker_images:
+    executor: docker_builder
+    parameters:
+      collector_name:
+        type: string
     steps:
       - checkout
-      - run:
-          working_directory: ~/openaev
-          name: Set semantic version environment
-          command: |
-            export LATEST_SEMANTIC_VERSION=$(git tag --sort=-v:refname | grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+$' | head -n 1)
-            export IS_LATEST=$([ "$CIRCLE_TAG" = "$LATEST_SEMANTIC_VERSION" ] && echo "true" || echo "false")
-            echo "IS_LATEST=$IS_LATEST" >> $BASH_ENV
-      - attach_workspace:
-          at: .
+      - fetch_git_tags
+      - set_image_tag
+      - set_latest_version
       - setup_remote_docker
-      - run:
-          working_directory: ~/openaev/images
-          name: Restore saved images and publish
-          command: |
-            if [ "${CIRCLE_TAG}" != "" ]
-            then
-              export IMAGETAG=${CIRCLE_TAG}
-            elif [ "${CIRCLE_BRANCH}" = "main" ]
-            then
-              export IMAGETAG="rolling"
-            else
-              echo "Tag supplied or branch is not 'main' (was: '${CIRCLE_BRANCH}')"
-              exit 1
-            fi
-            echo "Image tag: ${IMAGETAG}"
+      - attach_workspace:
+          at: ~/openaev
+      - load_image:
+          collector_name: << parameters.collector_name >>
+      - tag_image:
+          collector_name: << parameters.collector_name >>
+      - tag_latest_image:
+          collector_name: << parameters.collector_name >>
+      - docker_login
+      - push_image:
+          collector_name: << parameters.collector_name >>
+      - push_latest_image:
+          collector_name: << parameters.collector_name >>
+      - notify_slack_failure
 
-            docker image load < collector-mitre-attack
-            docker tag openaev/collector-mitre-attack:${CIRCLE_SHA1} openaev/collector-mitre-attack:${IMAGETAG}
-            docker tag openaev/collector-mitre-attack:${CIRCLE_SHA1} openbas/collector-mitre-attack:${IMAGETAG}
-            docker image load < collector-mitre-attack-ubi9
-            docker tag openaev/collector-mitre-attack:${CIRCLE_SHA1}-ubi9 openaev/collector-mitre-attack:${IMAGETAG}-ubi9
-            docker tag openaev/collector-mitre-attack:${CIRCLE_SHA1}-ubi9 openbas/collector-mitre-attack:${IMAGETAG}-ubi9
-            
-            docker image load < collector-nvd-nist-cve
-            docker tag openaev/collector-nvd-nist-cve:${CIRCLE_SHA1} openaev/collector-nvd-nist-cve:${IMAGETAG}
-            docker tag openaev/collector-nvd-nist-cve:${CIRCLE_SHA1} openbas/collector-nvd-nist-cve:${IMAGETAG}
-            docker image load < collector-nvd-nist-cve-ubi9
-            docker tag openaev/collector-nvd-nist-cve:${CIRCLE_SHA1}-ubi9 openaev/collector-nvd-nist-cve:${IMAGETAG}-ubi9
-            docker tag openaev/collector-nvd-nist-cve:${CIRCLE_SHA1}-ubi9 openbas/collector-nvd-nist-cve:${IMAGETAG}-ubi9
-            
-            docker image load < collector-microsoft-entra
-            docker tag openaev/collector-microsoft-entra:${CIRCLE_SHA1} openaev/collector-microsoft-entra:${IMAGETAG}
-            docker tag openaev/collector-microsoft-entra:${CIRCLE_SHA1} openbas/collector-microsoft-entra:${IMAGETAG}
-            docker image load < collector-microsoft-entra-ubi9
-            docker tag openaev/collector-microsoft-entra:${CIRCLE_SHA1}-ubi9 openaev/collector-microsoft-entra:${IMAGETAG}-ubi9
-            docker tag openaev/collector-microsoft-entra:${CIRCLE_SHA1}-ubi9 openbas/collector-microsoft-entra:${IMAGETAG}-ubi9
-            
-            docker image load < collector-tanium-threat-response
-            docker tag openaev/collector-tanium-threat-response:${CIRCLE_SHA1} openaev/collector-tanium-threat-response:${IMAGETAG}
-            docker tag openaev/collector-tanium-threat-response:${CIRCLE_SHA1} openbas/collector-tanium-threat-response:${IMAGETAG}
-            docker image load < collector-tanium-threat-response-ubi9
-            docker tag openaev/collector-tanium-threat-response:${CIRCLE_SHA1}-ubi9 openaev/collector-tanium-threat-response:${IMAGETAG}-ubi9
-            docker tag openaev/collector-tanium-threat-response:${CIRCLE_SHA1}-ubi9 openbas/collector-tanium-threat-response:${IMAGETAG}-ubi9
-            
-            docker image load < collector-microsoft-defender
-            docker tag openaev/collector-microsoft-defender:${CIRCLE_SHA1} openaev/collector-microsoft-defender:${IMAGETAG}
-            docker tag openaev/collector-microsoft-defender:${CIRCLE_SHA1} openbas/collector-microsoft-defender:${IMAGETAG}
-            docker image load < collector-microsoft-defender-ubi9
-            docker tag openaev/collector-microsoft-defender:${CIRCLE_SHA1}-ubi9 openaev/collector-microsoft-defender:${IMAGETAG}-ubi9
-            docker tag openaev/collector-microsoft-defender:${CIRCLE_SHA1}-ubi9 openbas/collector-microsoft-defender:${IMAGETAG}-ubi9
-
-            docker image load < collector-microsoft-defender-o365
-            docker tag openaev/collector-microsoft-defender-o365:${CIRCLE_SHA1} openaev/collector-microsoft-defender-o365:${IMAGETAG}
-            docker tag openaev/collector-microsoft-defender-o365:${CIRCLE_SHA1} openbas/collector-microsoft-defender-o365:${IMAGETAG}
-            docker image load < collector-microsoft-defender-o365-ubi9
-            docker tag openaev/collector-microsoft-defender-o365:${CIRCLE_SHA1}-ubi9 openaev/collector-microsoft-defender-o365:${IMAGETAG}-ubi9
-            docker tag openaev/collector-microsoft-defender-o365:${CIRCLE_SHA1}-ubi9 openbas/collector-microsoft-defender-o365:${IMAGETAG}-ubi9
-            
-            docker image load < collector-microsoft-sentinel
-            docker tag openaev/collector-microsoft-sentinel:${CIRCLE_SHA1} openaev/collector-microsoft-sentinel:${IMAGETAG}
-            docker tag openaev/collector-microsoft-sentinel:${CIRCLE_SHA1} openbas/collector-microsoft-sentinel:${IMAGETAG}
-            docker image load < collector-microsoft-sentinel-ubi9
-            docker tag openaev/collector-microsoft-sentinel:${CIRCLE_SHA1}-ubi9 openaev/collector-microsoft-sentinel:${IMAGETAG}-ubi9
-            docker tag openaev/collector-microsoft-sentinel:${CIRCLE_SHA1}-ubi9 openbas/collector-microsoft-sentinel:${IMAGETAG}-ubi9
-            
-            docker image load < collector-atomic-red-team
-            docker tag openaev/collector-atomic-red-team:${CIRCLE_SHA1} openaev/collector-atomic-red-team:${IMAGETAG}
-            docker tag openaev/collector-atomic-red-team:${CIRCLE_SHA1} openbas/collector-atomic-red-team:${IMAGETAG}
-            docker image load < collector-atomic-red-team-ubi9
-            docker tag openaev/collector-atomic-red-team:${CIRCLE_SHA1}-ubi9 openaev/collector-atomic-red-team:${IMAGETAG}-ubi9
-            docker tag openaev/collector-atomic-red-team:${CIRCLE_SHA1}-ubi9 openbas/collector-atomic-red-team:${IMAGETAG}-ubi9
-            
-            docker image load < collector-crowdstrike
-            docker tag openaev/collector-crowdstrike:${CIRCLE_SHA1} openaev/collector-crowdstrike:${IMAGETAG}
-            docker tag openaev/collector-crowdstrike:${CIRCLE_SHA1} openbas/collector-crowdstrike:${IMAGETAG}
-            docker image load < collector-crowdstrike-ubi9
-            docker tag openaev/collector-crowdstrike:${CIRCLE_SHA1}-ubi9 openaev/collector-crowdstrike:${IMAGETAG}-ubi9
-            docker tag openaev/collector-crowdstrike:${CIRCLE_SHA1}-ubi9 openbas/collector-crowdstrike:${IMAGETAG}-ubi9
-            
-            docker image load < collector-sentinelone
-            docker tag openaev/collector-sentinelone:${CIRCLE_SHA1} openaev/collector-sentinelone:${IMAGETAG}
-            docker tag openaev/collector-sentinelone:${CIRCLE_SHA1} openbas/collector-sentinelone:${IMAGETAG}
-            docker image load < collector-sentinelone-ubi9
-            docker tag openaev/collector-sentinelone:${CIRCLE_SHA1}-ubi9 openaev/collector-sentinelone:${IMAGETAG}-ubi9
-            docker tag openaev/collector-sentinelone:${CIRCLE_SHA1}-ubi9 openbas/collector-sentinelone:${IMAGETAG}-ubi9
-            
-            docker image load < collector-splunk-es
-            docker tag openaev/collector-splunk-es:${CIRCLE_SHA1} openaev/collector-splunk-es:${IMAGETAG}
-            docker tag openaev/collector-splunk-es:${CIRCLE_SHA1} openbas/collector-splunk-es:${IMAGETAG}
-            docker image load < collector-splunk-es-ubi9
-            docker tag openaev/collector-splunk-es:${CIRCLE_SHA1}-ubi9 openaev/collector-splunk-es:${IMAGETAG}-ubi9
-            docker tag openaev/collector-splunk-es:${CIRCLE_SHA1}-ubi9 openbas/collector-splunk-es:${IMAGETAG}-ubi9
-            
-            docker image load < collector-logrhythm
-            docker tag openaev/collector-logrhythm:${CIRCLE_SHA1} openaev/collector-logrhythm:${IMAGETAG}
-            docker tag openaev/collector-logrhythm:${CIRCLE_SHA1} openbas/collector-logrhythm:${IMAGETAG}
-            docker image load < collector-logrhythm-ubi9
-            docker tag openaev/collector-logrhythm:${CIRCLE_SHA1}-ubi9 openaev/collector-logrhythm:${IMAGETAG}-ubi9
-            docker tag openaev/collector-logrhythm:${CIRCLE_SHA1}-ubi9 openbas/collector-logrhythm:${IMAGETAG}-ubi9
-            docker image load < collector-elastic
-            docker tag openaev/collector-elastic:${CIRCLE_SHA1} openaev/collector-elastic:${IMAGETAG}
-            docker tag openaev/collector-elastic:${CIRCLE_SHA1} openbas/collector-elastic:${IMAGETAG}
-            docker image load < collector-elastic-ubi9
-            docker tag openaev/collector-elastic:${CIRCLE_SHA1}-ubi9 openaev/collector-elastic:${IMAGETAG}-ubi9
-            docker tag openaev/collector-elastic:${CIRCLE_SHA1}-ubi9 openbas/collector-elastic:${IMAGETAG}-ubi9
-            docker image load < collector-netwitness
-            docker tag openaev/collector-netwitness:${CIRCLE_SHA1} openaev/collector-netwitness:${IMAGETAG}
-            docker tag openaev/collector-netwitness:${CIRCLE_SHA1} openbas/collector-netwitness:${IMAGETAG}
-            docker image load < collector-netwitness-ubi9
-            docker tag openaev/collector-netwitness:${CIRCLE_SHA1}-ubi9 openaev/collector-netwitness:${IMAGETAG}-ubi9
-            docker tag openaev/collector-netwitness:${CIRCLE_SHA1}-ubi9 openbas/collector-netwitness:${IMAGETAG}-ubi9
-            docker image load < collector-qradar
-            docker tag openaev/collector-qradar:${CIRCLE_SHA1} openaev/collector-qradar:${IMAGETAG}
-            docker tag openaev/collector-qradar:${CIRCLE_SHA1} openbas/collector-qradar:${IMAGETAG}
-            docker image load < collector-qradar-ubi9
-            docker tag openaev/collector-qradar:${CIRCLE_SHA1}-ubi9 openaev/collector-qradar:${IMAGETAG}-ubi9
-            docker tag openaev/collector-qradar:${CIRCLE_SHA1}-ubi9 openbas/collector-qradar:${IMAGETAG}-ubi9
-            
-            docker image load < collector-openaev
-            docker tag openaev/collector-openaev:${CIRCLE_SHA1} openaev/collector-openaev:${IMAGETAG}
-            docker tag openaev/collector-openaev:${CIRCLE_SHA1} openbas/collector-openbas:${IMAGETAG}
-            docker image load < collector-openaev-ubi9
-            docker tag openaev/collector-openaev:${CIRCLE_SHA1}-ubi9 openaev/collector-openaev:${IMAGETAG}-ubi9
-            docker tag openaev/collector-openaev:${CIRCLE_SHA1}-ubi9 openbas/collector-openbas:${IMAGETAG}-ubi9
-            
-            docker image load < collector-microsoft-azure
-            docker tag openaev/collector-microsoft-azure:${CIRCLE_SHA1} openaev/collector-microsoft-azure:${IMAGETAG}
-            docker tag openaev/collector-microsoft-azure:${CIRCLE_SHA1} openbas/collector-microsoft-azure:${IMAGETAG}
-            docker image load < collector-microsoft-azure-ubi9
-            docker tag openaev/collector-microsoft-azure:${CIRCLE_SHA1}-ubi9 openaev/collector-microsoft-azure:${IMAGETAG}-ubi9
-            docker tag openaev/collector-microsoft-azure:${CIRCLE_SHA1}-ubi9 openbas/collector-microsoft-azure:${IMAGETAG}-ubi9
-            
-            docker image load < collector-microsoft-intune
-            docker tag openaev/collector-microsoft-intune:${CIRCLE_SHA1} openaev/collector-microsoft-intune:${IMAGETAG}
-            docker tag openaev/collector-microsoft-intune:${CIRCLE_SHA1} openbas/collector-microsoft-intune:${IMAGETAG}
-            docker image load < collector-microsoft-intune-ubi9
-            docker tag openaev/collector-microsoft-intune:${CIRCLE_SHA1}-ubi9 openaev/collector-microsoft-intune:${IMAGETAG}-ubi9
-            docker tag openaev/collector-microsoft-intune:${CIRCLE_SHA1}-ubi9 openbas/collector-microsoft-intune:${IMAGETAG}-ubi9
-            
-            docker image load < collector-aws-resources
-            docker tag openaev/collector-aws-resources:${CIRCLE_SHA1} openaev/collector-aws-resources:${IMAGETAG}
-            docker tag openaev/collector-aws-resources:${CIRCLE_SHA1} openbas/collector-aws-resources:${IMAGETAG}
-            docker image load < collector-aws-resources-ubi9
-            docker tag openaev/collector-aws-resources:${CIRCLE_SHA1}-ubi9 openaev/collector-aws-resources:${IMAGETAG}-ubi9
-            docker tag openaev/collector-aws-resources:${CIRCLE_SHA1}-ubi9 openbas/collector-aws-resources:${IMAGETAG}-ubi9
-            
-            docker image load < collector-google-workspace
-            docker tag openaev/collector-google-workspace:${CIRCLE_SHA1} openaev/collector-google-workspace:${IMAGETAG}
-            docker tag openaev/collector-google-workspace:${CIRCLE_SHA1} openbas/collector-google-workspace:${IMAGETAG}
-            docker image load < collector-google-workspace-ubi9
-            docker tag openaev/collector-google-workspace:${CIRCLE_SHA1}-ubi9 openaev/collector-google-workspace:${IMAGETAG}-ubi9
-            docker tag openaev/collector-google-workspace:${CIRCLE_SHA1}-ubi9 openbas/collector-google-workspace:${IMAGETAG}-ubi9
-            
-            docker image load < collector-palo-alto-cortex-xdr
-            docker tag openaev/collector-palo-alto-cortex-xdr:${CIRCLE_SHA1} openaev/collector-palo-alto-cortex-xdr:${IMAGETAG}
-            docker tag openaev/collector-palo-alto-cortex-xdr:${CIRCLE_SHA1} openbas/collector-palo-alto-cortex-xdr:${IMAGETAG}
-            docker image load < collector-palo-alto-cortex-xdr-ubi9
-            docker tag openaev/collector-palo-alto-cortex-xdr:${CIRCLE_SHA1}-ubi9 openaev/collector-palo-alto-cortex-xdr:${IMAGETAG}-ubi9
-            docker tag openaev/collector-palo-alto-cortex-xdr:${CIRCLE_SHA1}-ubi9 openbas/collector-palo-alto-cortex-xdr:${IMAGETAG}-ubi9
-
-            docker image load < collector-palo-alto-cortex-xsoar
-            docker tag openaev/collector-palo-alto-cortex-xsoar:${CIRCLE_SHA1} openaev/collector-palo-alto-cortex-xsoar:${IMAGETAG}
-            docker tag openaev/collector-palo-alto-cortex-xsoar:${CIRCLE_SHA1} openbas/collector-palo-alto-cortex-xsoar:${IMAGETAG}
-            docker image load < collector-palo-alto-cortex-xsoar-ubi9
-            docker tag openaev/collector-palo-alto-cortex-xsoar:${CIRCLE_SHA1}-ubi9 openaev/collector-palo-alto-cortex-xsoar:${IMAGETAG}-ubi9
-            docker tag openaev/collector-palo-alto-cortex-xsoar:${CIRCLE_SHA1}-ubi9 openbas/collector-palo-alto-cortex-xsoar:${IMAGETAG}-ubi9
-
-            docker image load < collector-cisco-ai-defense
-            docker tag openaev/collector-cisco-ai-defense:${CIRCLE_SHA1} openaev/collector-cisco-ai-defense:${IMAGETAG}
-            docker tag openaev/collector-cisco-ai-defense:${CIRCLE_SHA1} openbas/collector-cisco-ai-defense:${IMAGETAG}
-            docker image load < collector-hiddenlayer
-            docker tag openaev/collector-hiddenlayer:${CIRCLE_SHA1} openaev/collector-hiddenlayer:${IMAGETAG}
-            docker tag openaev/collector-hiddenlayer:${CIRCLE_SHA1} openbas/collector-hiddenlayer:${IMAGETAG}
-            docker image load < collector-hiddenlayer-ubi9
-            docker tag openaev/collector-hiddenlayer:${CIRCLE_SHA1}-ubi9 openaev/collector-hiddenlayer:${IMAGETAG}-ubi9
-            docker tag openaev/collector-hiddenlayer:${CIRCLE_SHA1}-ubi9 openbas/collector-hiddenlayer:${IMAGETAG}-ubi9
-            docker image load < collector-lakera-guard
-            docker tag openaev/collector-lakera-guard:${CIRCLE_SHA1} openaev/collector-lakera-guard:${IMAGETAG}
-            docker tag openaev/collector-lakera-guard:${CIRCLE_SHA1} openbas/collector-lakera-guard:${IMAGETAG}
-            docker image load < collector-mitre-atlas
-            docker tag openaev/collector-mitre-atlas:${CIRCLE_SHA1} openaev/collector-mitre-atlas:${IMAGETAG}
-            docker tag openaev/collector-mitre-atlas:${CIRCLE_SHA1} openbas/collector-mitre-atlas:${IMAGETAG}
-            docker image load < collector-prisma-airs
-            docker tag openaev/collector-prisma-airs:${CIRCLE_SHA1} openaev/collector-prisma-airs:${IMAGETAG}
-            docker tag openaev/collector-prisma-airs:${CIRCLE_SHA1} openbas/collector-prisma-airs:${IMAGETAG}
-            docker image load < collector-prompt-security
-            docker tag openaev/collector-prompt-security:${CIRCLE_SHA1} openaev/collector-prompt-security:${IMAGETAG}
-            docker tag openaev/collector-prompt-security:${CIRCLE_SHA1} openbas/collector-prompt-security:${IMAGETAG}
-            docker image load < collector-xtm-one
-            docker tag openaev/collector-xtm-one:${CIRCLE_SHA1} openaev/collector-xtm-one:${IMAGETAG}
-            docker tag openaev/collector-xtm-one:${CIRCLE_SHA1} openbas/collector-xtm-one:${IMAGETAG}
-            docker image load < collector-xtm-one-ubi9
-            docker tag openaev/collector-xtm-one:${CIRCLE_SHA1}-ubi9 openaev/collector-xtm-one:${IMAGETAG}-ubi9
-            docker tag openaev/collector-xtm-one:${CIRCLE_SHA1}-ubi9 openbas/collector-xtm-one:${IMAGETAG}-ubi9
-
-            echo "$DOCKERHUB_PASS" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
-            docker push openaev/collector-mitre-attack:${IMAGETAG}
-            docker push openaev/collector-mitre-attack:${IMAGETAG}-ubi9
-            docker push openbas/collector-mitre-attack:${IMAGETAG}
-            docker push openbas/collector-mitre-attack:${IMAGETAG}-ubi9
-            docker push openaev/collector-nvd-nist-cve:${IMAGETAG}
-            docker push openaev/collector-nvd-nist-cve:${IMAGETAG}-ubi9
-            docker push openbas/collector-nvd-nist-cve:${IMAGETAG}
-            docker push openbas/collector-nvd-nist-cve:${IMAGETAG}-ubi9
-            docker push openaev/collector-microsoft-entra:${IMAGETAG}
-            docker push openaev/collector-microsoft-entra:${IMAGETAG}-ubi9
-            docker push openbas/collector-microsoft-entra:${IMAGETAG}
-            docker push openbas/collector-microsoft-entra:${IMAGETAG}-ubi9
-            docker push openaev/collector-tanium-threat-response:${IMAGETAG}
-            docker push openaev/collector-tanium-threat-response:${IMAGETAG}-ubi9
-            docker push openbas/collector-tanium-threat-response:${IMAGETAG}
-            docker push openbas/collector-tanium-threat-response:${IMAGETAG}-ubi9
-            docker push openaev/collector-microsoft-defender:${IMAGETAG}
-            docker push openaev/collector-microsoft-defender:${IMAGETAG}-ubi9
-            docker push openbas/collector-microsoft-defender:${IMAGETAG}
-            docker push openbas/collector-microsoft-defender:${IMAGETAG}-ubi9
-            docker push openaev/collector-microsoft-defender-o365:${IMAGETAG}
-            docker push openaev/collector-microsoft-defender-o365:${IMAGETAG}-ubi9
-            docker push openbas/collector-microsoft-defender-o365:${IMAGETAG}
-            docker push openbas/collector-microsoft-defender-o365:${IMAGETAG}-ubi9
-            docker push openaev/collector-microsoft-sentinel:${IMAGETAG}
-            docker push openaev/collector-microsoft-sentinel:${IMAGETAG}-ubi9
-            docker push openbas/collector-microsoft-sentinel:${IMAGETAG}
-            docker push openbas/collector-microsoft-sentinel:${IMAGETAG}-ubi9
-            docker push openaev/collector-atomic-red-team:${IMAGETAG}
-            docker push openaev/collector-atomic-red-team:${IMAGETAG}-ubi9
-            docker push openbas/collector-atomic-red-team:${IMAGETAG}
-            docker push openbas/collector-atomic-red-team:${IMAGETAG}-ubi9
-            docker push openaev/collector-crowdstrike:${IMAGETAG}
-            docker push openaev/collector-crowdstrike:${IMAGETAG}-ubi9
-            docker push openbas/collector-crowdstrike:${IMAGETAG}
-            docker push openbas/collector-crowdstrike:${IMAGETAG}-ubi9
-            docker push openaev/collector-sentinelone:${IMAGETAG}
-            docker push openaev/collector-sentinelone:${IMAGETAG}-ubi9
-            docker push openbas/collector-sentinelone:${IMAGETAG}
-            docker push openbas/collector-sentinelone:${IMAGETAG}-ubi9
-            docker push openaev/collector-splunk-es:${IMAGETAG}
-            docker push openaev/collector-splunk-es:${IMAGETAG}-ubi9
-            docker push openbas/collector-splunk-es:${IMAGETAG}
-            docker push openbas/collector-splunk-es:${IMAGETAG}-ubi9
-            docker push openaev/collector-logrhythm:${IMAGETAG}
-            docker push openaev/collector-logrhythm:${IMAGETAG}-ubi9
-            docker push openbas/collector-logrhythm:${IMAGETAG}
-            docker push openbas/collector-logrhythm:${IMAGETAG}-ubi9
-            docker push openaev/collector-elastic:${IMAGETAG}
-            docker push openaev/collector-elastic:${IMAGETAG}-ubi9
-            docker push openbas/collector-elastic:${IMAGETAG}
-            docker push openbas/collector-elastic:${IMAGETAG}-ubi9
-            docker push openaev/collector-netwitness:${IMAGETAG}
-            docker push openaev/collector-netwitness:${IMAGETAG}-ubi9
-            docker push openbas/collector-netwitness:${IMAGETAG}
-            docker push openbas/collector-netwitness:${IMAGETAG}-ubi9
-            docker push openaev/collector-qradar:${IMAGETAG}
-            docker push openaev/collector-qradar:${IMAGETAG}-ubi9
-            docker push openbas/collector-qradar:${IMAGETAG}
-            docker push openbas/collector-qradar:${IMAGETAG}-ubi9
-            docker push openaev/collector-openaev:${IMAGETAG}
-            docker push openaev/collector-openaev:${IMAGETAG}-ubi9
-            docker push openbas/collector-openbas:${IMAGETAG}
-            docker push openbas/collector-openbas:${IMAGETAG}-ubi9
-            docker push openaev/collector-microsoft-azure:${IMAGETAG}
-            docker push openaev/collector-microsoft-azure:${IMAGETAG}-ubi9
-            docker push openbas/collector-microsoft-azure:${IMAGETAG}
-            docker push openbas/collector-microsoft-azure:${IMAGETAG}-ubi9
-            docker push openaev/collector-microsoft-intune:${IMAGETAG}
-            docker push openaev/collector-microsoft-intune:${IMAGETAG}-ubi9
-            docker push openbas/collector-microsoft-intune:${IMAGETAG}
-            docker push openbas/collector-microsoft-intune:${IMAGETAG}-ubi9
-            docker push openaev/collector-aws-resources:${IMAGETAG}
-            docker push openaev/collector-aws-resources:${IMAGETAG}-ubi9
-            docker push openbas/collector-aws-resources:${IMAGETAG}
-            docker push openbas/collector-aws-resources:${IMAGETAG}-ubi9
-            docker push openaev/collector-google-workspace:${IMAGETAG}
-            docker push openaev/collector-google-workspace:${IMAGETAG}-ubi9
-            docker push openbas/collector-google-workspace:${IMAGETAG}
-            docker push openbas/collector-google-workspace:${IMAGETAG}-ubi9
-            docker push openaev/collector-palo-alto-cortex-xdr:${IMAGETAG}
-            docker push openaev/collector-palo-alto-cortex-xdr:${IMAGETAG}-ubi9
-            docker push openbas/collector-palo-alto-cortex-xdr:${IMAGETAG}
-            docker push openbas/collector-palo-alto-cortex-xdr:${IMAGETAG}-ubi9
-            docker push openaev/collector-palo-alto-cortex-xsoar:${IMAGETAG}
-            docker push openaev/collector-palo-alto-cortex-xsoar:${IMAGETAG}-ubi9
-            docker push openbas/collector-palo-alto-cortex-xsoar:${IMAGETAG}
-            docker push openbas/collector-palo-alto-cortex-xsoar:${IMAGETAG}-ubi9
-            docker push openaev/collector-cisco-ai-defense:${IMAGETAG}
-            docker push openbas/collector-cisco-ai-defense:${IMAGETAG}
-            docker push openaev/collector-hiddenlayer:${IMAGETAG}
-            docker push openaev/collector-hiddenlayer:${IMAGETAG}-ubi9
-            docker push openbas/collector-hiddenlayer:${IMAGETAG}
-            docker push openbas/collector-hiddenlayer:${IMAGETAG}-ubi9
-            docker push openaev/collector-lakera-guard:${IMAGETAG}
-            docker push openbas/collector-lakera-guard:${IMAGETAG}
-            docker push openaev/collector-mitre-atlas:${IMAGETAG}
-            docker push openbas/collector-mitre-atlas:${IMAGETAG}
-            docker push openaev/collector-prisma-airs:${IMAGETAG}
-            docker push openbas/collector-prisma-airs:${IMAGETAG}
-            docker push openaev/collector-prompt-security:${IMAGETAG}
-            docker push openbas/collector-prompt-security:${IMAGETAG}
-            docker push openaev/collector-xtm-one:${IMAGETAG}
-            docker push openaev/collector-xtm-one:${IMAGETAG}-ubi9
-            docker push openbas/collector-xtm-one:${IMAGETAG}
-            docker push openbas/collector-xtm-one:${IMAGETAG}-ubi9
-            if [ "${IS_LATEST}" == "true" ]
-            then
-              docker tag openaev/collector-mitre-attack:${IMAGETAG} openaev/collector-mitre-attack:latest
-              docker tag openaev/collector-mitre-attack:${IMAGETAG} openbas/collector-mitre-attack:latest
-              docker tag openaev/collector-nvd-nist-cve:${IMAGETAG} openaev/collector-nvd-nist-cve:latest
-              docker tag openaev/collector-nvd-nist-cve:${IMAGETAG} openbas/collector-nvd-nist-cve:latest
-              docker tag openaev/collector-microsoft-entra:${IMAGETAG} openaev/collector-microsoft-entra:latest
-              docker tag openaev/collector-microsoft-entra:${IMAGETAG} openbas/collector-microsoft-entra:latest
-              docker tag openaev/collector-tanium-threat-response:${IMAGETAG} openaev/collector-tanium-threat-response:latest
-              docker tag openaev/collector-tanium-threat-response:${IMAGETAG} openbas/collector-tanium-threat-response:latest
-              docker tag openaev/collector-microsoft-defender:${IMAGETAG} openaev/collector-microsoft-defender:latest
-              docker tag openaev/collector-microsoft-defender:${IMAGETAG} openbas/collector-microsoft-defender:latest
-              docker tag openaev/collector-microsoft-defender-o365:${IMAGETAG} openaev/collector-microsoft-defender-o365:latest
-              docker tag openaev/collector-microsoft-defender-o365:${IMAGETAG} openbas/collector-microsoft-defender-o365:latest
-              docker tag openaev/collector-microsoft-sentinel:${IMAGETAG} openaev/collector-microsoft-sentinel:latest
-              docker tag openaev/collector-microsoft-sentinel:${IMAGETAG} openbas/collector-microsoft-sentinel:latest
-              docker tag openaev/collector-atomic-red-team:${IMAGETAG} openaev/collector-atomic-red-team:latest
-              docker tag openaev/collector-atomic-red-team:${IMAGETAG} openbas/collector-atomic-red-team:latest
-              docker tag openaev/collector-crowdstrike:${IMAGETAG} openaev/collector-crowdstrike:latest
-              docker tag openaev/collector-crowdstrike:${IMAGETAG} openbas/collector-crowdstrike:latest
-              docker tag openaev/collector-sentinelone:${IMAGETAG} openaev/collector-sentinelone:latest
-              docker tag openaev/collector-sentinelone:${IMAGETAG} openbas/collector-sentinelone:latest
-              docker tag openaev/collector-splunk-es:${IMAGETAG} openaev/collector-splunk-es:latest
-              docker tag openaev/collector-splunk-es:${IMAGETAG} openbas/collector-splunk-es:latest
-              docker tag openaev/collector-logrhythm:${IMAGETAG} openaev/collector-logrhythm:latest
-              docker tag openaev/collector-logrhythm:${IMAGETAG} openbas/collector-logrhythm:latest
-              docker tag openaev/collector-elastic:${IMAGETAG} openaev/collector-elastic:latest
-              docker tag openaev/collector-elastic:${IMAGETAG} openbas/collector-elastic:latest
-              docker tag openaev/collector-netwitness:${IMAGETAG} openaev/collector-netwitness:latest
-              docker tag openaev/collector-netwitness:${IMAGETAG} openbas/collector-netwitness:latest
-              docker tag openaev/collector-qradar:${IMAGETAG} openaev/collector-qradar:latest
-              docker tag openaev/collector-qradar:${IMAGETAG} openbas/collector-qradar:latest
-              docker tag openaev/collector-openaev:${IMAGETAG} openaev/collector-openaev:latest
-              docker tag openaev/collector-openaev:${IMAGETAG} openbas/collector-openbas:latest
-              docker tag openaev/collector-microsoft-azure:${IMAGETAG} openaev/collector-microsoft-azure:latest
-              docker tag openaev/collector-microsoft-azure:${IMAGETAG} openbas/collector-microsoft-azure:latest
-              docker tag openaev/collector-microsoft-intune:${IMAGETAG} openaev/collector-microsoft-intune:latest
-              docker tag openaev/collector-microsoft-intune:${IMAGETAG} openbas/collector-microsoft-intune:latest
-              docker tag openaev/collector-aws-resources:${IMAGETAG} openaev/collector-aws-resources:latest
-              docker tag openaev/collector-aws-resources:${IMAGETAG} openbas/collector-aws-resources:latest
-              docker tag openaev/collector-google-workspace:${IMAGETAG} openaev/collector-google-workspace:latest
-              docker tag openaev/collector-google-workspace:${IMAGETAG} openbas/collector-google-workspace:latest
-              docker tag openaev/collector-palo-alto-cortex-xdr:${IMAGETAG} openaev/collector-palo-alto-cortex-xdr:latest
-              docker tag openaev/collector-palo-alto-cortex-xdr:${IMAGETAG} openbas/collector-palo-alto-cortex-xdr:latest
-              docker tag openaev/collector-palo-alto-cortex-xsoar:${IMAGETAG} openaev/collector-palo-alto-cortex-xsoar:latest
-              docker tag openaev/collector-palo-alto-cortex-xsoar:${IMAGETAG} openbas/collector-palo-alto-cortex-xsoar:latest
-              docker tag openaev/collector-cisco-ai-defense:${IMAGETAG} openaev/collector-cisco-ai-defense:latest
-              docker tag openaev/collector-cisco-ai-defense:${IMAGETAG} openbas/collector-cisco-ai-defense:latest
-              docker tag openaev/collector-hiddenlayer:${IMAGETAG} openaev/collector-hiddenlayer:latest
-              docker tag openaev/collector-hiddenlayer:${IMAGETAG} openbas/collector-hiddenlayer:latest
-              docker tag openaev/collector-lakera-guard:${IMAGETAG} openaev/collector-lakera-guard:latest
-              docker tag openaev/collector-lakera-guard:${IMAGETAG} openbas/collector-lakera-guard:latest
-              docker tag openaev/collector-mitre-atlas:${IMAGETAG} openaev/collector-mitre-atlas:latest
-              docker tag openaev/collector-mitre-atlas:${IMAGETAG} openbas/collector-mitre-atlas:latest
-              docker tag openaev/collector-prisma-airs:${IMAGETAG} openaev/collector-prisma-airs:latest
-              docker tag openaev/collector-prisma-airs:${IMAGETAG} openbas/collector-prisma-airs:latest
-              docker tag openaev/collector-prompt-security:${IMAGETAG} openaev/collector-prompt-security:latest
-              docker tag openaev/collector-prompt-security:${IMAGETAG} openbas/collector-prompt-security:latest
-              docker tag openaev/collector-xtm-one:${IMAGETAG} openaev/collector-xtm-one:latest
-              docker tag openaev/collector-xtm-one:${IMAGETAG} openbas/collector-xtm-one:latest
-
-              docker push openaev/collector-mitre-attack:latest
-              docker push openbas/collector-mitre-attack:latest
-              docker push openaev/collector-nvd-nist-cve:latest
-              docker push openbas/collector-nvd-nist-cve:latest
-              docker push openaev/collector-microsoft-entra:latest
-              docker push openbas/collector-microsoft-entra:latest
-              docker push openaev/collector-tanium-threat-response:latest
-              docker push openbas/collector-tanium-threat-response:latest
-              docker push openaev/collector-microsoft-defender:latest
-              docker push openbas/collector-microsoft-defender:latest
-              docker push openaev/collector-microsoft-defender-o365:latest
-              docker push openbas/collector-microsoft-defender-o365:latest
-              docker push openaev/collector-microsoft-sentinel:latest
-              docker push openbas/collector-microsoft-sentinel:latest
-              docker push openaev/collector-atomic-red-team:latest
-              docker push openbas/collector-atomic-red-team:latest
-              docker push openaev/collector-crowdstrike:latest
-              docker push openbas/collector-crowdstrike:latest
-              docker push openaev/collector-sentinelone:latest
-              docker push openbas/collector-sentinelone:latest
-              docker push openaev/collector-splunk-es:latest
-              docker push openbas/collector-splunk-es:latest
-              docker push openaev/collector-logrhythm:latest
-              docker push openbas/collector-logrhythm:latest
-              docker push openaev/collector-elastic:latest
-              docker push openbas/collector-elastic:latest
-              docker push openaev/collector-netwitness:latest
-              docker push openbas/collector-netwitness:latest
-              docker push openaev/collector-qradar:latest
-              docker push openbas/collector-qradar:latest
-              docker push openaev/collector-openaev:latest
-              docker push openbas/collector-openbas:latest
-              docker push openaev/collector-microsoft-azure:latest
-              docker push openbas/collector-microsoft-azure:latest
-              docker push openaev/collector-microsoft-intune:latest
-              docker push openbas/collector-microsoft-intune:latest
-              docker push openaev/collector-aws-resources:latest
-              docker push openbas/collector-aws-resources:latest
-              docker push openaev/collector-google-workspace:latest
-              docker push openbas/collector-google-workspace:latest
-              docker push openaev/collector-palo-alto-cortex-xdr:latest
-              docker push openbas/collector-palo-alto-cortex-xdr:latest
-              docker push openaev/collector-palo-alto-cortex-xsoar:latest
-              docker push openbas/collector-palo-alto-cortex-xsoar:latest
-              docker push openaev/collector-cisco-ai-defense:latest
-              docker push openbas/collector-cisco-ai-defense:latest
-              docker push openaev/collector-hiddenlayer:latest
-              docker push openbas/collector-hiddenlayer:latest
-              docker push openaev/collector-lakera-guard:latest
-              docker push openbas/collector-lakera-guard:latest
-              docker push openaev/collector-mitre-atlas:latest
-              docker push openbas/collector-mitre-atlas:latest
-              docker push openaev/collector-prisma-airs:latest
-              docker push openbas/collector-prisma-airs:latest
-              docker push openaev/collector-prompt-security:latest
-              docker push openbas/collector-prompt-security:latest
-              docker push openaev/collector-xtm-one:latest
-              docker push openbas/collector-xtm-one:latest
-            fi
-      - slack/notify:
-          event: fail
-          template: basic_fail_1
   # TODO(#530): re-enable the main-oaev / main-ff-oaev / testing-oaev /
   # testing-xtm-one-oaev targets once a circleci ServiceAccount token is
   # provisioned for each namespace ($K8S_TOKEN is scoped to
   # customer-testing-oaev and $K8S_TOKEN_PRE_RELEASE is no longer valid).
   deploy_testing:
-    docker:
-      - image: cimg/base:stable
+    executor: base_runner
     steps:
       - checkout
       - kubernetes/install-kubectl
       - run: kubectl --server=https://api.staging.eu-west.filigran.io --token=$K8S_TOKEN -n customer-testing-oaev rollout restart deployment -l app=openaev-colljector
+
   notify_rolling:
-    docker:
-      - image: "cimg/base:stable"
+    executor: base_runner
     steps:
-      - slack/notify:
-          event: pass
-          template: basic_success_1
+      - notify_slack_success
+
   notify:
-    docker:
-      - image: "cimg/base:stable"
+    executor: base_runner
     steps:
-      - slack/notify:
-          event: pass
-          template: basic_success_1
+      - notify_slack_success
+
 workflows:
-  version: 2
-  openaev:
+  setup:
     jobs:
-      - ensure_formatting:
+      - setup:
           filters:
             tags:
-              only: /[0-9]+(\.[0-9]+)+(\.[0-9]+)*/
-      - linter:
-          filters:
-            tags:
-              only: /[0-9]+(\.[0-9]+)+(\.[0-9]+)*/
-      - test:
-          filters:
-            tags:
-              only: /[0-9]+(\.[0-9]+)+(\.[0-9]+)*/
-      - build_docker_images:
-          requires:
-            - ensure_formatting
-            - linter
-            - test
-          filters:
-            tags:
-              only: /[0-9]+(\.[0-9]+)+(\.[0-9]+)*/
-      - publish_images:
-          requires:
-            - build_docker_images
-          filters:
-            tags:
-              only: /[0-9]+(\.[0-9]+)+(\.[0-9]+)*/
-            branches:
-              only:
-                - main
-      - deploy_testing:
-          requires:
-            - publish_images
-          filters:
-            branches:
-              only: main
-      - notify_rolling:
-          requires:
-            - deploy_testing
-      - notify:
-          requires:
-            - publish_images
-          filters:
-            tags:
-              only: /[0-9]+(\.[0-9]+)+(\.[0-9]+)*/
-            branches:
-              ignore: /.*/
+              only: /^[0-9]+\.[0-9]+\.[0-9]+$/
