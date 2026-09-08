@@ -1,7 +1,7 @@
 """Essential tests for SentinelOne Expectation Service - Gherkin GWT Format."""
 
-from datetime import datetime
-from unittest.mock import ANY, Mock
+from datetime import datetime, timedelta, timezone
+from unittest.mock import Mock
 from uuid import uuid4
 
 import pytest
@@ -188,9 +188,11 @@ def test_match_threats_to_expectations():
     _then_match_succeeds_without_mitigation_requirement(matches)
 
 
-# Scenario: Fetch windows honor the signature start date
-def test_fetch_windows_use_signature_start_date():
-    """Scenario: Fetch windows use the signature start date when present."""
+# Scenario: The alert window and the DV event window are decoupled
+def test_alert_and_dv_windows_are_decoupled():
+    """Scenario: The DV event window ignores the signature dates and pivots on
+    the file SHA1 with a fixed lookback, while the alert window keeps anchoring
+    its start to the signature start date."""
     # Given: A detection helper
     detection_helper = _given_mock_detection_helper()
     # Given: A static expectation with start and end date signatures
@@ -198,9 +200,12 @@ def test_fetch_windows_use_signature_start_date():
         start_date="2024-01-01T10:00:00Z",
         end_date="2024-01-01T12:00:00Z",
     )
+    # Given: A pinned DV lookback so the assertion is deterministic
+    lookback = timedelta(hours=6)
 
     # When: I handle the static expectation with Deep Visibility enabled
     with _given_expectation_service_with_deep_visibility_enabled() as service:
+        service.client_api.deep_visibility_lookback = lookback
         mock_static_threats = _given_mock_static_threats_for_service(service)
         mock_dv_events = _given_mock_deep_visibility_events_for_service(service)
 
@@ -209,15 +214,18 @@ def test_fetch_windows_use_signature_start_date():
                 service, [static_expectation], detection_helper
             )
 
-    # Then: Both the threat and DV windows use the signature start and end dates
-    _then_fetch_windows_use_signature_dates(
-        threats_mock, dv_mock, "2024-01-01T10:00:00Z", "2024-01-01T12:00:00Z"
+    # Then: The alert window still uses the signature start date, and the DV
+    # event window spans exactly the pinned lookback ending at now
+    _then_alert_and_dv_windows_are_decoupled(
+        threats_mock, dv_mock, "2024-01-01T10:00:00Z", lookback
     )
 
 
-# Scenario: Fetch windows fall back to time window without a start date
+# Scenario: Fetch windows fall back to the time window without a start date
 def test_fetch_windows_fall_back_to_time_window_without_start_date():
-    """Scenario: Fetch windows fall back to time window without a start date."""
+    """Scenario: without a start date signature, the threat window spans
+    now - SENTINELONE_TIME_WINDOW to now.
+    """
     # Given: An initialized expectation service
     service = _given_initialized_expectation_service()
     # Given: An expectation without a start date signature
@@ -228,34 +236,34 @@ def test_fetch_windows_fall_back_to_time_window_without_start_date():
     # When: I compute the fetch time window for the batch
     start_time, end_time = _when_compute_fetch_time_window(service, [expectation])
 
-    # Then: The window spans end - SENTINELONE_TIME_WINDOW to end
-    _then_fetch_window_falls_back_to_time_window(
-        service, start_time, end_time, "2024-01-01T12:00:00Z"
-    )
+    # Then: The window spans now - SENTINELONE_TIME_WINDOW to now
+    _then_fetch_window_falls_back_to_time_window(service, start_time, end_time)
 
 
-# Scenario: Fetch windows fall back to time window when start date is after end
-def test_fetch_windows_fall_back_to_time_window_when_start_after_end():
-    """Scenario: Fetch windows fall back to time window when start date is after end."""
+# Scenario: Fetch windows fall back to the time window when the start date is in the future
+def test_fetch_windows_fall_back_to_time_window_when_start_in_future():
+    """Scenario: a start date after the current time is anomalous; the
+    threat window falls back to now - SENTINELONE_TIME_WINDOW to now.
+    """
     # Given: An initialized expectation service
     service = _given_initialized_expectation_service()
-    # Given: An expectation whose start date is after its end date
+    # Given: An expectation whose start date lies in the future
     expectation = _given_expectation_with_date_signatures(
-        start_date="2024-01-02T12:00:00Z", end_date="2024-01-01T12:00:00Z"
+        start_date="2999-01-01T12:00:00Z", end_date="2024-01-01T12:00:00Z"
     )
 
     # When: I compute the fetch time window for the batch
     start_time, end_time = _when_compute_fetch_time_window(service, [expectation])
 
-    # Then: The window spans end - SENTINELONE_TIME_WINDOW to end
-    _then_fetch_window_falls_back_to_time_window(
-        service, start_time, end_time, "2024-01-01T12:00:00Z"
-    )
+    # Then: The window spans now - SENTINELONE_TIME_WINDOW to now
+    _then_fetch_window_falls_back_to_time_window(service, start_time, end_time)
 
 
-# Scenario: Fetch windows fall back to time window when start date is unparsable
+# Scenario: Fetch windows fall back to the time window when the start date is unparsable
 def test_fetch_windows_fall_back_to_time_window_when_start_unparsable():
-    """Scenario: Fetch windows fall back to time window when start date is unparsable."""
+    """Scenario: an unparsable start date signature falls back to
+    now - SENTINELONE_TIME_WINDOW to now.
+    """
     # Given: An initialized expectation service
     service = _given_initialized_expectation_service()
     # Given: An expectation with an unparsable start date signature
@@ -266,10 +274,8 @@ def test_fetch_windows_fall_back_to_time_window_when_start_unparsable():
     # When: I compute the fetch time window for the batch
     start_time, end_time = _when_compute_fetch_time_window(service, [expectation])
 
-    # Then: The window spans end - SENTINELONE_TIME_WINDOW to end
-    _then_fetch_window_falls_back_to_time_window(
-        service, start_time, end_time, "2024-01-01T12:00:00Z"
-    )
+    # Then: The window spans now - SENTINELONE_TIME_WINDOW to now
+    _then_fetch_window_falls_back_to_time_window(service, start_time, end_time)
 
 
 # --------
@@ -884,43 +890,57 @@ def _then_static_result_without_deep_visibility_returned(result, expectation):
 
 
 # Then: Both the threat and DV windows use the signature start and end dates
-def _then_fetch_windows_use_signature_dates(
-    threats_mock, dv_mock, start_date, end_date
+def _then_alert_and_dv_windows_are_decoupled(
+    threats_mock, dv_mock, start_date, lookback
 ):
-    """Verify both fetchers received the signature-derived time window.
+    """Verify the alert window and the DV event window are decoupled.
+
+    The alert (threat) window keeps anchoring its start to the signature
+    start_date. The DV event window ignores the signature dates entirely: it
+    starts at now - lookback and ends at now, so it can reach a file that was
+    dropped or executed well before the alert that references it.
 
     Args:
         threats_mock: Mock of the threat fetcher time window fetch.
         dv_mock: Mock of the Deep Visibility batch SHA1 fetch.
         start_date: ISO 8601 start date signature value.
-        end_date: ISO 8601 end date signature value.
+        lookback: Pinned DV lookback duration.
 
     """
-    expected_start = _parse_date_signature(start_date)
-    expected_end = _parse_date_signature(end_date)
+    # Alert window: its start still anchors to the signature start_date.
+    assert threats_mock.call_args.kwargs["start_time"] == _parse_date_signature(
+        start_date
+    )  # noqa: S101
 
-    threats_mock.assert_called_once_with(
-        start_time=expected_start, end_time=expected_end, limit=1000
-    )
-    dv_mock.assert_called_once_with(ANY, expected_start, expected_end)
+    # DV window: spans exactly the pinned lookback and ends at now.
+    dv_start = dv_mock.call_args.args[1]
+    dv_end = dv_mock.call_args.args[2]
+    assert dv_end - dv_start == lookback  # noqa: S101
+
+    # The DV window is decoupled from the signature start date...
+    assert dv_start != _parse_date_signature(start_date)  # noqa: S101
+    # ...and both windows are now-anchored on the end.
+    assert abs(threats_mock.call_args.kwargs["end_time"] - dv_end) < timedelta(
+        minutes=1
+    )  # noqa: S101
 
 
-# Then: The window spans end - SENTINELONE_TIME_WINDOW to end
-def _then_fetch_window_falls_back_to_time_window(
-    service, start_time, end_time, end_date
-):
-    """Verify the fetch window fell back to end - SENTINELONE_TIME_WINDOW.
+# Then: The fallback window spans now - SENTINELONE_TIME_WINDOW to now
+def _then_fetch_window_falls_back_to_time_window(service, start_time, end_time):
+    """Verify the threat window fell back to now - SENTINELONE_TIME_WINDOW.
+
+    Under the decoupled contract the threat window ends at the current time;
+    the signature end date no longer anchors it.
 
     Args:
         service: The expectation service instance.
         start_time: Computed window start.
         end_time: Computed window end.
-        end_date: ISO 8601 end date signature value.
 
     """
-    expected_end = _parse_date_signature(end_date)
-    assert start_time == expected_end - service.client_api.time_window  # noqa: S101
-    assert end_time == expected_end  # noqa: S101
+    assert start_time == end_time - service.client_api.time_window  # noqa: S101
+    now_at_assertion = datetime.now(timezone.utc)
+    assert abs(end_time - now_at_assertion) < timedelta(minutes=1)  # noqa: S101
 
 
 # --------

@@ -1,6 +1,9 @@
 """Essential tests for SentinelOne Threat Events Fetcher service - Gherkin GWT Format."""
 
+from unittest.mock import Mock, call, patch
+
 import pytest
+import src.services.fetcher_threat_events as fetcher_threat_events_module
 from src.services.exception import SentinelOneValidationError
 from src.services.fetcher_threat_events import FetcherThreatEvents
 from tests.gwt_shared import (
@@ -48,8 +51,6 @@ def test_fetch_events_for_threat_successfully():
     threat = _given_threat_for_event_fetching()
 
     # When: I fetch events for the threat (with mocked API)
-    from unittest.mock import Mock, patch
-
     mock_response = Mock()
     mock_response.json.return_value = {
         "data": [
@@ -67,6 +68,103 @@ def test_fetch_events_for_threat_successfully():
 
     # Then: Events should be returned successfully
     _then_events_returned_successfully(events)
+
+
+# Scenario: Fetch all threat-event pages and retain a later-page implant marker
+def test_fetch_events_follows_next_cursor_until_null_and_returns_later_marker():
+    """Scenario: Cursor pagination returns all events, including a late marker."""
+    # Given: Six full pages and one short final page total 646 events
+    fetcher = _given_valid_threat_events_fetcher()
+    threat = _given_threat_for_event_fetching()
+    pages = []
+    expected_events = []
+    for page_number in range(1, 8):
+        page_size = 100 if page_number <= 6 else 46
+        events = [
+            {
+                "id": f"event-{page_number}-{event_number}",
+                "parentProcessName": "ordinary.exe",
+            }
+            for event_number in range(page_size)
+        ]
+        expected_events.extend(events)
+        next_cursor = f"cursor-{page_number}" if page_number <= 6 else None
+        pages.append(_given_events_page(events, next_cursor))
+
+    # And: The implant marker exists only on the final page
+    marker = {"id": "event-7-45", "parentProcessName": "oaev-implant-later.exe"}
+    pages[-1].json.return_value["data"][-1] = marker
+    expected_events[-1] = marker
+    # When: Threat events are fetched
+    with patch.object(fetcher.client_api.session, "get", side_effect=pages) as mock_get:
+        events = fetcher.fetch_events_for_threat(threat, limit=100)
+
+    # Then: Every page is returned and later requests carry the prior cursor
+    assert events == expected_events  # noqa: S101
+    assert marker in events  # noqa: S101
+    endpoint = (
+        f"{fetcher.client_api.base_url}/web/api/v2.1/threats/"
+        f"{threat.threat_id}/explore/events"
+    )
+    expected_calls = [call(endpoint, params={"limit": 100}, timeout=30)]
+    expected_calls.extend(
+        call(
+            endpoint,
+            params={"limit": 100, "cursor": f"cursor-{page_number}"},
+            timeout=30,
+        )
+        for page_number in range(1, 7)
+    )
+    assert mock_get.call_args_list == expected_calls  # noqa: S101
+
+
+# Scenario: A repeated cursor terminates pagination safely
+def test_fetch_events_stops_when_next_cursor_does_not_advance():
+    """Scenario: A repeated next cursor cannot create an infinite request loop."""
+    # Given: The second page repeats the cursor used to request it
+    fetcher = _given_valid_threat_events_fetcher()
+    threat = _given_threat_for_event_fetching()
+    pages = [
+        _given_events_page([{"id": "event-1"}], "cursor-1"),
+        _given_events_page([{"id": "event-2"}], "cursor-1"),
+    ]
+
+    # When: Threat events are fetched
+    with patch.object(fetcher.client_api.session, "get", side_effect=pages) as mock_get:
+        events = fetcher.fetch_events_for_threat(threat)
+
+    # Then: Both reached pages are retained and no third request is attempted
+    assert events == [{"id": "event-1"}, {"id": "event-2"}]  # noqa: S101
+    assert mock_get.call_count == 2  # noqa: S101
+
+
+# Scenario: Threat-event pagination has a defensive page cap
+def test_fetch_events_stops_at_defensive_page_cap(monkeypatch):
+    """Scenario: Ever-advancing cursors cannot cause unbounded requests."""
+    # Given: The repository-standard page cap is reduced and every page advances
+    monkeypatch.setattr(fetcher_threat_events_module, "MAX_PAGES", 3, raising=False)
+    fetcher = _given_valid_threat_events_fetcher()
+    threat = _given_threat_for_event_fetching()
+
+    def advancing_page(*_args, **_kwargs):
+        page_number = mock_get.call_count
+        return _given_events_page(
+            [{"id": f"event-{page_number}"}], f"cursor-{page_number}"
+        )
+
+    # When: Threat events are fetched
+    with patch.object(
+        fetcher.client_api.session, "get", side_effect=advancing_page
+    ) as mock_get:
+        events = fetcher.fetch_events_for_threat(threat)
+
+    # Then: Pagination stops exactly at the configured defensive cap
+    assert events == [
+        {"id": "event-1"},
+        {"id": "event-2"},
+        {"id": "event-3"},
+    ]  # noqa: S101
+    assert mock_get.call_count == 3  # noqa: S101
 
 
 # --------
@@ -117,6 +215,18 @@ def _given_threat_for_event_fetching():
 
     """
     return given_threat_with_complete_data()
+
+
+# Given: An API page of threat events with pagination metadata
+def _given_events_page(events, next_cursor):
+    """Create a successful threat-events response page."""
+    response = Mock()
+    response.json.return_value = {
+        "data": events,
+        "pagination": {"nextCursor": next_cursor},
+    }
+    response.raise_for_status.return_value = None
+    return response
 
 
 # Given: Mock API returns event data

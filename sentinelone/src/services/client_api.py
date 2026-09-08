@@ -4,11 +4,26 @@ import logging
 from datetime import timedelta
 
 import requests  # type: ignore[import-untyped]
+from requests.adapters import HTTPAdapter  # type: ignore[import-untyped]
+from urllib3.util.retry import Retry
 
 from ..models.configs.config_loader import ConfigLoader
 from .exception import SentinelOneSessionError
 
 LOG_PREFIX = "[SentinelOneClientAPI]"
+
+# Per-request timeout kept well below the 2-minute collection cycle so a
+# stalled connection degrades fast instead of stalling the cycle.
+REQUEST_TIMEOUT_SECONDS = 30
+
+# Bounded transport resilience: retry idempotent GET requests only, and only
+# on retryable transport/status conditions (429 and 5xx). Non-idempotent
+# methods are never retried; 4xx responses and other failures propagate
+# unchanged so typed error classification downstream stays intact.
+RETRY_ALLOWED_METHODS = frozenset({"GET"})
+RETRY_STATUS_FORCELIST = [429, 500, 502, 503, 504]
+RETRY_BACKOFF_FACTOR = 0.5
+RETRY_TOTAL = 3
 
 
 class SentinelOneClientAPI:
@@ -32,6 +47,9 @@ class SentinelOneClientAPI:
         self.api_key: str = config.sentinelone.api_key.get_secret_value()
 
         self.time_window: timedelta = config.sentinelone.time_window
+        self.deep_visibility_lookback: timedelta = (
+            config.sentinelone.deep_visibility_lookback
+        )
 
         try:
             self.session: requests.Session = self._create_session()
@@ -69,6 +87,17 @@ class SentinelOneClientAPI:
                     "Accept": "application/json",
                 }
             )
+
+            retry = Retry(
+                total=RETRY_TOTAL,
+                backoff_factor=RETRY_BACKOFF_FACTOR,
+                status_forcelist=RETRY_STATUS_FORCELIST,
+                allowed_methods=RETRY_ALLOWED_METHODS,
+                respect_retry_after_header=True,
+            )
+            adapter = HTTPAdapter(max_retries=retry)
+            session.mount("http://", adapter)
+            session.mount("https://", adapter)
 
             return session
         except Exception as e:
@@ -112,7 +141,7 @@ class SentinelOneClientAPI:
         """
         endpoint = f"{self.base_url}/web/api/v2.1/accounts"
         try:
-            response = self.session.get(endpoint)
+            response = self.session.get(endpoint, timeout=REQUEST_TIMEOUT_SECONDS)
             response.raise_for_status()
             accounts = response.json().get("data", [])
         except Exception as e:

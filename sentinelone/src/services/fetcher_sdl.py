@@ -2,6 +2,7 @@
 
 import logging
 import time
+from collections.abc import Mapping
 from datetime import datetime, timezone
 from typing import Any
 
@@ -582,7 +583,7 @@ class FetcherSDL:
 
         """
         headers = getattr(response, "headers", None)
-        if not isinstance(headers, dict):
+        if not isinstance(headers, Mapping):
             return None
         for key, value in headers.items():
             if key.lower() == FORWARD_TAG_HEADER:
@@ -612,6 +613,10 @@ class FetcherSDL:
                 exhausted.
 
         """
+        headers = dict(extra_kwargs.get("headers") or {})
+        headers["Authorization"] = f"Bearer {self.client_api.api_key}"
+        extra_kwargs["headers"] = headers
+
         attempt = 0
         while True:
             try:

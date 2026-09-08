@@ -91,7 +91,7 @@ class FetcherThreat:
                 f"{LOG_PREFIX} Fetching threats for time window: {start_time_str} to {end_time_str}"
             )
 
-            response = self.client_api.session.get(endpoint, params=params)
+            response = self.client_api.session.get(endpoint, params=params, timeout=30)
             response.raise_for_status()
 
             json_data = response.json()

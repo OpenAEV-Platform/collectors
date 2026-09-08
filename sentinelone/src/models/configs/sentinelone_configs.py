@@ -27,6 +27,11 @@ class _ConfigLoaderSentinelOne(ConfigBaseSettings):
         default=timedelta(hours=1),
         description="Time window for SentinelOne threat searches when no date signatures are provided (ISO 8601 format).",
     )
+    retry_window: timedelta = Field(
+        alias="SENTINELONE_RETRY_WINDOW",
+        default=timedelta(minutes=10),
+        description="How long after the first attempt an unresolved expectation is re-attempted on every collector cycle, before one final attempt emits the verdict (ISO 8601 format).",
+    )
     expectation_batch_size: int = Field(
         alias="SENTINELONE_EXPECTATION_BATCH_SIZE",
         default=50,
@@ -36,6 +41,18 @@ class _ConfigLoaderSentinelOne(ConfigBaseSettings):
         alias="SENTINELONE_ENABLE_DEEP_VISIBILITY_SEARCH",
         default=False,
         description="Enable deep visibility search for SentinelOne threat searches.",
+    )
+    deep_visibility_lookback: timedelta = Field(
+        alias="SENTINELONE_DEEP_VISIBILITY_LOOKBACK",
+        default=timedelta(days=1),
+        description=(
+            "Lookback window (ISO 8601 duration, e.g. PT1H / P1D) for the Deep "
+            "Visibility / SDL file-event pivot query. Decoupled from the threat "
+            "window: a file can be dropped or executed long before the alert that "
+            "references it is raised, so the event query pivots on the file SHA1 and "
+            "reaches back this far from now. Keep it within the account's Deep "
+            "Visibility retention (30/90/180/365 days)."
+        ),
     )
     disable_strict_end_date: bool = Field(
         alias="SENTINELONE_DISABLE_STRICT_END_DATE",

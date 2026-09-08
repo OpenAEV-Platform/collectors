@@ -7,6 +7,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 from requests.exceptions import ConnectionError as RequestsConnectionError
+from requests.structures import CaseInsensitiveDict
 from src.services.exception import (
     SentinelOneAPIError,
     SentinelOneNetworkError,
@@ -58,6 +59,7 @@ def _given_mock_client_api(is_self_hosted: bool) -> Mock:
     client = Mock()
     client.base_url = "https://s1.example.com"
     client.time_window = timedelta(hours=1)
+    client.api_key = "sdl-api-key-123"
     client.is_self_hosted = is_self_hosted
     return client
 
@@ -443,7 +445,10 @@ def test_polling_completes_and_echoes_forward_tag():
     # And: The forward tag is echoed in canonical case on every poll
     first = session.get.call_args_list[0]
     second = session.get.call_args_list[1]
-    expected_headers = {"x-dataset-query-forward-tag": "G/fwd-tag-77"}
+    expected_headers = {
+        "x-dataset-query-forward-tag": "G/fwd-tag-77",
+        "Authorization": "Bearer sdl-api-key-123",
+    }
     assert first.kwargs["headers"] == expected_headers  # noqa: S101
     assert second.kwargs["headers"] == expected_headers  # noqa: S101
     # And: lastStepSeen tracks the last observed stepsCompleted
@@ -773,3 +778,63 @@ def test_default_window_used_when_times_absent():
     start = datetime.fromisoformat(body["startTime"].replace("Z", "+00:00"))
     end = datetime.fromisoformat(body["endTime"].replace("Z", "+00:00"))
     assert end - start == timedelta(hours=1)  # noqa: S101
+
+
+# Scenario: SDL v2 requests authenticate with Bearer, never the classic ApiToken
+def test_sdl_launch_uses_bearer_auth_not_api_token() -> None:
+    """The SDL v2 API requires a Bearer Authorization header.
+
+    Given: An SDL fetcher wired to a client exposing its api_key
+    When: the SDL query is launched
+    Then: the request carries ``Authorization: Bearer <api_key>`` (never ApiToken)
+
+    """
+    fetcher, session = _given_sdl_fetcher(is_self_hosted=False)
+    session.post.return_value = _given_launch_response("q-1")
+
+    fetcher._launch_query({"log": {"filter": "x", "limit": 1}, "queryType": "LOG"})
+
+    sent = session.post.call_args.kwargs.get("headers")
+    assert (
+        sent is not None
+    ), "SDL requests must carry an Authorization header"  # noqa: S101
+    assert sent["Authorization"] == "Bearer sdl-api-key-123"  # noqa: S101
+    assert "ApiToken" not in sent["Authorization"]  # noqa: S101
+
+
+# Scenario: An SDL poll carries Bearer while preserving the echoed forward tag
+def test_sdl_poll_carries_bearer_auth_with_forward_tag() -> None:
+    """Bearer auth is injected alongside the echoed forward-tag header on polls.
+
+    Given: An SDL fetcher wired to a client exposing its api_key
+    When: an SDL query is polled with a forward tag
+    Then: the poll keeps the forward tag AND carries ``Bearer <api_key>``
+
+    """
+    fetcher, session = _given_sdl_fetcher(is_self_hosted=False)
+    session.get.return_value = _given_poll_response("q-1", [], 0.0, 2, 2)
+
+    with patch("time.sleep"):
+        fetcher._poll_query_to_completion("q-1", "G/fwd-tag-1")
+
+    sent = session.get.call_args.kwargs["headers"]
+    assert sent == {
+        "x-dataset-query-forward-tag": "G/fwd-tag-1",
+        "Authorization": "Bearer sdl-api-key-123",
+    }
+
+
+# Scenario: the routing forward tag survives a real (case-insensitive) response
+# headers mapping, not only a plain dict
+def test_extract_forward_tag_from_real_case_insensitive_headers() -> None:
+    """A live requests response exposes headers as a CaseInsensitiveDict, which
+    is a Mapping but not a dict. The routing tag must still be extracted, or the
+    poll is routed to a backend that does not own the query and 404s with
+    'token not found'.
+    """
+    fetcher, _ = _given_sdl_fetcher(is_self_hosted=False)
+    response = Mock()
+    response.headers = CaseInsensitiveDict(
+        {"x-dataset-query-forward-tag": "G/fwd-live"}
+    )
+    assert fetcher._extract_forward_tag(response) == "G/fwd-live"  # noqa: S101
