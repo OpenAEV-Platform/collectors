@@ -15,7 +15,6 @@ pydantic-settings = "^2.14.0"
 pyoaev = "3.260904.0"
 requests = "^2.33.0"
 msal = "^1.37.0"
-pyoaev = "3.260731.0"
 urllib3 = "^2.7.0"
 
 [tool.poetry.dependencies.python-slugify]
