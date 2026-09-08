@@ -101,13 +101,13 @@ docker compose up -d
    ```
 
 2. **Configure the Collector**:
-- Copy `microsoft_defender/config.yml.sample` to `microsoft_defender/config.yml`
+- Copy `config.yml.sample` to `config.yml`
 - Update configuration values or set environment variables
 
 3. **Run the Collector**:
    ```bash
    # Using Poetry
-   poetry run python -m microsoft_defender
+   poetry run python -m src
    
    # Or 
    poetry run MicrosoftDefenderCollector
