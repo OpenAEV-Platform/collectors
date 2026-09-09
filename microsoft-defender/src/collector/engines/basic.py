@@ -201,6 +201,9 @@ class BasicCollectorEngine:
 
         error_count = 0
         for expectation in batch:
+            self.logger.debug(
+                f"{LOG_PREFIX} Handling expectation {expectation} with id {expectation.inject_expectation_id}"
+            )
             try:
                 matched = False
                 traces = []
@@ -246,6 +249,9 @@ class BasicCollectorEngine:
                         if breakflag:
                             break
 
+                self.logger.debug(
+                    f"{LOG_PREFIX} Creating expectation result for expectation {expectation.inject_expectation_id} with match at {matched}."
+                )
                 # (8) create results from step 7 + tracedata (6)
                 result = ExpectationResult(
                     expectation_id=str(expectation.inject_expectation_id),
