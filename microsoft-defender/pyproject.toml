@@ -4,43 +4,28 @@ requires = [
 ]
 build-backend = "poetry.core.masonry.api"
 
-[project]
-name = "openaev-microsoft-defender-collector"
-version = "3.260904.0"
-description = "A Collector for the Microsoft Defender security software"
-readme = "README.md"
-authors = [
-    { name = "Filigran", email = "contact@filigran.io" },
-]
-requires-python = ">=3.13,<4.0"
-dynamic = [
-    "dependencies",
-]
-
-[project.urls]
-Homepage = "https://filigran.io/"
-Repository = "https://github.com/OpenAEV-Platform/collectors/tree/main/microsoft-defender"
-Documentation = "https://github.com/OpenAEV-Platform/collectors/blob/main/microsoft-defender/README.md"
-Issues = "https://github.com/OpenAEV-Platform/collectors/issues"
-
-[tool.poetry.dependencies]
-pydantic = ">=2.13,<3"
-pydantic-settings = ">=2.14,<3"
-requests = ">=2.33,<3"
-pyoaev = "3.260904.0"
-python-slugify = { version = ">=8.0.4,<9", extras = ["unidecode"] }
-msgraph-sdk = "1.40.0"
-msal = "1.33.0"
-pytz = "^2026.3"
-python-dateutil = "^2.9.0"
-
 [tool.poetry]
 packages = [
-    { include = "microsoft_defender" },
+    { include = "src" },
 ]
 
-[project.scripts]
-MicrosoftDefenderCollector = "microsoft_defender.__main__:main"
+[tool.poetry.dependencies]
+pydantic = "^2.13.3"
+pydantic-settings = "^2.14.0"
+pyoaev = "3.260904.0"
+requests = "^2.33.0"
+msal = "^1.37.0"
+urllib3 = "^2.7.0"
+
+[tool.poetry.dependencies.python-slugify]
+extras = [
+    "unidecode",
+]
+version = "^8.0.4"
+
+[tool.poetry.extras]
+prod = []
+dev = []
 
 [tool.poetry.group.dev.dependencies]
 black = "^26.3.0"
@@ -54,6 +39,7 @@ ruff = "^0.14.13"
 [tool.poetry.group.test.dependencies]
 pytest = "^9.1.1"
 polyfactory = "^2.22.2"
+orjson = "^3.11.9"
 
 [tool.pytest.ini_options]
 testpaths = [
@@ -138,5 +124,29 @@ plugins = [
 
 [tool.cmw]
 install-command = "poetry install"
-config-dump-command = "poetry run python -m microsoft_defender --dump-config-schema"
-icon-path = "microsoft_defender/img/icon-microsoft-defender.png"
+config-dump-command = "poetry run python -m src --dump-config-schema"
+icon-path = "src/img/microsoft-defender-logo.png"
+
+[project]
+name = "openaev-microsoft-defender-collector"
+version = "3.260904.0"
+description = "A Collector for the Microsoft Defender security software"
+readme = "README.md"
+requires-python = ">=3.13,<4.0"
+dynamic = [
+    "dependencies",
+]
+Homepage = "https://filigran.io/"
+authors = [
+    { name = "Filigran", email = "contact@filigran.io" },
+]
+license = "Apache-2.0"
+
+[project.urls]
+Homepage = "https://filigran.io/"
+Repository = "https://github.com/OpenAEV-Platform/collectors/tree/main/microsoft-defender"
+Documentation = "https://github.com/OpenAEV-Platform/collectors/blob/main/microsoft-defender/README.md"
+Issues = "https://github.com/OpenAEV-Platform/collectors/issues"
+
+[project.scripts]
+MicrosoftDefenderCollector = "src.__main__:main"
