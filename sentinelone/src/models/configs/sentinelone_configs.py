@@ -42,6 +42,17 @@ class _ConfigLoaderSentinelOne(ConfigBaseSettings):
         default=False,
         description="Enable deep visibility search for SentinelOne threat searches.",
     )
+    enable_alerts: bool = Field(
+        alias="SENTINELONE_ENABLE_ALERTS",
+        default=True,
+        description=(
+            "Also correlate SentinelOne Unified Alerts (Singularity alerts "
+            "GraphQL API), not only Threats. Behavioral / STAR / AI detections "
+            "(e.g. Potential Mimikatz Execution) surface as Unified Alerts and "
+            "never as Threats, so this is required to validate them. SaaS only; "
+            "ignored on self-hosted instances."
+        ),
+    )
     deep_visibility_lookback: timedelta = Field(
         alias="SENTINELONE_DEEP_VISIBILITY_LOOKBACK",
         default=timedelta(days=1),

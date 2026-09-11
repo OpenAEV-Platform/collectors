@@ -158,7 +158,10 @@ On each run, the collector:
   - `GET /web/api/v2.1/threat-events` (fetch threat events for behavioral threats)
   - Deep Visibility (when enabled): `POST /web/api/v2.1/dv/init-query`, `GET /web/api/v2.1/dv/query-status`,
     `GET /web/api/v2.1/dv/events`
-  - Authentication uses the `Authorization: ApiToken <api_key>` header.
+  - Unified Alerts (SaaS, when `SENTINELONE_ENABLE_ALERTS` is enabled): `POST /web/api/v2.1/unifiedalerts/graphql`
+    (Singularity alerts). This surfaces behavioral / STAR / AI detections that never become Threats.
+  - Authentication uses `Authorization: ApiToken <api_key>` for the Threats / Deep Visibility endpoints and
+    `Authorization: Bearer <api_key>` for the SDL v2 and Unified Alerts (GraphQL) endpoints.
 - Reference: [SentinelOne API documentation](https://developer.sentinelone.com/reference)
 
 ## Debugging
@@ -172,6 +175,10 @@ static-engine detections that require Deep Visibility (Complete license).
 
 - The search window is anchored on the inject `end_date` and defaults to one hour; the collector is designed to validate
   expectations shortly after an inject runs, not to back-fill historical data.
+- SentinelOne exposes detections in two places: the Threats API (static-engine reputation hits and mitigated
+  behavioral threats) and Unified Alerts (behavioral / STAR / AI detections that never become Threats, e.g.
+  "Potential Mimikatz Execution"). With `SENTINELONE_ENABLE_ALERTS` (default on, SaaS only) the collector
+  correlates both, so a detection visible in the console as an alert is reflected in OpenAEV even without a Threat.
 - Static-engine (static AI) detections rely on Deep Visibility, which requires a Complete license; behavioral detections
   are validated on Core and Control licenses as well.
 - The required SentinelOne permissions and endpoints reflect the current implementation. SentinelOne may change its API

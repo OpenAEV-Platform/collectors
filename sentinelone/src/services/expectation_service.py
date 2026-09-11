@@ -25,6 +25,7 @@ from .fetcher_deep_visibility import FetcherDeepVisibility
 from .fetcher_sdl import FetcherSDL
 from .fetcher_threat import FetcherThreat
 from .fetcher_threat_events import FetcherThreatEvents
+from .fetcher_unified_alerts import FetcherUnifiedAlerts
 from .model_threat import SentinelOneThreat
 from .utils import SignatureExtractor, TraceBuilder
 
@@ -78,6 +79,7 @@ class SentinelOneExpectationService:
             config.sentinelone.enable_deep_visibility_search
         )
         self.disable_strict_end_date = config.sentinelone.disable_strict_end_date
+        self.enable_alerts = config.sentinelone.enable_alerts
         self.retry_window: timedelta = config.sentinelone.retry_window
 
         self.threat_fetcher: FetcherThreat = FetcherThreat(self.client_api)
@@ -92,6 +94,20 @@ class SentinelOneExpectationService:
         else:
             self.deep_visibility_fetcher = FetcherSDL(self.client_api)
             self.logger.debug(f"{LOG_PREFIX} Deep-search backend: SDL v2 (SaaS)")
+
+        # Unified Alerts (Singularity alerts GraphQL) carry the behavioral / STAR
+        # / AI detections that never become Threats. SaaS only; on self-hosted the
+        # endpoint is absent, so the correlation is skipped.
+        self.alerts_fetcher: FetcherUnifiedAlerts | None = None
+        if self.enable_alerts and not self.client_api.is_self_hosted:
+            self.alerts_fetcher = FetcherUnifiedAlerts(self.client_api)
+            self.logger.debug(f"{LOG_PREFIX} Unified Alerts correlation: enabled (SaaS)")
+        else:
+            self.logger.debug(
+                f"{LOG_PREFIX} Unified Alerts correlation: disabled "
+                f"(enable_alerts={self.enable_alerts}, "
+                f"self_hosted={self.client_api.is_self_hosted})"
+            )
 
         self.first_attempt_at: dict[str, datetime] = {}
 
@@ -412,6 +428,30 @@ class SentinelOneExpectationService:
                 except Exception as e:
                     self.logger.error(
                         f"{LOG_PREFIX} Batch {batch_idx}: Error fetching DV events for threats batch: {e}"
+                    )
+
+            # Correlate SentinelOne Unified Alerts (behavioral / STAR / AI
+            # detections that never become Threats). Additive and isolated:
+            # an alerts failure must never break the Threats verdict, so it is
+            # caught here rather than propagated to the batch retry logic.
+            if self.alerts_fetcher is not None:
+                try:
+                    alert_start, alert_end = self._get_fetch_time_window(batch)
+                    alert_threats, alert_events = (
+                        self.alerts_fetcher.fetch_alert_threats(alert_start, alert_end)
+                    )
+                    if alert_threats:
+                        threats = threats + alert_threats
+                        for alert_id, events in alert_events.items():
+                            threat_events[alert_id].extend(events)
+                        self.logger.info(
+                            f"{LOG_PREFIX} Batch {batch_idx}: added "
+                            f"{len(alert_threats)} unified alerts to the "
+                            f"{len(threats) - len(alert_threats)} threats"
+                        )
+                except Exception as e:
+                    self.logger.error(
+                        f"{LOG_PREFIX} Batch {batch_idx}: Error fetching unified alerts: {e}"
                     )
 
             results = self._match_threats_to_expectations(
