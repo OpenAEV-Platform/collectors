@@ -1,9 +1,10 @@
 """Splunk ES API client for making HTTP requests with proper error handling."""
 
 import logging
+import re
 import string
 import time
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Any
 
 import requests  # type: ignore[import-untyped]
@@ -608,14 +609,22 @@ class SplunkESClientAPI:
             time_window_seconds = int(self.time_window.total_seconds())
             earliest_seconds = time_window_seconds + extend_end_seconds
 
-            # Resolve start_date/end_date: use signature values if available, else relative time
+            # Resolve start_date/end_date. Splunk's earliest/latest modifiers do
+            # NOT parse ISO-8601 timestamps with a 'Z' suffix (as sent in OpenAEV
+            # expectation signatures, e.g. 2026-09-11T08:02:10.806778868Z), which
+            # silently breaks the time bounds and returns 0 results. Convert them
+            # to epoch. Extend the latest bound on retries to widen the window.
+            start_epoch = self._to_epoch(search_criteria.start_date)
             start_date_str = (
-                search_criteria.start_date
-                if search_criteria.start_date
+                str(start_epoch)
+                if start_epoch is not None
                 else f"-{earliest_seconds}s"
             )
+            end_epoch = self._to_epoch(search_criteria.end_date)
             end_date_str = (
-                search_criteria.end_date if search_criteria.end_date else "now"
+                str(end_epoch + extend_end_seconds)
+                if end_epoch is not None
+                else "now"
             )
 
             self.logger.debug(
@@ -709,6 +718,41 @@ class SplunkESClientAPI:
         if url_path_conditions:
             return f"({' OR '.join(url_path_conditions)})"
         return ""
+
+    @staticmethod
+    def _to_epoch(value: str | None) -> int | None:
+        """Convert an ISO-8601 timestamp to a Unix epoch integer for Splunk.
+
+        Splunk's ``earliest``/``latest`` search modifiers accept epoch or the
+        ``%m/%d/%Y:%H:%M:%S`` format only - they do NOT parse ISO-8601 strings
+        with a ``Z`` suffix or sub-second precision beyond microseconds (as sent
+        in OpenAEV expectation signatures). Passing those verbatim silently
+        breaks the time bounds and the search returns 0 results.
+
+        Args:
+            value: ISO-8601 timestamp (optionally with ``Z`` / nanoseconds), an
+                epoch string, or None.
+
+        Returns:
+            Epoch seconds as int, or None if empty / already relative /
+            unparseable (the caller then falls back to a relative window).
+
+        """
+        if not value:
+            return None
+        s = str(value).strip()
+        if not s or s.startswith("-") or s.startswith("+"):
+            return None
+        if s.isdigit():
+            return int(s)
+        # Normalise 'Z' to a numeric offset and trim fractional seconds to the
+        # 6 digits datetime.fromisoformat supports (drops nanoseconds).
+        s = s.replace("Z", "+00:00")
+        s = re.sub(r"(\.\d{6})\d+", r"\1", s)
+        try:
+            return int(datetime.fromisoformat(s).timestamp())
+        except ValueError:
+            return None
 
     @staticmethod
     def _build_ip_list(ips: list[str]) -> str:
