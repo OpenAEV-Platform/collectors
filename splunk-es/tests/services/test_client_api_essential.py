@@ -467,3 +467,48 @@ class TestSplunkESClientAPIEssential:
         # The second query should have a larger time window
         # Extract the time values to compare (basic check)
         assert query1 != query2  # noqa: S101
+
+
+class TestSplunkESTimeConversion:
+    """Tests for ISO-8601 -> epoch conversion of earliest/latest bounds.
+
+    Splunk's earliest/latest modifiers do not parse ISO-8601 timestamps with a
+    'Z' suffix (as sent in OpenAEV expectation signatures); passing them verbatim
+    silently breaks the time bounds and returns 0 results. These tests lock in the
+    epoch conversion.
+    """
+
+    def test_to_epoch_iso_with_z_and_nanoseconds(self):
+        """ISO-8601 with 'Z' and nanosecond precision converts to epoch."""
+        # 2026-09-11T08:02:10Z == 1789113730
+        assert SplunkESClientAPI._to_epoch(  # noqa: S101
+            "2026-09-11T08:02:10.806778868Z"
+        ) == 1789113730
+
+    def test_to_epoch_passthrough_and_fallbacks(self):
+        """Epoch passes through; relative/empty/None fall back to None."""
+        assert SplunkESClientAPI._to_epoch("1789012345") == 1789012345  # noqa: S101
+        assert SplunkESClientAPI._to_epoch("-3600s") is None  # noqa: S101
+        assert SplunkESClientAPI._to_epoch("now") is None  # noqa: S101
+        assert SplunkESClientAPI._to_epoch("") is None  # noqa: S101
+        assert SplunkESClientAPI._to_epoch(None) is None  # noqa: S101
+
+    def test_build_spl_query_uses_epoch_not_iso(self):
+        """The built SPL must use epoch earliest/latest, never a raw ISO 'Z'."""
+        from src.services.models import SplunkESSearchCriteria
+
+        config = create_test_config()
+        client = SplunkESClientAPI(config=config)
+        criteria = SplunkESSearchCriteria(
+            source_ips=["10.66.20.11"],
+            target_ips=[],
+            parent_process_names=[
+                "oaev-implant-d4427bea-a1f6-4243-95c8-6ad11babd1cb-agent-883d26c4"
+            ],
+            start_date="2026-09-11T08:02:10.776029823Z",
+            end_date="2026-09-11T08:02:11.817030Z",
+        )
+        query = client._build_spl_query(criteria)
+        assert "earliest=1789113730" in query  # noqa: S101
+        assert "Z latest=" not in query  # noqa: S101
+        assert "T08:02" not in query  # noqa: S101

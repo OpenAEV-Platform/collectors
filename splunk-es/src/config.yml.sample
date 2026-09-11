@@ -12,9 +12,13 @@ collector:
   log_level: 'error'
 
 splunk_es:
+  # Splunk REST/management API endpoint - port 8089 (NOT the web UI on 8000/443,
+  # which returns HTTP 404 for search API calls). Splunk Cloud uses a dedicated
+  # API host (e.g. https://<stack>.splunkcloud.com:8089).
   base_url: "https://splunk.company.com:8089"
   username: "ChangeMe"
   password: "ChangeMe"
-  alerts_index: "main"
-  max_retry: 3
+  alerts_index: "notable"
+  max_retry: 5
+  offset: 120
   # query_template: "index={alerts_index} (src_ip IN ({source_ips}) OR src IN ({source_ips}) OR source_ip IN ({source_ips}) OR client_ip IN ({source_ips})) (dst_ip IN ({target_ips}) OR dest IN ({target_ips}) OR dest_ip IN ({target_ips}) OR destination_ip IN ({target_ips}) OR server_ip IN ({target_ips})) (url_path IN ({implant_urls}) OR url IN ({implant_urls}) OR path IN ({implant_urls}) OR query IN ({implant_urls}) OR process_name IN ({implant_names}) OR parent_process_name IN ({implant_names})) earliest={start_date} latest={end_date} | table _time, src_ip, src, source_ip, client_ip, dst_ip, dest, dest_ip, destination_ip, server_ip, signature, rule_name, event_type, severity, url_path, url, path, query, process_name, parent_process_name, _raw | sort -_time"
