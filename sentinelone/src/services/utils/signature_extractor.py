@@ -101,6 +101,7 @@ class SignatureExtractor:
         if not batch:
             return None
 
+        earliest: datetime | None = None
         for expectation in batch:
             for signature in expectation.inject_expectation_signatures:
                 if signature.type.value == "start_date":
@@ -110,10 +111,11 @@ class SignatureExtractor:
                         )
                         if start_date.tzinfo is None:
                             start_date = start_date.replace(tzinfo=timezone.utc)
-                        return start_date
+                        if earliest is None or start_date < earliest:
+                            earliest = start_date
                     except (ValueError, AttributeError):
                         continue
-        return None
+        return earliest
 
     @staticmethod
     def group_signatures_by_type(

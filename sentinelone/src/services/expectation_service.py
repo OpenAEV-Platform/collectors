@@ -852,7 +852,12 @@ class SentinelOneExpectationService:
                 return "permanent"
             return "transient"
         if isinstance(
-            cause, (requests_exceptions.ConnectionError, requests_exceptions.Timeout)
+            cause,
+            (
+                requests_exceptions.ConnectionError,
+                requests_exceptions.Timeout,
+                requests_exceptions.RetryError,
+            ),
         ):
             return "transient"
 
