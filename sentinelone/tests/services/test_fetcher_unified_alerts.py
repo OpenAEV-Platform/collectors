@@ -5,7 +5,6 @@ from unittest.mock import Mock
 
 import pytest
 from requests.exceptions import ConnectionError as RequestsConnectionError
-
 from src.services.exception import SentinelOneAPIError, SentinelOneNetworkError
 from src.services.fetcher_unified_alerts import FetcherUnifiedAlerts
 

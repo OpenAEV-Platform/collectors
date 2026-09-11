@@ -101,7 +101,9 @@ class SentinelOneExpectationService:
         self.alerts_fetcher: FetcherUnifiedAlerts | None = None
         if self.enable_alerts and not self.client_api.is_self_hosted:
             self.alerts_fetcher = FetcherUnifiedAlerts(self.client_api)
-            self.logger.debug(f"{LOG_PREFIX} Unified Alerts correlation: enabled (SaaS)")
+            self.logger.debug(
+                f"{LOG_PREFIX} Unified Alerts correlation: enabled (SaaS)"
+            )
         else:
             self.logger.debug(
                 f"{LOG_PREFIX} Unified Alerts correlation: disabled "

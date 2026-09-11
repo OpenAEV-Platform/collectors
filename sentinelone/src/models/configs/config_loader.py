@@ -172,9 +172,7 @@ class ConfigLoader(ConfigBaseSettings):
                 "sentinelone_enable_deep_visibility_search": {
                     "data": self.sentinelone.enable_deep_visibility_search
                 },
-                "sentinelone_enable_alerts": {
-                    "data": self.sentinelone.enable_alerts
-                },
+                "sentinelone_enable_alerts": {"data": self.sentinelone.enable_alerts},
                 "sentinelone_deep_visibility_lookback": {
                     "data": self.sentinelone.deep_visibility_lookback
                 },
