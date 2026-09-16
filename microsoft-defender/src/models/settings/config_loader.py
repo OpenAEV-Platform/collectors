@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from pydantic import Field
+from pydantic import AliasChoices, Field
 from pydantic_settings import (
     BaseSettings,
     DotEnvSettingsSource,
@@ -55,6 +55,7 @@ class ConfigLoader(ConfigBaseSettings):
     source: _ConfigLoaderSource = Field(
         default_factory=_ConfigLoaderSource,
         description="Source configurations.",
+        validation_alias=AliasChoices("SOURCE", "COLLECTOR_MICROSOFT_DEFENDER"),
     )
 
     @classmethod
