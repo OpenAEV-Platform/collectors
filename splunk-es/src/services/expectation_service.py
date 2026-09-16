@@ -105,16 +105,16 @@ class SplunkESExpectationService:
             )
 
         if hasattr(config, "splunk_es"):
-            self.max_retry = getattr(config.splunk_es, "max_retry", 3)
+            self.max_retry = getattr(config.splunk_es, "max_retry", 5)
             self.offset = getattr(
-                config.splunk_es, "offset", timedelta(seconds=30)
+                config.splunk_es, "offset", timedelta(seconds=120)
             ).total_seconds()
             self.logger.debug(
                 f"{LOG_PREFIX} Using configured retry parameters: max_retry={self.max_retry}, offset={self.offset}s"
             )
         else:
-            self.max_retry = 3
-            self.offset = 30
+            self.max_retry = 5
+            self.offset = 120
             self.logger.warning(
                 f"{LOG_PREFIX} No retry configuration found, using defaults: max_retry={self.max_retry}, offset={self.offset}s"
             )
