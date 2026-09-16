@@ -113,9 +113,10 @@ class OpenAEVGoogleWorkspace(CollectorDaemon):
         private_key_id = self._configuration.get(
             "google_workspace_client_private_key_id"
         )
-        token_uri = self._configuration.get(
-            "google_workspace_token_uri"
-        ) or "https://oauth2.googleapis.com/token"
+        token_uri = (
+            self._configuration.get("google_workspace_token_uri")
+            or "https://oauth2.googleapis.com/token"
+        )
 
         if not client_email:
             raise ValueError(
