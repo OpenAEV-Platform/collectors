@@ -106,7 +106,7 @@ class TestEvidence(unittest.TestCase):
             ["myfile.exe", "/this/is/myfile.exe"],
         )
 
-    def test_ip_evidence(self):
+    def test_ip_evidence_ipv4(self):
         ip_data = {
             "@odata.type": "#microsoft.graph.security.ipEvidence",
             "ipAddress": "1.2.3.4",
@@ -122,9 +122,36 @@ class TestEvidence(unittest.TestCase):
         self.assertIn(
             module.SignatureTypes.SIG_TYPE_TARGET_IPV4_ADDRESS, extracted_evidences
         )
+        self.assertNotIn(
+            module.SignatureTypes.SIG_TYPE_TARGET_IPV6_ADDRESS, extracted_evidences
+        )
         self.assertEqual(
             extracted_evidences[module.SignatureTypes.SIG_TYPE_TARGET_IPV4_ADDRESS],
             ["1.2.3.4"],
+        )
+
+    def test_ip_evidence_ipv6(self):
+        ip_data = {
+            "@odata.type": "#microsoft.graph.security.ipEvidence",
+            "ipAddress": "2001:db8::1",
+        }
+        ip_evidence = FakeAlert(evidence=ip_data).evidence
+
+        self.assertIsInstance(ip_evidence, module.ipEvidence)
+        self.assertEqual(ip_evidence.odata_type, "#microsoft.graph.security.ipEvidence")
+        self.assertEqual(str(ip_evidence.ip_address), "2001:db8::1")
+
+        extracted_evidences = ip_evidence.extract_evidences()
+
+        self.assertIn(
+            module.SignatureTypes.SIG_TYPE_TARGET_IPV6_ADDRESS, extracted_evidences
+        )
+        self.assertNotIn(
+            module.SignatureTypes.SIG_TYPE_TARGET_IPV4_ADDRESS, extracted_evidences
+        )
+        self.assertEqual(
+            extracted_evidences[module.SignatureTypes.SIG_TYPE_TARGET_IPV6_ADDRESS],
+            ["2001:db8::1"],
         )
 
     def test_generic_evidence(self):

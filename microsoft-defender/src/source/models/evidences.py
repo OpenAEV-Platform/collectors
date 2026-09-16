@@ -1,3 +1,5 @@
+from collections import defaultdict
+from ipaddress import IPv4Address, IPv6Address
 from typing import Annotated, Literal, Union
 
 from pydantic import BaseModel, Discriminator, Field, Tag
@@ -63,23 +65,33 @@ class deviceEvidence(BaseModel):
         if self.host_name:
             hostnames.append(self.host_name)
         if self.last_ip_address:
-            ip_addresses.append(str(self.last_ip_address))
+            ip_addresses.append(self.last_ip_address)
         if self.last_external_ip_address:
-            ip_addresses.append(str(self.last_external_ip_address))
+            ip_addresses.append(self.last_external_ip_address)
         if self.ip_interfaces:
-            ip_addresses.extend(map(str, self.ip_interfaces))
+            ip_addresses.extend(self.ip_interfaces)
 
-        extract = {}
+        extract = defaultdict(list)
         if hostnames:
             extract[SignatureTypes.SIG_TYPE_HOSTNAME] = hostnames
             extract[SignatureTypes.SIG_TYPE_TARGET_HOSTNAME_ADDRESS] = hostnames
-        if ip_addresses:
-            extract[SignatureTypes.SIG_TYPE_IPV4_ADDRESS] = ip_addresses
-            extract[SignatureTypes.SIG_TYPE_IPV6_ADDRESS] = ip_addresses
-            extract[SignatureTypes.SIG_TYPE_SOURCE_IPV4_ADDRESS] = ip_addresses
-            extract[SignatureTypes.SIG_TYPE_SOURCE_IPV6_ADDRESS] = ip_addresses
-            extract[SignatureTypes.SIG_TYPE_TARGET_IPV4_ADDRESS] = ip_addresses
-            extract[SignatureTypes.SIG_TYPE_TARGET_IPV6_ADDRESS] = ip_addresses
+        for ip_address in ip_addresses:
+            if isinstance(ip_address, IPv4Address):
+                extract[SignatureTypes.SIG_TYPE_IPV4_ADDRESS].append(str(ip_address))
+                extract[SignatureTypes.SIG_TYPE_SOURCE_IPV4_ADDRESS].append(
+                    str(ip_address)
+                )
+                extract[SignatureTypes.SIG_TYPE_TARGET_IPV4_ADDRESS].append(
+                    str(ip_address)
+                )
+            elif isinstance(ip_address, IPv6Address):
+                extract[SignatureTypes.SIG_TYPE_IPV6_ADDRESS].append(str(ip_address))
+                extract[SignatureTypes.SIG_TYPE_SOURCE_IPV6_ADDRESS].append(
+                    str(ip_address)
+                )
+                extract[SignatureTypes.SIG_TYPE_TARGET_IPV6_ADDRESS].append(
+                    str(ip_address)
+                )
 
         return extract
 
@@ -117,19 +129,17 @@ class ipEvidence(BaseModel):
     ip_address: IPvAnyAddress | None = Field(None, alias="ipAddress")
 
     def extract_evidences(self) -> dict[SignatureTypes, list[str]]:
-        ip_addresses = []
-
+        extract = defaultdict(list)
         if self.ip_address:
-            ip_addresses.append(str(self.ip_address))
-
-        extract = {}
-        if ip_addresses:
-            extract[SignatureTypes.SIG_TYPE_IPV4_ADDRESS] = ip_addresses
-            extract[SignatureTypes.SIG_TYPE_IPV6_ADDRESS] = ip_addresses
-            extract[SignatureTypes.SIG_TYPE_SOURCE_IPV4_ADDRESS] = ip_addresses
-            extract[SignatureTypes.SIG_TYPE_SOURCE_IPV6_ADDRESS] = ip_addresses
-            extract[SignatureTypes.SIG_TYPE_TARGET_IPV4_ADDRESS] = ip_addresses
-            extract[SignatureTypes.SIG_TYPE_TARGET_IPV6_ADDRESS] = ip_addresses
+            ip_address = str(self.ip_address)
+            if isinstance(self.ip_address, IPv4Address):
+                extract[SignatureTypes.SIG_TYPE_IPV4_ADDRESS].append(ip_address)
+                extract[SignatureTypes.SIG_TYPE_SOURCE_IPV4_ADDRESS].append(ip_address)
+                extract[SignatureTypes.SIG_TYPE_TARGET_IPV4_ADDRESS].append(ip_address)
+            elif isinstance(self.ip_address, IPv6Address):
+                extract[SignatureTypes.SIG_TYPE_IPV6_ADDRESS].append(ip_address)
+                extract[SignatureTypes.SIG_TYPE_SOURCE_IPV6_ADDRESS].append(ip_address)
+                extract[SignatureTypes.SIG_TYPE_TARGET_IPV6_ADDRESS].append(ip_address)
 
         return extract
 
