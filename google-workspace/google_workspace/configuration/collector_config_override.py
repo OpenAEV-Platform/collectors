@@ -130,4 +130,3 @@ class CollectorConfigOverride(ConfigLoaderCollector):
                 f"or 'certificate', got {auth_type!r}"
             )
         return self
-
