@@ -3,6 +3,7 @@ import os
 from typing import Any, Dict, List, Optional
 
 import requests
+from google.auth import crypt
 from google.oauth2 import service_account
 from google_workspace.configuration.config_loader import ConfigLoader
 from googleapiclient.discovery import build
@@ -41,6 +42,40 @@ class OpenAEVGoogleWorkspace(CollectorDaemon):
 
     def _get_service(self) -> Any:
         """Initialize and return Google Admin SDK service."""
+        delegated_admin_email = self._configuration.get(
+            "google_workspace_delegated_admin_email"
+        )
+        if not delegated_admin_email:
+            raise ValueError("Google Workspace delegated admin email is required")
+
+        scopes = [
+            "https://www.googleapis.com/auth/admin.directory.user.readonly",
+            "https://www.googleapis.com/auth/admin.directory.group.readonly",
+            "https://www.googleapis.com/auth/admin.directory.group.member.readonly",
+        ]
+
+        auth_type = (
+            self._configuration.get("google_workspace_auth_type")
+            or "service_account_json"
+        ).lower()
+
+        if auth_type == "certificate":
+            credentials = self._build_certificate_credentials(
+                scopes, delegated_admin_email
+            )
+        else:
+            credentials = self._build_service_account_json_credentials(
+                scopes, delegated_admin_email
+            )
+
+        # Build the Admin SDK service
+        service = build("admin", "directory_v1", credentials=credentials)
+        return service
+
+    def _build_service_account_json_credentials(
+        self, scopes: List[str], delegated_admin_email: str
+    ) -> service_account.Credentials:
+        """Build credentials from the downloaded service account JSON key."""
         service_account_json_str = self._configuration.get(
             "google_workspace_service_account_json"
         )
@@ -53,26 +88,64 @@ class OpenAEVGoogleWorkspace(CollectorDaemon):
         else:
             service_account_info = service_account_json_str
 
-        # Create credentials with domain-wide delegation
-        delegated_admin_email = self._configuration.get(
-            "google_workspace_delegated_admin_email"
-        )
-        if not delegated_admin_email:
-            raise ValueError("Google Workspace delegated admin email is required")
-
-        credentials = service_account.Credentials.from_service_account_info(
+        return service_account.Credentials.from_service_account_info(
             service_account_info,
-            scopes=[
-                "https://www.googleapis.com/auth/admin.directory.user.readonly",
-                "https://www.googleapis.com/auth/admin.directory.group.readonly",
-                "https://www.googleapis.com/auth/admin.directory.group.member.readonly",
-            ],
+            scopes=scopes,
             subject=delegated_admin_email,
         )
 
-        # Build the Admin SDK service
-        service = build("admin", "directory_v1", credentials=credentials)
-        return service
+    def _build_certificate_credentials(
+        self, scopes: List[str], delegated_admin_email: str
+    ) -> service_account.Credentials:
+        """Build credentials from a standalone client email + private key/certificate pair.
+
+        Unlike the JSON-key flow, Google never generates or holds the private
+        key here: an operator generates their own RSA keypair, registers the
+        public certificate as an external key for the service account, and
+        only hands this collector the private key and client email. Under
+        the hood this still uses the same OAuth2 JWT-bearer assertion
+        mechanics (RFC 7523) as the JSON-key flow -- we just build the
+        signer/credentials ourselves instead of parsing a bundled JSON blob.
+        """
+        client_email = self._configuration.get("google_workspace_client_email")
+        certificate = self._configuration.get("google_workspace_client_certificate")
+        private_key = self._configuration.get("google_workspace_client_private_key")
+        private_key_id = self._configuration.get(
+            "google_workspace_client_private_key_id"
+        )
+        token_uri = self._configuration.get(
+            "google_workspace_token_uri"
+        ) or "https://oauth2.googleapis.com/token"
+
+        if not client_email:
+            raise ValueError(
+                "google_workspace_client_email is required when "
+                "google_workspace_auth_type is 'certificate'"
+            )
+        if not certificate:
+            raise ValueError(
+                "google_workspace_client_certificate is required when "
+                "google_workspace_auth_type is 'certificate'"
+            )
+        if not private_key:
+            raise ValueError(
+                "google_workspace_client_private_key is required when "
+                "google_workspace_auth_type is 'certificate'"
+            )
+
+        # Environment variables often flatten PEM newlines to literal "\n".
+        normalized_private_key = private_key.replace("\\n", "\n")
+
+        signer = crypt.RSASigner.from_string(
+            normalized_private_key, key_id=private_key_id
+        )
+        return service_account.Credentials(
+            signer,
+            client_email,
+            token_uri,
+            scopes=scopes,
+            subject=delegated_admin_email,
+        )
 
     def _get_all_users(self, service: Any) -> List[Dict[str, Any]]:
         """Retrieve all users from Google Workspace."""
@@ -341,8 +414,11 @@ if __name__ == "__main__":
         "GOOGLE_WORKSPACE_DELEGATED_ADMIN_EMAIL",
         "GOOGLE_WORKSPACE_CUSTOMER_ID",
         "GOOGLE_WORKSPACE_AUTH_TYPE",
+        "GOOGLE_WORKSPACE_CLIENT_EMAIL",
         "GOOGLE_WORKSPACE_CLIENT_CERTIFICATE",
         "GOOGLE_WORKSPACE_CLIENT_PRIVATE_KEY",
+        "GOOGLE_WORKSPACE_CLIENT_PRIVATE_KEY_ID",
+        "GOOGLE_WORKSPACE_TOKEN_URI",
         "INCLUDE_SUSPENDED",
         "SYNC_ALL_USERS",
     ]:
