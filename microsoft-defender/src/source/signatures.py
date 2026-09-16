@@ -34,12 +34,22 @@ SUPPORTED_SIGNATURES: list[SignatureType] = [
         match_score=80,
     ),
     SignatureType(
+        SignatureTypes.SIG_TYPE_SOURCE_IPV4_ADDRESS,
+        match_type=MatchTypes.MATCH_TYPE_FUZZY,
+        match_score=80,
+    ),
+    SignatureType(
         SignatureTypes.SIG_TYPE_TARGET_IPV4_ADDRESS,
         match_type=MatchTypes.MATCH_TYPE_FUZZY,
         match_score=80,
     ),
     SignatureType(
         SignatureTypes.SIG_TYPE_IPV6_ADDRESS,
+        match_type=MatchTypes.MATCH_TYPE_FUZZY,
+        match_score=80,
+    ),
+    SignatureType(
+        SignatureTypes.SIG_TYPE_SOURCE_IPV6_ADDRESS,
         match_type=MatchTypes.MATCH_TYPE_FUZZY,
         match_score=80,
     ),
