@@ -76,6 +76,8 @@ class deviceEvidence(BaseModel):
         if ip_addresses:
             extract[SignatureTypes.SIG_TYPE_IPV4_ADDRESS] = ip_addresses
             extract[SignatureTypes.SIG_TYPE_IPV6_ADDRESS] = ip_addresses
+            extract[SignatureTypes.SIG_TYPE_SOURCE_IPV4_ADDRESS] = ip_addresses
+            extract[SignatureTypes.SIG_TYPE_SOURCE_IPV6_ADDRESS] = ip_addresses
             extract[SignatureTypes.SIG_TYPE_TARGET_IPV4_ADDRESS] = ip_addresses
             extract[SignatureTypes.SIG_TYPE_TARGET_IPV6_ADDRESS] = ip_addresses
 
@@ -124,6 +126,8 @@ class ipEvidence(BaseModel):
         if ip_addresses:
             extract[SignatureTypes.SIG_TYPE_IPV4_ADDRESS] = ip_addresses
             extract[SignatureTypes.SIG_TYPE_IPV6_ADDRESS] = ip_addresses
+            extract[SignatureTypes.SIG_TYPE_SOURCE_IPV4_ADDRESS] = ip_addresses
+            extract[SignatureTypes.SIG_TYPE_SOURCE_IPV6_ADDRESS] = ip_addresses
             extract[SignatureTypes.SIG_TYPE_TARGET_IPV4_ADDRESS] = ip_addresses
             extract[SignatureTypes.SIG_TYPE_TARGET_IPV6_ADDRESS] = ip_addresses
 

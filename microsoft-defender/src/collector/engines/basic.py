@@ -311,9 +311,7 @@ class BasicCollectorEngine:
                 f"{LOG_PREFIX} Processing a batch of expectations of size {len(expectations)}"
             )
             for expectation in expectations:
-                self.logger.debug(
-                    f"{LOG_PREFIX} {expectation}"
-                )
+                self.logger.debug(f"{LOG_PREFIX} {expectation}")
             results.extend(self._process_batch(expectations))
 
             self.current_summary.processed = len(results)
