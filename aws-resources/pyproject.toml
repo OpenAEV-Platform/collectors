@@ -52,6 +52,7 @@ ruff = "^0.14.13"
 [tool.poetry.group.test.dependencies]
 pytest = "^9.1.1"
 polyfactory = "^2.22.2"
+cryptography = "^44.0.0"
 
 [tool.pytest.ini_options]
 testpaths = [
