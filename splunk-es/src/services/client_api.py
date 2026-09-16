@@ -616,15 +616,11 @@ class SplunkESClientAPI:
             # to epoch. Extend the latest bound on retries to widen the window.
             start_epoch = self._to_epoch(search_criteria.start_date)
             start_date_str = (
-                str(start_epoch)
-                if start_epoch is not None
-                else f"-{earliest_seconds}s"
+                str(start_epoch) if start_epoch is not None else f"-{earliest_seconds}s"
             )
             end_epoch = self._to_epoch(search_criteria.end_date)
             end_date_str = (
-                str(end_epoch + extend_end_seconds)
-                if end_epoch is not None
-                else "now"
+                str(end_epoch + extend_end_seconds) if end_epoch is not None else "now"
             )
 
             self.logger.debug(

@@ -481,9 +481,10 @@ class TestSplunkESTimeConversion:
     def test_to_epoch_iso_with_z_and_nanoseconds(self):
         """ISO-8601 with 'Z' and nanosecond precision converts to epoch."""
         # 2026-09-11T08:02:10Z == 1789113730
-        assert SplunkESClientAPI._to_epoch(  # noqa: S101
-            "2026-09-11T08:02:10.806778868Z"
-        ) == 1789113730
+        assert (
+            SplunkESClientAPI._to_epoch("2026-09-11T08:02:10.806778868Z")  # noqa: S101
+            == 1789113730
+        )
 
     def test_to_epoch_passthrough_and_fallbacks(self):
         """Epoch passes through; relative/empty/None fall back to None."""

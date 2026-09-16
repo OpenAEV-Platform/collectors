@@ -208,11 +208,14 @@ def mock_logging():
         yield mock_logger
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def disable_sleep():
     """Disable time.sleep in tests for faster execution.
 
-    Patches time.sleep to prevent actual delays during testing.
+    Applied automatically: the client retry loops (fetch_signatures /
+    fetch_alerts_with_retry) call time.sleep(offset) between attempts, and
+    with the production defaults (max_retry=5, offset=120s) a single retry
+    test would sleep ~10 minutes and trip the CI no-output timeout.
 
     Yields:
         None (context manager for sleep patching).
