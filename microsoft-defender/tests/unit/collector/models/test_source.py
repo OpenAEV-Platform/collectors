@@ -159,12 +159,15 @@ class SourceHandlerTest(unittest.TestCase):
         signatures = [signature]
         inject_expectation_signature_1 = MagicMock(type=_type, value="my_value")
         inject_expectation_signature_2 = MagicMock(type=_type, value="my_other_value")
+        start_date_type = MagicMock(value="start_date")
+        start_date_ies = MagicMock(type=start_date_type, value="before")
         end_date_type = MagicMock(value="end_date")
         end_date_ies = MagicMock(type=end_date_type, value="now")
         expectation = MagicMock(
             inject_expectation_signatures=[
                 inject_expectation_signature_1,
                 inject_expectation_signature_2,
+                start_date_ies,
                 end_date_ies,
             ]
         )
@@ -184,6 +187,12 @@ class SourceHandlerTest(unittest.TestCase):
                 {"type": "my_type", "value": "my_other_value"},
             ],
             signature_groups["my_type"],
+        )
+        self.assertFalse(
+            any(
+                value == [{"type": "start_date", "value": "before"}]
+                for value in signature_groups.values()
+            )
         )
         self.assertFalse(
             any(

@@ -93,8 +93,11 @@ class SourceHandler(SourceHandlerProtocol):
             # ignore unsupported signatures according to source
             if expectation_sig.type not in supported_types:
                 continue
-            # ignore end_date signature type
-            if expectation_sig.type == SignatureTypes.SIG_TYPE_END_DATE:
+            # ignore start_date and end_date signature type
+            if expectation_sig.type in [
+                SignatureTypes.SIG_TYPE_START_DATE,
+                SignatureTypes.SIG_TYPE_END_DATE,
+            ]:
                 continue
             # create or append to a list of dict-serialized signature data
             signature_groups.setdefault(expectation_sig.type.value, []).append(
