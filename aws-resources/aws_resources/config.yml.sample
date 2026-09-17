@@ -9,8 +9,19 @@ collector:
   name: 'Amazon Web Services'
   period: 'PT1H'
   log_level: 'error'
-  aws_access_key_id: ''  # AWS Access Key ID (optional if using instance role)
-  aws_secret_access_key: ''  # AWS Secret Access Key (optional if using instance role)
+  aws_auth_type: 'credential_provider_chain'  # 'credential_provider_chain' (default, boto3 resolves credentials on its own), 'credentials' (explicit access key/secret), or 'roles_anywhere' (IAM Roles Anywhere, X.509 based)
+  aws_access_key_id: ''  # AWS Access Key ID (required when aws_auth_type is 'credentials')
+  aws_secret_access_key: ''  # AWS Secret Access Key (required when aws_auth_type is 'credentials')
   aws_session_token: ''  # AWS Session Token (optional, for temporary credentials)
   aws_assume_role_arn: ''  # ARN of role to assume (optional)
   aws_regions: ''  # Comma-separated list of regions, leave empty to discover all regions
+  # Required only when aws_auth_type is 'roles_anywhere'
+  # aws_roles_anywhere_trust_anchor_arn: 'arn:aws:rolesanywhere:eu-west-1:123456789012:trust-anchor/ChangeMe'
+  # aws_roles_anywhere_profile_arn: 'arn:aws:rolesanywhere:eu-west-1:123456789012:profile/ChangeMe'
+  # aws_roles_anywhere_role_arn: 'arn:aws:iam::123456789012:role/ChangeMe'
+  # aws_roles_anywhere_certificate: "-----BEGIN CERTIFICATE-----\nChangeMe\n-----END CERTIFICATE-----"
+  # aws_roles_anywhere_private_key: "-----BEGIN PRIVATE KEY-----\nChangeMe\n-----END PRIVATE KEY-----"
+  # aws_roles_anywhere_certificate_chain: ''  # optional intermediate chain (PEM)
+  # aws_roles_anywhere_private_key_passphrase: ''  # optional private key passphrase
+  # aws_roles_anywhere_region: ''  # optional, derived from the trust anchor ARN
+  # aws_roles_anywhere_session_duration: 3600  # seconds, between 900 and 43200
