@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 from typing import Any, ClassVar
 
 from pydantic import AnyUrl, BaseModel, Field, model_validator
-from pyoaev.signatures.types import SignatureTypes
+from pyoaev.signatures.types import SignatureTypes  # type: ignore[import-untyped]
 
 
 class OAEVData(BaseModel, extra="allow"):
@@ -11,7 +11,7 @@ class OAEVData(BaseModel, extra="allow"):
     Apart from context, the allowed fields are signature types (e.g. parent_process_name)
     """
 
-    __pydantic_extra__: dict[str, str] = Field(default_factory=dict)
+    __pydantic_extra__: dict[str, str | list[str]] = Field(default_factory=dict)
     _allowed_values: ClassVar[frozenset[str]] = frozenset(
         [sig.value for sig in SignatureTypes]
     )
