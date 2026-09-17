@@ -6,7 +6,7 @@ build-backend = "poetry.core.masonry.api"
 
 [project]
 name = "openaev-palo-alto-cortex-xsoar-collector"
-version = "3.260904.0"
+version = "3.260917.0"
 description = "Collector for Palo Alto Cortex XSOAR EDR."
 readme = "README.md"
 authors = [
@@ -23,22 +23,27 @@ Repository = "https://github.com/OpenAEV-Platform/collectors/tree/main/palo-alto
 Documentation = "https://github.com/OpenAEV-Platform/collectors/blob/main/palo-alto-cortex-xsoar/README.md"
 Issues = "https://github.com/OpenAEV-Platform/collectors/issues"
 
-[tool.poetry.dependencies]
-pydantic = ">=2.13,<3"
-pydantic-settings = ">=2.14,<3"
-requests = ">=2.33,<3"
-pyoaev = "3.260904.0"
-python-slugify = { version = ">=8.0.4,<9", extras = ["unidecode"] }
-urllib3 = "^2.6.3"
-msticpy = "^3.0.1"
+[project.scripts]
+PaloAltoCortexXSOARCollector = "src.__main__:main"
 
 [tool.poetry]
 packages = [
     { include = "src" },
 ]
 
-[project.scripts]
-PaloAltoCortexXSOARCollector = "src.__main__:main"
+[tool.poetry.dependencies]
+pydantic = ">=2.13,<3"
+pydantic-settings = ">=2.14,<3"
+requests = ">=2.33,<3"
+pyoaev = "3.260904.0"
+urllib3 = "^2.6.3"
+msticpy = "^3.0.1"
+
+[tool.poetry.dependencies.python-slugify]
+version = ">=8.0.4,<9"
+extras = [
+    "unidecode",
+]
 
 [tool.poetry.group.dev.dependencies]
 black = "^26.3.0"

@@ -6,7 +6,7 @@ build-backend = "poetry.core.masonry.api"
 
 [project]
 name = "openaev-google-workspace-collector"
-version = "3.260904.0"
+version = "3.260917.0"
 description = "A Collector for Google Workspace user and group management"
 readme = "README.md"
 authors = [
@@ -23,24 +23,29 @@ Repository = "https://github.com/OpenAEV-Platform/collectors/tree/main/google-wo
 Documentation = "https://github.com/OpenAEV-Platform/collectors/blob/main/google-workspace/README.md"
 Issues = "https://github.com/OpenAEV-Platform/collectors/issues"
 
-[tool.poetry.dependencies]
-pydantic = ">=2.13,<3"
-pydantic-settings = ">=2.14,<3"
-requests = ">=2.33,<3"
-pyoaev = "3.260904.0"
-python-slugify = { version = ">=8.0.4,<9", extras = ["unidecode"] }
-google-api-python-client = "^2.149.0"
-google-auth = "^2.35.0"
-google-auth-httplib2 = "^0.2.0"
-google-auth-oauthlib = "^1.2.1"
+[project.scripts]
+GoogleWorkspaceCollector = "google_workspace.__main__:main"
 
 [tool.poetry]
 packages = [
     { include = "google_workspace" },
 ]
 
-[project.scripts]
-GoogleWorkspaceCollector = "google_workspace.__main__:main"
+[tool.poetry.dependencies]
+pydantic = ">=2.13,<3"
+pydantic-settings = ">=2.14,<3"
+requests = ">=2.33,<3"
+pyoaev = "3.260904.0"
+google-api-python-client = "^2.149.0"
+google-auth = "^2.35.0"
+google-auth-httplib2 = "^0.2.0"
+google-auth-oauthlib = "^1.2.1"
+
+[tool.poetry.dependencies.python-slugify]
+version = ">=8.0.4,<9"
+extras = [
+    "unidecode",
+]
 
 [tool.poetry.group.dev.dependencies]
 black = "^26.3.0"
@@ -50,15 +55,6 @@ mypy = "^1.17.1"
 pip-audit = "^2.9.0"
 pre-commit = "^4.6.0"
 ruff = "^0.14.13"
-
-#[tool.poetry.group.test.dependencies]
-#pytest = "^9.1.1"
-#polyfactory = "^2.22.2"
-
-#[tool.pytest.ini_options]
-#testpaths = [
-#    "./tests",
-#]
 
 [tool.ruff]
 exclude = [
@@ -140,4 +136,3 @@ plugins = [
 install-command = "poetry install"
 config-dump-command = "poetry run python -m google_workspace --dump-config-schema"
 icon-path = "google_workspace/img/icon-google-workspace.png"
-

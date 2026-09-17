@@ -6,7 +6,7 @@ build-backend = "poetry.core.masonry.api"
 
 [project]
 name = "openaev-cisco-ai-defense-collector"
-version = "3.260904.0"
+version = "3.260917.0"
 description = "A Collector validating Cisco AI Defense (Robust Intelligence) detection/prevention of AI adversarial injects"
 readme = "README.md"
 authors = [
@@ -23,20 +23,25 @@ Repository = "https://github.com/OpenAEV-Platform/collectors/tree/main/cisco-ai-
 Documentation = "https://github.com/OpenAEV-Platform/collectors/blob/main/cisco-ai-defense/README.md"
 Issues = "https://github.com/OpenAEV-Platform/collectors/issues"
 
-[tool.poetry.dependencies]
-pydantic = ">=2.13,<3"
-pydantic-settings = ">=2.14,<3"
-requests = ">=2.33,<3"
-pyoaev = "3.260904.0"
-python-slugify = { version = ">=8.0.4,<9", extras = ["unidecode"] }
+[project.scripts]
+CiscoAIDefenseCollector = "cisco_ai_defense.__main__:main"
 
 [tool.poetry]
 packages = [
     { include = "cisco_ai_defense" },
 ]
 
-[project.scripts]
-CiscoAIDefenseCollector = "cisco_ai_defense.__main__:main"
+[tool.poetry.dependencies]
+pydantic = ">=2.13,<3"
+pydantic-settings = ">=2.14,<3"
+requests = ">=2.33,<3"
+pyoaev = "3.260904.0"
+
+[tool.poetry.dependencies.python-slugify]
+version = ">=8.0.4,<9"
+extras = [
+    "unidecode",
+]
 
 [tool.poetry.group.dev.dependencies]
 black = "^26.3.0"

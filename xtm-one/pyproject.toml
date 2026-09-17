@@ -6,7 +6,7 @@ build-backend = "poetry.core.masonry.api"
 
 [project]
 name = "openaev-xtm-one-collector"
-version = "3.260904.0"
+version = "3.260917.0"
 description = "A Collector importing XTM One agents (and optionally bare LLM models) as OpenAEV AI targets"
 readme = "README.md"
 authors = [
@@ -23,20 +23,25 @@ Repository = "https://github.com/OpenAEV-Platform/collectors/tree/main/xtm-one"
 Documentation = "https://github.com/OpenAEV-Platform/collectors/blob/main/xtm-one/README.md"
 Issues = "https://github.com/OpenAEV-Platform/collectors/issues"
 
-[tool.poetry.dependencies]
-pydantic = ">=2.13,<3"
-pydantic-settings = ">=2.14,<3"
-requests = ">=2.33,<3"
-pyoaev = "3.260904.0"
-python-slugify = { version = ">=8.0.4,<9", extras = ["unidecode"] }
+[project.scripts]
+XtmOneCollector = "xtm_one.__main__:main"
 
 [tool.poetry]
 packages = [
     { include = "xtm_one" },
 ]
 
-[project.scripts]
-XtmOneCollector = "xtm_one.__main__:main"
+[tool.poetry.dependencies]
+pydantic = ">=2.13,<3"
+pydantic-settings = ">=2.14,<3"
+requests = ">=2.33,<3"
+pyoaev = "3.260904.0"
+
+[tool.poetry.dependencies.python-slugify]
+version = ">=8.0.4,<9"
+extras = [
+    "unidecode",
+]
 
 [tool.poetry.group.dev.dependencies]
 black = "^26.3.0"

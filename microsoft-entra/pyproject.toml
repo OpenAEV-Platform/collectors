@@ -6,7 +6,7 @@ build-backend = "poetry.core.masonry.api"
 
 [project]
 name = "openaev-microsoft-entra-collector"
-version = "3.260904.0"
+version = "3.260917.0"
 description = "A Collector for Microsoft Entra asset management system"
 readme = "README.md"
 authors = [
@@ -23,21 +23,26 @@ Repository = "https://github.com/OpenAEV-Platform/collectors/tree/main/microsoft
 Documentation = "https://github.com/OpenAEV-Platform/collectors/blob/main/microsoft-entra/README.md"
 Issues = "https://github.com/OpenAEV-Platform/collectors/issues"
 
-[tool.poetry.dependencies]
-pydantic = ">=2.13,<3"
-pydantic-settings = ">=2.14,<3"
-requests = ">=2.33,<3"
-pyoaev = "3.260904.0"
-python-slugify = { version = ">=8.0.4,<9", extras = ["unidecode"] }
-msgraph-sdk = "1.40.0"
+[project.scripts]
+MicrosoftEntraCollector = "microsoft_entra.__main__:main"
 
 [tool.poetry]
 packages = [
     { include = "microsoft_entra" },
 ]
 
-[project.scripts]
-MicrosoftEntraCollector = "microsoft_entra.__main__:main"
+[tool.poetry.dependencies]
+pydantic = ">=2.13,<3"
+pydantic-settings = ">=2.14,<3"
+requests = ">=2.33,<3"
+pyoaev = "3.260904.0"
+msgraph-sdk = "1.40.0"
+
+[tool.poetry.dependencies.python-slugify]
+version = ">=8.0.4,<9"
+extras = [
+    "unidecode",
+]
 
 [tool.poetry.group.dev.dependencies]
 black = "^26.3.0"

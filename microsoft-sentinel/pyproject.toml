@@ -6,7 +6,7 @@ build-backend = "poetry.core.masonry.api"
 
 [project]
 name = "openaev-microsoft-sentinel-collector"
-version = "3.260904.0"
+version = "3.260917.0"
 description = "A Collector for Microsoft Sentinel SIEM solution"
 readme = "README.md"
 authors = [
@@ -23,23 +23,28 @@ Repository = "https://github.com/OpenAEV-Platform/collectors/tree/main/microsoft
 Documentation = "https://github.com/OpenAEV-Platform/collectors/blob/main/microsoft-sentinel/README.md"
 Issues = "https://github.com/OpenAEV-Platform/collectors/issues"
 
-[tool.poetry.dependencies]
-pydantic = ">=2.13,<3"
-pydantic-settings = ">=2.14,<3"
-requests = ">=2.33,<3"
-pyoaev = "3.260904.0"
-python-slugify = { version = ">=8.0.4,<9", extras = ["unidecode"] }
-msal = "1.33.0"
-pytz = "^2026.3"
-python-dateutil = "^2.9.0"
+[project.scripts]
+MicrosoftSentinelCollector = "microsoft_sentinel.__main__:main"
 
 [tool.poetry]
 packages = [
     { include = "microsoft_sentinel" },
 ]
 
-[project.scripts]
-MicrosoftSentinelCollector = "microsoft_sentinel.__main__:main"
+[tool.poetry.dependencies]
+pydantic = ">=2.13,<3"
+pydantic-settings = ">=2.14,<3"
+requests = ">=2.33,<3"
+pyoaev = "3.260904.0"
+msal = "1.33.0"
+pytz = "^2026.3"
+python-dateutil = "^2.9.0"
+
+[tool.poetry.dependencies.python-slugify]
+version = ">=8.0.4,<9"
+extras = [
+    "unidecode",
+]
 
 [tool.poetry.group.dev.dependencies]
 black = "^26.3.0"
@@ -49,14 +54,6 @@ mypy = "^1.17.1"
 pip-audit = "^2.9.0"
 pre-commit = "^4.6.0"
 ruff = "^0.14.13"
-
-#[tool.poetry.group.test.dependencies]
-#pytest = "^9.0.0"
-
-#[tool.pytest.ini_options]
-#testpaths = [
-#    "./tests",
-#]
 
 [tool.ruff]
 exclude = [

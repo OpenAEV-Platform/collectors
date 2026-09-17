@@ -6,7 +6,7 @@ build-backend = "poetry.core.masonry.api"
 
 [project]
 name = "openaev-lakera-guard-collector"
-version = "3.260904.0"
+version = "3.260917.0"
 description = "A Collector validating Lakera Guard (Check Point AI Security) detection/prevention of AI adversarial injects"
 readme = "README.md"
 authors = [
@@ -23,20 +23,25 @@ Repository = "https://github.com/OpenAEV-Platform/collectors/tree/main/lakera-gu
 Documentation = "https://github.com/OpenAEV-Platform/collectors/blob/main/lakera-guard/README.md"
 Issues = "https://github.com/OpenAEV-Platform/collectors/issues"
 
-[tool.poetry.dependencies]
-pydantic = ">=2.13,<3"
-pydantic-settings = ">=2.14,<3"
-requests = ">=2.33,<3"
-pyoaev = "3.260904.0"
-python-slugify = { version = ">=8.0.4,<9", extras = ["unidecode"] }
+[project.scripts]
+LakeraGuardCollector = "lakera_guard.__main__:main"
 
 [tool.poetry]
 packages = [
     { include = "lakera_guard" },
 ]
 
-[project.scripts]
-LakeraGuardCollector = "lakera_guard.__main__:main"
+[tool.poetry.dependencies]
+pydantic = ">=2.13,<3"
+pydantic-settings = ">=2.14,<3"
+requests = ">=2.33,<3"
+pyoaev = "3.260904.0"
+
+[tool.poetry.dependencies.python-slugify]
+version = ">=8.0.4,<9"
+extras = [
+    "unidecode",
+]
 
 [tool.poetry.group.dev.dependencies]
 black = "^26.3.0"
@@ -46,15 +51,6 @@ mypy = "^1.17.1"
 pip-audit = "^2.9.0"
 pre-commit = "^4.6.0"
 ruff = "^0.14.13"
-
-#[tool.poetry.group.test.dependencies]
-#pytest = "^9.1.1"
-#polyfactory = "^2.22.2"
-
-#[tool.pytest.ini_options]
-#testpaths = [
-#    "./tests",
-#]
 
 [tool.ruff]
 exclude = [
