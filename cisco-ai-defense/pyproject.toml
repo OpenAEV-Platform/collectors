@@ -6,7 +6,7 @@ build-backend = "poetry.core.masonry.api"
 
 [project]
 name = "openaev-cisco-ai-defense-collector"
-version = "3.260917.0"
+version = "3.260917.1"
 description = "A Collector validating Cisco AI Defense (Robust Intelligence) detection/prevention of AI adversarial injects"
 readme = "README.md"
 authors = [

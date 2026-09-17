@@ -6,7 +6,7 @@ build-backend = "poetry.core.masonry.api"
 
 [project]
 name = "openaev-microsoft-intune-collector"
-version = "3.260917.0"
+version = "3.260917.1"
 description = "A Collector for Microsoft Intune managed devices"
 readme = "README.md"
 authors = [
