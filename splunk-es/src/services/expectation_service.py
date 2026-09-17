@@ -32,6 +32,9 @@ from .exception import (
     SplunkESServiceError,
     SplunkESValidationError,
 )
+from .models import SplunkESAlert
+from .utils.parent_process_parser import ParentProcessParser
+from .utils.regex_engine import RegexSignatureEngine, Signature
 
 LOG_PREFIX = "[SplunkESExpectationService]"
 
@@ -40,21 +43,31 @@ class SplunkESExpectationService:
     """Splunk ES-specific service provider for expectation handling.
 
     This class contains all the business logic specific to Splunk ES:
-    - Which signature types to support (only IPV4/6 addresses)
+    - Which signature types to support (all types, dynamically from SignatureTypes)
     - How to fetch data from Splunk ES
     - How to validate expectations against data
     - How to handle batching and optimization
     """
 
-    SUPPORTED_SIGNATURES = [
-        SignatureTypes.SIG_TYPE_SOURCE_IPV4_ADDRESS,
-        SignatureTypes.SIG_TYPE_TARGET_IPV4_ADDRESS,
-        SignatureTypes.SIG_TYPE_SOURCE_IPV6_ADDRESS,
-        SignatureTypes.SIG_TYPE_TARGET_IPV6_ADDRESS,
-        SignatureTypes.SIG_TYPE_START_DATE,
-        SignatureTypes.SIG_TYPE_END_DATE,
-        SignatureTypes.SIG_TYPE_PARENT_PROCESS_NAME,
-    ]
+    # Dynamic support: every SignatureTypes member is supported, so this
+    # list tracks the upstream enum across pyoaev versions without hardcoding.
+    SUPPORTED_SIGNATURES = list(SignatureTypes)
+
+    # Signature types the SPL query already filters on (the enough-filter):
+    # source/target IPs, both hostname flavors, and the date bounds. They
+    # never participate in raw-text matching.
+    _FILTER_SIGNATURE_TYPES = frozenset(
+        {
+            "source_ipv4_address",
+            "source_ipv6_address",
+            "target_ipv4_address",
+            "target_ipv6_address",
+            "hostname",
+            "target_hostname_address",
+            "start_date",
+            "end_date",
+        }
+    )
 
     def __init__(self, config: ConfigLoader | None = None) -> None:
         """Initialize the Splunk ES service provider.
@@ -79,6 +92,11 @@ class SplunkESExpectationService:
             )
             self.client_api = SplunkESClientAPI(config)
             self.converter = Converter()
+            self.parent_process_parser = ParentProcessParser()
+            self._regex_engine = RegexSignatureEngine()
+            self.logger.debug(
+                f"{LOG_PREFIX} Raw-text regex signature engine initialized for alert matching"
+            )
             self.logger.info(
                 f"{LOG_PREFIX} Splunk ES expectation service initialized successfully"
             )
@@ -129,7 +147,7 @@ class SplunkESExpectationService:
         self.logger.debug(
             f"{LOG_PREFIX} Returning {len(self.SUPPORTED_SIGNATURES)} supported signature types"
         )
-        return self.SUPPORTED_SIGNATURES
+        return list(self.SUPPORTED_SIGNATURES)
 
     def handle_batch_expectations(
         self,
@@ -315,9 +333,16 @@ class SplunkESExpectationService:
     ) -> dict[str, Any]:
         """Core logic for handling expectations.
 
+        Fetches raw Splunk ES alerts for the expectation's search signatures,
+        then matches the fetched alerts against the remaining expectation
+        signatures by searching each alert's raw event text
+        (``_raw``) with the raw-text regex signature engine.
+
         Args:
             expectation: The expectation to process.
-            detection_helper: OpenAEV detection helper instance.
+            detection_helper: OpenAEV detection helper instance (retained for
+                protocol compatibility; matching is delegated to the
+                raw-text regex engine and does not gate on this helper).
             expectation_type: Type of expectation ('detection').
 
         Returns:
@@ -353,19 +378,9 @@ class SplunkESExpectationService:
             )
 
             self.logger.debug(
-                f"{LOG_PREFIX} Converting Splunk ES data to OAEV format..."
+                f"{LOG_PREFIX} Matching fetched alerts against expectation signatures via raw-text regex engine..."
             )
-            oaev_data = self.converter.convert_data_to_oaev_data(splunk_es_data)
-            self.logger.debug(
-                f"{LOG_PREFIX} Converted to {len(oaev_data)} OAEV data items"
-            )
-
-            self.logger.debug(
-                f"{LOG_PREFIX} Matching data against expectation signatures..."
-            )
-            result = self._match(
-                oaev_data, matching_signatures, detection_helper, expectation_type
-            )
+            result = self._match(splunk_es_data, matching_signatures, expectation_type)
 
             return result
 
@@ -407,24 +422,23 @@ class SplunkESExpectationService:
                 f"{LOG_PREFIX} Found {len(all_signatures)} total signatures in expectation"
             )
 
-            search_signatures = [
-                sig
-                for sig in all_signatures
-                if sig["type"] in [s.value for s in self.SUPPORTED_SIGNATURES]
-            ]
+            # All signature types are supported now: the search keeps the
+            # full list unfiltered (preserves fetch_with_retry's non-empty
+            # contract). Filter types (IPs, hostnames, dates) are the
+            # enough-filter the query already applies; content types are
+            # carried by the matcher only.
+            search_signatures = all_signatures
 
-            date_signature_types = [
-                SignatureTypes.SIG_TYPE_START_DATE.value,
-                SignatureTypes.SIG_TYPE_END_DATE.value,
-            ]
             matching_signatures = [
                 sig
                 for sig in search_signatures
-                if sig["type"] not in date_signature_types
+                if sig["type"] not in self._FILTER_SIGNATURE_TYPES
             ]
 
             self.logger.debug(
-                f"{LOG_PREFIX} Filtered to {len(search_signatures)} search signatures and {len(matching_signatures)} matching signatures"
+                f"{LOG_PREFIX} Using all {len(search_signatures)} signatures for search "
+                f"(no type filtering) and {len(matching_signatures)} content signatures "
+                f"(filter types excluded from matching)"
             )
 
             return search_signatures, matching_signatures
@@ -436,21 +450,35 @@ class SplunkESExpectationService:
 
     def _match(
         self,
-        oaev_data: list[dict[str, Any]],
+        splunk_es_data: list[SplunkESAlert],
         matching_signatures: list[dict[str, str]],
-        detection_helper: OpenAEVDetectionHelper,
         expectation_type: str,
     ) -> dict[str, Any]:
-        """Match OAEV data against expectation signatures.
+        """Match fetched Splunk ES alerts against expectation signatures.
+
+        Matching is delegated to the raw-text regex signature engine: each
+        alert's raw event text is searched for the literal values of the
+        matching signatures. The raw text is the alert's ``_raw`` field when
+        it holds a non-empty string, otherwise a flattened ``key=value``
+        representation of the whole raw row, so matching does not depend on
+        any particular structured field names. An implant parent process
+        name signature additionally accepts, as its alternate literal, the
+        implant callback URL rebuilt from the UUIDs embedded in the name,
+        so network events that only expose the callback URL still match.
+        When the content set is empty, the query's enough-filter is the only
+        filter and the first fetched alert is accepted.
 
         Args:
-            oaev_data: List of OAEV formatted data.
-            matching_signatures: Signatures to match against.
-            detection_helper: OpenAEV detection helper.
+            splunk_es_data: List of fetched Splunk ES alerts.
+            matching_signatures: Content signatures to match against (filter
+                types excluded upstream; empty means accept what the query
+                fetched).
             expectation_type: Type of expectation ('detection').
 
         Returns:
-            Result dictionary with match status and matching data.
+            Result dictionary with match status and matching data (the
+            matched alert's converted data, or its raw row when conversion
+            yields nothing).
 
         Raises:
             SplunkESNoAlertsFoundError: If no data available for matching.
@@ -459,73 +487,73 @@ class SplunkESExpectationService:
 
         """
         try:
-            if not oaev_data:
-                self.logger.debug(f"{LOG_PREFIX} No OAEV data available for matching")
+            if not splunk_es_data:
+                self.logger.debug(f"{LOG_PREFIX} No alerts available for matching")
                 raise SplunkESNoAlertsFoundError("No data available for matching")
 
+            if not matching_signatures:
+                # No content signatures: the query's enough-filter is the only
+                # filter, so accept what it fetched.
+                self.logger.debug(
+                    f"{LOG_PREFIX} No content signatures: accepting fetched alerts "
+                    f"(query already filtered)"
+                )
+                alert = splunk_es_data[0]
+                converted = self.converter.convert_data_to_oaev_data(alert)
+                matched_item = converted[0] if converted else (alert._raw or {})
+                self.logger.info(
+                    f"{LOG_PREFIX} Successful match found for {expectation_type} expectation"
+                )
+                return {
+                    "is_valid": True,
+                    "matching_data": [matched_item],
+                    "total_data_found": len(splunk_es_data),
+                }
+
             self.logger.debug(
-                f"{LOG_PREFIX} Attempting to match {len(oaev_data)} data items against {len(matching_signatures)} signatures"
+                f"{LOG_PREFIX} Matching is delegated to the raw-text regex engine: "
+                f"{len(splunk_es_data)} alerts against {len(matching_signatures)} signatures"
             )
 
-            for i, data_item in enumerate(oaev_data):
-                self.logger.debug(f"{i} data_item: {data_item}")
+            engine_signatures = [
+                Signature(
+                    type=sig["type"],
+                    value=sig["value"],
+                    alternates=self._implant_url_alternates(sig),
+                )
+                for sig in matching_signatures
+            ]
+
+            for i, alert in enumerate(splunk_es_data):
                 self.logger.debug(
-                    f"{LOG_PREFIX} Matching data item {i + 1}/{len(oaev_data)}"
+                    f"{LOG_PREFIX} Matching alert {i + 1}/{len(splunk_es_data)}"
                 )
 
-                available_signatures = [
-                    sig for sig in matching_signatures if sig["type"] in data_item
-                ]
+                raw_text = self._regex_engine.raw_text_from(alert._raw)
 
-                self.logger.debug(
-                    f"{LOG_PREFIX} Data item {i + 1} has {len(available_signatures)} available signatures out of {len(matching_signatures)} total signatures"
-                )
+                if raw_text and self._regex_engine.matches(raw_text, engine_signatures):
+                    self.logger.debug(f"{LOG_PREFIX} Match found for alert {i + 1}!")
 
-                if available_signatures:
-                    try:
-                        self.logger.debug(
-                            f"{LOG_PREFIX} Testing match for data item {i + 1} with {len(available_signatures)} signatures"
-                        )
-
-                        # Use detection_helper with filtered signatures per type
-                        if self._match_with_detection_helper(
-                            available_signatures, data_item, detection_helper
-                        ):
-                            self.logger.debug(
-                                f"{LOG_PREFIX} Match found for data item {i + 1}!"
-                            )
-
-                            self.logger.info(
-                                f"{LOG_PREFIX} Successful match found for {expectation_type} expectation"
-                            )
-                            self.logger.debug(
-                                f"{LOG_PREFIX} Matching data: {data_item}"
-                            )
-
-                            result = {
-                                "is_valid": True,
-                                "matching_data": [data_item],
-                                "total_data_found": len(oaev_data),
-                            }
-
-                            return result
-                        else:
-                            self.logger.debug(
-                                f"{LOG_PREFIX} No match for data item {i + 1}"
-                            )
-                            continue
-                    except Exception as e:
-                        self.logger.error(
-                            f"{LOG_PREFIX} Error during matching for data item {i + 1}: {e}"
-                        )
-                        raise SplunkESNoMatchingAlertsError() from e
-                else:
-                    self.logger.debug(
-                        f"{LOG_PREFIX} Data item {i + 1} has no available signatures to match against"
+                    self.logger.info(
+                        f"{LOG_PREFIX} Successful match found for {expectation_type} expectation"
                     )
 
+                    converted = self.converter.convert_data_to_oaev_data(alert)
+                    matched_item = converted[0] if converted else (alert._raw or {})
+                    self.logger.debug(f"{LOG_PREFIX} Matching data: {matched_item}")
+
+                    result = {
+                        "is_valid": True,
+                        "matching_data": [matched_item],
+                        "total_data_found": len(splunk_es_data),
+                    }
+
+                    return result
+
+                self.logger.debug(f"{LOG_PREFIX} No match for alert {i + 1}")
+
             self.logger.info(
-                f"{LOG_PREFIX} No matching alerts found after checking {len(oaev_data)} data items"
+                f"{LOG_PREFIX} No matching alerts found after checking {len(splunk_es_data)} alerts"
             )
             raise SplunkESNoMatchingAlertsError()
 
@@ -538,134 +566,39 @@ class SplunkESExpectationService:
         except Exception as e:
             raise SplunkESMatchingError() from e
 
-    def _match_with_detection_helper(
-        self,
-        signatures: list[dict[str, str]],
-        data_item: dict[str, Any],
-        detection_helper: OpenAEVDetectionHelper,
-    ) -> bool:
-        """Match signatures using detection_helper with proper OR logic.
+    def _implant_url_alternates(self, sig: dict[str, str]) -> tuple[str, ...]:
+        """Build the callback-URL alternate literal for an implant signature.
+
+        A network event never carries the implant's .exe process name; it
+        only exposes the implant's callback URL, which embeds the same
+        two UUIDs. For a parent process name signature matching the implant
+        naming pattern, the callback URL is rebuilt from those UUIDs and
+        returned as the signature's alternate literal so the signature
+        also matches network events.
 
         Args:
-            signatures: List of signature dictionaries.
-            data_item: OAEV data item to match against.
-            detection_helper: OpenAEV detection helper instance.
+            sig: A single matching signature (type and value).
 
         Returns:
-            True if matching succeeds, False otherwise.
-
-        Logic:
-        1. Parent process: MUST match exactly (if present) - stop if False
-        2. Source IPs: Call detection_helper for each IP individually, stop at first match (OR logic)
-        3. Target IPs: Call detection_helper for each IP individually, stop at first match (OR logic)
-        4. Must have parent_process=True AND (at least one src_ip=True OR at least one dst_ip=True)
+            A tuple with the rebuilt callback URL for an implant parent
+            process name signature, or an empty tuple for every other
+            signature type and for values without the UUID pair.
 
         """
-        try:
-            signature_groups: dict[str, list[dict[str, str]]] = {}
-            for sig in signatures:
-                sig_type = sig["type"]
-                if sig_type not in signature_groups:
-                    signature_groups[sig_type] = []
-                signature_groups[sig_type].append(sig)
+        if sig.get("type") != SignatureTypes.SIG_TYPE_PARENT_PROCESS_NAME.value:
+            return ()
 
-            self.logger.debug(
-                f"{LOG_PREFIX} Processing {len(signature_groups)} signature groups"
-            )
+        uuids = self.parent_process_parser.extract_uuids_from_parent_process_name(
+            sig["value"]
+        )
+        if not uuids:
+            return ()
 
-            parent_process_match = False
-            source_ip_match = False
-            target_ip_match = False
+        url_path = self.parent_process_parser.build_url_path(*uuids)
+        if not url_path:
+            return ()
 
-            if "parent_process_name" in signature_groups:
-                parent_sigs = signature_groups["parent_process_name"]
-                self.logger.debug(
-                    f"{LOG_PREFIX} Checking parent process with {len(parent_sigs)} signatures"
-                )
-
-                filtered_data = {
-                    k: v for k, v in data_item.items() if k == "parent_process_name"
-                }
-
-                parent_process_match = detection_helper.match_alert_elements(
-                    parent_sigs, filtered_data
-                )
-
-                self.logger.debug(
-                    f"{LOG_PREFIX} Parent process match: {parent_process_match}"
-                )
-
-                if not parent_process_match:
-                    self.logger.debug(f"{LOG_PREFIX} Parent process failed - stopping")
-                    return False
-
-            source_ip_types = ["source_ipv4_address", "source_ipv6_address"]
-            for ip_type in source_ip_types:
-                if ip_type in signature_groups and ip_type in data_item:
-                    ip_sigs = signature_groups[ip_type]
-                    self.logger.debug(
-                        f"{LOG_PREFIX} Checking {ip_type} with {len(ip_sigs)} signatures"
-                    )
-
-                    for sig in ip_sigs:
-                        filtered_data = {ip_type: data_item[ip_type]}
-                        if detection_helper.match_alert_elements([sig], filtered_data):
-                            self.logger.debug(
-                                f"{LOG_PREFIX} ✓ {ip_type} signature matched: {sig['value']}"
-                            )
-                            source_ip_match = True
-                            break
-
-                    if source_ip_match:
-                        break
-
-            target_ip_types = ["target_ipv4_address", "target_ipv6_address"]
-            for ip_type in target_ip_types:
-                if ip_type in signature_groups and ip_type in data_item:
-                    ip_sigs = signature_groups[ip_type]
-                    self.logger.debug(
-                        f"{LOG_PREFIX} Checking {ip_type} with {len(ip_sigs)} signatures"
-                    )
-
-                    for sig in ip_sigs:
-                        filtered_data = {ip_type: data_item[ip_type]}
-                        if detection_helper.match_alert_elements([sig], filtered_data):
-                            self.logger.debug(
-                                f"{LOG_PREFIX} ✓ {ip_type} signature matched: {sig['value']}"
-                            )
-                            target_ip_match = True
-                            break
-
-                    if target_ip_match:
-                        break
-
-            has_source_sigs = any(t in signature_groups for t in source_ip_types)
-            has_target_sigs = any(t in signature_groups for t in target_ip_types)
-
-            self.logger.debug(
-                f"{LOG_PREFIX} Match results - Parent: {parent_process_match}, "
-                f"Source IP: {source_ip_match} (required: {has_source_sigs}), "
-                f"Target IP: {target_ip_match} (required: {has_target_sigs})"
-            )
-
-            if not parent_process_match:
-                return False
-
-            if has_source_sigs and has_target_sigs:
-                result = source_ip_match or target_ip_match
-            elif has_source_sigs:
-                result = source_ip_match
-            elif has_target_sigs:
-                result = target_ip_match
-            else:
-                result = True
-
-            self.logger.debug(f"{LOG_PREFIX} Final match result: {result}")
-            return result
-
-        except Exception as e:
-            self.logger.error(f"{LOG_PREFIX} Error in detection_helper matching: {e}")
-            return False
+        return (url_path,)
 
     def _create_error_result(
         self,
