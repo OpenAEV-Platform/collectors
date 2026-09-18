@@ -70,9 +70,16 @@ The collector is configured either through environment variables (recommended, r
 
 | Parameter     | config.yml                                   | Docker environment variable                  | Default | Mandatory | Description                                                          |
 |---------------|----------------------------------------------|----------------------------------------------|---------|-----------|---------------------------------------------------------------------|
-| Tenant ID     | `collector.microsoft_defender_tenant_id`     | `COLLECTOR_MICROSOFT_DEFENDER_TENANT_ID`     | /       | Yes       | The Entra ID (Azure AD) tenant ID of the Defender application.      |
-| Client ID     | `collector.microsoft_defender_client_id`     | `COLLECTOR_MICROSOFT_DEFENDER_CLIENT_ID`     | /       | Yes       | The Entra ID application (client) ID.                               |
-| Client Secret | `collector.microsoft_defender_client_secret` | `COLLECTOR_MICROSOFT_DEFENDER_CLIENT_SECRET` | /       | Yes       | The Entra ID application client secret.                             |
+| Tenant ID     | `source.tenant_id`     | `SOURCE_TENANT_ID`     | /       | Yes       | The Entra ID (Azure AD) tenant ID of the Defender application.      |
+| Client ID     | `source.client_id`     | `SOURCE_CLIENT_ID`     | /       | Yes       | The Entra ID application (client) ID.                               |
+| Client Secret | `source.client_secret` | `SOURCE_CLIENT_SECRET` | /       | Yes       | The Entra ID application client secret.                             |
+| Use certificate auth | `source.use_certificate_auth` | `SOURCE_USE_CERTIFICATE_AUTH` | False       | No       | Whether to authenticate using a client certificate instead of a client secret.        |
+| Client certificate data | `source.client_cert_data` | `SOURCE_CLIENT_CERT_DATA` | / | No | Content of the client certificate (mandatory if certificate auth is used).
+| Client certificate thumbprint | `source.client_cert_thumbprint` | `SOURCE_CLIENT_CERT_THUMBPRINT` | / | No | Thumbprint of the client certificate (mandatory if certificate auth is used).
+| Base url | `source.base_url` | `SOURCE_BASE_URL` | https://graph.microsoft.com/v1.0 | No | Base url for the Microsoft Graph API
+| Filter service source | `source.filter_service_source` | `SOURCE_FILTER_SERVICE_SOURCE` | microsoftDefenderForEndpoint | No | Value used to filter Microsoft Graph security alerts down to Defender for Endpoint alerts
+| Rate limit requests per minute | `source.rate_limit_requests_per_minute` | `SOURCE_RATE_LIMIT_REQUESTS_PER_MINUTE` | 150 | No | Maximum number of Microsoft Graph API requests issued per minute (must be >= 1)
+| Max fetch retries | `source.max_fetch_retries` | `SOURCE_MAX_FETCH_RETRIES` | 5 | No | Maximum number of retries when fetching data from Microsoft Graph fails transiently
 
 ## Deployment
 
@@ -101,13 +108,13 @@ docker compose up -d
    ```
 
 2. **Configure the Collector**:
-- Copy `microsoft_defender/config.yml.sample` to `microsoft_defender/config.yml`
+- Copy `config.yml.sample` to `config.yml`
 - Update configuration values or set environment variables
 
 3. **Run the Collector**:
    ```bash
    # Using Poetry
-   poetry run python -m microsoft_defender
+   poetry run python -m src
    
    # Or 
    poetry run MicrosoftDefenderCollector
