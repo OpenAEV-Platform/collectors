@@ -35,7 +35,7 @@ packages = [
 pydantic = ">=2.13,<3"
 pydantic-settings = ">=2.14,<3"
 requests = ">=2.33,<3"
-pyoaev = "3.260917.1"
+pyoaev = "3.260921.0"
 msgraph-sdk = "1.40.0"
 
 [tool.poetry.dependencies.python-slugify]
