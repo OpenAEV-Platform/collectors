@@ -5,7 +5,7 @@
 **OpenAEV collectors** - Python integrations for security tools (EDR, XDR, SIEM, etc.) to collect data for OpenAEV platform. Monorepo with 15 collectors.
 
 **Key Facts:**
-- **Language**: Python 3.14 for the global environment and CI; individual collectors may support Python 3.13+
+- **Language**: Python 3.14 for all collectors, development environments, builds, and CI
 - **Package Manager**: Poetry 2.3.2+
 - **CI/CD**: CircleCI
 - **Collectors**: 8 in root pyproject.toml (atomic-red-team, crowdstrike, microsoft-defender, microsoft-entra, microsoft-sentinel, mitre-attack, nvd-nist-cve, tanium-threat-response), 7 standalone (aws-resources, google-workspace, microsoft-azure, microsoft-intune, openaev, sentinelone, splunk-es)
