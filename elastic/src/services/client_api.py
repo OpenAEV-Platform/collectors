@@ -319,7 +319,7 @@ class ElasticClientAPI:
             )
             return elastic_response.results
 
-        except (ElasticAuthenticationError, ElasticAPIError):
+        except ElasticAuthenticationError, ElasticAPIError:
             raise
         except (ConnectionError, Timeout) as e:
             raise ElasticNetworkError(f"Network error during query: {e}") from e
@@ -372,7 +372,7 @@ class ElasticClientAPI:
                         f"{LOG_PREFIX} No alerts found after all retry attempts"
                     )
                     return []
-            except (ElasticAuthenticationError, ElasticValidationError):
+            except ElasticAuthenticationError, ElasticValidationError:
                 raise
             except (
                 ElasticAPIError,

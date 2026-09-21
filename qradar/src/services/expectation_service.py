@@ -82,7 +82,7 @@ class QRadarExpectationService:
             self.logger.info(
                 f"{LOG_PREFIX} IBM QRadar expectation service initialized successfully"
             )
-        except (QRadarValidationError, QRadarConfigurationError):
+        except QRadarValidationError, QRadarConfigurationError:
             raise
         except Exception as e:
             raise QRadarConfigurationError(

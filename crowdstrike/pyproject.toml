@@ -12,7 +12,7 @@ readme = "README.md"
 authors = [
     { name = "Filigran", email = "contact@filigran.io" },
 ]
-requires-python = ">=3.13,<4.0"
+requires-python = ">=3.14,<4.0"
 dynamic = [
     "dependencies",
 ]
@@ -35,7 +35,7 @@ packages = [
 pydantic = ">=2.13,<3"
 pydantic-settings = ">=2.14,<3"
 requests = ">=2.33,<3"
-pyoaev = "3.260904.0"
+pyoaev = "3.260921.0"
 crowdstrike-falconpy = "1.5.4"
 pytz = "^2026.3"
 python-dateutil = "^2.9.0"

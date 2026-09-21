@@ -1,0 +1,2583 @@
+{
+  "schema_version": 1,
+  "environment": {
+    "key": "9e6936d18ef69430",
+    "executable": "C:\\FILIGRAN\\OAEV\\.python-venv\\Scripts\\python.exe",
+    "version": "3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36) [MSC v.1943 64 bit (AMD64)]",
+    "prefix": "C:\\FILIGRAN\\OAEV\\.python-venv",
+    "base_prefix": "C:\\Users\\guzmu\\scoop\\apps\\python312\\current",
+    "site_paths": [
+      "C:\\FILIGRAN\\OAEV\\.python-venv",
+      "C:\\FILIGRAN\\OAEV\\.python-venv\\Lib\\site-packages",
+      "C:\\Users\\guzmu\\AppData\\Roaming\\Python\\Python312\\site-packages"
+    ]
+  },
+  "modules": {
+    "requests.exceptions": {
+      "module": "requests.exceptions",
+      "origin": "C:\\FILIGRAN\\OAEV\\.python-venv\\Lib\\site-packages\\requests\\exceptions.py",
+      "captured_at": "2026-09-16T13:05:05Z",
+      "members": {
+        "BaseHTTPError": {
+          "kind": "class",
+          "signature": "",
+          "parameters": [],
+          "methods": {
+            "add_note": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            },
+            "with_traceback": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            }
+          },
+          "methods_truncated": false,
+          "properties": {}
+        },
+        "ChunkedEncodingError": {
+          "kind": "class",
+          "signature": "(*args, **kwargs)",
+          "parameters": [
+            {
+              "name": "args",
+              "kind": "VAR_POSITIONAL",
+              "required": true
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "required": true
+            }
+          ],
+          "methods": {
+            "add_note": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            },
+            "with_traceback": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            }
+          },
+          "methods_truncated": false,
+          "properties": {}
+        },
+        "CompatJSONDecodeError": {
+          "kind": "class",
+          "signature": "(msg, doc, pos, end=None)",
+          "parameters": [
+            {
+              "name": "msg",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "required": true
+            },
+            {
+              "name": "doc",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "required": true
+            },
+            {
+              "name": "pos",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "required": true
+            },
+            {
+              "name": "end",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "required": false
+            }
+          ],
+          "methods": {
+            "add_note": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            },
+            "with_traceback": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            }
+          },
+          "methods_truncated": false,
+          "properties": {}
+        },
+        "ConnectTimeout": {
+          "kind": "class",
+          "signature": "(*args, **kwargs)",
+          "parameters": [
+            {
+              "name": "args",
+              "kind": "VAR_POSITIONAL",
+              "required": true
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "required": true
+            }
+          ],
+          "methods": {
+            "add_note": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            },
+            "with_traceback": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            }
+          },
+          "methods_truncated": false,
+          "properties": {}
+        },
+        "ConnectionError": {
+          "kind": "class",
+          "signature": "(*args, **kwargs)",
+          "parameters": [
+            {
+              "name": "args",
+              "kind": "VAR_POSITIONAL",
+              "required": true
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "required": true
+            }
+          ],
+          "methods": {
+            "add_note": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            },
+            "with_traceback": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            }
+          },
+          "methods_truncated": false,
+          "properties": {}
+        },
+        "ContentDecodingError": {
+          "kind": "class",
+          "signature": "(*args, **kwargs)",
+          "parameters": [
+            {
+              "name": "args",
+              "kind": "VAR_POSITIONAL",
+              "required": true
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "required": true
+            }
+          ],
+          "methods": {
+            "add_note": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            },
+            "with_traceback": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            }
+          },
+          "methods_truncated": false,
+          "properties": {}
+        },
+        "FileModeWarning": {
+          "kind": "class",
+          "signature": "",
+          "parameters": [],
+          "methods": {
+            "add_note": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            },
+            "with_traceback": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            }
+          },
+          "methods_truncated": false,
+          "properties": {}
+        },
+        "HTTPError": {
+          "kind": "class",
+          "signature": "(*args, **kwargs)",
+          "parameters": [
+            {
+              "name": "args",
+              "kind": "VAR_POSITIONAL",
+              "required": true
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "required": true
+            }
+          ],
+          "methods": {
+            "add_note": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            },
+            "with_traceback": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            }
+          },
+          "methods_truncated": false,
+          "properties": {}
+        },
+        "InvalidHeader": {
+          "kind": "class",
+          "signature": "(*args, **kwargs)",
+          "parameters": [
+            {
+              "name": "args",
+              "kind": "VAR_POSITIONAL",
+              "required": true
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "required": true
+            }
+          ],
+          "methods": {
+            "add_note": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            },
+            "with_traceback": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            }
+          },
+          "methods_truncated": false,
+          "properties": {}
+        },
+        "InvalidJSONError": {
+          "kind": "class",
+          "signature": "(*args, **kwargs)",
+          "parameters": [
+            {
+              "name": "args",
+              "kind": "VAR_POSITIONAL",
+              "required": true
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "required": true
+            }
+          ],
+          "methods": {
+            "add_note": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            },
+            "with_traceback": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            }
+          },
+          "methods_truncated": false,
+          "properties": {}
+        },
+        "InvalidProxyURL": {
+          "kind": "class",
+          "signature": "(*args, **kwargs)",
+          "parameters": [
+            {
+              "name": "args",
+              "kind": "VAR_POSITIONAL",
+              "required": true
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "required": true
+            }
+          ],
+          "methods": {
+            "add_note": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            },
+            "with_traceback": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            }
+          },
+          "methods_truncated": false,
+          "properties": {}
+        },
+        "InvalidSchema": {
+          "kind": "class",
+          "signature": "(*args, **kwargs)",
+          "parameters": [
+            {
+              "name": "args",
+              "kind": "VAR_POSITIONAL",
+              "required": true
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "required": true
+            }
+          ],
+          "methods": {
+            "add_note": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            },
+            "with_traceback": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            }
+          },
+          "methods_truncated": false,
+          "properties": {}
+        },
+        "InvalidURL": {
+          "kind": "class",
+          "signature": "(*args, **kwargs)",
+          "parameters": [
+            {
+              "name": "args",
+              "kind": "VAR_POSITIONAL",
+              "required": true
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "required": true
+            }
+          ],
+          "methods": {
+            "add_note": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            },
+            "with_traceback": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            }
+          },
+          "methods_truncated": false,
+          "properties": {}
+        },
+        "JSONDecodeError": {
+          "kind": "class",
+          "signature": "(*args, **kwargs)",
+          "parameters": [
+            {
+              "name": "args",
+              "kind": "VAR_POSITIONAL",
+              "required": true
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "required": true
+            }
+          ],
+          "methods": {
+            "add_note": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            },
+            "with_traceback": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            }
+          },
+          "methods_truncated": false,
+          "properties": {}
+        },
+        "MissingSchema": {
+          "kind": "class",
+          "signature": "(*args, **kwargs)",
+          "parameters": [
+            {
+              "name": "args",
+              "kind": "VAR_POSITIONAL",
+              "required": true
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "required": true
+            }
+          ],
+          "methods": {
+            "add_note": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            },
+            "with_traceback": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            }
+          },
+          "methods_truncated": false,
+          "properties": {}
+        },
+        "ProxyError": {
+          "kind": "class",
+          "signature": "(*args, **kwargs)",
+          "parameters": [
+            {
+              "name": "args",
+              "kind": "VAR_POSITIONAL",
+              "required": true
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "required": true
+            }
+          ],
+          "methods": {
+            "add_note": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            },
+            "with_traceback": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            }
+          },
+          "methods_truncated": false,
+          "properties": {}
+        },
+        "ReadTimeout": {
+          "kind": "class",
+          "signature": "(*args, **kwargs)",
+          "parameters": [
+            {
+              "name": "args",
+              "kind": "VAR_POSITIONAL",
+              "required": true
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "required": true
+            }
+          ],
+          "methods": {
+            "add_note": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            },
+            "with_traceback": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            }
+          },
+          "methods_truncated": false,
+          "properties": {}
+        },
+        "RequestException": {
+          "kind": "class",
+          "signature": "(*args, **kwargs)",
+          "parameters": [
+            {
+              "name": "args",
+              "kind": "VAR_POSITIONAL",
+              "required": true
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "required": true
+            }
+          ],
+          "methods": {
+            "add_note": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            },
+            "with_traceback": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            }
+          },
+          "methods_truncated": false,
+          "properties": {}
+        },
+        "RequestsDependencyWarning": {
+          "kind": "class",
+          "signature": "",
+          "parameters": [],
+          "methods": {
+            "add_note": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            },
+            "with_traceback": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            }
+          },
+          "methods_truncated": false,
+          "properties": {}
+        },
+        "RequestsWarning": {
+          "kind": "class",
+          "signature": "",
+          "parameters": [],
+          "methods": {
+            "add_note": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            },
+            "with_traceback": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            }
+          },
+          "methods_truncated": false,
+          "properties": {}
+        },
+        "RetryError": {
+          "kind": "class",
+          "signature": "(*args, **kwargs)",
+          "parameters": [
+            {
+              "name": "args",
+              "kind": "VAR_POSITIONAL",
+              "required": true
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "required": true
+            }
+          ],
+          "methods": {
+            "add_note": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            },
+            "with_traceback": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            }
+          },
+          "methods_truncated": false,
+          "properties": {}
+        },
+        "SSLError": {
+          "kind": "class",
+          "signature": "(*args, **kwargs)",
+          "parameters": [
+            {
+              "name": "args",
+              "kind": "VAR_POSITIONAL",
+              "required": true
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "required": true
+            }
+          ],
+          "methods": {
+            "add_note": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            },
+            "with_traceback": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            }
+          },
+          "methods_truncated": false,
+          "properties": {}
+        },
+        "StreamConsumedError": {
+          "kind": "class",
+          "signature": "(*args, **kwargs)",
+          "parameters": [
+            {
+              "name": "args",
+              "kind": "VAR_POSITIONAL",
+              "required": true
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "required": true
+            }
+          ],
+          "methods": {
+            "add_note": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            },
+            "with_traceback": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            }
+          },
+          "methods_truncated": false,
+          "properties": {}
+        },
+        "Timeout": {
+          "kind": "class",
+          "signature": "(*args, **kwargs)",
+          "parameters": [
+            {
+              "name": "args",
+              "kind": "VAR_POSITIONAL",
+              "required": true
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "required": true
+            }
+          ],
+          "methods": {
+            "add_note": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            },
+            "with_traceback": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            }
+          },
+          "methods_truncated": false,
+          "properties": {}
+        },
+        "TooManyRedirects": {
+          "kind": "class",
+          "signature": "(*args, **kwargs)",
+          "parameters": [
+            {
+              "name": "args",
+              "kind": "VAR_POSITIONAL",
+              "required": true
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "required": true
+            }
+          ],
+          "methods": {
+            "add_note": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            },
+            "with_traceback": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            }
+          },
+          "methods_truncated": false,
+          "properties": {}
+        },
+        "URLRequired": {
+          "kind": "class",
+          "signature": "(*args, **kwargs)",
+          "parameters": [
+            {
+              "name": "args",
+              "kind": "VAR_POSITIONAL",
+              "required": true
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "required": true
+            }
+          ],
+          "methods": {
+            "add_note": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            },
+            "with_traceback": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            }
+          },
+          "methods_truncated": false,
+          "properties": {}
+        },
+        "UnrewindableBodyError": {
+          "kind": "class",
+          "signature": "(*args, **kwargs)",
+          "parameters": [
+            {
+              "name": "args",
+              "kind": "VAR_POSITIONAL",
+              "required": true
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "required": true
+            }
+          ],
+          "methods": {
+            "add_note": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            },
+            "with_traceback": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            }
+          },
+          "methods_truncated": false,
+          "properties": {}
+        }
+      },
+      "members_truncated": false
+    },
+    "requests": {
+      "module": "requests",
+      "origin": "C:\\FILIGRAN\\OAEV\\.python-venv\\Lib\\site-packages\\requests\\__init__.py",
+      "captured_at": "2026-09-16T13:05:05Z",
+      "members": {
+        "ConnectTimeout": {
+          "kind": "class",
+          "signature": "(*args, **kwargs)",
+          "parameters": [
+            {
+              "name": "args",
+              "kind": "VAR_POSITIONAL",
+              "required": true
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "required": true
+            }
+          ],
+          "methods": {
+            "add_note": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            },
+            "with_traceback": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            }
+          },
+          "methods_truncated": false,
+          "properties": {}
+        },
+        "ConnectionError": {
+          "kind": "class",
+          "signature": "(*args, **kwargs)",
+          "parameters": [
+            {
+              "name": "args",
+              "kind": "VAR_POSITIONAL",
+              "required": true
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "required": true
+            }
+          ],
+          "methods": {
+            "add_note": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            },
+            "with_traceback": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            }
+          },
+          "methods_truncated": false,
+          "properties": {}
+        },
+        "DependencyWarning": {
+          "kind": "class",
+          "signature": "",
+          "parameters": [],
+          "methods": {
+            "add_note": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            },
+            "with_traceback": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            }
+          },
+          "methods_truncated": false,
+          "properties": {}
+        },
+        "FileModeWarning": {
+          "kind": "class",
+          "signature": "",
+          "parameters": [],
+          "methods": {
+            "add_note": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            },
+            "with_traceback": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            }
+          },
+          "methods_truncated": false,
+          "properties": {}
+        },
+        "HTTPError": {
+          "kind": "class",
+          "signature": "(*args, **kwargs)",
+          "parameters": [
+            {
+              "name": "args",
+              "kind": "VAR_POSITIONAL",
+              "required": true
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "required": true
+            }
+          ],
+          "methods": {
+            "add_note": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            },
+            "with_traceback": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            }
+          },
+          "methods_truncated": false,
+          "properties": {}
+        },
+        "JSONDecodeError": {
+          "kind": "class",
+          "signature": "(*args, **kwargs)",
+          "parameters": [
+            {
+              "name": "args",
+              "kind": "VAR_POSITIONAL",
+              "required": true
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "required": true
+            }
+          ],
+          "methods": {
+            "add_note": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            },
+            "with_traceback": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            }
+          },
+          "methods_truncated": false,
+          "properties": {}
+        },
+        "NullHandler": {
+          "kind": "class",
+          "signature": "(level=0)",
+          "parameters": [
+            {
+              "name": "level",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "required": false
+            }
+          ],
+          "methods": {
+            "acquire": {
+              "kind": "method",
+              "signature": "(self)",
+              "parameters": [
+                {
+                  "name": "self",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                }
+              ]
+            },
+            "addFilter": {
+              "kind": "method",
+              "signature": "(self, filter)",
+              "parameters": [
+                {
+                  "name": "self",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "filter",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                }
+              ]
+            },
+            "close": {
+              "kind": "method",
+              "signature": "(self)",
+              "parameters": [
+                {
+                  "name": "self",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                }
+              ]
+            },
+            "createLock": {
+              "kind": "method",
+              "signature": "(self)",
+              "parameters": [
+                {
+                  "name": "self",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                }
+              ]
+            },
+            "emit": {
+              "kind": "method",
+              "signature": "(self, record)",
+              "parameters": [
+                {
+                  "name": "self",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "record",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                }
+              ]
+            },
+            "filter": {
+              "kind": "method",
+              "signature": "(self, record)",
+              "parameters": [
+                {
+                  "name": "self",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "record",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                }
+              ]
+            },
+            "flush": {
+              "kind": "method",
+              "signature": "(self)",
+              "parameters": [
+                {
+                  "name": "self",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                }
+              ]
+            },
+            "format": {
+              "kind": "method",
+              "signature": "(self, record)",
+              "parameters": [
+                {
+                  "name": "self",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "record",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                }
+              ]
+            },
+            "get_name": {
+              "kind": "method",
+              "signature": "(self)",
+              "parameters": [
+                {
+                  "name": "self",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                }
+              ]
+            },
+            "handle": {
+              "kind": "method",
+              "signature": "(self, record)",
+              "parameters": [
+                {
+                  "name": "self",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "record",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                }
+              ]
+            },
+            "handleError": {
+              "kind": "method",
+              "signature": "(self, record)",
+              "parameters": [
+                {
+                  "name": "self",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "record",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                }
+              ]
+            },
+            "release": {
+              "kind": "method",
+              "signature": "(self)",
+              "parameters": [
+                {
+                  "name": "self",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                }
+              ]
+            },
+            "removeFilter": {
+              "kind": "method",
+              "signature": "(self, filter)",
+              "parameters": [
+                {
+                  "name": "self",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "filter",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                }
+              ]
+            },
+            "setFormatter": {
+              "kind": "method",
+              "signature": "(self, fmt)",
+              "parameters": [
+                {
+                  "name": "self",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "fmt",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                }
+              ]
+            },
+            "setLevel": {
+              "kind": "method",
+              "signature": "(self, level)",
+              "parameters": [
+                {
+                  "name": "self",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "level",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                }
+              ]
+            },
+            "set_name": {
+              "kind": "method",
+              "signature": "(self, name)",
+              "parameters": [
+                {
+                  "name": "self",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "name",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                }
+              ]
+            }
+          },
+          "methods_truncated": false,
+          "properties": {}
+        },
+        "PreparedRequest": {
+          "kind": "class",
+          "signature": "()",
+          "parameters": [],
+          "methods": {
+            "copy": {
+              "kind": "method",
+              "signature": "(self)",
+              "parameters": [
+                {
+                  "name": "self",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                }
+              ]
+            },
+            "deregister_hook": {
+              "kind": "method",
+              "signature": "(self, event, hook)",
+              "parameters": [
+                {
+                  "name": "self",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "event",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "hook",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                }
+              ]
+            },
+            "prepare": {
+              "kind": "method",
+              "signature": "(self, method=None, url=None, headers=None, files=None, data=None, params=None, auth=None, cookies=None, hooks=None, json=None)",
+              "parameters": [
+                {
+                  "name": "self",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "method",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": false
+                },
+                {
+                  "name": "url",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": false
+                },
+                {
+                  "name": "headers",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": false
+                },
+                {
+                  "name": "files",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": false
+                },
+                {
+                  "name": "data",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": false
+                },
+                {
+                  "name": "params",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": false
+                },
+                {
+                  "name": "auth",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": false
+                },
+                {
+                  "name": "cookies",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": false
+                },
+                {
+                  "name": "hooks",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": false
+                },
+                {
+                  "name": "json",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": false
+                }
+              ]
+            },
+            "prepare_auth": {
+              "kind": "method",
+              "signature": "(self, auth, url='')",
+              "parameters": [
+                {
+                  "name": "self",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "auth",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "url",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": false
+                }
+              ]
+            },
+            "prepare_body": {
+              "kind": "method",
+              "signature": "(self, data, files, json=None)",
+              "parameters": [
+                {
+                  "name": "self",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "data",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "files",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "json",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": false
+                }
+              ]
+            },
+            "prepare_content_length": {
+              "kind": "method",
+              "signature": "(self, body)",
+              "parameters": [
+                {
+                  "name": "self",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "body",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                }
+              ]
+            },
+            "prepare_cookies": {
+              "kind": "method",
+              "signature": "(self, cookies)",
+              "parameters": [
+                {
+                  "name": "self",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "cookies",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                }
+              ]
+            },
+            "prepare_headers": {
+              "kind": "method",
+              "signature": "(self, headers)",
+              "parameters": [
+                {
+                  "name": "self",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "headers",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                }
+              ]
+            },
+            "prepare_hooks": {
+              "kind": "method",
+              "signature": "(self, hooks)",
+              "parameters": [
+                {
+                  "name": "self",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "hooks",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                }
+              ]
+            },
+            "prepare_method": {
+              "kind": "method",
+              "signature": "(self, method)",
+              "parameters": [
+                {
+                  "name": "self",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "method",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                }
+              ]
+            },
+            "prepare_url": {
+              "kind": "method",
+              "signature": "(self, url, params)",
+              "parameters": [
+                {
+                  "name": "self",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "url",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "params",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                }
+              ]
+            },
+            "register_hook": {
+              "kind": "method",
+              "signature": "(self, event, hook)",
+              "parameters": [
+                {
+                  "name": "self",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "event",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "hook",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                }
+              ]
+            }
+          },
+          "methods_truncated": false,
+          "properties": {}
+        },
+        "ReadTimeout": {
+          "kind": "class",
+          "signature": "(*args, **kwargs)",
+          "parameters": [
+            {
+              "name": "args",
+              "kind": "VAR_POSITIONAL",
+              "required": true
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "required": true
+            }
+          ],
+          "methods": {
+            "add_note": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            },
+            "with_traceback": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            }
+          },
+          "methods_truncated": false,
+          "properties": {}
+        },
+        "Request": {
+          "kind": "class",
+          "signature": "(method=None, url=None, headers=None, files=None, data=None, params=None, auth=None, cookies=None, hooks=None, json=None)",
+          "parameters": [
+            {
+              "name": "method",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "required": false
+            },
+            {
+              "name": "url",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "required": false
+            },
+            {
+              "name": "headers",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "required": false
+            },
+            {
+              "name": "files",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "required": false
+            },
+            {
+              "name": "data",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "required": false
+            },
+            {
+              "name": "params",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "required": false
+            },
+            {
+              "name": "auth",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "required": false
+            },
+            {
+              "name": "cookies",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "required": false
+            },
+            {
+              "name": "hooks",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "required": false
+            },
+            {
+              "name": "json",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "required": false
+            }
+          ],
+          "methods": {
+            "deregister_hook": {
+              "kind": "method",
+              "signature": "(self, event, hook)",
+              "parameters": [
+                {
+                  "name": "self",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "event",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "hook",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                }
+              ]
+            },
+            "prepare": {
+              "kind": "method",
+              "signature": "(self)",
+              "parameters": [
+                {
+                  "name": "self",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                }
+              ]
+            },
+            "register_hook": {
+              "kind": "method",
+              "signature": "(self, event, hook)",
+              "parameters": [
+                {
+                  "name": "self",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "event",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "hook",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                }
+              ]
+            }
+          },
+          "methods_truncated": false,
+          "properties": {}
+        },
+        "RequestException": {
+          "kind": "class",
+          "signature": "(*args, **kwargs)",
+          "parameters": [
+            {
+              "name": "args",
+              "kind": "VAR_POSITIONAL",
+              "required": true
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "required": true
+            }
+          ],
+          "methods": {
+            "add_note": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            },
+            "with_traceback": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            }
+          },
+          "methods_truncated": false,
+          "properties": {}
+        },
+        "RequestsDependencyWarning": {
+          "kind": "class",
+          "signature": "",
+          "parameters": [],
+          "methods": {
+            "add_note": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            },
+            "with_traceback": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            }
+          },
+          "methods_truncated": false,
+          "properties": {}
+        },
+        "Response": {
+          "kind": "class",
+          "signature": "()",
+          "parameters": [],
+          "methods": {
+            "close": {
+              "kind": "method",
+              "signature": "(self)",
+              "parameters": [
+                {
+                  "name": "self",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                }
+              ]
+            },
+            "iter_content": {
+              "kind": "method",
+              "signature": "(self, chunk_size=1, decode_unicode=False)",
+              "parameters": [
+                {
+                  "name": "self",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "chunk_size",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": false
+                },
+                {
+                  "name": "decode_unicode",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": false
+                }
+              ]
+            },
+            "iter_lines": {
+              "kind": "method",
+              "signature": "(self, chunk_size=512, decode_unicode=False, delimiter=None)",
+              "parameters": [
+                {
+                  "name": "self",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "chunk_size",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": false
+                },
+                {
+                  "name": "decode_unicode",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": false
+                },
+                {
+                  "name": "delimiter",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": false
+                }
+              ]
+            },
+            "json": {
+              "kind": "method",
+              "signature": "(self, **kwargs)",
+              "parameters": [
+                {
+                  "name": "self",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "kwargs",
+                  "kind": "VAR_KEYWORD",
+                  "required": true
+                }
+              ]
+            },
+            "raise_for_status": {
+              "kind": "method",
+              "signature": "(self)",
+              "parameters": [
+                {
+                  "name": "self",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                }
+              ]
+            }
+          },
+          "methods_truncated": false,
+          "properties": {}
+        },
+        "Session": {
+          "kind": "class",
+          "signature": "()",
+          "parameters": [],
+          "methods": {
+            "close": {
+              "kind": "method",
+              "signature": "(self)",
+              "parameters": [
+                {
+                  "name": "self",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                }
+              ]
+            },
+            "delete": {
+              "kind": "method",
+              "signature": "(self, url, **kwargs)",
+              "parameters": [
+                {
+                  "name": "self",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "url",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "kwargs",
+                  "kind": "VAR_KEYWORD",
+                  "required": true
+                }
+              ]
+            },
+            "get": {
+              "kind": "method",
+              "signature": "(self, url, **kwargs)",
+              "parameters": [
+                {
+                  "name": "self",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "url",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "kwargs",
+                  "kind": "VAR_KEYWORD",
+                  "required": true
+                }
+              ]
+            },
+            "get_adapter": {
+              "kind": "method",
+              "signature": "(self, url)",
+              "parameters": [
+                {
+                  "name": "self",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "url",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                }
+              ]
+            },
+            "get_redirect_target": {
+              "kind": "method",
+              "signature": "(self, resp)",
+              "parameters": [
+                {
+                  "name": "self",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "resp",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                }
+              ]
+            },
+            "head": {
+              "kind": "method",
+              "signature": "(self, url, **kwargs)",
+              "parameters": [
+                {
+                  "name": "self",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "url",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "kwargs",
+                  "kind": "VAR_KEYWORD",
+                  "required": true
+                }
+              ]
+            },
+            "merge_environment_settings": {
+              "kind": "method",
+              "signature": "(self, url, proxies, stream, verify, cert)",
+              "parameters": [
+                {
+                  "name": "self",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "url",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "proxies",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "stream",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "verify",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "cert",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                }
+              ]
+            },
+            "mount": {
+              "kind": "method",
+              "signature": "(self, prefix, adapter)",
+              "parameters": [
+                {
+                  "name": "self",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "prefix",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "adapter",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                }
+              ]
+            },
+            "options": {
+              "kind": "method",
+              "signature": "(self, url, **kwargs)",
+              "parameters": [
+                {
+                  "name": "self",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "url",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "kwargs",
+                  "kind": "VAR_KEYWORD",
+                  "required": true
+                }
+              ]
+            },
+            "patch": {
+              "kind": "method",
+              "signature": "(self, url, data=None, **kwargs)",
+              "parameters": [
+                {
+                  "name": "self",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "url",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "data",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": false
+                },
+                {
+                  "name": "kwargs",
+                  "kind": "VAR_KEYWORD",
+                  "required": true
+                }
+              ]
+            },
+            "post": {
+              "kind": "method",
+              "signature": "(self, url, data=None, json=None, **kwargs)",
+              "parameters": [
+                {
+                  "name": "self",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "url",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "data",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": false
+                },
+                {
+                  "name": "json",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": false
+                },
+                {
+                  "name": "kwargs",
+                  "kind": "VAR_KEYWORD",
+                  "required": true
+                }
+              ]
+            },
+            "prepare_request": {
+              "kind": "method",
+              "signature": "(self, request)",
+              "parameters": [
+                {
+                  "name": "self",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "request",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                }
+              ]
+            },
+            "put": {
+              "kind": "method",
+              "signature": "(self, url, data=None, **kwargs)",
+              "parameters": [
+                {
+                  "name": "self",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "url",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "data",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": false
+                },
+                {
+                  "name": "kwargs",
+                  "kind": "VAR_KEYWORD",
+                  "required": true
+                }
+              ]
+            },
+            "rebuild_auth": {
+              "kind": "method",
+              "signature": "(self, prepared_request, response)",
+              "parameters": [
+                {
+                  "name": "self",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "prepared_request",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "response",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                }
+              ]
+            },
+            "rebuild_method": {
+              "kind": "method",
+              "signature": "(self, prepared_request, response)",
+              "parameters": [
+                {
+                  "name": "self",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "prepared_request",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "response",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                }
+              ]
+            },
+            "rebuild_proxies": {
+              "kind": "method",
+              "signature": "(self, prepared_request, proxies)",
+              "parameters": [
+                {
+                  "name": "self",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "prepared_request",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "proxies",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                }
+              ]
+            },
+            "request": {
+              "kind": "method",
+              "signature": "(self, method, url, params=None, data=None, headers=None, cookies=None, files=None, auth=None, timeout=None, allow_redirects=True, proxies=None, hooks=None, stream=None, verify=None, cert=None, json=None)",
+              "parameters": [
+                {
+                  "name": "self",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "method",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "url",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "params",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": false
+                },
+                {
+                  "name": "data",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": false
+                },
+                {
+                  "name": "headers",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": false
+                },
+                {
+                  "name": "cookies",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": false
+                },
+                {
+                  "name": "files",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": false
+                },
+                {
+                  "name": "auth",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": false
+                },
+                {
+                  "name": "timeout",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": false
+                },
+                {
+                  "name": "allow_redirects",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": false
+                },
+                {
+                  "name": "proxies",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": false
+                },
+                {
+                  "name": "hooks",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": false
+                },
+                {
+                  "name": "stream",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": false
+                },
+                {
+                  "name": "verify",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": false
+                },
+                {
+                  "name": "cert",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": false
+                },
+                {
+                  "name": "json",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": false
+                }
+              ]
+            },
+            "resolve_redirects": {
+              "kind": "method",
+              "signature": "(self, resp, req, stream=False, timeout=None, verify=True, cert=None, proxies=None, yield_requests=False, **adapter_kwargs)",
+              "parameters": [
+                {
+                  "name": "self",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "resp",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "req",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "stream",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": false
+                },
+                {
+                  "name": "timeout",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": false
+                },
+                {
+                  "name": "verify",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": false
+                },
+                {
+                  "name": "cert",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": false
+                },
+                {
+                  "name": "proxies",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": false
+                },
+                {
+                  "name": "yield_requests",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": false
+                },
+                {
+                  "name": "adapter_kwargs",
+                  "kind": "VAR_KEYWORD",
+                  "required": true
+                }
+              ]
+            },
+            "send": {
+              "kind": "method",
+              "signature": "(self, request, **kwargs)",
+              "parameters": [
+                {
+                  "name": "self",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "request",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "kwargs",
+                  "kind": "VAR_KEYWORD",
+                  "required": true
+                }
+              ]
+            },
+            "should_strip_auth": {
+              "kind": "method",
+              "signature": "(self, old_url, new_url)",
+              "parameters": [
+                {
+                  "name": "self",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "old_url",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                },
+                {
+                  "name": "new_url",
+                  "kind": "POSITIONAL_OR_KEYWORD",
+                  "required": true
+                }
+              ]
+            }
+          },
+          "methods_truncated": false,
+          "properties": {}
+        },
+        "Timeout": {
+          "kind": "class",
+          "signature": "(*args, **kwargs)",
+          "parameters": [
+            {
+              "name": "args",
+              "kind": "VAR_POSITIONAL",
+              "required": true
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "required": true
+            }
+          ],
+          "methods": {
+            "add_note": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            },
+            "with_traceback": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            }
+          },
+          "methods_truncated": false,
+          "properties": {}
+        },
+        "TooManyRedirects": {
+          "kind": "class",
+          "signature": "(*args, **kwargs)",
+          "parameters": [
+            {
+              "name": "args",
+              "kind": "VAR_POSITIONAL",
+              "required": true
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "required": true
+            }
+          ],
+          "methods": {
+            "add_note": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            },
+            "with_traceback": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            }
+          },
+          "methods_truncated": false,
+          "properties": {}
+        },
+        "URLRequired": {
+          "kind": "class",
+          "signature": "(*args, **kwargs)",
+          "parameters": [
+            {
+              "name": "args",
+              "kind": "VAR_POSITIONAL",
+              "required": true
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "required": true
+            }
+          ],
+          "methods": {
+            "add_note": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            },
+            "with_traceback": {
+              "kind": "method",
+              "signature": "",
+              "parameters": []
+            }
+          },
+          "methods_truncated": false,
+          "properties": {}
+        },
+        "check_compatibility": {
+          "kind": "function",
+          "signature": "(urllib3_version, chardet_version, charset_normalizer_version)",
+          "parameters": [
+            {
+              "name": "urllib3_version",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "required": true
+            },
+            {
+              "name": "chardet_version",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "required": true
+            },
+            {
+              "name": "charset_normalizer_version",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "required": true
+            }
+          ]
+        },
+        "delete": {
+          "kind": "function",
+          "signature": "(url, **kwargs)",
+          "parameters": [
+            {
+              "name": "url",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "required": true
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "required": true
+            }
+          ]
+        },
+        "get": {
+          "kind": "function",
+          "signature": "(url, params=None, **kwargs)",
+          "parameters": [
+            {
+              "name": "url",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "required": true
+            },
+            {
+              "name": "params",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "required": false
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "required": true
+            }
+          ]
+        },
+        "head": {
+          "kind": "function",
+          "signature": "(url, **kwargs)",
+          "parameters": [
+            {
+              "name": "url",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "required": true
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "required": true
+            }
+          ]
+        },
+        "options": {
+          "kind": "function",
+          "signature": "(url, **kwargs)",
+          "parameters": [
+            {
+              "name": "url",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "required": true
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "required": true
+            }
+          ]
+        },
+        "patch": {
+          "kind": "function",
+          "signature": "(url, data=None, **kwargs)",
+          "parameters": [
+            {
+              "name": "url",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "required": true
+            },
+            {
+              "name": "data",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "required": false
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "required": true
+            }
+          ]
+        },
+        "post": {
+          "kind": "function",
+          "signature": "(url, data=None, json=None, **kwargs)",
+          "parameters": [
+            {
+              "name": "url",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "required": true
+            },
+            {
+              "name": "data",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "required": false
+            },
+            {
+              "name": "json",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "required": false
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "required": true
+            }
+          ]
+        },
+        "put": {
+          "kind": "function",
+          "signature": "(url, data=None, **kwargs)",
+          "parameters": [
+            {
+              "name": "url",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "required": true
+            },
+            {
+              "name": "data",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "required": false
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "required": true
+            }
+          ]
+        },
+        "request": {
+          "kind": "function",
+          "signature": "(method, url, **kwargs)",
+          "parameters": [
+            {
+              "name": "method",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "required": true
+            },
+            {
+              "name": "url",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "required": true
+            },
+            {
+              "name": "kwargs",
+              "kind": "VAR_KEYWORD",
+              "required": true
+            }
+          ]
+        },
+        "session": {
+          "kind": "function",
+          "signature": "()",
+          "parameters": []
+        }
+      },
+      "members_truncated": false
+    }
+  }
+}

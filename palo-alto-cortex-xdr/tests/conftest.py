@@ -44,11 +44,10 @@ def execution_uuid():
 @pytest.fixture
 def mock_oaev_api():
     with patch("pyoaev.daemons.CollectorDaemon", autospec=True):
-        with patch(
-            "src.collector.expectation_manager.OpenAEV"
-        ) as mock_api_class_em, patch(
-            "src.collector.trace_manager.OpenAEV"
-        ) as mock_api_class_tm:
+        with (
+            patch("src.collector.expectation_manager.OpenAEV") as mock_api_class_em,
+            patch("src.collector.trace_manager.OpenAEV") as mock_api_class_tm,
+        ):
             mock_api_instance = mock_api_class_em.return_value
             mock_api_class_tm.return_value = mock_api_instance
             yield mock_api_instance

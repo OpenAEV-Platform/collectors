@@ -35,7 +35,7 @@ Do not hesitate to check the `CONTRIBUTING.md` for more details regarding the co
 ## Requirements
 
 - OpenAEV Platform
-- Python 3.11+
+- Python 3.14+
 
 ## Configuration
 

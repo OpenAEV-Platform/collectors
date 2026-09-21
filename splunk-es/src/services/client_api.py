@@ -221,7 +221,7 @@ class SplunkESClientAPI:
             )
             return alerts
 
-        except (SplunkESValidationError, SplunkESAPIError, SplunkESAuthenticationError):
+        except SplunkESValidationError, SplunkESAPIError, SplunkESAuthenticationError:
             raise
         except (ConnectionError, Timeout) as e:
             raise SplunkESNetworkError(f"Network error during fetch: {e}") from e
@@ -571,7 +571,7 @@ class SplunkESClientAPI:
                 )
                 return []
 
-        except (SplunkESValidationError, SplunkESAPIError, SplunkESAuthenticationError):
+        except SplunkESValidationError, SplunkESAPIError, SplunkESAuthenticationError:
             raise
         except (ConnectionError, Timeout) as e:
             raise SplunkESNetworkError(f"Network error during fetch: {e}") from e

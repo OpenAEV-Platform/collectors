@@ -486,7 +486,7 @@ class QRadarClientAPI:
                         f"{LOG_PREFIX} No events found after all retry attempts"
                     )
                     return []
-            except (QRadarAuthenticationError, QRadarValidationError):
+            except QRadarAuthenticationError, QRadarValidationError:
                 raise
             except (
                 QRadarAPIError,
