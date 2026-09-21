@@ -171,7 +171,12 @@ for readme_path in sorted(Path(".").glob("*/README.md")):
         with readme_path.open("w", encoding="utf-8", newline="") as file:
             file.write(updated_content)
 
-for pyproject_path in sorted(Path(".").glob("*/pyproject.toml")):
+pyproject_paths = [
+    Path("pyproject.toml"),
+    *sorted(Path(".").glob("*/pyproject.toml")),
+]
+
+for pyproject_path in pyproject_paths:
     with pyproject_path.open("r", encoding="utf-8", newline="") as file:
         content = file.read()
 
@@ -196,13 +201,11 @@ subprocess.run(
     ["git", "commit", "-a", "-m", f"[all] Release {new_version}"],
     check=True,
     stdout=subprocess.DEVNULL,
-    stderr=subprocess.DEVNULL,
 )
 subprocess.run(
     ["git", "push", "origin", branch_collectors],
     check=True,
     stdout=subprocess.DEVNULL,
-    stderr=subprocess.DEVNULL,
 )
 
 logging.info("[collectors] Tagging")
@@ -214,7 +217,6 @@ subprocess.run(
     ["git", "push", "-f", "--tags"],
     check=True,
     stdout=subprocess.DEVNULL,
-    stderr=subprocess.DEVNULL,
 )
 
 logging.info("[collectors] Generating release")
@@ -222,7 +224,6 @@ subprocess.run(
     ["gren", "release"],
     check=True,
     stdout=subprocess.DEVNULL,
-    stderr=subprocess.DEVNULL,
 )
 
 # Modify the release note
