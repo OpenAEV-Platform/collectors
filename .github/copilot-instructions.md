@@ -70,7 +70,7 @@ poetry run python -m unittest
 1. **ensure_formatting** - black and isort checks
 2. **linter** - flake8
 3. **test** - crowdstrike collector tests (unittest)
-4. **build_docker_images** - All collectors (Python 3.14, Poetry 2.3.2)
+4. **build_docker_images** - All collectors (python:3.14-alpine, Python 3.14, Poetry 2.3.2)
 5. **publish_images** - Docker Hub (main/release/tags)
 
 **Branch strategy:**
@@ -86,7 +86,7 @@ collector-name/
 ├── collector_name/          # Python package
 │   └── openaev_<name>.py   # Entry point
 ├── test/ or tests/          # Tests (unittest)
-├── Dockerfile              # Python 3.14, Poetry 2.3.2
+├── Dockerfile              # python:3.14-alpine, Python 3.14, Poetry 2.3.2
 ├── pyproject.toml         # Project metadata and dependencies
 └── README.md
 ```
