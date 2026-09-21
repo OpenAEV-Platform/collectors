@@ -12,7 +12,13 @@ collector:
   log_level: 'error'
   microsoft_sentinel_tenant_id: ''
   microsoft_sentinel_client_id: ''
-  microsoft_sentinel_client_secret: ''
+  microsoft_sentinel_use_certificate_auth: false
+  microsoft_sentinel_client_secret: ''  # required unless microsoft_sentinel_use_certificate_auth is true
+  # required when microsoft_sentinel_use_certificate_auth is true
+  # microsoft_sentinel_client_cert_data: "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"
+  # microsoft_sentinel_client_cert_thumbprint: "AB12CD34EF56AB12CD34EF56AB12CD34EF56AB12"
+  # optional, when the private key is encrypted
+  # microsoft_sentinel_client_cert_passphrase: ''
   microsoft_sentinel_subscription_id: ''
   microsoft_sentinel_workspace_id: ''
   microsoft_sentinel_resource_group: ''

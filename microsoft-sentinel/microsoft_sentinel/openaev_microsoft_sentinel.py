@@ -39,6 +39,18 @@ class OpenAEVMicrosoftSentinel(CollectorDaemon):
             self._configuration.get("microsoft_sentinel_tenant_id"),
             self._configuration.get("microsoft_sentinel_client_id"),
             self._configuration.get("microsoft_sentinel_client_secret"),
+            use_certificate_auth=bool(
+                self._configuration.get("microsoft_sentinel_use_certificate_auth")
+            ),
+            client_cert_data=self._configuration.get(
+                "microsoft_sentinel_client_cert_data"
+            ),
+            client_cert_thumbprint=self._configuration.get(
+                "microsoft_sentinel_client_cert_thumbprint"
+            ),
+            client_cert_passphrase=self._configuration.get(
+                "microsoft_sentinel_client_cert_passphrase"
+            ),
         )
 
         self.scanning_delta = 45
