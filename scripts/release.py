@@ -93,6 +93,7 @@ def github_request_json(
 
     return data
 
+
 os.environ["DRONE_COMMIT_AUTHOR"] = "Filigran-Automation"
 os.environ["GIT_AUTHOR_NAME"] = "Filigran Automation"
 os.environ["GIT_AUTHOR_EMAIL"] = "automation@filigran.io"
@@ -231,9 +232,7 @@ release_data = github_request_json(
     f"{github_api_url}/releases/latest",
     required_fields=("id", "body"),
 )
-if not isinstance(release_data["id"], int) or not isinstance(
-    release_data["body"], str
-):
+if not isinstance(release_data["id"], int) or not isinstance(release_data["body"], str):
     raise RuntimeError("GitHub latest release response has invalid field types")
 release_body = release_data["body"]
 
