@@ -171,10 +171,7 @@ for readme_path in sorted(Path(".").glob("*/README.md")):
         with readme_path.open("w", encoding="utf-8", newline="") as file:
             file.write(updated_content)
 
-pyproject_paths = [
-    Path("pyproject.toml"),
-    *sorted(Path(".").glob("*/pyproject.toml")),
-]
+pyproject_paths = Path(".").glob("**/pyproject.toml")
 
 for pyproject_path in pyproject_paths:
     with pyproject_path.open("r", encoding="utf-8", newline="") as file:
