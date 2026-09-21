@@ -25,7 +25,8 @@ This step installs all collectors within the repository inside a single poetry e
 to work with all collectors at once, it is possible to install each collector within its own poetry environment. Refer
 to each collector's individual README for instructions.
 
-In this repository, you need to have `python >= 3.11` and `poetry >= 2.1`. Install the development environment with:
+The global development environment installs every collector and therefore requires
+`Python >= 3.14` and `Poetry >= 2.3.2`. Install it with:
 
 > [!NOTE]
 > For Windows hosts: as of writing, the [msgraph-python-sdk has the following note](https://github.com/microsoftgraph/msgraph-sdk-python/blob/65d88850202e9ea75477583e76e75dfbf6d75859/README.md#1-installation):

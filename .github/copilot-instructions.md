@@ -5,8 +5,8 @@
 **OpenAEV collectors** - Python integrations for security tools (EDR, XDR, SIEM, etc.) to collect data for OpenAEV platform. Monorepo with 15 collectors.
 
 **Key Facts:**
-- **Language**: Python 3.11+ (CI: Python 3.13)
-- **Package Manager**: Poetry 2.1.3+
+- **Language**: Python 3.14 for the global environment and CI; individual collectors may support Python 3.13+
+- **Package Manager**: Poetry 2.3.2+
 - **CI/CD**: CircleCI
 - **Collectors**: 8 in root pyproject.toml (atomic-red-team, crowdstrike, microsoft-defender, microsoft-entra, microsoft-sentinel, mitre-attack, nvd-nist-cve, tanium-threat-response), 7 standalone (aws-resources, google-workspace, microsoft-azure, microsoft-intune, openaev, sentinelone, splunk-es)
 
@@ -70,7 +70,7 @@ poetry run python -m unittest
 1. **ensure_formatting** - black and isort checks
 2. **linter** - flake8
 3. **test** - crowdstrike collector tests (unittest)
-4. **build_docker_images** - All collectors (python:3.13-alpine, Poetry 2.1.3)
+4. **build_docker_images** - All collectors (Python 3.14, Poetry 2.3.2)
 5. **publish_images** - Docker Hub (main/release/tags)
 
 **Branch strategy:**
@@ -86,7 +86,7 @@ collector-name/
 ├── collector_name/          # Python package
 │   └── openaev_<name>.py   # Entry point
 ├── test/ or tests/          # Tests (unittest)
-├── Dockerfile              # python:3.13-alpine, Poetry 2.1.3
+├── Dockerfile              # Python 3.14, Poetry 2.3.2
 ├── pyproject.toml         # Project metadata and dependencies
 └── README.md
 ```
@@ -114,7 +114,7 @@ collector-name/
 - **Local pyoaev development**: Clone `client-python` next to this repository and install it with `poetry run pip install --editable ../client-python --force-reinstall`
 - **Import errors**: Run `poetry install`
 - **Black/isort conflicts**: Use `isort --profile black`
-- **Docker build fails**: Check Poetry 2.1.3 in Dockerfile
+- **Docker build fails**: Check Poetry 2.3.2 and Python 3.14 in the Dockerfile
 - **CI formatting fails**: Run `black .` and `isort --profile black .` locally
 
 ## Key Files

@@ -45,11 +45,10 @@ def execution_uuid():
 @pytest.fixture
 def mock_oaev_api():
     with patch("pyoaev.daemons.CollectorDaemon", autospec=True):
-        with patch(
-            "src.collector.expectation_manager.OpenAEV"
-        ) as mock_api_class_em, patch(
-            "src.collector.trace_manager.OpenAEV"
-        ) as mock_api_class_tm:
+        with (
+            patch("src.collector.expectation_manager.OpenAEV") as mock_api_class_em,
+            patch("src.collector.trace_manager.OpenAEV") as mock_api_class_tm,
+        ):
             mock_api_instance = mock_api_class_em.return_value
             mock_api_class_tm.return_value = mock_api_instance
             yield mock_api_instance
@@ -106,11 +105,14 @@ def alerts(execution_uuid):
         indicators=IndicatorResults(oaev_implant=[implant_name]),
     )
 
-    with patch(
-        "src.services.client_api.PaloAltoCortexXSOARClientAPI.search_incidents",
-        return_value=alerts_response,
-    ), patch(
-        "src.services.alert_fetcher.extract_from_custom_fields",
-        return_value=[incident_result],
+    with (
+        patch(
+            "src.services.client_api.PaloAltoCortexXSOARClientAPI.search_incidents",
+            return_value=alerts_response,
+        ),
+        patch(
+            "src.services.alert_fetcher.extract_from_custom_fields",
+            return_value=[incident_result],
+        ),
     ):
         yield alert

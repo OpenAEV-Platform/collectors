@@ -504,7 +504,7 @@ class LogRhythmClientAPI:
                         f"{LOG_PREFIX} No events found after all retry attempts"
                     )
                     return []
-            except (LogRhythmAuthenticationError, LogRhythmValidationError):
+            except LogRhythmAuthenticationError, LogRhythmValidationError:
                 raise
             except (
                 LogRhythmAPIError,
