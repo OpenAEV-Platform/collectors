@@ -6,7 +6,7 @@ build-backend = "poetry.core.masonry.api"
 
 [project]
 name = "openaev-hiddenlayer-collector"
-version = "3.260917.1"
+version = "3.260921.0"
 description = "A Collector validating HiddenLayer AI Runtime Security (AIDR) detection/prevention of AI adversarial injects"
 readme = "README.md"
 authors = [

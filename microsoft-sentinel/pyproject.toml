@@ -6,7 +6,7 @@ build-backend = "poetry.core.masonry.api"
 
 [project]
 name = "openaev-microsoft-sentinel-collector"
-version = "3.260917.1"
+version = "3.260921.0"
 description = "A Collector for Microsoft Sentinel SIEM solution"
 readme = "README.md"
 authors = [
