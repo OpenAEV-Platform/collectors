@@ -35,7 +35,7 @@ packages = [
 pydantic = ">=2.13,<3"
 pydantic-settings = ">=2.14,<3"
 requests = ">=2.33,<3"
-pyoaev = "3.260904.0"
+pyoaev = "3.260917.1"
 google-api-python-client = "^2.149.0"
 google-auth = "^2.35.0"
 google-auth-httplib2 = "^0.2.0"

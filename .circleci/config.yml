@@ -332,10 +332,17 @@ commands:
           name: Build collector images
           working_directory: ~/openaev/<< parameters.collector_name >>
           command: |
-            EXTRA=""
+            PYOAEV_REF=""
 
-            if [ "${CIRCLE_BRANCH}" = "main" ]; then
-              EXTRA="--build-arg PYOAEV_GIT_BRANCH_OVERRIDE=${CIRCLE_BRANCH}"
+            if [ -n "${CIRCLE_TAG}" ]; then
+              PYOAEV_REF="${CIRCLE_TAG}"
+            elif [ "${CIRCLE_BRANCH}" = "main" ]; then
+              PYOAEV_REF="main"
+            fi
+
+            EXTRA=""
+            if [ -n "${PYOAEV_REF}" ]; then
+              EXTRA="--build-arg PYOAEV_GIT_REF_OVERRIDE=${PYOAEV_REF}"
             fi
 
             echo "Building collector: << parameters.collector_name >>"

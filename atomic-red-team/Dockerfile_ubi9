@@ -21,7 +21,7 @@ RUN set -eux; \
 
 FROM base AS runner
 
-ARG PYOAEV_GIT_BRANCH_OVERRIDE=""
+ARG PYOAEV_GIT_REF_OVERRIDE=""
 
 WORKDIR /collector
 COPY --from=builder /collector/ ./
@@ -29,11 +29,11 @@ COPY --from=builder /collector/ ./
 RUN set -eux; \
     microdnf -y --setopt=install_weak_deps=0 install python3.14-pip; \
     (cd dist && pip3.14 install --no-cache-dir "$(ls *.whl)"); \
-    if [ -n "${PYOAEV_GIT_BRANCH_OVERRIDE}" ] ; then \
+    if [ -n "${PYOAEV_GIT_REF_OVERRIDE}" ] ; then \
         echo "Forcing specific version of client-python"; \
         microdnf -y --setopt=install_weak_deps=0 install git-core; \
         pip3.14 uninstall -y pyoaev; \
-        pip3.14 install git+https://github.com/OpenAEV-Platform/client-python@${PYOAEV_GIT_BRANCH_OVERRIDE}; \
+        pip3.14 install git+https://github.com/OpenAEV-Platform/client-python@${PYOAEV_GIT_REF_OVERRIDE}; \
         microdnf -y remove git-core; \
     fi; \
     microdnf -y remove python3.14-pip; \
