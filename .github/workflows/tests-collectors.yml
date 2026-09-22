@@ -20,6 +20,8 @@ jobs:
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
       has_tests: ${{ steps.set-matrix.outputs.has_tests }}
+      runtime_matrix: ${{ steps.set-matrix.outputs.runtime_matrix }}
+      has_shipped: ${{ steps.set-matrix.outputs.has_shipped }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -79,3 +81,45 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           report_type: test_results
+
+  # The test job above force-installs pyoaev from git main, so it never exercises the pyoaev
+  # release the image actually ships (the PyPI pin in pyproject.toml). This job installs exactly
+  # what the Dockerfile installs, on the Python version the Dockerfile's base image ships, and
+  # boots the pieces that die first when the two drift (every image from 3.260917.0 to 3.260921.0
+  # crashed at start-up on Python 3.14 with a pyoaev pinned before its 3.14 fix).
+  smoke-pinned-runtime:
+    name: Pinned runtime ${{ matrix.name }}
+    needs: detect-test-files
+    if: needs.detect-test-files.outputs.has_shipped == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.detect-test-files.outputs.runtime_matrix) }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read the Python version of the image base
+        id: image-python
+        run: |
+          version="$(sed -nE 's/^FROM[[:space:]]+python:([0-9]+\.[0-9]+).*/\1/p' "${{ matrix.collector }}/Dockerfile" | head -n 1)"
+          if [ -z "$version" ]; then
+            echo "Could not read the Python version from ${{ matrix.collector }}/Dockerfile" >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ steps.image-python.outputs.version }}
+
+      - name: Install Poetry
+        run: pip install poetry==2.3.2
+
+      - name: Install the pinned runtime dependencies (same command as the Dockerfile)
+        working-directory: ${{ matrix.collector }}
+        run: poetry install --only main --no-root
+
+      - name: Smoke-test the pinned pyoaev on the image interpreter
+        working-directory: ${{ matrix.collector }}
+        run: poetry run python ../.github/scripts/smoke_pinned_runtime.py .
