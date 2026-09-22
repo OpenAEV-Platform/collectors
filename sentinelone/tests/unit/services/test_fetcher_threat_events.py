@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import MagicMock, ANY, patch, sentinel
+from unittest.mock import MagicMock, patch, sentinel
 
 import src.services.fetcher_threat_events as module
 
@@ -27,7 +27,9 @@ class TestFetcherThreatEvents(unittest.TestCase):
         self.assertEqual(all_events, m_fetch_all_events_for_threat.return_value)
 
     @patch.object(module.FetcherThreatEvents, "_fetch_all_events_for_threat")
-    def test_fetch_events_for_threat_fetching_error(self, m_fetch_all_events_for_threat):
+    def test_fetch_events_for_threat_fetching_error(
+        self, m_fetch_all_events_for_threat
+    ):
         client_api = sentinel.client_api
         fetcher = module.FetcherThreatEvents(client_api)
 

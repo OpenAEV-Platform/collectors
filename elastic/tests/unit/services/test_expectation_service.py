@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import ANY, MagicMock, patch, sentinel
+from unittest.mock import MagicMock, patch, sentinel
 
 import src.services.expectation_service as module
 

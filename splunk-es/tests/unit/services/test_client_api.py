@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import MagicMock, ANY, patch, sentinel
+from unittest.mock import MagicMock, patch, sentinel
 
 import src.services.client_api as module
 
@@ -7,7 +7,9 @@ import src.services.client_api as module
 class TestSplunkESClientAPI(unittest.TestCase):
     @patch.object(module.SplunkESClientAPI, "_validate_template_placeholders")
     @patch.object(module.SplunkESClientAPI, "_create_session")
-    def test_init_minimal_config(self, m_create_session, m_validate_template_placeholders):
+    def test_init_minimal_config(
+        self, m_create_session, m_validate_template_placeholders
+    ):
         config = MagicMock()
         config_splunk_es = MagicMock()
         base_url = MagicMock()
@@ -31,7 +33,10 @@ class TestSplunkESClientAPI(unittest.TestCase):
         self.assertEqual(client_api.alerts_index, sentinel.alerts_index)
         self.assertEqual(client_api.offset, offset.total_seconds.return_value)
         self.assertEqual(client_api.max_retry, sentinel.max_retry)
-        self.assertEqual(client_api.time_window, module.timedelta(hours=module.DEFAULT_TIME_WINDOW_HOURS))
+        self.assertEqual(
+            client_api.time_window,
+            module.timedelta(hours=module.DEFAULT_TIME_WINDOW_HOURS),
+        )
         self.assertEqual(client_api.query_template, module.DEFAULT_QUERY_TEMPLATE)
         m_validate_template_placeholders.assert_not_called()
         m_create_session.assert_called_once()
@@ -73,7 +78,13 @@ class TestSplunkESClientAPI(unittest.TestCase):
     @patch.object(module.SplunkESClientAPI, "_build_search_criteria")
     @patch.object(module.SplunkESClientAPI, "_validate_template_placeholders")
     @patch.object(module.SplunkESClientAPI, "_create_session")
-    def test_fetch_signatures(self, m_create_session, m_validate_template_placeholders, m_build_search_criteria, m_execute_splunk_query_with_retry):
+    def test_fetch_signatures(
+        self,
+        m_create_session,
+        m_validate_template_placeholders,
+        m_build_search_criteria,
+        m_execute_splunk_query_with_retry,
+    ):
         config = MagicMock()
         client_api = module.SplunkESClientAPI(config)
 
@@ -83,14 +94,22 @@ class TestSplunkESClientAPI(unittest.TestCase):
         alert_objects = client_api.fetch_signatures(search_signatures, expectation_type)
 
         m_build_search_criteria.assert_called_with(search_signatures)
-        m_execute_splunk_query_with_retry.assert_called_with(m_build_search_criteria.return_value)
+        m_execute_splunk_query_with_retry.assert_called_with(
+            m_build_search_criteria.return_value
+        )
         self.assertEqual(alert_objects, m_execute_splunk_query_with_retry.return_value)
 
     @patch.object(module.SplunkESClientAPI, "_execute_splunk_query_with_retry")
     @patch.object(module.SplunkESClientAPI, "_build_search_criteria")
     @patch.object(module.SplunkESClientAPI, "_validate_template_placeholders")
     @patch.object(module.SplunkESClientAPI, "_create_session")
-    def test_fetch_signatures_not_detection(self, m_create_session, m_validate_template_placeholders, m_build_search_criteria, m_execute_splunk_query_with_retry):
+    def test_fetch_signatures_not_detection(
+        self,
+        m_create_session,
+        m_validate_template_placeholders,
+        m_build_search_criteria,
+        m_execute_splunk_query_with_retry,
+    ):
         config = MagicMock()
         client_api = module.SplunkESClientAPI(config)
 
@@ -106,7 +125,13 @@ class TestSplunkESClientAPI(unittest.TestCase):
     @patch.object(module.SplunkESClientAPI, "_build_search_criteria")
     @patch.object(module.SplunkESClientAPI, "_validate_template_placeholders")
     @patch.object(module.SplunkESClientAPI, "_create_session")
-    def test_fetch_with_retry(self, m_create_session, m_validate_template_placeholders, m_build_search_criteria, m_execute_splunk_query):
+    def test_fetch_with_retry(
+        self,
+        m_create_session,
+        m_validate_template_placeholders,
+        m_build_search_criteria,
+        m_execute_splunk_query,
+    ):
         config = MagicMock()
         client_api = module.SplunkESClientAPI(config)
 
@@ -118,14 +143,22 @@ class TestSplunkESClientAPI(unittest.TestCase):
         alert_objects = client_api.fetch_with_retry(search_signatures, expectation_type)
 
         m_build_search_criteria.assert_called_with(search_signatures)
-        m_execute_splunk_query.assert_called_with(m_build_search_criteria.return_value, 0)
+        m_execute_splunk_query.assert_called_with(
+            m_build_search_criteria.return_value, 0
+        )
         self.assertEqual(alert_objects, m_execute_splunk_query.return_value)
 
     @patch.object(module.SplunkESClientAPI, "_execute_splunk_query")
     @patch.object(module.SplunkESClientAPI, "_build_search_criteria")
     @patch.object(module.SplunkESClientAPI, "_validate_template_placeholders")
     @patch.object(module.SplunkESClientAPI, "_create_session")
-    def test_fetch_with_retry_not_detection(self, m_create_session, m_validate_template_placeholders, m_build_search_criteria, m_execute_splunk_query):
+    def test_fetch_with_retry_not_detection(
+        self,
+        m_create_session,
+        m_validate_template_placeholders,
+        m_build_search_criteria,
+        m_execute_splunk_query,
+    ):
         config = MagicMock()
         client_api = module.SplunkESClientAPI(config)
 

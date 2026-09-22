@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import ANY, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import src.collector.collector as module
 
@@ -14,9 +14,11 @@ class TestCollector(unittest.TestCase):
     @patch.object(module, "QRadarConfig")
     def test_init(self, m_qradar_config, m_process_callback):
         m_qradar_config.return_value = MagicMock()
-        m_qradar_config.return_value.load.to_daemon_config.return_value = daemon_config_data
+        m_qradar_config.return_value.load.to_daemon_config.return_value = (
+            daemon_config_data
+        )
 
-        collector = module.Collector()
+        module.Collector()
 
         m_qradar_config.assert_called_once()
         m_qradar_config.return_value.load.to_daemon_config.assert_called_once()
@@ -24,7 +26,9 @@ class TestCollector(unittest.TestCase):
     @patch.object(module, "QRadarConfig")
     def test_process_callback(self, m_qradar_config):
         m_qradar_config.return_value = MagicMock()
-        m_qradar_config.return_value.load.to_daemon_config.return_value = daemon_config_data
+        m_qradar_config.return_value.load.to_daemon_config.return_value = (
+            daemon_config_data
+        )
 
         collector = module.Collector()
         expectation_manager = MagicMock()
@@ -34,13 +38,17 @@ class TestCollector(unittest.TestCase):
 
         collector._process_callback()
 
-        expectation_manager.process_expectations.assert_called_with(detection_helper=oaev_detection_helper)
+        expectation_manager.process_expectations.assert_called_with(
+            detection_helper=oaev_detection_helper
+        )
 
     @patch.object(module.os, "_exit")
     @patch.object(module, "QRadarConfig")
     def test_process_callback_keyboard_interrupt(self, m_qradar_config, m_exit):
         m_qradar_config.return_value = MagicMock()
-        m_qradar_config.return_value.load.to_daemon_config.return_value = daemon_config_data
+        m_qradar_config.return_value.load.to_daemon_config.return_value = (
+            daemon_config_data
+        )
 
         collector = module.Collector()
         expectation_manager = MagicMock()
@@ -50,14 +58,18 @@ class TestCollector(unittest.TestCase):
         collector.oaev_detection_helper = oaev_detection_helper
 
         collector._process_callback()
-        expectation_manager.process_expectations.assert_called_with(detection_helper=oaev_detection_helper)
+        expectation_manager.process_expectations.assert_called_with(
+            detection_helper=oaev_detection_helper
+        )
         m_exit.assert_called_with(0)
 
     @patch.object(module.os, "_exit")
     @patch.object(module, "QRadarConfig")
     def test_process_callback_system_exit(self, m_qradar_config, m_exit):
         m_qradar_config.return_value = MagicMock()
-        m_qradar_config.return_value.load.to_daemon_config.return_value = daemon_config_data
+        m_qradar_config.return_value.load.to_daemon_config.return_value = (
+            daemon_config_data
+        )
 
         collector = module.Collector()
         expectation_manager = MagicMock()
@@ -67,5 +79,7 @@ class TestCollector(unittest.TestCase):
         collector.oaev_detection_helper = oaev_detection_helper
 
         collector._process_callback()
-        expectation_manager.process_expectations.assert_called_with(detection_helper=oaev_detection_helper)
+        expectation_manager.process_expectations.assert_called_with(
+            detection_helper=oaev_detection_helper
+        )
         m_exit.assert_called_with(0)

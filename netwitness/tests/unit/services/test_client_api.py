@@ -33,9 +33,14 @@ class TestNetWitnessClientAPI(unittest.TestCase):
         self.assertEqual(client_api.offset, offset.total_seconds.return_value)
         self.assertEqual(client_api.max_retry, sentinel.max_retry)
         self.assertEqual(client_api.verify_ssl, sentinel.verify_ssl)
-        self.assertEqual(client_api.time_window, module.timedelta(hours=module.DEFAULT_TIME_WINDOW_HOURS))
+        self.assertEqual(
+            client_api.time_window,
+            module.timedelta(hours=module.DEFAULT_TIME_WINDOW_HOURS),
+        )
         self.assertEqual(client_api.session, m_create_session.return_value)
-        self.assertIsInstance(client_api.parent_process_parser, module.ParentProcessParser)
+        self.assertIsInstance(
+            client_api.parent_process_parser, module.ParentProcessParser
+        )
 
     @patch.object(module.NetWitnessClientAPI, "_create_session")
     def test_init_full_config(self, m_create_session):
@@ -69,7 +74,9 @@ class TestNetWitnessClientAPI(unittest.TestCase):
         self.assertEqual(client_api.verify_ssl, sentinel.verify_ssl)
         self.assertEqual(client_api.time_window, sentinel.time_window)
         self.assertEqual(client_api.session, m_create_session.return_value)
-        self.assertIsInstance(client_api.parent_process_parser, module.ParentProcessParser)
+        self.assertIsInstance(
+            client_api.parent_process_parser, module.ParentProcessParser
+        )
 
     @patch.object(module, "ipaddress")
     @patch.object(module.NetWitnessClientAPI, "_create_session")
@@ -152,14 +159,18 @@ class TestNetWitnessClientAPI(unittest.TestCase):
         _alerts = [MagicMock()]
         m_execute_query.return_value = _alerts
 
-        alerts = client_api._execute_query_with_retry(search_criteria, max_retries, offset_seconds)
+        alerts = client_api._execute_query_with_retry(
+            search_criteria, max_retries, offset_seconds
+        )
 
         m_execute_query.assert_called_with(search_criteria, 0)
         self.assertEqual(alerts, _alerts)
 
     @patch.object(module.NetWitnessClientAPI, "_execute_query")
     @patch.object(module.NetWitnessClientAPI, "_create_session")
-    def test_execute_query_with_retry_authentication_error(self, m_create_session, m_execute_query):
+    def test_execute_query_with_retry_authentication_error(
+        self, m_create_session, m_execute_query
+    ):
         config_netwitness = MagicMock()
         config_netwitness.base_url = sentinel.base_url
         config_netwitness.token = None
@@ -183,5 +194,7 @@ class TestNetWitnessClientAPI(unittest.TestCase):
         m_execute_query.side_effect = module.NetWitnessAuthenticationError
 
         with self.assertRaises(module.NetWitnessAuthenticationError):
-            client_api._execute_query_with_retry(search_criteria, max_retries, offset_seconds)
+            client_api._execute_query_with_retry(
+                search_criteria, max_retries, offset_seconds
+            )
             m_execute_query.assert_called_with(search_criteria, 0)

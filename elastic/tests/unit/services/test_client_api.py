@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import MagicMock, ANY, patch, sentinel
+from unittest.mock import MagicMock, patch, sentinel
 
 import src.services.client_api as module
 
@@ -32,10 +32,15 @@ class TestElasticClientAPI(unittest.TestCase):
         self.assertEqual(client_api.offset, offset.total_seconds.return_value)
         self.assertEqual(client_api.max_retry, sentinel.max_retry)
         self.assertEqual(client_api.verify_ssl, sentinel.verify_ssl)
-        self.assertEqual(client_api.time_window, module.timedelta(hours=module.DEFAULT_TIME_WINDOW_HOURS))
+        self.assertEqual(
+            client_api.time_window,
+            module.timedelta(hours=module.DEFAULT_TIME_WINDOW_HOURS),
+        )
         m_create_session.assert_called_once()
         self.assertEqual(client_api.session, m_create_session.return_value)
-        self.assertIsInstance(client_api.parent_process_parser, module.ParentProcessParser)
+        self.assertIsInstance(
+            client_api.parent_process_parser, module.ParentProcessParser
+        )
 
     @patch.object(module.ElasticClientAPI, "_create_session")
     def test_init_full_config(self, m_create_session):
@@ -69,7 +74,9 @@ class TestElasticClientAPI(unittest.TestCase):
         self.assertEqual(client_api.time_window, sentinel.time_window)
         m_create_session.assert_called_once()
         self.assertEqual(client_api.session, m_create_session.return_value)
-        self.assertIsInstance(client_api.parent_process_parser, module.ParentProcessParser)
+        self.assertIsInstance(
+            client_api.parent_process_parser, module.ParentProcessParser
+        )
 
     @patch.object(module, "ElasticResponse")
     @patch.object(module.ElasticClientAPI, "_build_query")
@@ -109,13 +116,19 @@ class TestElasticClientAPI(unittest.TestCase):
             json=m_build_query.return_value,
             timeout=module.REQUEST_TIMEOUT_SECONDS,
         )
-        m_elastic_response.from_raw_response.assert_called_with(response.json.return_value)
-        self.assertEqual(alerts, m_elastic_response.from_raw_response.return_value.results)
+        m_elastic_response.from_raw_response.assert_called_with(
+            response.json.return_value
+        )
+        self.assertEqual(
+            alerts, m_elastic_response.from_raw_response.return_value.results
+        )
 
     @patch.object(module, "ElasticResponse")
     @patch.object(module.ElasticClientAPI, "_build_query")
     @patch.object(module.ElasticClientAPI, "_create_session")
-    def test_execute_query_authentication_error(self, m_create_session, m_build_query, m_elastic_response):
+    def test_execute_query_authentication_error(
+        self, m_create_session, m_build_query, m_elastic_response
+    ):
         config = MagicMock()
         config_elastic = MagicMock()
         base_url = MagicMock()
@@ -149,7 +162,7 @@ class TestElasticClientAPI(unittest.TestCase):
                 f"{base_url}/{sentinel.alerts_index}/_search",
                 json=m_build_query.return_value,
                 timeout=module.REQUEST_TIMEOUT_SECONDS,
-                )
+            )
         m_elastic_response.from_raw_response.assert_not_called()
 
     @patch.object(module.ElasticClientAPI, "_execute_query")
@@ -186,7 +199,9 @@ class TestElasticClientAPI(unittest.TestCase):
     @patch.object(module.ElasticClientAPI, "_execute_query")
     @patch.object(module.time, "sleep")
     @patch.object(module.ElasticClientAPI, "_create_session")
-    def test_execute_query_with_retry_authentication_error(self, m_create_session, m_sleep, m_execute_query):
+    def test_execute_query_with_retry_authentication_error(
+        self, m_create_session, m_sleep, m_execute_query
+    ):
         config = MagicMock()
         config_elastic = MagicMock()
         base_url = MagicMock()

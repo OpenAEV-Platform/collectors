@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import ANY, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import src.collector.collector as module
 
@@ -16,7 +16,7 @@ class TestCollector(unittest.TestCase):
         m_config_loader.return_value = MagicMock()
         m_config_loader.return_value.to_daemon_config.return_value = daemon_config_data
 
-        collector = module.Collector()
+        module.Collector()
 
         m_config_loader.assert_called_once()
         m_config_loader.return_value.to_daemon_config.assert_called_once()
@@ -34,7 +34,9 @@ class TestCollector(unittest.TestCase):
 
         collector._process_callback()
 
-        expectation_manager.process_expectations.assert_called_with(detection_helper=oaev_detection_helper)
+        expectation_manager.process_expectations.assert_called_with(
+            detection_helper=oaev_detection_helper
+        )
 
     @patch.object(module.os, "_exit")
     @patch.object(module, "ConfigLoader")
@@ -50,7 +52,9 @@ class TestCollector(unittest.TestCase):
         collector.oaev_detection_helper = oaev_detection_helper
 
         collector._process_callback()
-        expectation_manager.process_expectations.assert_called_with(detection_helper=oaev_detection_helper)
+        expectation_manager.process_expectations.assert_called_with(
+            detection_helper=oaev_detection_helper
+        )
         m_exit.assert_called_with(0)
 
     @patch.object(module.os, "_exit")
@@ -67,5 +71,7 @@ class TestCollector(unittest.TestCase):
         collector.oaev_detection_helper = oaev_detection_helper
 
         collector._process_callback()
-        expectation_manager.process_expectations.assert_called_with(detection_helper=oaev_detection_helper)
+        expectation_manager.process_expectations.assert_called_with(
+            detection_helper=oaev_detection_helper
+        )
         m_exit.assert_called_with(0)

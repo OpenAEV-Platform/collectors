@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import ANY, MagicMock, patch, sentinel
+from unittest.mock import MagicMock, patch
 
 import src.services.utils.signature_extractor as module
 

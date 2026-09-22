@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import ANY, MagicMock, patch, sentinel
+from unittest.mock import MagicMock, patch, sentinel
 
 import src.services.expectation_service as module
 
@@ -14,8 +14,12 @@ class TestSplunkESExpectationService(unittest.TestCase):
 
         m_splunk_es_client_api.assert_called_with(config)
         self.assertIsInstance(expectation_service.converter, module.Converter)
-        self.assertIsInstance(expectation_service.parent_process_parser, module.ParentProcessParser)
-        self.assertIsInstance(expectation_service._regex_engine, module.RegexSignatureEngine)
+        self.assertIsInstance(
+            expectation_service.parent_process_parser, module.ParentProcessParser
+        )
+        self.assertIsInstance(
+            expectation_service._regex_engine, module.RegexSignatureEngine
+        )
         self.assertEqual(expectation_service.time_window, module.timedelta(hours=1))
         self.assertEqual(expectation_service.max_retry, 3)
         self.assertEqual(expectation_service.offset, 30)
@@ -34,8 +38,12 @@ class TestSplunkESExpectationService(unittest.TestCase):
 
         m_splunk_es_client_api.assert_called_with(config)
         self.assertIsInstance(expectation_service.converter, module.Converter)
-        self.assertIsInstance(expectation_service.parent_process_parser, module.ParentProcessParser)
-        self.assertIsInstance(expectation_service._regex_engine, module.RegexSignatureEngine)
+        self.assertIsInstance(
+            expectation_service.parent_process_parser, module.ParentProcessParser
+        )
+        self.assertIsInstance(
+            expectation_service._regex_engine, module.RegexSignatureEngine
+        )
         self.assertEqual(expectation_service.time_window, sentinel.time_window)
         self.assertEqual(expectation_service.max_retry, sentinel.max_retry)
         self.assertEqual(expectation_service.offset, offset.total_seconds.return_value)

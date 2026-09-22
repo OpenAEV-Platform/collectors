@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import MagicMock, sentinel, patch
+from unittest.mock import MagicMock, patch, sentinel
 
 import src.services.expectation_service as module
 
@@ -14,7 +14,9 @@ class TestQRadarExpectationService(unittest.TestCase):
 
         self.assertEqual(expectation_service.config, config)
         m_qradar_client_api.assert_called_with(config)
-        self.assertEqual(expectation_service.client_api, m_qradar_client_api.return_value)
+        self.assertEqual(
+            expectation_service.client_api, m_qradar_client_api.return_value
+        )
         self.assertIsInstance(expectation_service.converter, module.Converter)
         self.assertEqual(expectation_service.time_window, module.timedelta(hours=1))
         self.assertEqual(expectation_service.max_retry, 3)
@@ -34,7 +36,9 @@ class TestQRadarExpectationService(unittest.TestCase):
 
         self.assertEqual(expectation_service.config, config)
         m_qradar_client_api.assert_called_with(config)
-        self.assertEqual(expectation_service.client_api, m_qradar_client_api.return_value)
+        self.assertEqual(
+            expectation_service.client_api, m_qradar_client_api.return_value
+        )
         self.assertIsInstance(expectation_service.converter, module.Converter)
         self.assertEqual(expectation_service.time_window, sentinel.time_window)
         self.assertEqual(expectation_service.max_retry, sentinel.max_retry)

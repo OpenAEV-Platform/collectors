@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import ANY, MagicMock, patch, sentinel
+from unittest.mock import MagicMock, patch, sentinel
 
 import src.services.fetcher_deep_visibility as module
 
@@ -29,13 +29,17 @@ class TestFetcherDeepVisibility(unittest.TestCase):
 
         events = fetcher.fetch_events_for_sha1(sha1, start_time, end_time)
 
-        m_init_dv_query.assert_called_with([sha1], sentinel.start_time, sentinel.end_time)
+        m_init_dv_query.assert_called_with(
+            [sha1], sentinel.start_time, sentinel.end_time
+        )
         m_execute_query.assert_called_with(m_init_dv_query.return_value)
         self.assertEqual(events, [{"fileSha1": "sha-one"}])
 
     @patch.object(module.FetcherDeepVisibility, "_parse_error_response")
     @patch.object(module.FetcherDeepVisibility, "_calculate_wait_time")
-    def test_wait_for_query_completion(self, m_calculate_wait_time, m_parse_error_response):
+    def test_wait_for_query_completion(
+        self, m_calculate_wait_time, m_parse_error_response
+    ):
         client_api = MagicMock()
         client_api.base_url = "http://base.url"
         response = MagicMock()
@@ -62,7 +66,9 @@ class TestFetcherDeepVisibility(unittest.TestCase):
     @patch.object(module.time, "sleep")
     @patch.object(module.FetcherDeepVisibility, "_parse_error_response")
     @patch.object(module.FetcherDeepVisibility, "_calculate_wait_time")
-    def test_wait_for_query_completion_two_loops(self, m_calculate_wait_time, m_parse_error_response, m_sleep):
+    def test_wait_for_query_completion_two_loops(
+        self, m_calculate_wait_time, m_parse_error_response, m_sleep
+    ):
         client_api = MagicMock()
         client_api.base_url = "http://base.url"
         response1 = MagicMock()
@@ -96,7 +102,9 @@ class TestFetcherDeepVisibility(unittest.TestCase):
 
     @patch.object(module.FetcherDeepVisibility, "_parse_error_response")
     @patch.object(module.FetcherDeepVisibility, "_calculate_wait_time")
-    def test_wait_for_query_completion_raise_http500(self, m_calculate_wait_time, m_parse_error_response):
+    def test_wait_for_query_completion_raise_http500(
+        self, m_calculate_wait_time, m_parse_error_response
+    ):
         client_api = MagicMock()
         client_api.base_url = "http://base.url"
         response = MagicMock()
@@ -169,7 +177,10 @@ class TestFetcherDeepVisibility(unittest.TestCase):
         formatted_dt = fetcher._format_timestamp_for_api(dt)
 
         dt.replace.assert_called_with(tzinfo=module.timezone.utc)
-        self.assertEqual(formatted_dt, dt.replace.return_value.replace.return_value.isoformat.return_value+"Z")
+        self.assertEqual(
+            formatted_dt,
+            dt.replace.return_value.replace.return_value.isoformat.return_value + "Z",
+        )
 
         dt = MagicMock()
         dt.tzinfo = "not-UTC"
@@ -177,11 +188,17 @@ class TestFetcherDeepVisibility(unittest.TestCase):
         formatted_dt = fetcher._format_timestamp_for_api(dt)
 
         dt.astimezone.assert_called_with(module.timezone.utc)
-        self.assertEqual(formatted_dt, dt.astimezone.return_value.replace.return_value.isoformat.return_value+"Z")
+        self.assertEqual(
+            formatted_dt,
+            dt.astimezone.return_value.replace.return_value.isoformat.return_value
+            + "Z",
+        )
 
         dt = MagicMock()
         dt.tzinfo = module.timezone.utc
 
         formatted_dt = fetcher._format_timestamp_for_api(dt)
 
-        self.assertEqual(formatted_dt, dt.replace.return_value.isoformat.return_value+"Z")
+        self.assertEqual(
+            formatted_dt, dt.replace.return_value.isoformat.return_value + "Z"
+        )
