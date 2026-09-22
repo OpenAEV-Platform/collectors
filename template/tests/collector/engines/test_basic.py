@@ -488,3 +488,53 @@ class TestBasicCollectorEngine(unittest.TestCase):
             [result1, result2]
         )
         m_trace_uploader.return_value.upload_data.assert_any_call([result1, result2])
+
+    @patch.object(module.os, "_exit")
+    @patch.object(module, "TraceUploader")
+    @patch.object(module, "ExpectationUploader")
+    @patch.object(module.BasicCollectorEngine, "_process_batch")
+    @patch.object(module.BasicCollectorEngine, "fetch_and_filter_expectations")
+    @patch.object(module.BasicCollectorEngine, "_reset_summary")
+    def test_run_engine_interrupt(
+        self,
+        m_reset_summary,
+        m_fetch_and_filter_expectations,
+        m_process_batch,
+        m_expectation_uploader,
+        m_trace_uploader,
+        m_exit,
+    ):
+        """"""
+        name = "my name is"
+        collector_id = "1234abcd"
+        signature_type = MagicMock(value="parent process name")
+        data_fetcher_model = MagicMock()
+        source = MagicMock(spec=module.Source)
+        source.signatures = [
+            signature_type,
+        ]
+        source.data_fetcher_model = data_fetcher_model
+        source_handler = MagicMock(spec=SourceHandler)
+        oaev_api = MagicMock(spec_set=module.OpenAEV)
+
+        m_fetch_and_filter_expectations.side_effect = KeyboardInterrupt()
+
+        collector_engine = module.BasicCollectorEngine(
+            name=name,
+            collector_id=collector_id,
+            source=source,
+            source_handler=source_handler,
+            oaev_api=oaev_api,
+        )
+
+        config = MagicMock()
+        collector_engine.configure_engine(config)
+        m_reset_summary.assert_called_once()
+
+        collector_engine.run_engine()
+
+        self.assertEqual(m_reset_summary._mock_call_count, 2)
+        m_reset_summary.assert_any_call()
+
+        m_fetch_and_filter_expectations.assert_called_once()
+        m_process_batch.assert_not_called()
