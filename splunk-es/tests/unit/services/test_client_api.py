@@ -118,8 +118,8 @@ class TestSplunkESClientAPI(unittest.TestCase):
 
         with self.assertRaises(module.SplunkESValidationError):
             client_api.fetch_signatures(search_signatures, expectation_type)
-            m_build_search_criteria.assert_not_called()
-            m_execute_splunk_query_with_retry.assert_not_called()
+        m_build_search_criteria.assert_not_called()
+        m_execute_splunk_query_with_retry.assert_not_called()
 
     @patch.object(module.SplunkESClientAPI, "_execute_splunk_query")
     @patch.object(module.SplunkESClientAPI, "_build_search_criteria")

@@ -40,4 +40,4 @@ class TestFetcherThreatEvents(unittest.TestCase):
 
         with self.assertRaises(module.SentinelOneAPIError):
             fetcher.fetch_events_for_threat(threat, process_names)
-            m_fetch_all_events_for_threat.assert_called_with(threat, 100)
+        m_fetch_all_events_for_threat.assert_called_with(threat, 100)

@@ -157,12 +157,12 @@ class TestElasticClientAPI(unittest.TestCase):
 
         with self.assertRaises(module.ElasticAuthenticationError):
             client_api._execute_query(search_criteria, extend_end_seconds)
-            m_build_query.assert_called_once_with(search_criteria, extend_end_seconds)
-            session.post.assert_called_once_with(
-                f"{base_url}/{sentinel.alerts_index}/_search",
-                json=m_build_query.return_value,
-                timeout=module.REQUEST_TIMEOUT_SECONDS,
-            )
+        m_build_query.assert_called_once_with(search_criteria, extend_end_seconds)
+        session.post.assert_called_once_with(
+            f"{base_url}/{sentinel.alerts_index}/_search",
+            json=m_build_query.return_value,
+            timeout=module.REQUEST_TIMEOUT_SECONDS,
+        )
         m_elastic_response.from_raw_response.assert_not_called()
 
     @patch.object(module.ElasticClientAPI, "_execute_query")

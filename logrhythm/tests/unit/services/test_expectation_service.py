@@ -52,4 +52,4 @@ class TestLogRhythmExpectationService(unittest.TestCase):
 
         with self.assertRaises(module.LogRhythmConfigurationError):
             module.LogRhythmExpectationService(config)
-            m_logrhythm_client_api.assert_called_with(config)
+        m_logrhythm_client_api.assert_called_with(config)

@@ -52,4 +52,4 @@ class TestNetWitnessExpectationService(unittest.TestCase):
 
         with self.assertRaises(module.NetWitnessConfigurationError):
             module.NetWitnessExpectationService(config)
-            m_netwitness_client_api.assert_called_with(config)
+        m_netwitness_client_api.assert_called_with(config)

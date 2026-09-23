@@ -52,4 +52,4 @@ class TestQRadarExpectationService(unittest.TestCase):
 
         with self.assertRaises(module.QRadarConfigurationError):
             module.QRadarExpectationService(config)
-            m_qradar_client_api.assert_called_with(config)
+        m_qradar_client_api.assert_called_with(config)

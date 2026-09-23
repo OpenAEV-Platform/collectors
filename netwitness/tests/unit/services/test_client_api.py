@@ -197,4 +197,4 @@ class TestNetWitnessClientAPI(unittest.TestCase):
             client_api._execute_query_with_retry(
                 search_criteria, max_retries, offset_seconds
             )
-            m_execute_query.assert_called_with(search_criteria, 0)
+        m_execute_query.assert_called_with(search_criteria, 0)

@@ -538,3 +538,4 @@ class TestBasicCollectorEngine(unittest.TestCase):
 
         m_fetch_and_filter_expectations.assert_called_once()
         m_process_batch.assert_not_called()
+        m_exit.assert_called_once_with(0)

@@ -117,13 +117,13 @@ class TestFetcherDeepVisibility(unittest.TestCase):
         with self.assertRaises(module.SentinelOneAPIError):
             fetcher._wait_for_query_completion(query_id)
 
-            client_api.session.get.assert_called_with(
-                "http://base.url/web/api/v2.1/dv/query-status",
-                params={"queryId": sentinel.query_id},
-                timeout=module.REQUEST_TIMEOUT_SECONDS,
-            )
-            m_calculate_wait_time.assert_not_called()
-            m_parse_error_response.assert_called_with(response)
+        client_api.session.get.assert_called_with(
+            "http://base.url/web/api/v2.1/dv/query-status",
+            params={"queryId": sentinel.query_id},
+            timeout=module.REQUEST_TIMEOUT_SECONDS,
+        )
+        m_calculate_wait_time.assert_not_called()
+        m_parse_error_response.assert_called_with(response)
 
     @patch.object(module.FetcherDeepVisibility, "_parse_error_response")
     def test_make_real_events_query(self, m_parse_error_response):
