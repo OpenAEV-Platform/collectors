@@ -6,7 +6,7 @@ build-backend = "poetry.core.masonry.api"
 
 [project]
 name = "openaev-google-workspace-collector"
-version = "3.260921.0"
+version = "3.260923.0"
 description = "A Collector for Google Workspace user and group management"
 readme = "README.md"
 authors = [
@@ -35,7 +35,7 @@ packages = [
 pydantic = ">=2.13,<3"
 pydantic-settings = ">=2.14,<3"
 requests = ">=2.33,<3"
-pyoaev = "3.260921.0"
+pyoaev = "3.260923.0"
 google-api-python-client = "^2.149.0"
 google-auth = "^2.35.0"
 google-auth-httplib2 = "^0.2.0"

@@ -6,7 +6,7 @@ build-backend = "poetry.core.masonry.api"
 
 [project]
 name = "openaev-hiddenlayer-collector"
-version = "3.260921.0"
+version = "3.260923.0"
 description = "A Collector validating HiddenLayer AI Runtime Security (AIDR) detection/prevention of AI adversarial injects"
 readme = "README.md"
 authors = [
@@ -35,7 +35,7 @@ packages = [
 pydantic = ">=2.13,<3"
 pydantic-settings = ">=2.14,<3"
 requests = ">=2.33,<3"
-pyoaev = "3.260921.0"
+pyoaev = "3.260923.0"
 
 [tool.poetry.dependencies.python-slugify]
 version = ">=8.0.4,<9"

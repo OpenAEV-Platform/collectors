@@ -6,7 +6,7 @@ build-backend = "poetry.core.masonry.api"
 
 [project]
 name = "openaev-microsoft-defender-o365-collector"
-version = "3.260921.0"
+version = "3.260923.0"
 description = "Collector for Microsoft Defender for Office 365 (email-focused alerts) for OAEV."
 readme = "README.md"
 authors = [
@@ -35,7 +35,7 @@ packages = [
 pydantic = ">=2.13,<3"
 pydantic-settings = ">=2.14,<3"
 requests = ">=2.33,<3"
-pyoaev = "3.260921.0"
+pyoaev = "3.260923.0"
 msal = "^1.37.0"
 orjson = "^3.11.9"
 
