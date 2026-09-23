@@ -44,7 +44,7 @@ def test_collector_loop_completes_a_full_cycle_with_stubs(
 ) -> None:
     """Scenario Outline: Collector loop completes a full cycle with stubs"""
     # Given: CHK.1 scaffold is in place, CHK.2 DefenderO365Config is defined,
-    # DataFetcher/OpenAEV API/match_signature_groups_and_oaevdata are stubbed,
+    # DataFetcher/OpenAEV API/match_signature_groups_and_alert_data are stubbed,
     # Source is declared, and a DefenderO365Collector(BaseCollector) instance
     # with all methods stubbed is built
     source = _given_microsoft_defender_o365_source_declared()
@@ -70,7 +70,7 @@ def test_collector_loop_completes_a_full_cycle_with_stubs(
     _then_get_source_data_is_called_exactly_once(source_handler)
     _then_serialize_as_oaevdata_is_called_exactly_once(source_handler)
     _then_get_expectation_signature_groups_is_called_exactly_once(source_handler)
-    _then_match_signature_groups_and_oaevdata_is_called_exactly_once(source_handler)
+    _then_match_signature_groups_and_alert_data_is_called_exactly_once(source_handler)
     _then_match_expectation_and_sourcedata_is_called_exactly_once(source_handler)
     _then_serialize_as_tracedata_is_called_exactly_once(source_handler)
     _then_microsoft_defender_o365_no_unhandled_exception_raised(error)
@@ -321,16 +321,16 @@ def _then_get_expectation_signature_groups_is_called_exactly_once(
     source_handler.get_expectation_signature_groups.assert_called_once()
 
 
-def _then_match_signature_groups_and_oaevdata_is_called_exactly_once(
+def _then_match_signature_groups_and_alert_data_is_called_exactly_once(
     source_handler: MagicMock,
 ) -> None:
-    """Then match_signature_groups_and_oaevdata is called exactly once.
+    """Then match_signature_groups_and_alert_data is called exactly once.
 
     Args:
         source_handler: The stubbed source handler used by the engine.
 
     """
-    source_handler.match_signature_groups_and_oaevdata.assert_called_once()
+    source_handler.match_signature_groups_and_alert_data.assert_called_once()
 
 
 def _then_match_expectation_and_sourcedata_is_called_exactly_once(
