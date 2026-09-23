@@ -36,7 +36,6 @@ COPY pyproject.toml ./
 # Install production dependencies into the virtual environment.
 RUN --mount=type=cache,target=/root/.cache \
     poetry install  \
-    --only main  \
     --no-root
 
 # Optional override of the client-python dependency.
@@ -64,9 +63,9 @@ COPY --from=builder --chown=nonroot:nonroot \
     /collector/.venv /collector/.venv
 
 # Copy application sources after dependencies are installed to maximize build cache reuse.
-COPY --chown=nonroot:nonroot ./microsoft_defender /collector/microsoft_defender
+COPY --chown=nonroot:nonroot ./src /collector/src
 
 USER nonroot
 
 # Run using the isolated Poetry virtual environment.
-CMD ["python", "-m", "microsoft_defender"]
+CMD ["python", "-m", "src"]
