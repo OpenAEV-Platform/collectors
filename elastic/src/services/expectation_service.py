@@ -345,8 +345,27 @@ class ElasticExpectationService:
             self.logger.debug(
                 f"{LOG_PREFIX} Fetching Elastic Security data for {expectation_type} expectation..."
             )
+
+            # Retry until an alert that actually MATCHES this expectation appears
+            # (or the budget is exhausted), so detection latency is absorbed even
+            # when unrelated alerts from a concurrent inject are already present -
+            # otherwise a non-empty-but-non-matching fetch would end the retries
+            # and mark the expectation Not Detected prematurely.
+            def _match_check(alerts: list[Any]) -> bool:
+                try:
+                    candidate = self.converter.convert_data_to_oaev_data(alerts)
+                    return self._any_match(
+                        candidate, matching_signatures, detection_helper
+                    )
+                except Exception:  # best-effort: never let the predicate abort retries
+                    return False
+
             elastic_data = self.client_api.fetch_with_retry(
-                search_signatures, expectation_type, self.max_retry, int(self.offset)
+                search_signatures,
+                expectation_type,
+                self.max_retry,
+                int(self.offset),
+                match_check=_match_check,
             )
             self.logger.debug(
                 f"{LOG_PREFIX} Fetched {len(elastic_data)} data items from Elastic Security"
@@ -434,6 +453,40 @@ class ElasticExpectationService:
                 f"Failed to extract signatures from expectation: {e}"
             ) from e
 
+    def _any_match(
+        self,
+        oaev_data: list[dict[str, Any]],
+        matching_signatures: list[dict[str, str]],
+        detection_helper: OpenAEVDetectionHelper,
+    ) -> bool:
+        """Return whether any data item matches the expectation (no raising).
+
+        A lightweight, side-effect-free mirror of ``_match`` used as the retry
+        predicate: it tells the fetch loop whether a matching alert has appeared
+        yet, so retries continue through detection latency without prematurely
+        settling on a non-matching batch.
+        """
+        if not oaev_data:
+            return False
+        expectation_expects_parent = any(
+            sig.get("type") == "parent_process_name" for sig in matching_signatures
+        )
+        for data_item in oaev_data:
+            available = [s for s in matching_signatures if s["type"] in data_item]
+            if not available:
+                continue
+            try:
+                if self._match_with_detection_helper(
+                    available,
+                    data_item,
+                    detection_helper,
+                    expectation_expects_parent=expectation_expects_parent,
+                ):
+                    return True
+            except Exception:
+                continue
+        return False
+
     def _match(
         self,
         oaev_data: list[dict[str, Any]],
@@ -467,6 +520,12 @@ class ElasticExpectationService:
                 f"{LOG_PREFIX} Attempting to match {len(oaev_data)} data items against {len(matching_signatures)} signatures"
             )
 
+            # Whether this expectation carries an implant marker at all. Drives
+            # deterministic correlation (see _match_with_detection_helper).
+            expectation_expects_parent = any(
+                sig.get("type") == "parent_process_name" for sig in matching_signatures
+            )
+
             for i, data_item in enumerate(oaev_data):
                 self.logger.debug(f"{i} data_item: {data_item}")
                 self.logger.debug(
@@ -489,7 +548,10 @@ class ElasticExpectationService:
 
                         # Use detection_helper with filtered signatures per type
                         if self._match_with_detection_helper(
-                            available_signatures, data_item, detection_helper
+                            available_signatures,
+                            data_item,
+                            detection_helper,
+                            expectation_expects_parent=expectation_expects_parent,
                         ):
                             self.logger.debug(
                                 f"{LOG_PREFIX} Match found for data item {i + 1}!"
@@ -543,6 +605,7 @@ class ElasticExpectationService:
         signatures: list[dict[str, str]],
         data_item: dict[str, Any],
         detection_helper: OpenAEVDetectionHelper,
+        expectation_expects_parent: bool = False,
     ) -> bool:
         """Match signatures using detection_helper with proper OR logic.
 
@@ -550,15 +613,26 @@ class ElasticExpectationService:
             signatures: List of signature dictionaries.
             data_item: OAEV data item to match against.
             detection_helper: OpenAEV detection helper instance.
+            expectation_expects_parent: Whether the expectation carries an
+                implant marker (parent_process_name), i.e. the inject ran on an
+                OpenAEV implant/agent. Such expectations are correlated
+                deterministically around the implant marker (see below).
 
         Returns:
             True if matching succeeds, False otherwise.
 
-        Logic:
-        1. Parent process: MUST match exactly (if present) - stop if False
-        2. Source IPs: Call detection_helper for each IP individually, stop at first match (OR logic)
-        3. Target IPs: Call detection_helper for each IP individually, stop at first match (OR logic)
-        4. Must have parent_process=True AND (at least one src_ip=True OR at least one dst_ip=True)
+        Correlation model (implant vs agentless):
+
+        * Implant inject (``expectation_expects_parent``): the implant marker is
+          the deterministic key. An alert whose drilldown recovered a marker
+          must match THIS inject's marker. An **endpoint** alert (process
+          context) that carries no matching marker is rejected - no IP
+          substitute - so an unrelated technique on the same host is never
+          cross-attributed. Only **network** telemetry (Suricata/Zeek), which
+          cannot carry an implant marker, falls back to source/target IP + time.
+        * Agentless inject (no ``parent_process_name`` signature): there is a 0%
+          chance of an implant marker on the endpoints, so correlation is
+          source/target IP + time directly.
 
         """
         try:
@@ -641,15 +715,44 @@ class ElasticExpectationService:
 
             has_source_sigs = any(t in signature_groups for t in source_ip_types)
             has_target_sigs = any(t in signature_groups for t in target_ip_types)
+            has_parent_sigs = "parent_process_name" in signature_groups
 
             self.logger.debug(
-                f"{LOG_PREFIX} Match results - Parent: {parent_process_match}, "
+                f"{LOG_PREFIX} Match results - Parent: {parent_process_match} "
+                f"(present: {has_parent_sigs}), "
                 f"Source IP: {source_ip_match} (required: {has_source_sigs}), "
                 f"Target IP: {target_ip_match} (required: {has_target_sigs})"
             )
 
-            if not parent_process_match:
-                return False
+            # Deterministic correlation for implant injects.
+            if expectation_expects_parent:
+                # The alert's drilldown recovered a marker: it must be THIS
+                # inject's marker (a different inject/technique on the same host
+                # carries a different marker and is rejected above at line ~617).
+                if has_parent_sigs:
+                    self.logger.debug(
+                        f"{LOG_PREFIX} Final match result (implant marker): "
+                        f"{parent_process_match}"
+                    )
+                    return parent_process_match
+
+                # No marker on the alert. If it is endpoint/process telemetry it
+                # SHOULD have carried the marker: reject it (no IP substitute) so
+                # an unrelated same-host alert is never cross-attributed.
+                if data_item.get("_endpoint_context"):
+                    self.logger.debug(
+                        f"{LOG_PREFIX} Endpoint alert without implant marker "
+                        f"-> reject (deterministic, no IP substitute)"
+                    )
+                    return False
+
+                # Network telemetry (Suricata/Zeek) cannot carry an implant
+                # marker: accept it via source/target IP + time below (lower
+                # confidence, cannot dissociate same-host injects).
+                self.logger.debug(
+                    f"{LOG_PREFIX} Network telemetry for implant inject "
+                    f"-> IP + time fallback"
+                )
 
             if has_source_sigs and has_target_sigs:
                 result = source_ip_match or target_ip_match
@@ -660,7 +763,9 @@ class ElasticExpectationService:
             else:
                 result = True
 
-            self.logger.debug(f"{LOG_PREFIX} Final match result: {result}")
+            self.logger.debug(
+                f"{LOG_PREFIX} Final match result (ip-fallback): {result}"
+            )
             return result
 
         except Exception as e:

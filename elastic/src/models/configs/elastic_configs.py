@@ -41,6 +41,33 @@ class _ConfigLoaderElastic(ConfigBaseSettings):
         default=".alerts-security.alerts-*",
         description="Index or index pattern to search for detection alerts.",
     )
+    query_template: Optional[str] = Field(
+        alias="ELASTIC_QUERY_TEMPLATE",
+        default=None,
+        description=(
+            "Lucene query_string template used to correlate alerts with an "
+            "expectation. Supports the placeholders {alerts_index}, "
+            "{source_ips}, {target_ips}, {implant_urls}, {implant_names}, "
+            "{start_date}, {end_date}, {time_window}. Each list "
+            "placeholder is rendered as an OR-joined set of quoted values, so "
+            "write e.g. 'host.ip:({source_ips})'. Leave empty to use the "
+            "built-in default query. The time range is always applied "
+            "separately as an @timestamp filter."
+        ),
+    )
+    events_index: Optional[str] = Field(
+        alias="ELASTIC_EVENTS_INDEX",
+        default="logs-windows.sysmon_operational-*,logs-endpoint.events.process-*",
+        description=(
+            "Index pattern of raw endpoint/process events used to drill down "
+            "from a detection alert to its source process and recover the "
+            "OpenAEV implant marker (from the process / parent-process command "
+            "line). This enables deterministic per-inject correlation - two "
+            "injects on the same host within the time window are told apart by "
+            "their implant/inject id. Leave empty to disable the drilldown and "
+            "fall back to host/IP + time correlation only."
+        ),
+    )
     kibana_url: Optional[str] = Field(
         alias="ELASTIC_KIBANA_URL",
         default=None,
@@ -58,13 +85,19 @@ class _ConfigLoaderElastic(ConfigBaseSettings):
     )
     max_retry: int = Field(
         alias="ELASTIC_MAX_RETRY",
-        default=3,
-        description="Maximum number of retry attempts for API calls.",
+        default=5,
+        description="Maximum number of retry attempts for API calls. Combined "
+        "with offset, this defines how long the collector keeps looking for an "
+        "alert after an inject (default 5 x 120s covers ~10 min of detection "
+        "latency: SIEM ingestion + detection-rule schedule). Too small a value "
+        "makes the collector give up before Elastic Security has raised the "
+        "alert and record a premature 'Not Detected'.",
     )
     offset: timedelta = Field(
         alias="ELASTIC_OFFSET",
-        default=timedelta(seconds=30),
-        description="Time offset between retry attempts.",
+        default=timedelta(seconds=120),
+        description="Time waited between retry attempts, also used to widen the "
+        "search window on each retry.",
     )
     verify_ssl: bool = Field(
         alias="ELASTIC_VERIFY_SSL",

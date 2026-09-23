@@ -133,9 +133,11 @@ class TestElasticClientAPIEssential:
 
         assert len(result) == 2  # noqa: S101
         body = mock_post.call_args.kwargs["json"]
-        should = body["query"]["bool"]["should"]
-        assert {"terms": {"source.ip": ["192.168.1.100"]}} in should  # noqa: S101
-        assert {"terms": {"destination.ip": ["10.0.0.50"]}} in should  # noqa: S101
+        query_string = body["query"]["bool"]["must"][0]["query_string"]["query"]
+        assert "192.168.1.100" in query_string  # noqa: S101
+        assert "10.0.0.50" in query_string  # noqa: S101
+        assert "source.ip:" in query_string  # noqa: S101
+        assert "destination.ip:" in query_string  # noqa: S101
 
     @patch("requests.Session.post")
     def test_fetch_signatures_uses_configured_index(self, mock_post):
@@ -236,13 +238,11 @@ class TestElasticClientAPIEssential:
         query = client._build_query(search_criteria)
 
         bool_query = query["query"]["bool"]
-        assert {"terms": {"source.ip": ["192.168.1.100"]}} in (  # noqa: S101
-            bool_query["should"]
-        )
-        assert {"terms": {"destination.ip": ["10.0.0.50"]}} in (  # noqa: S101
-            bool_query["should"]
-        )
-        assert bool_query["minimum_should_match"] == 1  # noqa: S101
+        query_string = bool_query["must"][0]["query_string"]["query"]
+        assert "192.168.1.100" in query_string  # noqa: S101
+        assert "10.0.0.50" in query_string  # noqa: S101
+        assert "source.ip:" in query_string  # noqa: S101
+        assert "destination.ip:" in query_string  # noqa: S101
         gte = bool_query["filter"][0]["range"]["@timestamp"]["gte"]
         assert gte.startswith("now-")  # noqa: S101
 
@@ -262,12 +262,346 @@ class TestElasticClientAPIEssential:
 
         query = client._build_query(search_criteria)
 
-        should = query["query"]["bool"]["should"]
-        url_path_clauses = [clause for clause in should if "match_phrase" in clause]
-        assert len(url_path_clauses) == 1  # noqa: S101
-        url_path = url_path_clauses[0]["match_phrase"]["url.path"]
-        assert "/api/injects/" in url_path  # noqa: S101
-        assert "executable-payload" in url_path  # noqa: S101
+        query_string = query["query"]["bool"]["must"][0]["query_string"]["query"]
+        assert "/api/injects/" in query_string  # noqa: S101
+        assert "executable-payload" in query_string  # noqa: S101
+
+    def test_default_query_template_used_when_unset(self):
+        """No configured template falls back to the built-in default."""
+        from src.services.client_api import DEFAULT_QUERY_TEMPLATE
+
+        config = create_test_config()
+        config.elastic.query_template = None
+        client = ElasticClientAPI(config=config)
+        assert client.query_template == DEFAULT_QUERY_TEMPLATE  # noqa: S101
+
+    def test_custom_query_template_used_and_rendered(self):
+        """A configured template overrides the default and is rendered."""
+        config = create_test_config()
+        config.elastic.query_template = "host.ip:({source_ips})"
+        client = ElasticClientAPI(config=config)
+        assert client.query_template == "host.ip:({source_ips})"  # noqa: S101
+
+        query = client._build_query(ElasticSearchCriteria(source_ips=["192.0.2.20"]))
+        query_string = query["query"]["bool"]["must"][0]["query_string"]["query"]
+        assert query_string == 'host.ip:("192.0.2.20")'  # noqa: S101
+
+    def test_invalid_query_template_placeholder_raises(self):
+        """An unknown placeholder is rejected at initialization."""
+        config = create_test_config()
+        config.elastic.query_template = "host.ip:({not_a_placeholder})"
+        with pytest.raises(ElasticValidationError):
+            ElasticClientAPI(config=config)
+
+    def test_empty_signatures_render_no_match_token(self):
+        """Empty criteria render the no-match sentinel, never invalid syntax."""
+        from src.services.client_api import NO_MATCH_TOKEN
+
+        config = create_test_config()
+        client = ElasticClientAPI(config=config)
+        query = client._build_query(ElasticSearchCriteria())
+        query_string = query["query"]["bool"]["must"][0]["query_string"]["query"]
+        assert NO_MATCH_TOKEN in query_string  # noqa: S101
+
+    @patch("requests.Session.post")
+    def test_drilldown_recovers_implant_marker(self, mock_post):
+        """The source-event drilldown recovers the implant marker.
+
+        Detection alerts drop the process ancestry; the drilldown into the
+        events index must recover the ``oaev-implant-<inject>-agent-<agent>``
+        marker from the (parent) process command line so correlation can be
+        deterministic.
+        """
+        config = create_test_config()
+        client = ElasticClientAPI(config=config)
+        marker = (
+            "oaev-implant-0ef06748-10db-4ad0-b718-5b02f169407b"
+            "-agent-a7dbf250-e41f-461a-830c-fc93704ed8d2"
+        )
+        event_response = Mock()
+        event_response.status_code = 200
+        event_response.json.return_value = {
+            "hits": {
+                "hits": [
+                    {
+                        "_source": {
+                            "process": {
+                                "name": "powershell.exe",
+                                "parent": {
+                                    "command_line": (
+                                        f'"C:\\...\\{marker}.exe" --inject-id '
+                                        "0ef06748-10db-4ad0-b718-5b02f169407b"
+                                    )
+                                },
+                            }
+                        }
+                    }
+                ]
+            }
+        }
+        mock_post.return_value = event_response
+
+        result = client._fetch_source_event_marker("host-a", 1556)
+
+        assert result == marker  # noqa: S101
+
+    @patch("requests.Session.post")
+    def test_drilldown_climbs_ancestry_to_recover_marker(self, mock_post):
+        """The drilldown walks up the process tree to find the implant marker.
+
+        When the implant is not the alerting process's direct parent (e.g.
+        implant -> cmd.exe -> reg.exe), the marker lives two hops up. The
+        drilldown must climb the ancestry by ``process.entity_id`` to recover it,
+        otherwise a genuine detection is wrongly left uncredited.
+        """
+        config = create_test_config()
+        client = ElasticClientAPI(config=config)
+        marker = (
+            "oaev-implant-24d1a5a3-f006-446f-b3fd-0ec94d9cb23b"
+            "-agent-883d26c4-314d-4f40-abb5-b52f05dcc6ce"
+        )
+        # Seed event: the flagged reg.exe. No marker on itself or its direct
+        # parent (cmd.exe); it only exposes the parent entity_id to climb to.
+        reg_event = Mock()
+        reg_event.status_code = 200
+        reg_event.json.return_value = {
+            "hits": {
+                "hits": [
+                    {
+                        "_source": {
+                            "process": {
+                                "name": "reg.exe",
+                                "command_line": "reg export HKLM\\sam ...",
+                                "entity_id": "E-reg",
+                                "parent": {
+                                    "name": "cmd.exe",
+                                    "command_line": "cmd /c reg export HKLM\\sam",
+                                    "entity_id": "E-cmd",
+                                },
+                            }
+                        }
+                    }
+                ]
+            }
+        }
+        # Ancestor event (cmd.exe): its parent IS the implant -> marker present.
+        cmd_event = Mock()
+        cmd_event.status_code = 200
+        cmd_event.json.return_value = {
+            "hits": {
+                "hits": [
+                    {
+                        "_source": {
+                            "process": {
+                                "name": "cmd.exe",
+                                "entity_id": "E-cmd",
+                                "parent": {"name": f"{marker}.exe", "entity_id": "E-imp"},
+                            }
+                        }
+                    }
+                ]
+            }
+        }
+        mock_post.side_effect = [reg_event, cmd_event]
+
+        result = client._fetch_source_event_marker("host-b", 8592, "E-reg")
+
+        assert result == marker  # noqa: S101
+        # Second query must select the parent by entity_id (reuse-safe), not pid.
+        second_body = mock_post.call_args_list[1].kwargs["json"]
+        filters = second_body["query"]["bool"]["filter"]
+        assert {"term": {"process.entity_id": "E-cmd"}} in filters  # noqa: S101
+
+    @patch("src.services.client_api.time.sleep", lambda _s: None)
+    @patch.object(ElasticClientAPI, "_execute_query")
+    def test_retry_waits_for_a_matching_alert(self, mock_exec):
+        """The retry loop keeps going until a *matching* alert appears.
+
+        A non-empty but non-matching fetch (e.g. only a concurrent inject's
+        alerts) must not end the retries: detection latency for this inject's own
+        alert has to be absorbed, otherwise it is marked Not Detected too early.
+        """
+        config = create_test_config()
+        client = ElasticClientAPI(config=config)
+        not_mine = [Mock(name="concurrent-inject-alert")]
+        mine = [Mock(name="my-alert")]
+        mock_exec.side_effect = [not_mine, not_mine, mine]
+
+        result = client._execute_query_with_retry(
+            ElasticSearchCriteria(), max_retries=5, offset_seconds=0,
+            match_check=lambda alerts: alerts is mine,
+        )
+
+        assert result is mine  # noqa: S101
+        assert mock_exec.call_count == 3  # retried past the two non-matching batches
+
+    @patch("src.services.client_api.time.sleep", lambda _s: None)
+    @patch.object(ElasticClientAPI, "_execute_query")
+    def test_retry_returns_last_batch_when_never_matches(self, mock_exec):
+        """Budget exhausted with no match -> return the last alerts (Not Detected)."""
+        config = create_test_config()
+        client = ElasticClientAPI(config=config)
+        not_mine = [Mock(name="other")]
+        mock_exec.return_value = not_mine
+
+        result = client._execute_query_with_retry(
+            ElasticSearchCriteria(), max_retries=2, offset_seconds=0,
+            match_check=lambda _alerts: False,
+        )
+
+        assert result is not_mine  # noqa: S101
+        assert mock_exec.call_count == 3  # initial + 2 retries
+
+    @patch("requests.Session.post")
+    def test_pid_seed_disambiguates_reuse_by_alert_time(self, mock_post):
+        """A pid-only seed picks the instance live at the alert time.
+
+        PowerShell ScriptBlock alerts carry a pid but no entity_id, and a pid is
+        reused across process lifetimes. The nearest instance (sorted @timestamp
+        desc, at/just-before the alert) must win, so the recovered marker belongs
+        to the process that fired the alert - not a later reuse by another inject.
+        """
+        config = create_test_config()
+        client = ElasticClientAPI(config=config)
+        target = (
+            "oaev-implant-11111111-1111-1111-1111-111111111111"
+            "-agent-22222222-2222-2222-2222-222222222222"
+        )
+        other = (
+            "oaev-implant-33333333-3333-3333-3333-333333333333"
+            "-agent-22222222-2222-2222-2222-222222222222"
+        )
+        # pid 5056 shared by two powershell instances (desc by time): the nearest
+        # (E-A) is parented by the target implant, an older reuse (E-B) by another.
+        seed = Mock()
+        seed.status_code = 200
+        seed.json.return_value = {
+            "hits": {
+                "hits": [
+                    {"_source": {"process": {
+                        "name": "powershell.exe", "pid": 5056, "entity_id": "E-A",
+                        "parent": {"name": f"{target}.exe", "entity_id": "E-imp-t"}}}},
+                    {"_source": {"process": {
+                        "name": "powershell.exe", "pid": 5056, "entity_id": "E-B",
+                        "parent": {"name": f"{other}.exe", "entity_id": "E-imp-o"}}}},
+                ]
+            }
+        }
+        mock_post.return_value = seed
+
+        result = client._fetch_source_event_marker(
+            "host-a", 5056, None, "2026-09-23T09:35:57.000Z"
+        )
+        assert result == target  # noqa: S101
+
+    @patch("requests.Session.post")
+    def test_drilldown_fallback_credits_unique_host_implant(self, mock_post):
+        """Broken ancestry chain -> fall back to the sole implant on the host.
+
+        When an intermediate process event is missing (the entity_id climb
+        dead-ends), the drilldown falls back to a host + time-window lookup and
+        credits the alert iff exactly one implant lineage is present.
+        """
+        config = create_test_config()
+        client = ElasticClientAPI(config=config)
+        marker = (
+            "oaev-implant-cf3e83ec-5be9-4d91-97ca-31f53c09625d"
+            "-agent-883d26c4-314d-4f40-abb5-b52f05dcc6ce"
+        )
+        # Seed event (reg.exe): no marker, and its parent entity is not indexed.
+        seed = Mock()
+        seed.status_code = 200
+        seed.json.return_value = {
+            "hits": {
+                "hits": [
+                    {
+                        "_source": {
+                            "process": {
+                                "name": "reg.exe",
+                                "entity_id": "E-reg",
+                                "parent": {"name": "cmd.exe", "entity_id": "E-missing"},
+                            }
+                        }
+                    }
+                ]
+            }
+        }
+        # Climb: parent entity not found (empty) -> chain broken.
+        empty = Mock()
+        empty.status_code = 200
+        empty.json.return_value = {"hits": {"hits": []}}
+        # Fallback: exactly one implant lineage on the host in the window.
+        fallback = Mock()
+        fallback.status_code = 200
+        fallback.json.return_value = {
+            "hits": {"hits": [{"_source": {"process": {"name": f"{marker}.exe"}}}]}
+        }
+        mock_post.side_effect = [seed, empty, fallback]
+
+        result = client._fetch_source_event_marker(
+            "host-b", 8592, "E-reg", "2026-09-22T15:56:47.978Z"
+        )
+        assert result == marker  # noqa: S101
+
+    @patch("requests.Session.post")
+    def test_drilldown_fallback_declines_when_ambiguous(self, mock_post):
+        """Two implant lineages on the host -> fallback abstains (no guess).
+
+        A same-host ambiguity must never be cross-attributed: with two distinct
+        injects' implants in the window the fallback returns no marker.
+        """
+        config = create_test_config()
+        client = ElasticClientAPI(config=config)
+        seed = Mock()
+        seed.status_code = 200
+        seed.json.return_value = {
+            "hits": {
+                "hits": [
+                    {
+                        "_source": {
+                            "process": {
+                                "name": "reg.exe",
+                                "entity_id": "E-reg",
+                                "parent": {"name": "cmd.exe", "entity_id": "E-missing"},
+                            }
+                        }
+                    }
+                ]
+            }
+        }
+        empty = Mock()
+        empty.status_code = 200
+        empty.json.return_value = {"hits": {"hits": []}}
+        m1 = "oaev-implant-cf3e83ec-5be9-4d91-97ca-31f53c09625d-agent-883d26c4-314d-4f40-abb5-b52f05dcc6ce"
+        m2 = "oaev-implant-dbacc661-0f2c-4013-ba56-f117419ebf90-agent-883d26c4-314d-4f40-abb5-b52f05dcc6ce"
+        ambiguous = Mock()
+        ambiguous.status_code = 200
+        ambiguous.json.return_value = {
+            "hits": {
+                "hits": [
+                    {"_source": {"process": {"name": f"{m1}.exe"}}},
+                    {"_source": {"process": {"name": f"{m2}.exe"}}},
+                ]
+            }
+        }
+        mock_post.side_effect = [seed, empty, ambiguous]
+
+        result = client._fetch_source_event_marker(
+            "host-b", 8592, "E-reg", "2026-09-22T15:56:47.978Z"
+        )
+        assert result is None  # noqa: S101
+
+    @patch("requests.Session.post")
+    def test_drilldown_returns_none_without_source_event(self, mock_post):
+        """No matching source event yields no marker (drilldown is best-effort)."""
+        config = create_test_config()
+        client = ElasticClientAPI(config=config)
+        empty = Mock()
+        empty.status_code = 200
+        empty.json.return_value = {"hits": {"hits": []}}
+        mock_post.return_value = empty
+
+        assert client._fetch_source_event_marker("host-a", 4242) is None  # noqa: S101
 
     def test_build_query_time_window_extension(self):
         """Test that retries widen the query time window.

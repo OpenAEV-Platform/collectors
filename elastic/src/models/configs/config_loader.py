@@ -178,6 +178,8 @@ class ConfigLoader(ConfigBaseSettings):
                     )
                 },
                 "elastic_alerts_index": {"data": self.elastic.alerts_index},
+                "elastic_query_template": {"data": self.elastic.query_template},
+                "elastic_events_index": {"data": self.elastic.events_index},
                 "elastic_kibana_url": {"data": self.elastic.kibana_url},
                 "elastic_time_window": {"data": self.elastic.time_window},
                 "elastic_max_retry": {"data": self.elastic.max_retry},
