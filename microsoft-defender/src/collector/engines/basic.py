@@ -332,7 +332,7 @@ class BasicCollectorEngine:
             self.logger.debug(f"{LOG_PREFIX} Creating and submitting traces...")
             self.trace_uploader.upload_data(results)
 
-        except (KeyboardInterrupt, SystemExit):  # per batch processing cycle
+        except KeyboardInterrupt, SystemExit:  # per batch processing cycle
             self.logger.info(f"{LOG_PREFIX} Collector stopping...")
             self.logger.info(
                 f"{LOG_PREFIX} Current summary info: {self.current_summary}"
