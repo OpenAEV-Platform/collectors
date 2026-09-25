@@ -122,7 +122,9 @@ class TestElasticTraceService:
         link = service.create_traces_from_results([result], "c")[
             0
         ].inject_expectation_trace_alert_link
-        assert link.startswith("http://kibana.example.com:5601/app/security/alerts/redirect/")  # noqa: S101
+        assert link.startswith(
+            "http://kibana.example.com:5601/app/security/alerts/redirect/"
+        )  # noqa: S101
         assert "abc123-uuid" in link  # noqa: S101
         assert "index=.alerts-security.alerts-default" in link  # noqa: S101
         assert "kibana.internal" not in link  # noqa: S101

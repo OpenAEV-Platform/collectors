@@ -3,8 +3,8 @@
 import logging
 import string
 import time
-from datetime import datetime, timedelta
 from collections.abc import Callable
+from datetime import datetime, timedelta
 from typing import Any
 
 import requests  # type: ignore[import-untyped]
@@ -116,6 +116,7 @@ def _lucene_values(values: list[str] | None) -> str:
     cleaned = [str(v) for v in (values or []) if v not in (None, "")]
     if not cleaned:
         return NO_MATCH_TOKEN
+
     # Quote each value and escape Lucene metacharacters so a value is always
     # treated literally: backslash FIRST (so we don't double-escape), then the
     # double quote that delimits the phrase. Values are trusted (IPs / UUID
@@ -497,7 +498,9 @@ class ElasticClientAPI:
 
         drills = 0
         for alert in alerts:
-            if not alert.host_name or (alert.pid is None and not alert.process_entity_id):
+            if not alert.host_name or (
+                alert.pid is None and not alert.process_entity_id
+            ):
                 continue
             if alert.process_entity_id:
                 # entity_id is reuse-safe, so its recovered marker can be cached

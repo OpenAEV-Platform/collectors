@@ -36,16 +36,22 @@ class TestSignatureCompatShim:
         from pyoaev.signatures.types import SignatureTypes
 
         signature_compat.install()
-        assert SignatureTypes("source_ipv4").value == "source_ipv4_address"  # noqa: S101
+        assert (
+            SignatureTypes("source_ipv4").value == "source_ipv4_address"
+        )  # noqa: S101
         assert SignatureTypes("start_time").value == "start_date"  # noqa: S101
-        assert SignatureTypes("target_ipv6").value == "target_ipv6_address"  # noqa: S101
+        assert (
+            SignatureTypes("target_ipv6").value == "target_ipv6_address"
+        )  # noqa: S101
 
     def test_unknown_type_is_tolerated_not_raised(self):
         from pyoaev.signatures.types import SignatureTypes
 
         signature_compat.install()
         # Would raise ValueError on the stock enum; the shim passes it through.
-        assert SignatureTypes("some_future_type").value == "some_future_type"  # noqa: S101
+        assert (
+            SignatureTypes("some_future_type").value == "some_future_type"
+        )  # noqa: S101
 
 
 class TestSignatureNormalization:
@@ -118,7 +124,9 @@ class TestTransientOutagePending:
 
     def test_auth_error_leaves_pending(self):
         service, exp = self._service_and_exp()
-        service.process_expectation = Mock(side_effect=ElasticAuthenticationError("401"))
+        service.process_expectation = Mock(
+            side_effect=ElasticAuthenticationError("401")
+        )
         results = service.handle_batch_expectations(
             [exp], MockObjectsFactory.create_mock_detection_helper()
         )
@@ -127,9 +135,7 @@ class TestTransientOutagePending:
     def test_no_match_still_graded_not_detected(self):
         """Regression guard: a successful query with no match is NOT skipped."""
         service, exp = self._service_and_exp()
-        service.process_expectation = Mock(
-            side_effect=ElasticNoMatchingAlertsError()
-        )
+        service.process_expectation = Mock(side_effect=ElasticNoMatchingAlertsError())
         results = service.handle_batch_expectations(
             [exp], MockObjectsFactory.create_mock_detection_helper()
         )
@@ -298,7 +304,9 @@ class TestTraceLinkSafety:
 
         service = ElasticTraceService(config=config or create_test_config())
         result = ExpectationResult(
-            expectation_id="e1", is_valid=True, expectation=None,
+            expectation_id="e1",
+            is_valid=True,
+            expectation=None,
             matched_alerts=[matching_data],
         )
         return service.create_traces_from_results([result], "c")[0]
@@ -364,9 +372,7 @@ class TestTraceLinkSafety:
         link = trace.inject_expectation_trace_alert_link
         assert "s3cr3t" not in link  # noqa: S101  credentials stripped
         assert "@" not in link  # noqa: S101
-        assert link.startswith(  # noqa: S101
-            "https://test-elastic.example.com:5601/"
-        )
+        assert link.startswith("https://test-elastic.example.com:5601/")  # noqa: S101
 
     def test_rogue_host_with_userinfo_rebased_when_kibana_set(self):
         # kibana_url set: host/scheme are replaced (rogue host neutralised) and
@@ -401,8 +407,9 @@ class TestEventsIndexDrilldownAuthz:
         return client
 
     def test_events_index_403_raises_auth_error(self):
-        import pytest
         from unittest.mock import Mock, patch
+
+        import pytest
 
         client = self._client()
         with patch.object(client.session, "post", return_value=Mock(status_code=403)):
@@ -412,8 +419,9 @@ class TestEventsIndexDrilldownAuthz:
                 )
 
     def test_events_index_401_raises_auth_error(self):
-        import pytest
         from unittest.mock import Mock, patch
+
+        import pytest
 
         client = self._client()
         with patch.object(client.session, "post", return_value=Mock(status_code=401)):
@@ -423,8 +431,9 @@ class TestEventsIndexDrilldownAuthz:
                 )
 
     def test_events_index_404_raises_api_error(self):
-        import pytest
         from unittest.mock import Mock, patch
+
+        import pytest
 
         client = self._client()
         with patch.object(client.session, "post", return_value=Mock(status_code=404)):
@@ -439,16 +448,18 @@ class TestEventsIndexDrilldownAuthz:
         client = self._client()
         with patch.object(client.session, "post", return_value=Mock(status_code=500)):
             assert (  # noqa: S101  transient -> swallowed, retry loop re-drills
-                client._fetch_process_events({"term": {"process.pid": 1}}, "host-1", 900)
+                client._fetch_process_events(
+                    {"term": {"process.pid": 1}}, "host-1", 900
+                )
                 == []
             )
 
     def test_enrich_propagates_events_index_403(self):
         """A 403 during enrichment propagates out of the alert fetch so the whole
         expectation is left pending rather than graded on markerless alerts."""
-        import pytest
         from unittest.mock import Mock, patch
 
+        import pytest
         from src.services.models import ElasticAlert
 
         client = self._client()

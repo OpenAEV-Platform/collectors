@@ -395,7 +395,10 @@ class TestElasticClientAPIEssential:
                             "process": {
                                 "name": "cmd.exe",
                                 "entity_id": "E-cmd",
-                                "parent": {"name": f"{marker}.exe", "entity_id": "E-imp"},
+                                "parent": {
+                                    "name": f"{marker}.exe",
+                                    "entity_id": "E-imp",
+                                },
                             }
                         }
                     }
@@ -428,7 +431,9 @@ class TestElasticClientAPIEssential:
         mock_exec.side_effect = [not_mine, not_mine, mine]
 
         result = client._execute_query_with_retry(
-            ElasticSearchCriteria(), max_retries=5, offset_seconds=0,
+            ElasticSearchCriteria(),
+            max_retries=5,
+            offset_seconds=0,
             match_check=lambda alerts: alerts is mine,
         )
 
@@ -445,7 +450,9 @@ class TestElasticClientAPIEssential:
         mock_exec.return_value = not_mine
 
         result = client._execute_query_with_retry(
-            ElasticSearchCriteria(), max_retries=2, offset_seconds=0,
+            ElasticSearchCriteria(),
+            max_retries=2,
+            offset_seconds=0,
             match_check=lambda _alerts: False,
         )
 
@@ -478,12 +485,32 @@ class TestElasticClientAPIEssential:
         seed.json.return_value = {
             "hits": {
                 "hits": [
-                    {"_source": {"process": {
-                        "name": "powershell.exe", "pid": 5056, "entity_id": "E-A",
-                        "parent": {"name": f"{target}.exe", "entity_id": "E-imp-t"}}}},
-                    {"_source": {"process": {
-                        "name": "powershell.exe", "pid": 5056, "entity_id": "E-B",
-                        "parent": {"name": f"{other}.exe", "entity_id": "E-imp-o"}}}},
+                    {
+                        "_source": {
+                            "process": {
+                                "name": "powershell.exe",
+                                "pid": 5056,
+                                "entity_id": "E-A",
+                                "parent": {
+                                    "name": f"{target}.exe",
+                                    "entity_id": "E-imp-t",
+                                },
+                            }
+                        }
+                    },
+                    {
+                        "_source": {
+                            "process": {
+                                "name": "powershell.exe",
+                                "pid": 5056,
+                                "entity_id": "E-B",
+                                "parent": {
+                                    "name": f"{other}.exe",
+                                    "entity_id": "E-imp-o",
+                                },
+                            }
+                        }
+                    },
                 ]
             }
         }
