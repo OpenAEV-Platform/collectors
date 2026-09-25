@@ -456,3 +456,65 @@ class TestEventsIndexDrilldownAuthz:
         with patch.object(client.session, "post", return_value=Mock(status_code=403)):
             with pytest.raises(ElasticAuthenticationError):
                 client._enrich_alerts_with_source_events([alert])
+
+
+class TestFallbackTimingDisambiguation:
+    """When the ancestry chain is broken and several implant lineages share a host
+    (a whole scenario on one host), the fallback attributes the alert to the
+    implant nearest *before* the alert - crediting exactly one inject, not all."""
+
+    INJ_A = "11111111-1111-4111-8111-111111111111"
+    INJ_B = "22222222-2222-4222-8222-222222222222"
+    AGENT = "33333333-3333-4333-8333-333333333333"
+
+    def _client(self):
+        from src.services.client_api import ElasticClientAPI
+
+        client = ElasticClientAPI(config=create_test_config())
+        client.events_index = "logs-endpoint.events.process-*"
+        return client
+
+    def _hit(self, inject: str, ts: str) -> dict:
+        return {
+            "_source": {
+                "process": {"name": f"oaev-implant-{inject}-agent-{self.AGENT}"},
+                "@timestamp": ts,
+            }
+        }
+
+    def test_picks_nearest_preceding_lineage(self):
+        from unittest.mock import patch
+
+        client = self._client()
+        hits = [
+            self._hit(self.INJ_A, "2026-09-25T08:30:00.000Z"),
+            self._hit(self.INJ_B, "2026-09-25T08:30:20.000Z"),
+        ]
+        with patch.object(client, "_events_search", return_value=hits):
+            # Alert just after B -> B is the nearest preceding implant.
+            marker = client._fallback_host_marker("h", "2026-09-25T08:30:25.000Z")
+        assert self.INJ_B in marker  # noqa: S101
+        assert self.INJ_A not in marker  # noqa: S101
+
+        with patch.object(client, "_events_search", return_value=hits):
+            # Alert between A and B -> A is the nearest preceding implant.
+            marker = client._fallback_host_marker("h", "2026-09-25T08:30:10.000Z")
+        assert self.INJ_A in marker  # noqa: S101
+
+    def test_single_lineage_still_used(self):
+        from unittest.mock import patch
+
+        client = self._client()
+        hits = [self._hit(self.INJ_A, "2026-09-25T08:30:00.000Z")]
+        with patch.object(client, "_events_search", return_value=hits):
+            marker = client._fallback_host_marker("h", "2026-09-25T08:30:25.000Z")
+        assert self.INJ_A in marker  # noqa: S101
+
+    def test_no_lineage_returns_none(self):
+        from unittest.mock import patch
+
+        client = self._client()
+        with patch.object(client, "_events_search", return_value=[]):
+            assert (  # noqa: S101
+                client._fallback_host_marker("h", "2026-09-25T08:30:25.000Z") is None
+            )

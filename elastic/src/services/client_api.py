@@ -3,7 +3,7 @@
 import logging
 import string
 import time
-from datetime import timedelta
+from datetime import datetime, timedelta
 from collections.abc import Callable
 from typing import Any
 
@@ -575,9 +575,9 @@ class ElasticClientAPI:
 
         When the climb dead-ends because an intermediate process event is missing
         from the events index (incomplete endpoint telemetry), it falls back to
-        ``_fallback_unique_host_marker``, which credits the alert only when
-        exactly one implant lineage is present on the host around the alert time
-        (never cross-attributing an ambiguous host).
+        ``_fallback_host_marker``, which uses the lone implant lineage on the host
+        when there is one, and otherwise disambiguates by timing (the implant
+        nearest before the alert) - crediting the alert to a single inject.
 
         Args:
             host_name: Host the process ran on (``host.name``).
@@ -644,38 +644,48 @@ class ElasticClientAPI:
         # The ancestry climb reached no marker - most often because an
         # intermediate process event (e.g. the cmd.exe between the implant and
         # the flagged process) was never ingested, breaking the entity_id chain.
-        # Fall back to a host + time-window implant lookup (safe: unique-only).
-        return self._fallback_unique_host_marker(host_name, alert_time)
+        # Fall back to a host + time-window implant lookup.
+        return self._fallback_host_marker(host_name, alert_time)
 
-    def _fallback_unique_host_marker(
+    def _fallback_host_marker(
         self, host_name: str, alert_time: str | None
     ) -> str | None:
-        """Recover the marker when the ancestry chain is broken, safely.
+        """Recover the marker when the ancestry chain is broken.
 
-        Looks for implant processes on ``host_name`` within
-        ``FALLBACK_WINDOW_SECONDS`` of ``alert_time`` and returns their marker
-        ONLY when exactly one distinct implant lineage
-        (``oaev-implant-<inject>-agent-<agent>``) is present. If two or more
-        injects' implants are in the window the host is ambiguous and this
-        returns None, so an alert whose ancestry could not be traced is never
-        cross-attributed to the wrong inject. Downstream matching still requires
-        the returned marker to equal the expectation's own, so a unique-but-
-        unrelated implant simply fails to match rather than mis-crediting.
+        The ancestry climb dead-ends when an intermediate process event (e.g. the
+        cmd.exe between the implant and a flagged reg.exe) was never ingested.
+        This looks at the implant processes active on ``host_name`` within
+        ``FALLBACK_WINDOW_SECONDS`` of ``alert_time`` and attributes the alert to
+        one implant lineage (``oaev-implant-<inject>-agent-<agent>``):
+
+        * **Unique host** - exactly one lineage present: it is used.
+        * **Ambiguous host** - several lineages present (e.g. a whole scenario
+          ran on the same host): they are disambiguated **by timing**. The alert
+          is attributed to the implant whose activity is the closest *before* the
+          alerting process (an atomic test's implant spawns the flagged process
+          shortly after it runs, and scenario injects run sequentially), falling
+          back to the nearest in absolute time only when none strictly precedes
+          (ingestion/clock skew).
+
+        This returns a single marker; downstream matching still requires it to
+        equal the expectation's own marker, so an alert is credited to exactly
+        one inject - the nearest-preceding one - and never fanned out across
+        every inject that touched the host.
 
         Args:
             host_name: Host the alert fired on (``host.name``).
             alert_time: The alert's ``@timestamp`` (anchors the window).
 
         Returns:
-            The single implant marker present on the host in the window, or None
-            when there is none or more than one.
+            The chosen implant marker, or None when no lineage is present.
 
         """
         if not alert_time:
             return None
         body = {
-            "size": 100,
-            "_source": self._DRILLDOWN_SOURCE,
+            "size": 200,
+            "sort": [{"@timestamp": {"order": "desc"}}],
+            "_source": [*self._DRILLDOWN_SOURCE, "@timestamp"],
             "query": {
                 "bool": {
                     "must": [
@@ -703,28 +713,84 @@ class ElasticClientAPI:
                 }
             },
         }
-        hits = self._events_search(body, host_name, "unique-host fallback")
+        hits = self._events_search(body, host_name, "host-marker fallback")
 
-        markers = {
-            marker
-            for hit in hits
-            if isinstance(hit, dict) and isinstance(hit.get("_source"), dict)
-            for marker in [self._marker_from_source(hit["_source"])]
-            if marker
-        }
-        if len(markers) == 1:
-            marker = next(iter(markers))
+        # marker -> most recent event @timestamp seen for that lineage (or None
+        # when the events carry no timestamp; the unique-host case still resolves,
+        # and an ambiguous host with no timing simply abstains - see below).
+        candidates: dict[str, str | None] = {}
+        for hit in hits:
+            if not isinstance(hit, dict) or not isinstance(hit.get("_source"), dict):
+                continue
+            source = hit["_source"]
+            marker = self._marker_from_source(source)
+            if not marker:
+                continue
+            ts = source.get("@timestamp")
+            ts = ts if isinstance(ts, str) else None
+            if marker not in candidates:
+                candidates[marker] = ts
+            elif ts is not None and (
+                candidates[marker] is None or ts > candidates[marker]
+            ):
+                candidates[marker] = ts
+
+        if not candidates:
+            return None
+        if len(candidates) == 1:
+            marker = next(iter(candidates))
             self.logger.debug(
                 f"{LOG_PREFIX} Drilldown recovered implant marker for "
                 f"host={host_name} via unique-host fallback: {marker}"
             )
             return marker
-        if len(markers) > 1:
+
+        chosen = self._nearest_preceding_marker(candidates, alert_time)
+        if chosen:
             self.logger.debug(
-                f"{LOG_PREFIX} Fallback declined for host={host_name}: "
-                f"{len(markers)} implant lineages in window (ambiguous)"
+                f"{LOG_PREFIX} Fallback timing-disambiguated among "
+                f"{len(candidates)} implant lineages on host={host_name} "
+                f"(nearest before alert): {chosen}"
             )
-        return None
+        return chosen
+
+    @staticmethod
+    def _parse_ts(ts: str | None) -> datetime | None:
+        """Parse an ISO-8601 timestamp (``...Z`` or offset) to an aware datetime."""
+        if not ts:
+            return None
+        try:
+            return datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
+        except (ValueError, TypeError):
+            return None
+
+    def _nearest_preceding_marker(
+        self, candidates: dict[str, str | None], alert_time: str
+    ) -> str | None:
+        """Pick the lineage whose activity is closest *before* the alert.
+
+        Prefers the marker with the greatest timestamp at/before ``alert_time``
+        (the implant that most recently ran before the flagged process); when
+        none strictly precedes (clock/ingestion skew places every implant event
+        after the alert), falls back to the marker nearest in absolute time.
+        """
+        at = self._parse_ts(alert_time)
+        if at is None:
+            return None
+        best_before: tuple[datetime, str] | None = None
+        best_any: tuple[float, str] | None = None
+        for marker, ts in candidates.items():
+            t = self._parse_ts(ts)
+            if t is None:
+                continue
+            if t <= at and (best_before is None or t > best_before[0]):
+                best_before = (t, marker)
+            delta = abs((t - at).total_seconds())
+            if best_any is None or delta < best_any[0]:
+                best_any = (delta, marker)
+        if best_before is not None:
+            return best_before[1]
+        return best_any[1] if best_any is not None else None
 
     def _fetch_pid_seed(
         self, host_name: str, pid: int, lookback: int, alert_time: str | None
