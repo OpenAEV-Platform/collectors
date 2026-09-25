@@ -185,6 +185,7 @@ class ConfigLoader(ConfigBaseSettings):
                 "elastic_max_retry": {"data": self.elastic.max_retry},
                 "elastic_offset": {"data": self.elastic.offset},
                 "elastic_verify_ssl": {"data": self.elastic.verify_ssl},
+                "elastic_ca_cert": {"data": self.elastic.ca_cert},
             },
             config_base_model=self,
         )

@@ -5,9 +5,11 @@ It implements the service provider protocol and defines which signatures to supp
 how to fetch data, and how to process expectations.
 """
 
+from __future__ import annotations
+
 import logging
 from datetime import timedelta
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pyoaev.apis.inject_expectation.model import (  # type: ignore[import-untyped]
     DetectionExpectation,
@@ -16,11 +18,12 @@ from pyoaev.apis.inject_expectation.model import (  # type: ignore[import-untype
 from pyoaev.helpers import OpenAEVDetectionHelper  # type: ignore[import-untyped]
 from pyoaev.signatures.types import SignatureTypes  # type: ignore[import-untyped]
 
-from ..collector.models import ExpectationResult
 from ..models.configs.config_loader import ConfigLoader
+from . import signature_compat  # noqa: F401  installs the fail-soft enum shim
 from .client_api import ElasticClientAPI
 from .converter import Converter
 from .exception import (
+    LEAVE_PENDING_ERRORS,
     ElasticAPIError,
     ElasticConfigurationError,
     ElasticDataConversionError,
@@ -30,8 +33,12 @@ from .exception import (
     ElasticNoAlertsFoundError,
     ElasticNoMatchingAlertsError,
     ElasticServiceError,
+    ElasticUngradableError,
     ElasticValidationError,
 )
+
+if TYPE_CHECKING:  # avoid a runtime services->collector import cycle
+    from ..collector.models import ExpectationResult
 
 LOG_PREFIX = "[ElasticExpectationService]"
 
@@ -79,6 +86,21 @@ class ElasticExpectationService:
             )
             self.client_api = ElasticClientAPI(config)
             self.converter = Converter()
+            # Deterministic per-inject correlation requires a process-events
+            # index for the implant-marker drilldown. When it is absent (SIEM
+            # only), we must fall back to IP + time for implant expectations
+            # instead of strictly rejecting markerless endpoint alerts (which
+            # would false-negative every implant inject).
+            self.drilldown_enabled = bool(
+                getattr(self.client_api, "events_index", None)
+            )
+            if not self.drilldown_enabled:
+                self.logger.warning(
+                    f"{LOG_PREFIX} No events index configured (ELASTIC_EVENTS_INDEX "
+                    "empty): implant-marker drilldown disabled; implant injects "
+                    "fall back to IP + time correlation (lower confidence, cannot "
+                    "dissociate same-host injects)."
+                )
             self.logger.info(
                 f"{LOG_PREFIX} Elastic Security expectation service initialized successfully"
             )
@@ -156,6 +178,11 @@ class ElasticExpectationService:
             self.logger.info(f"{LOG_PREFIX} No expectations to process")
             return []
 
+        # New cycle: clear the recovered-marker cache so pid-based seeds cannot
+        # go stale across cycles (markers are then reused across alerts, retries
+        # and expectations within this cycle).
+        self.client_api.reset_marker_cache()
+
         try:
             self.logger.info(
                 f"{LOG_PREFIX} Starting batch processing of {len(expectations)} expectations"
@@ -180,6 +207,19 @@ class ElasticExpectationService:
                             f"{LOG_PREFIX} Expectation {expectation_id} failed validation"
                         )
 
+                except LEAVE_PENDING_ERRORS as e:
+                    # Transient outage (SIEM/API unreachable, auth failure) or an
+                    # ungradable expectation (no usable signature). We can assert
+                    # NEITHER Detected NOR Not Detected, so LEAVE IT PENDING:
+                    # omit it from the returned results and the server re-serves
+                    # it next cycle. This avoids recording a false 'Not Detected'
+                    # for a mere outage - a genuine "queried, nothing matched"
+                    # still raises ElasticNoMatching/NoAlerts (below) -> graded.
+                    self.logger.warning(
+                        f"{LOG_PREFIX} Leaving expectation {expectation_id} PENDING "
+                        f"(not graded this cycle): {e}"
+                    )
+                    continue
                 except ElasticServiceError as e:
                     self.logger.warning(
                         f"{LOG_PREFIX} Elastic Security service error for expectation {expectation_id}: {e}"
@@ -244,6 +284,8 @@ class ElasticExpectationService:
             self.logger.warning(
                 f"{LOG_PREFIX} Elastic Security service warning for expectation {expectation_id}: Elastic Security only supports DetectionExpectations, not PreventionExpectations, marking them as invalid"
             )
+            from ..collector.models import ExpectationResult
+
             return ExpectationResult(
                 expectation_id=expectation_id,
                 is_valid=False,
@@ -300,6 +342,8 @@ class ElasticExpectationService:
         self.logger.warning(
             f"{LOG_PREFIX} Elastic Security service error for expectation {expectation_id}: Elastic Security only supports DetectionExpectations, not PreventionExpectations"
         )
+        from ..collector.models import ExpectationResult
+
         return ExpectationResult(
             expectation_id=expectation_id,
             is_valid=False,
@@ -341,6 +385,16 @@ class ElasticExpectationService:
             self.logger.debug(
                 f"{LOG_PREFIX} Extracted {len(search_signatures)} search signatures, {len(matching_signatures)} matching signatures"
             )
+
+            # No usable signature (e.g. only unknown / unsupported types after
+            # normalization): we can assert neither Detected nor Not Detected, so
+            # leave it PENDING rather than fetch (which would raise) or grade a
+            # false 'Not Detected'.
+            if not search_signatures:
+                raise ElasticUngradableError(
+                    f"expectation {expectation_id} has no usable signature "
+                    "(only unknown/unsupported types); leaving pending"
+                )
 
             self.logger.debug(
                 f"{LOG_PREFIX} Fetching Elastic Security data for {expectation_type} expectation..."
@@ -418,8 +472,17 @@ class ElasticExpectationService:
 
         """
         try:
+            # Normalize alternate / agentless vocabularies onto the canonical
+            # types the pipeline understands (source_ipv4 -> source_ipv4_address,
+            # start_time -> start_date, ...), so NetExec/agentless injects drive
+            # search + matching instead of being silently dropped.
             all_signatures = [
-                {"type": sig.type.value, "value": sig.value}
+                {
+                    "type": signature_compat.CANONICAL_ALIASES.get(
+                        sig.type.value, sig.type.value
+                    ),
+                    "value": sig.value,
+                }
                 for sig in expectation.inject_expectation_signatures
             ]
             self.logger.debug(
@@ -483,7 +546,7 @@ class ElasticExpectationService:
                     expectation_expects_parent=expectation_expects_parent,
                 ):
                     return True
-            except Exception:
+            except Exception:  # noqa: S112  best-effort predicate
                 continue
         return False
 
@@ -600,7 +663,7 @@ class ElasticExpectationService:
         except Exception as e:
             raise ElasticMatchingError() from e
 
-    def _match_with_detection_helper(
+    def _match_with_detection_helper(  # noqa: C901
         self,
         signatures: list[dict[str, str]],
         data_item: dict[str, Any],
@@ -738,8 +801,11 @@ class ElasticExpectationService:
 
                 # No marker on the alert. If it is endpoint/process telemetry it
                 # SHOULD have carried the marker: reject it (no IP substitute) so
-                # an unrelated same-host alert is never cross-attributed.
-                if data_item.get("_endpoint_context"):
+                # an unrelated same-host alert is never cross-attributed - but
+                # ONLY when the drilldown is actually available. With no events
+                # index there is no way to recover a marker, so rejecting would
+                # false-negative every implant inject; degrade to IP + time.
+                if data_item.get("_endpoint_context") and self.drilldown_enabled:
                     self.logger.debug(
                         f"{LOG_PREFIX} Endpoint alert without implant marker "
                         f"-> reject (deterministic, no IP substitute)"
@@ -828,6 +894,8 @@ class ElasticExpectationService:
         if hasattr(error, "status_code") and error.status_code:
             error_message += f" (Status: {error.status_code})"
 
+        from ..collector.models import ExpectationResult
+
         return ExpectationResult(
             expectation_id=expectation_id,
             is_valid=False,
@@ -850,6 +918,8 @@ class ElasticExpectationService:
             ExpectationResult object with structured data.
 
         """
+        from ..collector.models import ExpectationResult
+
         return ExpectationResult(
             expectation_id=str(expectation.inject_expectation_id),
             is_valid=result_dict.get("is_valid", False),

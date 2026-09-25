@@ -124,7 +124,7 @@ class Converter:
         """
         return isinstance(data, ElasticAlert)
 
-    def _alert_data(self, alert_data: ElasticAlert) -> dict[str, Any]:
+    def _alert_data(self, alert_data: ElasticAlert) -> dict[str, Any]:  # noqa: C901
         """Convert Elastic Security alert data to OAEV format.
 
         Args:

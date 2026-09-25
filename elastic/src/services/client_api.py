@@ -25,6 +25,7 @@ from .exception import (
 )
 from .models import ElasticAlert, ElasticResponse, ElasticSearchCriteria
 from .utils.parent_process_parser import ParentProcessParser
+from .utils.url import redact_userinfo
 
 LOG_PREFIX = "[ElasticClientAPI]"
 
@@ -52,6 +53,13 @@ FALLBACK_WINDOW_SECONDS = 600
 # alert's time for a pid-only drilldown seed: the process is created before the
 # alert, but ingestion/clock skew can place its event slightly after.
 PID_SEED_BUFFER_SECONDS = 120
+
+# Upper bound on how many candidate alerts are drilled per fetch. Each drill is
+# up to MAX_ANCESTRY_DEPTH ES round-trips, so without a cap a broad query (many
+# candidates) can issue hundreds of _search calls per expectation per attempt -
+# a self-inflicted load on the customer cluster. Alerts are @timestamp desc, so
+# the most recent (most relevant) are drilled first; the rest keep no marker.
+MAX_DRILLDOWN_ALERTS = 20
 
 # Sentinel injected for an empty placeholder so the rendered query_string stays
 # syntactically valid while matching nothing (e.g. ``source.ip:(__oaev_no_match__)``).
@@ -108,7 +116,15 @@ def _lucene_values(values: list[str] | None) -> str:
     cleaned = [str(v) for v in (values or []) if v not in (None, "")]
     if not cleaned:
         return NO_MATCH_TOKEN
-    return " OR ".join('"' + v.replace('"', '\\"') + '"' for v in cleaned)
+    # Quote each value and escape Lucene metacharacters so a value is always
+    # treated literally: backslash FIRST (so we don't double-escape), then the
+    # double quote that delimits the phrase. Values are trusted (IPs / UUID
+    # markers) but the template is operator-editable and values flow from an
+    # external system, so escape defensively.
+    def _esc(v: str) -> str:
+        return v.replace("\\", "\\\\").replace('"', '\\"')
+
+    return " OR ".join('"' + _esc(v) + '"' for v in cleaned)
 
 
 class ElasticClientAPI:
@@ -151,6 +167,10 @@ class ElasticClientAPI:
             self.offset = self.config.elastic.offset.total_seconds()
             self.max_retry = self.config.elastic.max_retry
             self.verify_ssl = self.config.elastic.verify_ssl
+            self.ca_cert = getattr(self.config.elastic, "ca_cert", None) or None
+            # Recovered-marker cache, shared across alerts/retries/expectations
+            # within one processing cycle (reset via reset_marker_cache()).
+            self._marker_cache: dict[tuple[str, str], str | None] = {}
         except AttributeError as e:
             raise ElasticValidationError(f"Invalid config structure: {e}") from e
 
@@ -212,7 +232,19 @@ class ElasticClientAPI:
                 "Either an API key or a username/password pair is required"
             )
         session.headers.update(headers)
-        session.verify = self.verify_ssl
+        # TLS: prefer verifying against a provided CA bundle; only fall back to
+        # verify=True; disabling verification is a loud, deliberate downgrade.
+        if getattr(self, "ca_cert", None):
+            session.verify = self.ca_cert
+        else:
+            session.verify = self.verify_ssl
+            if not self.verify_ssl:
+                self.logger.warning(
+                    f"{LOG_PREFIX} TLS certificate verification is DISABLED "
+                    "(ELASTIC_VERIFY_SSL=false). Credentials are exposed to "
+                    "interception - do NOT use in production; trust the cluster "
+                    "CA (ELASTIC_CA_CERT) instead."
+                )
         return session
 
     def fetch_signatures(
@@ -463,23 +495,52 @@ class ElasticClientAPI:
         if not self.events_index or not alerts:
             return
 
-        cache: dict[tuple[str, str], str | None] = {}
+        drills = 0
         for alert in alerts:
             if not alert.host_name or (alert.pid is None and not alert.process_entity_id):
                 continue
-            # Prefer the reuse-safe entity_id as the drilldown seed; fall back to
-            # the pid when the alert carries no entity_id.
-            seed = alert.process_entity_id or f"pid:{alert.pid}"
-            key = (alert.host_name, seed)
-            if key not in cache:
-                cache[key] = self._fetch_source_event_marker(
+            if alert.process_entity_id:
+                # entity_id is reuse-safe, so its recovered marker can be cached
+                # and reused across alerts/retries/expectations within the cycle.
+                key = (alert.host_name, alert.process_entity_id)
+                if key not in self._marker_cache:
+                    # Bound the per-fetch drilldown fan-out; already-cached seeds
+                    # are free (do not count against the cap).
+                    if drills >= MAX_DRILLDOWN_ALERTS:
+                        continue
+                    drills += 1
+                    self._marker_cache[key] = self._fetch_source_event_marker(
+                        alert.host_name,
+                        alert.pid,
+                        alert.process_entity_id,
+                        alert.time,
+                    )
+                marker = self._marker_cache[key]
+            else:
+                # pid-only seed (e.g. a PowerShell ScriptBlock alert): a pid can
+                # be reused by another process within a cycle, so a marker cached
+                # on pid could be stale/mis-attributed to a later instance. Its
+                # drilldown is time-anchored per alert (_fetch_pid_seed), so
+                # resolve it each time and never cache it.
+                if drills >= MAX_DRILLDOWN_ALERTS:
+                    continue
+                drills += 1
+                marker = self._fetch_source_event_marker(
                     alert.host_name,
                     alert.pid,
-                    alert.process_entity_id,
+                    None,
                     alert.time,
                 )
-            if cache[key]:
-                alert.implant_marker = cache[key]
+            if marker:
+                alert.implant_marker = marker
+
+    def reset_marker_cache(self) -> None:
+        """Clear the recovered-marker cache. Only reuse-safe entity_id seeds are
+        cached (pid-only seeds are never cached, see
+        _enrich_alerts_with_source_events); clearing per cycle keeps the cache
+        from growing without bound across cycles.
+        """
+        self._marker_cache = {}
 
     # Event ``_source`` fields the drilldown needs: process/parent text (for the
     # marker) plus the entity ids used to climb the ancestry reuse-safely.
@@ -494,7 +555,7 @@ class ElasticClientAPI:
         "process.parent.entity_id",
     ]
 
-    def _fetch_source_event_marker(
+    def _fetch_source_event_marker(  # noqa: C901
         self,
         host_name: str,
         pid: int | None,
@@ -642,19 +703,7 @@ class ElasticClientAPI:
                 }
             },
         }
-        try:
-            endpoint = f"{self.base_url}/{self.events_index}/_search"
-            response = self.session.post(
-                endpoint, json=body, timeout=REQUEST_TIMEOUT_SECONDS
-            )
-            if response.status_code != 200:
-                return None
-            hits = response.json().get("hits", {}).get("hits", [])
-        except (RequestException, ValueError) as e:
-            self.logger.debug(
-                f"{LOG_PREFIX} Fallback lookup failed for host={host_name}: {e}"
-            )
-            return None
+        hits = self._events_search(body, host_name, "unique-host fallback")
 
         markers = {
             marker
@@ -763,29 +812,76 @@ class ElasticClientAPI:
                 }
             },
         }
-        try:
-            endpoint = f"{self.base_url}/{self.events_index}/_search"
-            response = self.session.post(
-                endpoint, json=body, timeout=REQUEST_TIMEOUT_SECONDS
-            )
-            if response.status_code != 200:
-                self.logger.debug(
-                    f"{LOG_PREFIX} Drilldown returned {response.status_code} "
-                    f"for host={host_name} clause={match_clause}"
-                )
-                return []
-            hits = response.json().get("hits", {}).get("hits", [])
-        except (RequestException, ValueError) as e:
-            self.logger.debug(
-                f"{LOG_PREFIX} Drilldown failed for host={host_name} "
-                f"clause={match_clause}: {e}"
-            )
-            return []
+        hits = self._events_search(body, host_name, f"clause={match_clause}")
         return [
             hit.get("_source", {})
             for hit in hits
             if isinstance(hit, dict) and isinstance(hit.get("_source"), dict)
         ]
+
+    def _events_search(
+        self, body: dict[str, Any], host_name: str, context: str
+    ) -> list[dict[str, Any]]:
+        """POST a drilldown query to the events index, surfacing config/auth errors.
+
+        A credential that lacks ``read`` on the events index (401/403) or a
+        non-existent events index (404) is raised as an actionable error instead
+        of being swallowed as an empty result. Swallowing it would make every
+        endpoint alert silently recover no implant marker and be rejected,
+        downgrading implant injects to a false ``Not Detected`` (a silent false
+        negative). Raising instead leaves those expectations pending (see
+        ``LEAVE_PENDING_ERRORS``), exactly like the alerts query, so the
+        misconfiguration is fixed rather than mis-graded. Transient failures
+        (network blip, malformed JSON, other non-200) still return ``[]`` so the
+        outer retry loop simply re-drills.
+
+        Args:
+            body: The ``_search`` request body.
+            host_name: Host the drilldown is scoped to (for logs).
+            context: Short description of the drilldown for debug logs.
+
+        Returns:
+            The raw ``hits`` list (possibly empty).
+
+        Raises:
+            ElasticAuthenticationError: On 401/403 against the events index.
+            ElasticAPIError: When the events index does not exist (404).
+
+        """
+        endpoint = f"{self.base_url}/{self.events_index}/_search"
+        try:
+            response = self.session.post(
+                endpoint, json=body, timeout=REQUEST_TIMEOUT_SECONDS
+            )
+        except (RequestException, ValueError) as e:
+            self.logger.debug(
+                f"{LOG_PREFIX} Drilldown failed for host={host_name} "
+                f"({context}): {redact_userinfo(str(e))}"
+            )
+            return []
+        if response.status_code in (401, 403):
+            raise ElasticAuthenticationError(
+                f"Authorization failed ({response.status_code}) on the events "
+                f"index '{self.events_index}': the credential needs 'read' + "
+                "'view_index_metadata' there for the implant-marker drilldown. "
+                "Grant it, or unset ELASTIC_EVENTS_INDEX to disable the drilldown "
+                "and correlate on IP + time. See README 'Required permissions'."
+            )
+        if response.status_code == 404:
+            raise ElasticAPIError(
+                f"Events index '{self.events_index}' not found (404): check "
+                "ELASTIC_EVENTS_INDEX, or unset it to disable the drilldown."
+            )
+        if response.status_code != 200:
+            self.logger.debug(
+                f"{LOG_PREFIX} Drilldown returned {response.status_code} "
+                f"for host={host_name} ({context})"
+            )
+            return []
+        try:
+            return response.json().get("hits", {}).get("hits", [])
+        except ValueError:
+            return []
 
     def _marker_from_source(self, source: dict[str, Any]) -> str | None:
         """Extract the implant marker from a single event ``_source`` if present.
@@ -898,7 +994,22 @@ class ElasticClientAPI:
 
             if response.status_code == 401:
                 raise ElasticAuthenticationError(
-                    "Authentication with Elastic Security failed"
+                    "Authentication with Elastic Security failed: check "
+                    "ELASTIC_API_KEY or ELASTIC_USERNAME/ELASTIC_PASSWORD."
+                )
+            if response.status_code == 403:
+                # Actionable: the credential is valid but lacks read on the index.
+                raise ElasticAuthenticationError(
+                    "Authorization failed (403): the credential lacks 'read' on "
+                    f"'{self.alerts_index}'. Grant read + view_index_metadata on "
+                    "the alerts index and (for the drilldown) the events index. "
+                    "See README 'Required permissions'."
+                )
+            if response.status_code == 404:
+                raise ElasticAPIError(
+                    f"Index '{self.alerts_index}' not found (404): check "
+                    "ELASTIC_ALERTS_INDEX / ELASTIC_EVENTS_INDEX match indices that "
+                    "exist in this cluster."
                 )
             if response.status_code != 200:
                 raise ElasticAPIError(
@@ -915,13 +1026,19 @@ class ElasticClientAPI:
         except (ElasticAuthenticationError, ElasticAPIError):
             raise
         except (ConnectionError, Timeout) as e:
-            raise ElasticNetworkError(f"Network error during query: {e}") from e
+            raise ElasticNetworkError(
+                f"Network error during query: {redact_userinfo(str(e))}"
+            ) from e
         except RequestException as e:
-            raise ElasticAPIError(f"HTTP request failed during query: {e}") from e
+            raise ElasticAPIError(
+                f"HTTP request failed during query: {redact_userinfo(str(e))}"
+            ) from e
         except Exception as e:
-            raise ElasticQueryError(f"Unexpected error executing query: {e}") from e
+            raise ElasticQueryError(
+                f"Unexpected error executing query: {redact_userinfo(str(e))}"
+            ) from e
 
-    def _execute_query_with_retry(
+    def _execute_query_with_retry(  # noqa: C901
         self,
         search_criteria: ElasticSearchCriteria,
         max_retries: int | None = None,
@@ -934,6 +1051,9 @@ class ElasticClientAPI:
             search_criteria: ElasticSearchCriteria object with search parameters.
             max_retries: Maximum number of retry attempts.
             offset_seconds: Seconds to wait between retries.
+            match_check: Optional predicate over the fetched alerts; when given,
+                retries continue until it returns True (a matching alert appeared)
+                or the budget is exhausted (see fetch_with_retry).
 
         Returns:
             List of ElasticAlert objects (empty if none found after all retries).
@@ -990,12 +1110,16 @@ class ElasticClientAPI:
                 RequestException,
             ) as e:
                 last_exception = e
-                self.logger.warning(f"{LOG_PREFIX} Attempt {attempt + 1} failed: {e}")
+                self.logger.warning(
+                    f"{LOG_PREFIX} Attempt {attempt + 1} failed: "
+                    f"{redact_userinfo(str(e))}"
+                )
                 if attempt == retries:
                     break
 
         if last_exception:
             raise ElasticAPIError(
-                f"All Elastic Security fetch attempts failed. Last error: {last_exception}"
+                "All Elastic Security fetch attempts failed. Last error: "
+                f"{redact_userinfo(str(last_exception))}"
             ) from last_exception
         return []

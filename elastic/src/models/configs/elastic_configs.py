@@ -85,24 +85,33 @@ class _ConfigLoaderElastic(ConfigBaseSettings):
     )
     max_retry: int = Field(
         alias="ELASTIC_MAX_RETRY",
-        default=5,
-        description="Maximum number of retry attempts for API calls. Combined "
-        "with offset, this defines how long the collector keeps looking for an "
-        "alert after an inject (default 5 x 120s covers ~10 min of detection "
-        "latency: SIEM ingestion + detection-rule schedule). Too small a value "
-        "makes the collector give up before Elastic Security has raised the "
-        "alert and record a premature 'Not Detected'.",
+        default=3,
+        description="Maximum number of retry attempts. Combined with offset, this "
+        "bounds how long the collector waits for a *matching* alert to appear "
+        "after an inject (default 3 x 30s ~= 1.5 min of detection latency: SIEM "
+        "ingestion + detection-rule schedule). It is applied per expectation, so "
+        "with the blocking batch a large value slows the whole run; raise it via "
+        "the catalog only for deployments with genuinely high detection latency. "
+        "Too small a value risks a premature 'Not Detected'.",
     )
     offset: timedelta = Field(
         alias="ELASTIC_OFFSET",
-        default=timedelta(seconds=120),
+        default=timedelta(seconds=30),
         description="Time waited between retry attempts, also used to widen the "
         "search window on each retry.",
     )
     verify_ssl: bool = Field(
         alias="ELASTIC_VERIFY_SSL",
         default=True,
-        description="Whether to verify the Elasticsearch TLS certificate.",
+        description="Whether to verify the Elasticsearch TLS certificate. Keep "
+        "true in production; disabling it exposes credentials to interception.",
+    )
+    ca_cert: str | None = Field(
+        alias="ELASTIC_CA_CERT",
+        default=None,
+        description="Optional path to a CA certificate bundle used to verify the "
+        "Elasticsearch TLS certificate (recommended for self-signed clusters "
+        "instead of disabling verification). Overrides ELASTIC_VERIFY_SSL.",
     )
 
     @model_validator(mode="after")

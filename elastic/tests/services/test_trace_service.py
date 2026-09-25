@@ -81,17 +81,20 @@ class TestElasticTraceService:
         )
         assert "abc123-uuid" in trace.inject_expectation_trace_alert_link  # noqa: S101
 
-    def test_alert_url_used_verbatim_without_kibana_override(self):
-        """kibana.alert.url is used as-is when ELASTIC_KIBANA_URL is unset.
+    def test_alert_url_used_verbatim_for_colocated_kibana(self):
+        """kibana.alert.url is used as-is when ELASTIC_KIBANA_URL is unset AND the
+        alert host is the Elastic host (a co-located Kibana).
 
         It is the canonical Elastic link (a SOAR/connector uses it), correct by
-        virtue of Kibana's server.publicBaseUrl - the collector must not guess.
+        virtue of Kibana's server.publicBaseUrl. A host that is NOT the Elastic
+        host cannot be verified as the real Kibana and is not trusted verbatim
+        (see test_client_readiness TestTraceLinkSafety.rogue_host).
         """
         config = create_test_config()
         config.elastic.kibana_url = None
         service = ElasticTraceService(config=config)
         alert_url = (
-            "http://kibana.internal:5601/app/security/alerts/redirect/"
+            "http://test-elastic.example.com:5601/app/security/alerts/redirect/"
             "abc123-uuid?index=.alerts-security.alerts-default&timestamp=2026-09-23T07:32:23.656Z"
         )
         result = _make_result(
