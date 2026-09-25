@@ -194,7 +194,7 @@ class ElasticResponse(BaseModel):
             pid_raw = _first(source, ["process.pid"])
             try:
                 pid_val = int(pid_raw) if pid_raw is not None else None
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 pid_val = None
             alert = ElasticAlert(
                 time=_first(source, ["@timestamp", "kibana.alert.original_time"]) or "",

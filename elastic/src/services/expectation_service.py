@@ -104,7 +104,7 @@ class ElasticExpectationService:
             self.logger.info(
                 f"{LOG_PREFIX} Elastic Security expectation service initialized successfully"
             )
-        except (ElasticValidationError, ElasticConfigurationError):
+        except ElasticValidationError, ElasticConfigurationError:
             raise
         except Exception as e:
             raise ElasticConfigurationError(

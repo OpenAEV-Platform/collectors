@@ -764,7 +764,7 @@ class ElasticClientAPI:
             return None
         try:
             return datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             return None
 
     def _nearest_preceding_marker(
@@ -1092,7 +1092,7 @@ class ElasticClientAPI:
             self._enrich_alerts_with_source_events(elastic_response.results)
             return elastic_response.results
 
-        except (ElasticAuthenticationError, ElasticAPIError):
+        except ElasticAuthenticationError, ElasticAPIError:
             raise
         except (ConnectionError, Timeout) as e:
             raise ElasticNetworkError(
@@ -1168,7 +1168,7 @@ class ElasticClientAPI:
                         f"{LOG_PREFIX} No alerts found after all retry attempts"
                     )
                     return []
-            except (ElasticAuthenticationError, ElasticValidationError):
+            except ElasticAuthenticationError, ElasticValidationError:
                 raise
             except (
                 ElasticAPIError,

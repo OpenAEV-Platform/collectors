@@ -480,7 +480,7 @@ class ElasticTraceService:
                 start = (ts - timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%S.000Z")
                 end = (ts + timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%S.000Z")
                 return start, end, "absolute"
-            except (ValueError, TypeError):
+            except ValueError, TypeError:
                 self.logger.debug(
                     f"{LOG_PREFIX} Unparseable alert_time '{alert_time}', "
                     "using relative range"

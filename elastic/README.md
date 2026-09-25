@@ -41,7 +41,7 @@ PREVENTION expectations are not supported.
 - An Elasticsearch cluster storing Elastic Security detection alerts (default index pattern `.alerts-security.alerts-*`)
 - An Elasticsearch API key (preferred) or a username/password pair with read access to that alerts index
 - Optionally, a Kibana instance to build alert links in the expectation traces
-- For a manual (non-Docker) deployment: Python >= 3.11 and [Poetry](https://python-poetry.org/) >= 2.1
+- For a manual (non-Docker) deployment: Python 3.14 and [Poetry](https://python-poetry.org/) >= 2.1
 
 ## Configuration variables
 
@@ -222,7 +222,7 @@ On each run, the collector:
 
 - **Elastic version:** Elastic Security 8.x or later (the collector reads `.alerts-security.alerts-*` and uses the
   `kibana.alert.url` field for trace links, both 8.x+). Confirm the alert schema on your version.
-- **Runtime:** Python 3.13 (the pinned `pyoaev` client requires it); the published container image bundles it.
+- **Runtime:** Python 3.14 (matching the published container image and the rest of the collectors monorepo); the image bundles it.
 - **Detection content must be enabled.** The collector only correlates alerts your rules actually raise. Enable the
   Elastic **Detection rules** (and the **Elastic Defend** and/or **Sysmon via Elastic Agent** integrations) that fire on
   the behaviours you inject. If no rule fires for a technique, the inject is legitimately `Not Detected`.
