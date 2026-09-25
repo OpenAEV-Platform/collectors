@@ -6,7 +6,7 @@ build-backend = "poetry.core.masonry.api"
 
 [project]
 name = "openaev-tanium-threat-response-collector"
-version = "3.260917.1"
+version = "3.260923.0"
 description = "A Collector for Tanium Threat Response security suite"
 readme = "README.md"
 authors = [
@@ -35,7 +35,7 @@ packages = [
 pydantic = ">=2.13,<3"
 pydantic-settings = ">=2.14,<3"
 requests = ">=2.33,<3"
-pyoaev = "3.260904.0"
+pyoaev = "3.260923.0"
 thefuzz = "^0.22.1"
 pytz = "^2026.3"
 python-dateutil = "^2.9.0"

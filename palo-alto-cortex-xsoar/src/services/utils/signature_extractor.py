@@ -40,7 +40,7 @@ class SignatureExtractor:
                             signature.value.replace("Z", "+00:00")
                         )
                         return start_date
-                    except (ValueError, AttributeError):
+                    except ValueError, AttributeError:
                         continue
         return None
 
@@ -68,7 +68,7 @@ class SignatureExtractor:
                             signature.value.replace("Z", "+00:00")
                         )
                         return end_date
-                    except (ValueError, AttributeError):
+                    except ValueError, AttributeError:
                         continue
         return None
 

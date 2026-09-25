@@ -6,13 +6,13 @@ build-backend = "poetry.core.masonry.api"
 
 [project]
 name = "openaev-logrhythm-collector"
-version = "3.260917.1"
+version = "3.260923.0"
 description = "Collector for LogRhythm."
 readme = "README.md"
 authors = [
     { name = "Filigran", email = "contact@filigran.io" },
 ]
-requires-python = ">=3.13,<4.0"
+requires-python = ">=3.14,<4.0"
 dynamic = [
     "dependencies",
 ]
@@ -35,7 +35,7 @@ packages = [
 pydantic = ">=2.13,<3"
 pydantic-settings = ">=2.14,<3"
 requests = ">=2.33,<3"
-pyoaev = "3.260904.0"
+pyoaev = "3.260923.0"
 
 [tool.poetry.dependencies.python-slugify]
 version = ">=8.0.4,<9"

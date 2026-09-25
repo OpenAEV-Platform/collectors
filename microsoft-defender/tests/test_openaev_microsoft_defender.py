@@ -181,13 +181,17 @@ def test_process_message_runs_process_alerts_via_asyncio_run():
     collector._configuration.get.side_effect = lambda key: f"value-{key}"
     collector._process_alerts = AsyncMock()
 
-    with patch(
-        "microsoft_defender.openaev_microsoft_defender.ClientSecretCredential"
-    ) as mock_credential, patch(
-        "microsoft_defender.openaev_microsoft_defender.GraphServiceClient"
-    ) as mock_graph_client, patch(
-        "microsoft_defender.openaev_microsoft_defender.asyncio.run"
-    ) as mock_asyncio_run:
+    with (
+        patch(
+            "microsoft_defender.openaev_microsoft_defender.ClientSecretCredential"
+        ) as mock_credential,
+        patch(
+            "microsoft_defender.openaev_microsoft_defender.GraphServiceClient"
+        ) as mock_graph_client,
+        patch(
+            "microsoft_defender.openaev_microsoft_defender.asyncio.run"
+        ) as mock_asyncio_run,
+    ):
         graph_client_instance = MagicMock()
         mock_graph_client.return_value = graph_client_instance
 
@@ -217,9 +221,10 @@ def test_process_message_asyncio_run_works_without_existing_event_loop():
     collector._configuration.get.return_value = "value"
     collector._process_alerts = AsyncMock()
 
-    with patch(
-        "microsoft_defender.openaev_microsoft_defender.ClientSecretCredential"
-    ), patch("microsoft_defender.openaev_microsoft_defender.GraphServiceClient"):
+    with (
+        patch("microsoft_defender.openaev_microsoft_defender.ClientSecretCredential"),
+        patch("microsoft_defender.openaev_microsoft_defender.GraphServiceClient"),
+    ):
         # Ensure there is no current event loop set on this thread, mirroring
         # the daemon runtime environment where the bug was originally caught.
         try:

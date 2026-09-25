@@ -64,13 +64,17 @@ def test_process_message_runs_create_groups_via_asyncio_run():
     collector._configuration.get.side_effect = lambda key: f"value-{key}"
     collector.create_groups = AsyncMock()
 
-    with patch(
-        "microsoft_entra.openaev_microsoft_entra.ClientSecretCredential"
-    ) as mock_credential, patch(
-        "microsoft_entra.openaev_microsoft_entra.GraphServiceClient"
-    ) as mock_graph_client, patch(
-        "microsoft_entra.openaev_microsoft_entra.asyncio.run"
-    ) as mock_asyncio_run:
+    with (
+        patch(
+            "microsoft_entra.openaev_microsoft_entra.ClientSecretCredential"
+        ) as mock_credential,
+        patch(
+            "microsoft_entra.openaev_microsoft_entra.GraphServiceClient"
+        ) as mock_graph_client,
+        patch(
+            "microsoft_entra.openaev_microsoft_entra.asyncio.run"
+        ) as mock_asyncio_run,
+    ):
         graph_client_instance = MagicMock()
         mock_graph_client.return_value = graph_client_instance
 
@@ -101,8 +105,9 @@ def test_process_message_asyncio_run_works_without_existing_event_loop():
     collector._configuration.get.return_value = "value"
     collector.create_groups = AsyncMock()
 
-    with patch("microsoft_entra.openaev_microsoft_entra.ClientSecretCredential"), patch(
-        "microsoft_entra.openaev_microsoft_entra.GraphServiceClient"
+    with (
+        patch("microsoft_entra.openaev_microsoft_entra.ClientSecretCredential"),
+        patch("microsoft_entra.openaev_microsoft_entra.GraphServiceClient"),
     ):
         # Ensure there is no current event loop set on this thread, mirroring
         # the daemon runtime environment where the bug was originally caught.

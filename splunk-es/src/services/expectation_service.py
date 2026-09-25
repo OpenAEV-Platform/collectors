@@ -100,7 +100,7 @@ class SplunkESExpectationService:
             self.logger.info(
                 f"{LOG_PREFIX} Splunk ES expectation service initialized successfully"
             )
-        except (SplunkESValidationError, SplunkESConfigurationError):
+        except SplunkESValidationError, SplunkESConfigurationError:
             raise
         except Exception as e:
             raise SplunkESConfigurationError(
