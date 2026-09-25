@@ -271,13 +271,21 @@ The collector waits for an alert to appear after an inject, bounded by `ELASTIC_
 (default `3 × 30s ≈ 90s`) and searched over `ELASTIC_TIME_WINDOW` (default `PT1H`).
 
 - Too short → **premature `Not Detected`** if your rules run on a slower schedule (SIEM ingestion + rule interval).
+  A verdict is recorded once and not re-evaluated, so an alert that fires *after* the budget is exhausted is missed
+  even though it exists — size the budget for your **slowest** relevant rule, not the average.
 - Too long → slower cycles (the batch is sequential; see Known limitations).
 
 | Cluster detection latency | Suggested settings |
 |---|---|
 | Fast (rules ~1 min) | `ELASTIC_MAX_RETRY=3`, `ELASTIC_OFFSET=PT30S` (default) |
 | Moderate (a few min) | `ELASTIC_MAX_RETRY=4`, `ELASTIC_OFFSET=PT45S` |
-| High-latency | raise `ELASTIC_TIME_WINDOW` (coverage) and the budget; expect slower cycles |
+| High-latency (e.g. PowerShell script-block / high-entropy rules) | `ELASTIC_MAX_RETRY=8`, `ELASTIC_OFFSET=PT30S` (~4 min) |
+| Very high | raise `ELASTIC_TIME_WINDOW` (coverage) and the budget; expect slower cycles |
+
+> **Note on script-based rules.** Detections built on PowerShell script-block / high-entropy analysis (e.g.
+> *"Potential Invoke-Mimikatz PowerShell Script"*, *"PowerShell Obfuscated Script via High Entropy"*) can fire **one to
+> several minutes after** the technique runs — well beyond the 90 s default. If injects that clearly executed are graded
+> `Not Detected`, raise the retry budget (the `~4 min` row above) before suspecting the correlation logic.
 
 `ELASTIC_TIME_WINDOW` (not the offset) governs how far back alerts are searched.
 
