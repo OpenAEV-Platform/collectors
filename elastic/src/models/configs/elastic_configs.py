@@ -3,7 +3,7 @@
 from datetime import timedelta
 from typing import Optional
 
-from pydantic import Field, SecretStr, model_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from src.models.configs import ConfigBaseSettings
 
 
@@ -113,6 +113,20 @@ class _ConfigLoaderElastic(ConfigBaseSettings):
         "Elasticsearch TLS certificate (recommended for self-signed clusters "
         "instead of disabling verification). Overrides ELASTIC_VERIFY_SSL.",
     )
+
+    @field_validator("events_index", "query_template", mode="before")
+    @classmethod
+    def _empty_str_to_none(cls, value: object) -> object:
+        """Treat an explicitly empty/whitespace value as unset (None).
+
+        These fields carry a non-None default, so ``ELASTIC_EVENTS_INDEX=`` must
+        still disable the drilldown (``drilldown_enabled`` is ``bool(events_index)``)
+        and ``ELASTIC_QUERY_TEMPLATE=`` must fall back to the built-in query,
+        rather than being ignored and keeping the default.
+        """
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
 
     @model_validator(mode="after")
     def _validate_auth(self) -> "_ConfigLoaderElastic":

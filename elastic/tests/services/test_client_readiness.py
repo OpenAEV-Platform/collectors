@@ -529,3 +529,17 @@ class TestFallbackTimingDisambiguation:
             assert (  # noqa: S101
                 client._fallback_host_marker("h", "2026-09-25T08:30:25.000Z") is None
             )
+
+
+class TestEmptyConfigNormalization:
+    """Reviewer #9: an explicitly empty ELASTIC_EVENTS_INDEX / ELASTIC_QUERY_TEMPLATE
+    must disable the drilldown / fall back to the built-in query, not be ignored."""
+
+    def test_empty_events_index_normalized_to_none(self):
+        from src.models.configs.elastic_configs import _ConfigLoaderElastic
+
+        assert _ConfigLoaderElastic._empty_str_to_none("") is None  # noqa: S101
+        assert _ConfigLoaderElastic._empty_str_to_none("   ") is None  # noqa: S101
+        assert (  # noqa: S101
+            _ConfigLoaderElastic._empty_str_to_none("logs-*") == "logs-*"
+        )
