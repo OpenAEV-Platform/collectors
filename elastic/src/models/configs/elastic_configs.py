@@ -3,7 +3,7 @@
 from datetime import timedelta
 from typing import Optional
 
-from pydantic import Field, SecretStr, model_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from src.models.configs import ConfigBaseSettings
 
 
@@ -41,6 +41,33 @@ class _ConfigLoaderElastic(ConfigBaseSettings):
         default=".alerts-security.alerts-*",
         description="Index or index pattern to search for detection alerts.",
     )
+    query_template: Optional[str] = Field(
+        alias="ELASTIC_QUERY_TEMPLATE",
+        default=None,
+        description=(
+            "Lucene query_string template used to correlate alerts with an "
+            "expectation. Supports the placeholders {alerts_index}, "
+            "{source_ips}, {target_ips}, {implant_urls}, {implant_names}, "
+            "{start_date}, {end_date}, {time_window}. Each list "
+            "placeholder is rendered as an OR-joined set of quoted values, so "
+            "write e.g. 'host.ip:({source_ips})'. Leave empty to use the "
+            "built-in default query. The time range is always applied "
+            "separately as an @timestamp filter."
+        ),
+    )
+    events_index: Optional[str] = Field(
+        alias="ELASTIC_EVENTS_INDEX",
+        default="logs-windows.sysmon_operational-*,logs-endpoint.events.process-*",
+        description=(
+            "Index pattern of raw endpoint/process events used to drill down "
+            "from a detection alert to its source process and recover the "
+            "OpenAEV implant marker (from the process / parent-process command "
+            "line). This enables deterministic per-inject correlation - two "
+            "injects on the same host within the time window are told apart by "
+            "their implant/inject id. Leave empty to disable the drilldown and "
+            "fall back to host/IP + time correlation only."
+        ),
+    )
     kibana_url: Optional[str] = Field(
         alias="ELASTIC_KIBANA_URL",
         default=None,
@@ -59,18 +86,47 @@ class _ConfigLoaderElastic(ConfigBaseSettings):
     max_retry: int = Field(
         alias="ELASTIC_MAX_RETRY",
         default=3,
-        description="Maximum number of retry attempts for API calls.",
+        description="Maximum number of retry attempts. Combined with offset, this "
+        "bounds how long the collector waits for a *matching* alert to appear "
+        "after an inject (default 3 x 30s ~= 1.5 min of detection latency: SIEM "
+        "ingestion + detection-rule schedule). It is applied per expectation, so "
+        "with the blocking batch a large value slows the whole run; raise it via "
+        "the catalog only for deployments with genuinely high detection latency. "
+        "Too small a value risks a premature 'Not Detected'.",
     )
     offset: timedelta = Field(
         alias="ELASTIC_OFFSET",
         default=timedelta(seconds=30),
-        description="Time offset between retry attempts.",
+        description="Time waited between retry attempts, also used to widen the "
+        "search window on each retry.",
     )
     verify_ssl: bool = Field(
         alias="ELASTIC_VERIFY_SSL",
         default=True,
-        description="Whether to verify the Elasticsearch TLS certificate.",
+        description="Whether to verify the Elasticsearch TLS certificate. Keep "
+        "true in production; disabling it exposes credentials to interception.",
     )
+    ca_cert: str | None = Field(
+        alias="ELASTIC_CA_CERT",
+        default=None,
+        description="Optional path to a CA certificate bundle used to verify the "
+        "Elasticsearch TLS certificate (recommended for self-signed clusters "
+        "instead of disabling verification). Overrides ELASTIC_VERIFY_SSL.",
+    )
+
+    @field_validator("events_index", "query_template", mode="before")
+    @classmethod
+    def _empty_str_to_none(cls, value: object) -> object:
+        """Treat an explicitly empty/whitespace value as unset (None).
+
+        These fields carry a non-None default, so ``ELASTIC_EVENTS_INDEX=`` must
+        still disable the drilldown (``drilldown_enabled`` is ``bool(events_index)``)
+        and ``ELASTIC_QUERY_TEMPLATE=`` must fall back to the built-in query,
+        rather than being ignored and keeping the default.
+        """
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
 
     @model_validator(mode="after")
     def _validate_auth(self) -> "_ConfigLoaderElastic":

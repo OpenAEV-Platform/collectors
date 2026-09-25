@@ -18,8 +18,18 @@ elastic:
   username: "ChangeMe"
   password: "ChangeMe"
   alerts_index: ".alerts-security.alerts-*"
+  # Optional editable Lucene query_string (unset = built-in default).
+  # Placeholders: {source_ips} {target_ips} {implant_urls} {implant_names}
+  # {start_date} {end_date} {time_window} {alerts_index}.
+  # query_template: ""
+  # Raw endpoint/process events index for the implant-marker drilldown
+  # (empty string disables the drilldown -> IP + time correlation only).
+  events_index: "logs-windows.sysmon_operational-*,logs-endpoint.events.process-*"
   # kibana_url: "https://kibana.company.com:5601"
   verify_ssl: true
+  # Optional CA bundle to verify a self-signed cluster instead of disabling
+  # verification (recommended over verify_ssl: false). Overrides verify_ssl.
+  # ca_cert: "/etc/ssl/certs/elastic-ca.pem"
   time_window: "PT1H"
   offset: "PT30S"
   max_retry: 3

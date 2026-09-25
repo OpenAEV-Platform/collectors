@@ -55,6 +55,111 @@ class TestElasticTraceService:
             "http"
         )  # noqa: S101
 
+    def test_trace_links_to_specific_alert_when_id_present(self):
+        """With an alert id, the trace name/link point to that exact alert.
+
+        The link must filter on kibana.alert.uuid (not a broad IP search) and
+        the alert name must be the matched rule name.
+        """
+        service = ElasticTraceService(config=create_test_config())
+        result = _make_result(
+            {
+                "source_ipv4_address": {"data": "192.0.2.10"},
+                "_alert_id": "abc123-uuid",
+                "_rule_name": "Potential PowerShell HackTool Script by Author",
+            }
+        )
+
+        trace = service.create_traces_from_results([result], "elastic--collector")[0]
+
+        assert (  # noqa: S101
+            trace.inject_expectation_trace_alert_name
+            == "Potential PowerShell HackTool Script by Author"
+        )
+        assert (  # noqa: S101
+            "kibana.alert.uuid" in trace.inject_expectation_trace_alert_link
+        )
+        assert "abc123-uuid" in trace.inject_expectation_trace_alert_link  # noqa: S101
+
+    def test_alert_url_used_verbatim_for_colocated_kibana(self):
+        """kibana.alert.url is used as-is when ELASTIC_KIBANA_URL is unset AND the
+        alert host is the Elastic host (a co-located Kibana).
+
+        It is the canonical Elastic link (a SOAR/connector uses it), correct by
+        virtue of Kibana's server.publicBaseUrl. A host that is NOT the Elastic
+        host cannot be verified as the real Kibana and is not trusted verbatim
+        (see test_client_readiness TestTraceLinkSafety.rogue_host).
+        """
+        config = create_test_config()
+        config.elastic.kibana_url = None
+        service = ElasticTraceService(config=config)
+        alert_url = (
+            "http://test-elastic.example.com:5601/app/security/alerts/redirect/"
+            "abc123-uuid?index=.alerts-security.alerts-default&timestamp=2026-09-23T07:32:23.656Z"
+        )
+        result = _make_result(
+            {"source_ipv4_address": {"data": "192.0.2.10"}, "_alert_url": alert_url}
+        )
+        link = service.create_traces_from_results([result], "c")[
+            0
+        ].inject_expectation_trace_alert_link
+        assert link == alert_url  # noqa: S101
+
+    def test_alert_url_host_rebased_onto_configured_kibana_url(self):
+        """With ELASTIC_KIBANA_URL set, only the host/scheme of the alert URL is
+        rebased (path/query preserved) - the operator override for a wrong or
+        unset server.publicBaseUrl, without guessing private/public."""
+        config = create_test_config()
+        config.elastic.kibana_url = "http://kibana.example.com:5601"
+        service = ElasticTraceService(config=config)
+        alert_url = (
+            "http://kibana.internal:5601/app/security/alerts/redirect/"
+            "abc123-uuid?index=.alerts-security.alerts-default&timestamp=2026-09-23T07:32:23.656Z"
+        )
+        result = _make_result(
+            {"source_ipv4_address": {"data": "192.0.2.10"}, "_alert_url": alert_url}
+        )
+        link = service.create_traces_from_results([result], "c")[
+            0
+        ].inject_expectation_trace_alert_link
+        assert link.startswith(
+            "http://kibana.example.com:5601/app/security/alerts/redirect/"
+        )  # noqa: S101
+        assert "abc123-uuid" in link  # noqa: S101
+        assert "index=.alerts-security.alerts-default" in link  # noqa: S101
+        assert "kibana.internal" not in link  # noqa: S101
+
+    def test_trace_link_uses_rison_query_and_timerange(self):
+        """The deep link must carry rison app-state so Kibana actually filters.
+
+        A plain ``?query=<kql>`` is ignored by the Security alerts page (it lands
+        on the unfiltered dashboard); the query must be rison
+        ``(language:kuery,query:'...')`` and a ``timerange`` must be present so
+        the specific alert is in view - the SOC pivot to one alert.
+        """
+        from urllib.parse import unquote
+
+        service = ElasticTraceService(config=create_test_config())
+        result = _make_result(
+            {
+                "source_ipv4_address": {"data": "192.0.2.10"},
+                "_alert_id": "abc123-uuid",
+                "_rule_name": "Credential Acquisition via Registry Hive Dumping",
+                "_alert_time": "2026-09-23T07:32:23.660Z",
+            }
+        )
+
+        link = service.create_traces_from_results([result], "c")[
+            0
+        ].inject_expectation_trace_alert_link
+        decoded = unquote(link)
+
+        assert "query=" in link and "timerange=" in link  # noqa: S101
+        assert "(language:kuery,query:'kibana.alert.uuid:" in decoded  # noqa: S101
+        # time range anchored (absolute) around the alert time, not left default
+        assert "kind:absolute" in decoded  # noqa: S101
+        assert "2026-09-23T06:32:23.000Z" in decoded  # noqa: S101  (alert -1h)
+
     def test_create_traces_target_ip_alert_name(self):
         """A target-IP match yields a target-IP alert name."""
         service = ElasticTraceService(config=create_test_config())

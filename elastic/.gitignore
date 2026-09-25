@@ -1,4 +1,9 @@
 config.yml
+.env
+src/.env
+*.key
+*.pem
+*.p12
 
 # Build artifacts
 dist

@@ -143,6 +143,10 @@ class ElasticAlertFactory(ModelFactory[ElasticAlert]):
 
     time = Use(lambda: datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"))
     src_ip = Use(lambda: f"192.168.1.{uuid.uuid4().int % 255}")
+    host_ips: list[str] = []
+    host_name = None
+    pid = None
+    implant_marker = None
     dst_ip = Use(lambda: f"10.0.0.{uuid.uuid4().int % 255}")
     signature = Use(lambda: f"Test Malicious Activity {uuid.uuid4().hex[:8]}")
     rule_name = Use(lambda: f"Test Security Rule {uuid.uuid4().hex[:8]}")
