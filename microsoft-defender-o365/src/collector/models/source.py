@@ -139,6 +139,9 @@ class SourceHandler(SourceHandlerProtocol):
         if not alert_data:
             return False
 
+        if not signature_groups:
+            return False
+
         for sig_type, signature_data in signature_groups.items():
             if sig_type not in alert_data:
                 # if an expected signature type is not available in the alert data,
