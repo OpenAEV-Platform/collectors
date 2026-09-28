@@ -62,7 +62,7 @@ The collector is configured either through environment variables (recommended, r
 |------------------|-----------------------|-----------------------------|--------------------|-----------|----------------------------------------------------------------------------------------------|
 | Collector ID     | `collector.id`        | `COLLECTOR_ID`              | /                  | Yes       | A unique `UUIDv4` identifier for this collector instance.                                     |
 | Collector Name   | `collector.name`      | `COLLECTOR_NAME`            | Microsoft Defender | No        | The name of the collector as shown in OpenAEV.                                                |
-| Collector Period | `collector.period`    | `COLLECTOR_PERIOD`          | PT1M               | No        | Interval between two runs, as an ISO 8601 duration (e.g. `PT1M` = 1 minute).                  |
+| Collector Period | `collector.period`    | `COLLECTOR_PERIOD`          | PT2M               | No        | Interval between two runs, as an ISO 8601 duration (e.g. `PT2M` = 2 minutes).                  |
 | Log Level        | `collector.log_level` | `COLLECTOR_LOG_LEVEL`       | error              | No        | Verbosity of the logs. One of `debug`, `info`, `warn`, `error`.                               |
 | Platform         | `collector.platform`  | `COLLECTOR_PLATFORM`        | EDR                | No        | The `SecurityPlatform` type registered in OpenAEV. One of `EDR`, `XDR`, `SIEM`, `SOAR`, `NDR`, `ISPM`. |
 
