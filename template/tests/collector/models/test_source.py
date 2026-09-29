@@ -33,7 +33,9 @@ class SourceTest(unittest.TestCase):
 
         self.data_fetcher_model = FakeDataFetcher
 
-        self.signatures = [module.SignatureTypes.SIG_TYPE_PARENT_PROCESS_NAME]
+        self.signatures = [
+            module.SignatureType(module.SignatureTypes.SIG_TYPE_PARENT_PROCESS_NAME)
+        ]
 
     def test_source_good_init(self):
         """
@@ -151,9 +153,10 @@ class SourceHandlerTest(unittest.TestCase):
         through the get_expectation_signature_groups function
         """
         value = "my_type"
-        signature = MagicMock(value=value)
-        signatures = [signature]
         _type = MagicMock(value=value)
+        signature = MagicMock()
+        signature.label = _type
+        signatures = [signature]
         inject_expectation_signature_1 = MagicMock(type=_type, value="my_value")
         inject_expectation_signature_2 = MagicMock(type=_type, value="my_other_value")
         end_date_type = MagicMock(value="end_date")
@@ -174,74 +177,132 @@ class SourceHandlerTest(unittest.TestCase):
         )
 
         self.assertEqual(1, len(signature_groups))
-        self.assertEqual(2, len(signature_groups.get("my_type")))
-        self.assertIn(
-            {"type": "my_type", "value": "my_value"}, signature_groups.get("my_type")
+        self.assertEqual(2, len(signature_groups[_type.value]))
+        self.assertEqual(
+            [
+                {"type": "my_type", "value": "my_value"},
+                {"type": "my_type", "value": "my_other_value"},
+            ],
+            signature_groups["my_type"],
         )
-        self.assertIn(
-            {"type": "my_type", "value": "my_other_value"},
-            signature_groups.get("my_type"),
+        self.assertFalse(
+            any(
+                value == [{"type": "end_date", "value": "now"}]
+                for value in signature_groups.values()
+            )
         )
 
-    def test_match_signature_groups_and_oaevdata_success(self):
+    def test_get_alert_data_from_oaev_data_success(self):
+        sig_value = "sig_value"
+        signature = MagicMock()
+        signature.label.value = sig_value
+        signatures = [signature]
+        oaev_data = MagicMock()
+        value = MagicMock()
+        oaev_data.sig_value = value
+        config = MagicMock()
+
+        source_handler = module.SourceHandler(config=config)
+
+        alert_data = source_handler.get_alert_data_from_oaev_data(
+            signatures,
+            oaev_data,
+        )
+
+        signature.make_struct_for_matching.assert_called_once_with(value)
+        self.assertEqual(
+            alert_data, {sig_value: signature.make_struct_for_matching.return_value}
+        )
+
+    def test_get_alert_data_from_oaev_data_empty(self):
+        sig_value = "sig_value"
+        signature = MagicMock()
+        signature.label.value = sig_value
+        signatures = [signature]
+        oaev_data = None
+        config = MagicMock()
+
+        source_handler = module.SourceHandler(config=config)
+
+        alert_data = source_handler.get_alert_data_from_oaev_data(
+            signatures,
+            oaev_data,
+        )
+
+        signature.make_struct_for_matching.assert_not_called()
+        self.assertEqual(
+            alert_data,
+            {},
+        )
+
+    def test_match_signature_groups_and_alert_data_success(self):
         """
         testing the calls made to oaev detection helper by the source handler
         for a successful matching
         """
-        signature_groups = {"my_type": [{"type": "my_type", "value": "my_value"}]}
-        oaev_data = MagicMock()
+        _type = "my_type"
+        signature_groups = {_type: [{"type": _type, "value": "my_value"}]}
+        alert_data = {_type: MagicMock()}
         oaev_detection_helper = MagicMock()
         oaev_detection_helper.match_alert_elements.return_value = True
         config = MagicMock()
 
         source_handler = module.SourceHandler(config=config)
 
-        flag = source_handler.match_signature_groups_and_oaevdata(
-            signature_groups, oaev_data, oaev_detection_helper
+        flag = source_handler.match_signature_groups_and_alert_data(
+            signature_groups,
+            alert_data,
+            oaev_detection_helper,
         )
 
         oaev_detection_helper.match_alert_elements.assert_called_with(
-            signature_groups["my_type"], {"my_type": oaev_data.my_type}
+            signatures=signature_groups[_type], alert_data={_type: alert_data[_type]}
         )
         self.assertTrue(flag)
 
-    def test_match_signature_groups_and_oaevdata_failure(self):
+    def test_match_signature_groups_and_alert_data_failure(self):
         """
         testing the calls made to oaev detection helper by the source handler
         for a failed matching
         """
-        signature_groups = {"my_type": [{"type": "my_type", "value": "my_value"}]}
-        oaev_data = MagicMock()
+        _type = "my_type"
+        signature_groups = {_type: [{"type": _type, "value": "my_value"}]}
+        alert_data = {_type: MagicMock()}
         oaev_detection_helper = MagicMock()
         oaev_detection_helper.match_alert_elements.return_value = False
         config = MagicMock()
 
         source_handler = module.SourceHandler(config=config)
 
-        flag = source_handler.match_signature_groups_and_oaevdata(
-            signature_groups, oaev_data, oaev_detection_helper
+        flag = source_handler.match_signature_groups_and_alert_data(
+            signature_groups,
+            alert_data,
+            oaev_detection_helper,
         )
 
         oaev_detection_helper.match_alert_elements.assert_called_with(
-            signature_groups["my_type"], {"my_type": oaev_data.my_type}
+            signatures=signature_groups[_type], alert_data={_type: alert_data[_type]}
         )
         self.assertFalse(flag)
 
-    def test_match_signature_groups_and_oaevdata_empty(self):
+    def test_match_signature_groups_and_alert_data_empty(self):
         """
         testing the calls made to oaev detection helper by the source handler
         for an empty input
         """
-        signature_groups = {"my_type": [{"type": "my_type", "value": "my_value"}]}
-        oaev_data = None
+        _type = "my_type"
+        signature_groups = {_type: [{"type": "my_type", "value": "my_value"}]}
+        alert_data = None
         oaev_detection_helper = MagicMock()
         oaev_detection_helper.match_alert_elements.return_value = True
         config = MagicMock()
 
         source_handler = module.SourceHandler(config=config)
 
-        flag = source_handler.match_signature_groups_and_oaevdata(
-            signature_groups, oaev_data, oaev_detection_helper
+        flag = source_handler.match_signature_groups_and_alert_data(
+            signature_groups,
+            alert_data,
+            oaev_detection_helper,
         )
 
         oaev_detection_helper.match_alert_elements.assert_not_called()
