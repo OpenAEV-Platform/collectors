@@ -162,6 +162,11 @@ class ConfigLoader(ConfigBaseSettings):
                 "collector_icon_filepath": {"data": self.collector.icon_filepath},
                 # Elastic configuration (flattened)
                 "elastic_base_url": {"data": str(self.elastic.base_url)},
+                "elastic_auth_type": {
+                    "data": (
+                        self.elastic.auth_type.value if self.elastic.auth_type else None
+                    )
+                },
                 "elastic_api_key": {
                     "data": (
                         self.elastic.api_key.get_secret_value()

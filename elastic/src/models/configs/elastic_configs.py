@@ -1,10 +1,19 @@
 """Configuration for Elastic Security integration."""
 
 from datetime import timedelta
-from typing import Optional
+from enum import StrEnum
+from typing import Any, Optional
 
-from pydantic import Field, FilePath, SecretStr, model_validator
+from pydantic import Field, FilePath, SecretStr, field_validator, model_validator
 from src.models.configs import ConfigBaseSettings
+
+
+class ElasticAuthType(StrEnum):
+    """Supported Elasticsearch authentication methods."""
+
+    API_KEY = "API_KEY"
+    PASSWORD = "PASSWORD"  # noqa: S105
+    PKI = "PKI"
 
 
 class _ConfigLoaderElastic(ConfigBaseSettings):
@@ -20,6 +29,16 @@ class _ConfigLoaderElastic(ConfigBaseSettings):
         alias="ELASTIC_BASE_URL",
         default="https://localhost:9200",
         description="Base URL of the Elasticsearch API (e.g., https://elastic.company.com:9200).",
+    )
+    auth_type: Optional[ElasticAuthType] = Field(
+        alias="ELASTIC_AUTH_TYPE",
+        default=None,
+        description=(
+            "Authentication method: API_KEY, PASSWORD (basic auth) or PKI "
+            "(client certificate). When unset, it is inferred from the "
+            "configured credentials (API key, then username/password, then "
+            "client certificate)."
+        ),
     )
     api_key: Optional[SecretStr] = Field(
         alias="ELASTIC_API_KEY",
@@ -41,8 +60,8 @@ class _ConfigLoaderElastic(ConfigBaseSettings):
         default=None,
         description=(
             "Path to the PEM-encoded X.509 client certificate used for PKI "
-            "realm authentication (used when neither an API key nor "
-            "username/password is set). May also contain the private key."
+            "realm authentication (ELASTIC_AUTH_TYPE=PKI). Also presented for "
+            "mutual TLS with the other methods. May contain the private key."
         ),
     )
     client_key: Optional[FilePath] = Field(
@@ -99,16 +118,50 @@ class _ConfigLoaderElastic(ConfigBaseSettings):
         description="Whether to verify the Elasticsearch TLS certificate.",
     )
 
+    @field_validator("auth_type", mode="before")
+    @classmethod
+    def _normalize_auth_type(cls, value: Any) -> Any:
+        """Accept the authentication type case-insensitively.
+
+        Args:
+            value: Raw configured value.
+
+        Returns:
+            The upper-cased value when it is a string, the value otherwise.
+
+        """
+        return value.strip().upper() if isinstance(value, str) else value
+
+    def resolved_auth_type(self) -> ElasticAuthType | None:
+        """Return the configured authentication type, inferring it when unset.
+
+        Returns:
+            The explicit auth_type, or the first method with credentials
+            configured (API key, username/password, client certificate), or
+            None when nothing is configured.
+
+        """
+        if self.auth_type:
+            return self.auth_type
+        if self.api_key:
+            return ElasticAuthType.API_KEY
+        if self.username and self.password:
+            return ElasticAuthType.PASSWORD
+        if self.client_cert:
+            return ElasticAuthType.PKI
+        return None
+
     @model_validator(mode="after")
     def _validate_auth(self) -> "_ConfigLoaderElastic":
-        """Ensure an API key, a username/password pair or a client certificate is configured.
+        """Ensure the credentials required by the authentication type are configured.
 
         Returns:
             The validated configuration instance.
 
         Raises:
-            ValueError: If no usable authentication method is configured, or
-                if the client certificate settings are inconsistent.
+            ValueError: If no usable authentication method is configured, if
+                the selected method lacks its credentials, or if the client
+                certificate settings are inconsistent.
 
         """
         if self.client_key and not self.client_cert:
@@ -117,16 +170,25 @@ class _ConfigLoaderElastic(ConfigBaseSettings):
             )
         if self.client_cert and not self.base_url.lower().startswith("https://"):
             raise ValueError(
-                "PKI authentication (ELASTIC_CLIENT_CERT) requires an https:// "
+                "A client certificate (ELASTIC_CLIENT_CERT) requires an https:// "
                 "ELASTIC_BASE_URL"
             )
-        if (
-            not self.api_key
-            and not (self.username and self.password)
-            and not self.client_cert
-        ):
+
+        auth_type = self.resolved_auth_type()
+        if auth_type is None:
             raise ValueError(
                 "Elastic authentication requires either ELASTIC_API_KEY, both "
                 "ELASTIC_USERNAME and ELASTIC_PASSWORD, or ELASTIC_CLIENT_CERT"
             )
+        if auth_type is ElasticAuthType.API_KEY and not self.api_key:
+            raise ValueError("ELASTIC_AUTH_TYPE=API_KEY requires ELASTIC_API_KEY")
+        if auth_type is ElasticAuthType.PASSWORD and not (
+            self.username and self.password
+        ):
+            raise ValueError(
+                "ELASTIC_AUTH_TYPE=PASSWORD requires ELASTIC_USERNAME and "
+                "ELASTIC_PASSWORD"
+            )
+        if auth_type is ElasticAuthType.PKI and not self.client_cert:
+            raise ValueError("ELASTIC_AUTH_TYPE=PKI requires ELASTIC_CLIENT_CERT")
         return self

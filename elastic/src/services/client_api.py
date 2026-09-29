@@ -13,6 +13,7 @@ from requests.exceptions import (  # type: ignore[import-untyped]
 )
 
 from ..models.configs.config_loader import ConfigLoader
+from ..models.configs.elastic_configs import ElasticAuthType
 from .exception import (
     ElasticAPIError,
     ElasticAuthenticationError,
@@ -67,6 +68,7 @@ class ElasticClientAPI:
             self.client_cert = self.config.elastic.client_cert
             self.client_key = self.config.elastic.client_key
             self.ca_cert = self.config.elastic.ca_cert
+            self.auth_type = self.config.elastic.resolved_auth_type()
             self.alerts_index = (
                 self.config.elastic.alerts_index or ".alerts-security.alerts-*"
             )
@@ -98,10 +100,11 @@ class ElasticClientAPI:
         self.logger.info(f"{LOG_PREFIX} Elastic Security API client initialized")
 
     def _create_session(self) -> requests.Session:
-        """Create an HTTP session with API-key, basic or PKI authentication.
+        """Create an HTTP session authenticated with the configured auth type.
 
-        Authentication precedence is API key, then username/password, then the
-        client certificate (Elasticsearch PKI realm). When a client certificate
+        ``API_KEY`` sends an ``Authorization: ApiKey`` header, ``PASSWORD``
+        uses HTTP basic authentication and ``PKI`` relies on the client
+        certificate alone (Elasticsearch PKI realm). When a client certificate
         is configured it is always presented during the TLS handshake, so it
         can also satisfy mutual TLS alongside an API key or basic credentials.
 
@@ -109,7 +112,8 @@ class ElasticClientAPI:
             Configured requests.Session with authentication.
 
         Raises:
-            ElasticValidationError: If no authentication is configured.
+            ElasticValidationError: If the credentials required by the
+                authentication type are missing.
 
         """
         session = requests.Session()
@@ -117,18 +121,17 @@ class ElasticClientAPI:
             "Content-Type": "application/json",
             "Accept": "application/json",
         }
-        if self.api_key:
+        if self.auth_type is ElasticAuthType.API_KEY and self.api_key:
             headers["Authorization"] = f"ApiKey {self.api_key}"
-            auth_method = "API key"
-        elif self.username and self.password:
+        elif (
+            self.auth_type is ElasticAuthType.PASSWORD
+            and self.username
+            and self.password
+        ):
             session.auth = (self.username, self.password)
-            auth_method = "basic"
-        elif self.client_cert:
-            auth_method = "PKI client certificate"
-        else:
+        elif not (self.auth_type is ElasticAuthType.PKI and self.client_cert):
             raise ElasticValidationError(
-                "Either an API key, a username/password pair or a client "
-                "certificate is required"
+                f"Missing credentials for Elastic authentication type {self.auth_type}"
             )
         if self.client_cert:
             session.cert = (
@@ -140,7 +143,7 @@ class ElasticClientAPI:
         session.verify = (
             str(self.ca_cert) if self.verify_ssl and self.ca_cert else self.verify_ssl
         )
-        self.logger.info(f"{LOG_PREFIX} Using {auth_method} authentication")
+        self.logger.info(f"{LOG_PREFIX} Using {self.auth_type} authentication")
         return session
 
     def fetch_signatures(
