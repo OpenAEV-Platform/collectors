@@ -39,4 +39,11 @@ RUN set -eux; \
     microdnf -y remove python3.14-pip; \
     microdnf clean all;
 
+# Run as a non-root user (defense-in-depth; matches the alpine image posture).
+RUN set -eux; \
+    groupadd -g 10001 collector; \
+    useradd -u 10001 -g 10001 -M -s /sbin/nologin collector; \
+    chown -R 10001:10001 /collector
+USER 10001
+
 CMD ["python3.14", "-m", "src"]

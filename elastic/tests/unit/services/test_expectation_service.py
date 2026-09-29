@@ -7,8 +7,16 @@ import src.services.expectation_service as module
 class TestElasticExpectationService(unittest.TestCase):
     @patch.object(module, "ElasticClientAPI")
     def test_init_minimalist(self, m_elastic_client_api):
+        # A valid elastic config with an unset time_window: the service falls
+        # back to the 1h default and reads max_retry/offset straight from the
+        # model (their pydantic defaults). config.elastic is always present in
+        # production (ConfigLoader), so it is provided here rather than None.
         config = MagicMock()
-        config.elastic = None
+        config_elastic = MagicMock()
+        config_elastic.time_window = None
+        config_elastic.max_retry = 3
+        config_elastic.offset = module.timedelta(seconds=30)
+        config.elastic = config_elastic
 
         expectation_service = module.ElasticExpectationService(config)
 

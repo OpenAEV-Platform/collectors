@@ -14,4 +14,9 @@ services:
       - ELASTIC_USERNAME=ChangeMe
       - ELASTIC_PASSWORD=ChangeMe
       - ELASTIC_ALERTS_INDEX=.alerts-security.alerts-*
+      # Optional editable Lucene query_string (unset = built-in default).
+      # - ELASTIC_QUERY_TEMPLATE=
+      # Raw endpoint/process events index for the implant-marker drilldown
+      # (empty = disable drilldown, IP + time correlation only).
+      # - ELASTIC_EVENTS_INDEX=logs-windows.sysmon_operational-*,logs-endpoint.events.process-*
     restart: always

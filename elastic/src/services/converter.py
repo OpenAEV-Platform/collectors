@@ -124,7 +124,7 @@ class Converter:
         """
         return isinstance(data, ElasticAlert)
 
-    def _alert_data(self, alert_data: ElasticAlert) -> dict[str, Any]:
+    def _alert_data(self, alert_data: ElasticAlert) -> dict[str, Any]:  # noqa: C901
         """Convert Elastic Security alert data to OAEV format.
 
         Args:
@@ -147,20 +147,20 @@ class Converter:
                 )
 
             source_ips = self._extract_source_ips(alert_data)
-            if source_ips:
-                oaev_data["source_ipv4_address"] = {
-                    "type": "simple",
-                    "data": source_ips,
-                }
-                self.logger.debug(f"{LOG_PREFIX} Using source IPs: {source_ips}")
+            for field, values in self._partition_by_family(
+                source_ips, "source"
+            ).items():
+                if values:
+                    oaev_data[field] = {"type": "simple", "data": values}
+                    self.logger.debug(f"{LOG_PREFIX} Using {field}: {values}")
 
             target_ips = self._extract_target_ips(alert_data)
-            if target_ips:
-                oaev_data["target_ipv4_address"] = {
-                    "type": "simple",
-                    "data": target_ips,
-                }
-                self.logger.debug(f"{LOG_PREFIX} Using target IPs: {target_ips}")
+            for field, values in self._partition_by_family(
+                target_ips, "target"
+            ).items():
+                if values:
+                    oaev_data[field] = {"type": "simple", "data": values}
+                    self.logger.debug(f"{LOG_PREFIX} Using {field}: {values}")
 
             parent_process_name = self._extract_parent_process_name(alert_data)
             if parent_process_name:
@@ -183,6 +183,30 @@ class Converter:
                     f"{LOG_PREFIX} Alert includes rule name: {alert_data.rule_name}"
                 )
 
+            # Carry the specific alert's identity (non-signature keys, ignored by
+            # matching) so a trace can link to the exact matched alert instead of
+            # a broad IP search.
+            if oaev_data:
+                if alert_data.alert_id:
+                    oaev_data["_alert_id"] = alert_data.alert_id
+                if alert_data.alert_url:
+                    oaev_data["_alert_url"] = alert_data.alert_url
+                if alert_data.rule_name or alert_data.signature:
+                    oaev_data["_rule_name"] = (
+                        alert_data.rule_name or alert_data.signature
+                    )
+                if alert_data.time:
+                    oaev_data["_alert_time"] = alert_data.time
+                # Whether this alert comes from endpoint/process telemetry (it
+                # has a process context: host + pid) and could therefore carry
+                # an implant marker via the drilldown. Network telemetry
+                # (Suricata/Zeek: source/destination IPs, no process) cannot.
+                # Drives deterministic correlation for implant injects
+                # (non-signature key, ignored by matching).
+                oaev_data["_endpoint_context"] = bool(
+                    alert_data.host_name and alert_data.pid
+                )
+
             self.logger.debug(
                 f"{LOG_PREFIX} Converted Elastic Security alert to OAEV with {len(oaev_data)} fields"
             )
@@ -195,6 +219,28 @@ class Converter:
                 f"Error converting Elastic Security alert data to OAEV: {e}"
             ) from e
 
+    @staticmethod
+    def _partition_by_family(ips: list[str], role: str) -> dict[str, list[str]]:
+        """Split IPs into the OAEV IPv4 / IPv6 signature fields for a role.
+
+        Matching compares an alert's ``*_ipv4_address`` / ``*_ipv6_address``
+        against the same-typed expectation signatures, so IPv6 candidates must
+        not be emitted under an IPv4 field (they would never be seen).
+
+        Args:
+            ips: IP addresses to classify.
+            role: ``"source"`` or ``"target"``.
+
+        Returns:
+            Mapping of OAEV signature field name to the IPs of that family.
+
+        """
+        ipv4: list[str] = []
+        ipv6: list[str] = []
+        for ip in ips:
+            (ipv6 if ":" in str(ip) else ipv4).append(ip)
+        return {f"{role}_ipv4_address": ipv4, f"{role}_ipv6_address": ipv6}
+
     def _extract_source_ips(self, alert_data: ElasticAlert) -> list[str]:
         """Extract source IP addresses from alert data.
 
@@ -205,10 +251,16 @@ class Converter:
             List of unique source IP addresses.
 
         """
-        source_ips = []
+        source_ips: list[str] = []
 
         if alert_data.src_ip and alert_data.src_ip not in source_ips:
             source_ips.append(alert_data.src_ip)
+
+        # Endpoint/process alerts have no source.ip; correlate on the host's own
+        # addresses instead (host.ip), which carry the executing asset identity.
+        for host_ip in alert_data.host_ips or []:
+            if host_ip and host_ip not in source_ips:
+                source_ips.append(host_ip)
 
         return source_ips
 
@@ -242,6 +294,16 @@ class Converter:
             Reconstructed parent process name if UUIDs found in URL path, empty string otherwise.
 
         """
+        # A marker recovered from the source-event drilldown is authoritative:
+        # it ties the alert to a specific inject+agent (deterministic
+        # correlation), unlike the URL-path heuristic.
+        if alert_data.implant_marker:
+            self.logger.debug(
+                f"{LOG_PREFIX} Using implant marker from drilldown: "
+                f"{alert_data.implant_marker}"
+            )
+            return alert_data.implant_marker
+
         if not alert_data.url_path:
             self.logger.debug(f"{LOG_PREFIX} No URL path found in alert data")
             return ""

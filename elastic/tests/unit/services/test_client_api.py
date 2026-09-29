@@ -20,6 +20,9 @@ class TestElasticClientAPI(unittest.TestCase):
         config_elastic.max_retry = sentinel.max_retry
         config_elastic.verify_ssl = sentinel.verify_ssl
         config_elastic.time_window = None
+        config_elastic.events_index = None
+        config_elastic.query_template = None
+        config_elastic.ca_cert = None
         config.elastic = config_elastic
 
         client_api = module.ElasticClientAPI(config)
@@ -59,6 +62,9 @@ class TestElasticClientAPI(unittest.TestCase):
         config_elastic.max_retry = sentinel.max_retry
         config_elastic.verify_ssl = sentinel.verify_ssl
         config_elastic.time_window = sentinel.time_window
+        config_elastic.events_index = None
+        config_elastic.query_template = None
+        config_elastic.ca_cert = None
         config.elastic = config_elastic
 
         client_api = module.ElasticClientAPI(config)
@@ -95,6 +101,9 @@ class TestElasticClientAPI(unittest.TestCase):
         config_elastic.max_retry = sentinel.max_retry
         config_elastic.verify_ssl = sentinel.verify_ssl
         config_elastic.time_window = None
+        config_elastic.events_index = None
+        config_elastic.query_template = None
+        config_elastic.ca_cert = None
         config.elastic = config_elastic
 
         client_api = module.ElasticClientAPI(config)
@@ -142,6 +151,9 @@ class TestElasticClientAPI(unittest.TestCase):
         config_elastic.max_retry = sentinel.max_retry
         config_elastic.verify_ssl = sentinel.verify_ssl
         config_elastic.time_window = None
+        config_elastic.events_index = None
+        config_elastic.query_template = None
+        config_elastic.ca_cert = None
         config.elastic = config_elastic
 
         client_api = module.ElasticClientAPI(config)
@@ -182,6 +194,9 @@ class TestElasticClientAPI(unittest.TestCase):
         config_elastic.max_retry = 3
         config_elastic.verify_ssl = sentinel.verify_ssl
         config_elastic.time_window = None
+        config_elastic.events_index = None
+        config_elastic.query_template = None
+        config_elastic.ca_cert = None
         config.elastic = config_elastic
 
         client_api = module.ElasticClientAPI(config)
@@ -215,6 +230,9 @@ class TestElasticClientAPI(unittest.TestCase):
         config_elastic.max_retry = 3
         config_elastic.verify_ssl = sentinel.verify_ssl
         config_elastic.time_window = None
+        config_elastic.events_index = None
+        config_elastic.query_template = None
+        config_elastic.ca_cert = None
         config.elastic = config_elastic
 
         client_api = module.ElasticClientAPI(config)
