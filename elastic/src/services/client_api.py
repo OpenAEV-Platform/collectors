@@ -64,6 +64,9 @@ class ElasticClientAPI:
                 if self.config.elastic.password
                 else None
             )
+            self.client_cert = self.config.elastic.client_cert
+            self.client_key = self.config.elastic.client_key
+            self.ca_cert = self.config.elastic.ca_cert
             self.alerts_index = (
                 self.config.elastic.alerts_index or ".alerts-security.alerts-*"
             )
@@ -95,7 +98,12 @@ class ElasticClientAPI:
         self.logger.info(f"{LOG_PREFIX} Elastic Security API client initialized")
 
     def _create_session(self) -> requests.Session:
-        """Create an HTTP session with API-key or basic authentication.
+        """Create an HTTP session with API-key, basic or PKI authentication.
+
+        Authentication precedence is API key, then username/password, then the
+        client certificate (Elasticsearch PKI realm). When a client certificate
+        is configured it is always presented during the TLS handshake, so it
+        can also satisfy mutual TLS alongside an API key or basic credentials.
 
         Returns:
             Configured requests.Session with authentication.
@@ -111,14 +119,28 @@ class ElasticClientAPI:
         }
         if self.api_key:
             headers["Authorization"] = f"ApiKey {self.api_key}"
+            auth_method = "API key"
         elif self.username and self.password:
             session.auth = (self.username, self.password)
+            auth_method = "basic"
+        elif self.client_cert:
+            auth_method = "PKI client certificate"
         else:
             raise ElasticValidationError(
-                "Either an API key or a username/password pair is required"
+                "Either an API key, a username/password pair or a client "
+                "certificate is required"
+            )
+        if self.client_cert:
+            session.cert = (
+                (str(self.client_cert), str(self.client_key))
+                if self.client_key
+                else str(self.client_cert)
             )
         session.headers.update(headers)
-        session.verify = self.verify_ssl
+        session.verify = (
+            str(self.ca_cert) if self.verify_ssl and self.ca_cert else self.verify_ssl
+        )
+        self.logger.info(f"{LOG_PREFIX} Using {auth_method} authentication")
         return session
 
     def fetch_signatures(

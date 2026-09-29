@@ -177,6 +177,23 @@ class ConfigLoader(ConfigBaseSettings):
                         else None
                     )
                 },
+                "elastic_client_cert": {
+                    "data": (
+                        str(self.elastic.client_cert)
+                        if self.elastic.client_cert
+                        else None
+                    )
+                },
+                "elastic_client_key": {
+                    "data": (
+                        str(self.elastic.client_key)
+                        if self.elastic.client_key
+                        else None
+                    )
+                },
+                "elastic_ca_cert": {
+                    "data": str(self.elastic.ca_cert) if self.elastic.ca_cert else None
+                },
                 "elastic_alerts_index": {"data": self.elastic.alerts_index},
                 "elastic_kibana_url": {"data": self.elastic.kibana_url},
                 "elastic_time_window": {"data": self.elastic.time_window},

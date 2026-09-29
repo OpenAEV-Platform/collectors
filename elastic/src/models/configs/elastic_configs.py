@@ -3,7 +3,7 @@
 from datetime import timedelta
 from typing import Optional
 
-from pydantic import Field, SecretStr, model_validator
+from pydantic import Field, FilePath, SecretStr, model_validator
 from src.models.configs import ConfigBaseSettings
 
 
@@ -35,6 +35,33 @@ class _ConfigLoaderElastic(ConfigBaseSettings):
         alias="ELASTIC_PASSWORD",
         default=None,
         description="Password for HTTP basic authentication.",
+    )
+    client_cert: Optional[FilePath] = Field(
+        alias="ELASTIC_CLIENT_CERT",
+        default=None,
+        description=(
+            "Path to the PEM-encoded X.509 client certificate used for PKI "
+            "realm authentication (used when neither an API key nor "
+            "username/password is set). May also contain the private key."
+        ),
+    )
+    client_key: Optional[FilePath] = Field(
+        alias="ELASTIC_CLIENT_KEY",
+        default=None,
+        description=(
+            "Path to the unencrypted PEM-encoded private key of the client "
+            "certificate. Not needed when the key is bundled in the "
+            "certificate file."
+        ),
+    )
+    ca_cert: Optional[FilePath] = Field(
+        alias="ELASTIC_CA_CERT",
+        default=None,
+        description=(
+            "Path to a PEM-encoded CA bundle used to verify the Elasticsearch "
+            "TLS certificate (e.g. an internal PKI). Ignored when verify_ssl "
+            "is false."
+        ),
     )
     alerts_index: Optional[str] = Field(
         alias="ELASTIC_ALERTS_INDEX",
@@ -74,18 +101,32 @@ class _ConfigLoaderElastic(ConfigBaseSettings):
 
     @model_validator(mode="after")
     def _validate_auth(self) -> "_ConfigLoaderElastic":
-        """Ensure either an API key or a username/password pair is configured.
+        """Ensure an API key, a username/password pair or a client certificate is configured.
 
         Returns:
             The validated configuration instance.
 
         Raises:
-            ValueError: If no usable authentication method is configured.
+            ValueError: If no usable authentication method is configured, or
+                if the client certificate settings are inconsistent.
 
         """
-        if not self.api_key and not (self.username and self.password):
+        if self.client_key and not self.client_cert:
             raise ValueError(
-                "Elastic authentication requires either ELASTIC_API_KEY or both "
-                "ELASTIC_USERNAME and ELASTIC_PASSWORD"
+                "ELASTIC_CLIENT_KEY requires ELASTIC_CLIENT_CERT to be set"
+            )
+        if self.client_cert and not self.base_url.lower().startswith("https://"):
+            raise ValueError(
+                "PKI authentication (ELASTIC_CLIENT_CERT) requires an https:// "
+                "ELASTIC_BASE_URL"
+            )
+        if (
+            not self.api_key
+            and not (self.username and self.password)
+            and not self.client_cert
+        ):
+            raise ValueError(
+                "Elastic authentication requires either ELASTIC_API_KEY, both "
+                "ELASTIC_USERNAME and ELASTIC_PASSWORD, or ELASTIC_CLIENT_CERT"
             )
         return self
