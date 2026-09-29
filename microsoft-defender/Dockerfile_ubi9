@@ -39,4 +39,4 @@ RUN set -eux; \
     microdnf -y remove python3.14-pip; \
     microdnf clean all;
 
-CMD ["python3.14", "-m", "microsoft_defender"]
+CMD ["python3.14", "-m", "src"]
