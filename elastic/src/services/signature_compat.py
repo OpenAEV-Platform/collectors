@@ -22,7 +22,7 @@ pyoaev ships native support. Crucially it removes any dependency on a hand-edite
 ``site-packages`` copy of the enum (which is unreproducible for customers).
 
 This is a deliberate, documented interim; fail-soft signature parsing belongs in
-pyoaev / the SDK. See docs/CLIENT_READINESS_SPEC.md (DoD-1).
+pyoaev / the SDK.
 """
 
 import logging

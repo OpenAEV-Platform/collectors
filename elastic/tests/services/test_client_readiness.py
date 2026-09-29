@@ -1,5 +1,5 @@
 """Client-readiness tests: signature vocabulary, transient-outage pending,
-SIEM-only drilldown fallback. See docs/CLIENT_READINESS_SPEC.md (DoD-1/2/3)."""
+SIEM-only drilldown fallback."""
 
 from unittest.mock import Mock
 
