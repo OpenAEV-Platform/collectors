@@ -74,10 +74,11 @@ The collector is configured either through environment variables (recommended, r
 | Parameter    | config.yml             | Docker environment variable | Default                     | Mandatory   | Description                                                                                                                                                |
 |--------------|------------------------|-----------------------------|-----------------------------|-------------|----------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Base URL     | `elastic.base_url`     | `ELASTIC_BASE_URL`          | `https://localhost:9200`    | Yes         | Base URL of the Elasticsearch API (e.g. `https://elastic.company.com:9200`).                                                                              |
-| API Key      | `elastic.api_key`      | `ELASTIC_API_KEY`           | /                           | Conditional | Elasticsearch API key (preferred). When set, it is used instead of username/password.                                                                     |
-| Username     | `elastic.username`     | `ELASTIC_USERNAME`          | /                           | Conditional | Username for HTTP basic authentication (used when no API key is set).                                                                                     |
-| Password     | `elastic.password`     | `ELASTIC_PASSWORD`          | /                           | Conditional | Password for HTTP basic authentication.                                                                                                                   |
-| Client Cert  | `elastic.client_cert`  | `ELASTIC_CLIENT_CERT`       | /                           | Conditional | Path to the PEM client certificate for PKI realm authentication (used when neither an API key nor username/password is set). May bundle the private key. |
+| Auth Type    | `elastic.auth_type`    | `ELASTIC_AUTH_TYPE`         | inferred                    | No          | Authentication method: `API_KEY`, `PASSWORD` (basic auth) or `PKI` (client certificate), case-insensitive. When unset, it is inferred (see below).       |
+| API Key      | `elastic.api_key`      | `ELASTIC_API_KEY`           | /                           | Conditional | Elasticsearch API key (preferred). Required when `ELASTIC_AUTH_TYPE=API_KEY`.                                                                            |
+| Username     | `elastic.username`     | `ELASTIC_USERNAME`          | /                           | Conditional | Username for HTTP basic authentication. Required when `ELASTIC_AUTH_TYPE=PASSWORD`.                                                                      |
+| Password     | `elastic.password`     | `ELASTIC_PASSWORD`          | /                           | Conditional | Password for HTTP basic authentication. Required when `ELASTIC_AUTH_TYPE=PASSWORD`.                                                                      |
+| Client Cert  | `elastic.client_cert`  | `ELASTIC_CLIENT_CERT`       | /                           | Conditional | Path to the PEM client certificate for PKI realm authentication. Required when `ELASTIC_AUTH_TYPE=PKI`. May bundle the private key.                         |
 | Client Key   | `elastic.client_key`   | `ELASTIC_CLIENT_KEY`        | /                           | No          | Path to the unencrypted PEM private key of the client certificate, when it is not bundled in `ELASTIC_CLIENT_CERT`.                                      |
 | CA Cert      | `elastic.ca_cert`      | `ELASTIC_CA_CERT`           | /                           | No          | Path to a PEM CA bundle used to verify the Elasticsearch TLS certificate (e.g. an internal PKI). Ignored when `ELASTIC_VERIFY_SSL=false`.                 |
 | Alerts Index | `elastic.alerts_index` | `ELASTIC_ALERTS_INDEX`      | `.alerts-security.alerts-*` | No          | Index or index pattern to search for detection alerts.                                                                                                    |
@@ -87,10 +88,12 @@ The collector is configured either through environment variables (recommended, r
 | Offset       | `elastic.offset`       | `ELASTIC_OFFSET`            | PT30S                       | No          | Delay between retry attempts to absorb alert ingestion latency, as an ISO 8601 duration.                                                                  |
 | Max Retry    | `elastic.max_retry`    | `ELASTIC_MAX_RETRY`         | 3                           | No          | Maximum number of retry attempts after the initial query returns no results.                                                                              |
 
-> Note: authentication is required. Provide `ELASTIC_API_KEY` (preferred), both `ELASTIC_USERNAME` and
-> `ELASTIC_PASSWORD`, or `ELASTIC_CLIENT_CERT`. The collector fails to start if none is configured. When several are
-> set, the API key wins, then username/password, then the client certificate. A configured client certificate is always
-> presented during the TLS handshake, so it can also be used for mutual TLS together with an API key or basic auth.
+> Note: authentication is required. Set `ELASTIC_AUTH_TYPE` to `API_KEY`, `PASSWORD` or `PKI` and provide the matching
+> credentials (`ELASTIC_API_KEY`, `ELASTIC_USERNAME`/`ELASTIC_PASSWORD`, or `ELASTIC_CLIENT_CERT`); the collector fails
+> to start if they are missing, and only the selected method is used. When `ELASTIC_AUTH_TYPE` is unset, the method is
+> inferred from the configured credentials, in this order: API key, username/password, client certificate. A
+> configured client certificate is always presented during the TLS handshake, so it can also be used for mutual TLS
+> together with `API_KEY` or `PASSWORD`.
 
 ### PKI (client certificate) authentication
 
@@ -148,13 +151,14 @@ password has to be stored in its configuration.
 
    ```shell
    ELASTIC_BASE_URL=https://elastic.company.com:9200
+   ELASTIC_AUTH_TYPE=PKI
    ELASTIC_CLIENT_CERT=/certs/openaev-collector.crt
    ELASTIC_CLIENT_KEY=/certs/openaev-collector.key
    ELASTIC_CA_CERT=/certs/ca.crt
    ```
 
-   Leave `ELASTIC_API_KEY`, `ELASTIC_USERNAME` and `ELASTIC_PASSWORD` unset, otherwise they take precedence. The private
-   key must be unencrypted (PEM), `ELASTIC_BASE_URL` must use `https://`, and TLS must terminate on Elasticsearch itself:
+   With `ELASTIC_AUTH_TYPE=PKI`, any configured API key or username/password is ignored. The private key must be
+   unencrypted (PEM), `ELASTIC_BASE_URL` must use `https://`, and TLS must terminate on Elasticsearch itself:
    a proxy terminating TLS in front of the cluster would drop the client certificate.
 
 You can check the mapping with `curl --cert <crt> --key <key> --cacert <ca> https://<host>:9200/_security/_authenticate`,

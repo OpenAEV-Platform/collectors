@@ -13,8 +13,10 @@ collector:
 
 elastic:
   base_url: "https://elastic.company.com:9200"
-  # Authentication: provide an API key (preferred) OR a username/password pair
-  # OR a client certificate (PKI realm, self-managed Elasticsearch/ECK only).
+  # Authentication: API_KEY (preferred), PASSWORD (basic auth) or PKI
+  # (client certificate, self-managed Elasticsearch/ECK only). When unset,
+  # it is inferred from the credentials below.
+  auth_type: "PASSWORD"
   # api_key: "ChangeMe"
   username: "ChangeMe"
   password: "ChangeMe"

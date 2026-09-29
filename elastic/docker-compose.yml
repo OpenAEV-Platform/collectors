@@ -9,8 +9,9 @@ services:
       # - OPENAEV_TENANT_ID=ChangeMe
       - COLLECTOR_ID=ChangeMe
       - ELASTIC_BASE_URL=https://change.me
-      # Authentication: provide ELASTIC_API_KEY (preferred), username/password,
-      # or a client certificate (PKI realm, mount the files with the volume below)
+      # Authentication: API_KEY (preferred), PASSWORD or PKI (client certificate,
+      # mount the files with the volume below)
+      - ELASTIC_AUTH_TYPE=PASSWORD
       # - ELASTIC_API_KEY=ChangeMe
       - ELASTIC_USERNAME=ChangeMe
       - ELASTIC_PASSWORD=ChangeMe
