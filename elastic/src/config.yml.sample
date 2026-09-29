@@ -13,10 +13,14 @@ collector:
 
 elastic:
   base_url: "https://elastic.company.com:9200"
-  # Authentication: provide an API key (preferred) OR a username/password pair.
+  # Authentication: provide an API key (preferred) OR a username/password pair
+  # OR a client certificate (PKI realm, self-managed Elasticsearch/ECK only).
   # api_key: "ChangeMe"
   username: "ChangeMe"
   password: "ChangeMe"
+  # client_cert: "/path/to/client.crt"
+  # client_key: "/path/to/client.key"
+  # ca_cert: "/path/to/ca.crt"
   alerts_index: ".alerts-security.alerts-*"
   # kibana_url: "https://kibana.company.com:5601"
   verify_ssl: true
