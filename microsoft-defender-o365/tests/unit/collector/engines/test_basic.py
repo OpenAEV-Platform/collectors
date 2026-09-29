@@ -31,7 +31,6 @@ class TestBasicCollectorEngine(unittest.TestCase):
         self.assertEqual(collector_engine.source, source)
         self.assertEqual(collector_engine.source_handler, source_handler)
         self.assertEqual(collector_engine.oaev_api, oaev_api)
-        self.assertFalse(collector_engine.batching)
         self.assertFalse(collector_engine.configured)
         self.assertIsNotNone(collector_engine.logger)
         self.assertIsNotNone(collector_engine.current_summary)
@@ -52,7 +51,6 @@ class TestBasicCollectorEngine(unittest.TestCase):
         source.signatures = signatures
         source_handler = MagicMock(spec_set=SourceHandler)
         oaev_api = MagicMock(spec_set=module.OpenAEV)
-        batching = True
 
         collector_engine = module.BasicCollectorEngine(
             name=name,
@@ -60,7 +58,6 @@ class TestBasicCollectorEngine(unittest.TestCase):
             source=source,
             source_handler=source_handler,
             oaev_api=oaev_api,
-            batching=batching,
         )
 
         self.assertEqual(collector_engine.name, name)
@@ -68,7 +65,6 @@ class TestBasicCollectorEngine(unittest.TestCase):
         self.assertEqual(collector_engine.source, source)
         self.assertEqual(collector_engine.source_handler, source_handler)
         self.assertEqual(collector_engine.oaev_api, oaev_api)
-        self.assertTrue(collector_engine.batching)
         self.assertFalse(collector_engine.configured)
         self.assertIsNotNone(collector_engine.logger)
         self.assertIsNotNone(collector_engine.current_summary)
@@ -140,7 +136,6 @@ class TestBasicCollectorEngine(unittest.TestCase):
         source_handler = MagicMock(spec_set=SourceHandler)
         oaev_api = MagicMock(spec_set=module.OpenAEV)
         config = MagicMock()
-        batching = True
 
         collector_engine = module.BasicCollectorEngine(
             name=name,
@@ -149,10 +144,9 @@ class TestBasicCollectorEngine(unittest.TestCase):
             source_handler=source_handler,
             oaev_api=oaev_api,
         )
-        collector_engine.configure_engine(config, batching)
+        collector_engine.configure_engine(config)
 
         self.assertEqual(collector_engine.config, config)
-        self.assertTrue(collector_engine.batching)
         self.assertIsNotNone(collector_engine.oaev_detection_helper)
         self.assertIsNotNone(collector_engine.expectation_uploader)
         self.assertIsNotNone(collector_engine.trace_uploader)
@@ -390,14 +384,9 @@ class TestBasicCollectorEngine(unittest.TestCase):
             source.signatures, expectation3
         )
 
-        source_handler.get_alert_data_from_oaev_data.assert_called_with(
-            source.signatures,
-            source_handler.serialize_as_oaevdata.return_value,
-        )
-
-        source_handler.match_signature_groups_and_alert_data.assert_any_call(
+        source_handler.match_signature_groups_and_oaevdata.assert_any_call(
             source_handler.get_expectation_signature_groups.return_value,
-            source_handler.get_alert_data_from_oaev_data.return_value,
+            source_handler.serialize_as_oaevdata.return_value,
             collector_engine.oaev_detection_helper,
         )
         source_handler.serialize_as_tracedata.assert_called_with(data_element)
@@ -543,4 +532,6 @@ class TestBasicCollectorEngine(unittest.TestCase):
 
         m_fetch_and_filter_expectations.assert_called_once()
         m_process_batch.assert_not_called()
+        m_expectation_uploader.return_value.upload_data.assert_not_called()
+        m_trace_uploader.return_value.upload_data.assert_not_called()
         m_exit.assert_called_once_with(0)
