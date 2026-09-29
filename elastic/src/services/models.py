@@ -193,7 +193,7 @@ class ElasticResponse(BaseModel):
             )
             pid_raw = _first(source, ["process.pid"])
             try:
-                pid_val = int(pid_raw) if pid_raw is not None else None
+                pid_val = int(pid_raw)
             except TypeError, ValueError:
                 pid_val = None
             alert = ElasticAlert(

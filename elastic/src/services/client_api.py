@@ -164,21 +164,18 @@ class ElasticClientAPI:
             self.alerts_index = (
                 self.config.elastic.alerts_index or ".alerts-security.alerts-*"
             )
-            self.events_index = getattr(self.config.elastic, "events_index", None)
+            self.events_index = self.config.elastic.events_index
             self.offset = self.config.elastic.offset.total_seconds()
             self.max_retry = self.config.elastic.max_retry
             self.verify_ssl = self.config.elastic.verify_ssl
-            self.ca_cert = getattr(self.config.elastic, "ca_cert", None) or None
+            self.ca_cert = self.config.elastic.ca_cert
             # Recovered-marker cache, shared across alerts/retries/expectations
             # within one processing cycle (reset via reset_marker_cache()).
             self._marker_cache: dict[tuple[str, str], str | None] = {}
         except AttributeError as e:
             raise ElasticValidationError(f"Invalid config structure: {e}") from e
 
-        if (
-            hasattr(self.config.elastic, "time_window")
-            and self.config.elastic.time_window
-        ):
+        if self.config.elastic.time_window:
             self.time_window = self.config.elastic.time_window
         else:
             self.time_window = timedelta(hours=DEFAULT_TIME_WINDOW_HOURS)
@@ -186,7 +183,7 @@ class ElasticClientAPI:
                 f"{LOG_PREFIX} No time_window configured, using default {DEFAULT_TIME_WINDOW_HOURS} hour"
             )
 
-        configured_template = getattr(self.config.elastic, "query_template", None)
+        configured_template = self.config.elastic.query_template
         if configured_template:
             self._validate_template_placeholders(configured_template)
             self.query_template = configured_template
@@ -233,19 +230,17 @@ class ElasticClientAPI:
                 "Either an API key or a username/password pair is required"
             )
         session.headers.update(headers)
-        # TLS: prefer verifying against a provided CA bundle; only fall back to
-        # verify=True; disabling verification is a loud, deliberate downgrade.
-        if getattr(self, "ca_cert", None):
-            session.verify = self.ca_cert
-        else:
-            session.verify = self.verify_ssl
-            if not self.verify_ssl:
-                self.logger.warning(
-                    f"{LOG_PREFIX} TLS certificate verification is DISABLED "
-                    "(ELASTIC_VERIFY_SSL=false). Credentials are exposed to "
-                    "interception - do NOT use in production; trust the cluster "
-                    "CA (ELASTIC_CA_CERT) instead."
-                )
+        # TLS: prefer verifying against a provided CA bundle (ca_cert), else fall
+        # back to verify_ssl (bool). Disabling verification is a loud, deliberate
+        # downgrade.
+        session.verify = self.ca_cert or self.verify_ssl
+        if not self.ca_cert and not self.verify_ssl:
+            self.logger.warning(
+                f"{LOG_PREFIX} TLS certificate verification is DISABLED "
+                "(ELASTIC_VERIFY_SSL=false). Credentials are exposed to "
+                "interception - do NOT use in production; trust the cluster "
+                "CA (ELASTIC_CA_CERT) instead."
+            )
         return session
 
     def fetch_signatures(

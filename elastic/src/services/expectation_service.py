@@ -111,11 +111,7 @@ class ElasticExpectationService:
                 f"Failed to initialize Elastic Security service components: {e}"
             ) from e
 
-        if (
-            hasattr(config, "elastic")
-            and hasattr(config.elastic, "time_window")
-            and config.elastic.time_window
-        ):
+        if config.elastic.time_window:
             self.time_window = config.elastic.time_window
             self.logger.debug(
                 f"{LOG_PREFIX} Using configured time window: {self.time_window}"
@@ -126,20 +122,11 @@ class ElasticExpectationService:
                 f"{LOG_PREFIX} No time_window configured, using default 1 hour"
             )
 
-        if hasattr(config, "elastic"):
-            self.max_retry = getattr(config.elastic, "max_retry", 3)
-            self.offset = getattr(
-                config.elastic, "offset", timedelta(seconds=30)
-            ).total_seconds()
-            self.logger.debug(
-                f"{LOG_PREFIX} Using configured retry parameters: max_retry={self.max_retry}, offset={self.offset}s"
-            )
-        else:
-            self.max_retry = 3
-            self.offset = 30
-            self.logger.warning(
-                f"{LOG_PREFIX} No retry configuration found, using defaults: max_retry={self.max_retry}, offset={self.offset}s"
-            )
+        self.max_retry = config.elastic.max_retry
+        self.offset = config.elastic.offset.total_seconds()
+        self.logger.debug(
+            f"{LOG_PREFIX} Using configured retry parameters: max_retry={self.max_retry}, offset={self.offset}s"
+        )
 
     def get_supported_signatures(self) -> list[SignatureTypes]:
         """Get the signature types this service supports.
@@ -237,7 +224,7 @@ class ElasticExpectationService:
                 all_results_with_expectations_associated.append(result)
 
             valid_count = sum(
-                1 for r in all_results_with_expectations_associated if r.is_valid
+                r.is_valid for r in all_results_with_expectations_associated
             )
             invalid_count = len(all_results_with_expectations_associated) - valid_count
 
@@ -280,25 +267,16 @@ class ElasticExpectationService:
                 f"{LOG_PREFIX} Processing detection expectation: {expectation_id}"
             )
             return self.handle_detection_expectation(expectation, detection_helper)
-        elif isinstance(expectation, PreventionExpectation):
-            self.logger.warning(
-                f"{LOG_PREFIX} Elastic Security service warning for expectation {expectation_id}: Elastic Security only supports DetectionExpectations, not PreventionExpectations, marking them as invalid"
-            )
-            from ..collector.models import ExpectationResult
 
-            return ExpectationResult(
-                expectation_id=expectation_id,
-                is_valid=False,
-                expectation=expectation,
-                error_message="Elastic Security only supports DetectionExpectations, not PreventionExpectations",
-            )
-        else:
-            self.logger.error(
-                f"{LOG_PREFIX} Unsupported expectation type for {expectation_id}: {type(expectation).__name__}"
-            )
-            raise ElasticExpectationError(
-                f"Unsupported expectation type: {type(expectation).__name__}"
-            )
+        if isinstance(expectation, PreventionExpectation):
+            return self.handle_prevention_expectation(expectation, detection_helper)
+
+        self.logger.error(
+            f"{LOG_PREFIX} Unsupported expectation type for {expectation_id}: {type(expectation).__name__}"
+        )
+        raise ElasticExpectationError(
+            f"Unsupported expectation type: {type(expectation).__name__}"
+        )
 
     def handle_detection_expectation(
         self,

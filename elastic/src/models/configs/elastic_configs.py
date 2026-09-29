@@ -114,15 +114,16 @@ class _ConfigLoaderElastic(ConfigBaseSettings):
         "instead of disabling verification). Overrides ELASTIC_VERIFY_SSL.",
     )
 
-    @field_validator("events_index", "query_template", mode="before")
+    @field_validator("events_index", "query_template", "ca_cert", mode="before")
     @classmethod
     def _empty_str_to_none(cls, value: object) -> object:
         """Treat an explicitly empty/whitespace value as unset (None).
 
-        These fields carry a non-None default, so ``ELASTIC_EVENTS_INDEX=`` must
-        still disable the drilldown (``drilldown_enabled`` is ``bool(events_index)``)
-        and ``ELASTIC_QUERY_TEMPLATE=`` must fall back to the built-in query,
-        rather than being ignored and keeping the default.
+        These fields carry a non-None default (or are used as an optional path),
+        so an explicitly empty value must mean "unset" rather than "" :
+        ``ELASTIC_EVENTS_INDEX=`` disables the drilldown (``drilldown_enabled`` is
+        ``bool(events_index)``), ``ELASTIC_QUERY_TEMPLATE=`` falls back to the
+        built-in query, and ``ELASTIC_CA_CERT=`` leaves TLS on ``verify_ssl``.
         """
         if isinstance(value, str) and not value.strip():
             return None
