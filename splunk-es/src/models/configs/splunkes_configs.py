@@ -30,8 +30,9 @@ class _ConfigLoaderSplunkES(ConfigBaseSettings):
     )
     alerts_index: Optional[str] = Field(
         alias="SPLUNKES_ALERTS_INDEX",
-        default="main",
-        description="Index to search for alerts (default: _notable).",
+        default="notable",
+        description="Index to search for alerts (default: notable, the Splunk ES "
+        "notable index).",
     )
     time_window: Optional[timedelta] = Field(
         alias="SPLUNKES_TIME_WINDOW",
@@ -40,13 +41,17 @@ class _ConfigLoaderSplunkES(ConfigBaseSettings):
     )
     max_retry: int = Field(
         alias="SPLUNKES_MAX_RETRY",
-        default=3,
-        description="Maximum number of retry attempts for API calls.",
+        default=5,
+        description="Maximum number of retry attempts for API calls. Combined "
+        "with offset, this defines how long the collector keeps looking for a "
+        "notable after an inject (default 5 x 120s covers ~10 min of detection "
+        "latency: SIEM ingestion + correlation-search schedule).",
     )
     offset: timedelta = Field(
         alias="SPLUNKES_OFFSET",
-        default=timedelta(seconds=30),
-        description="Time offset between retry attempts.",
+        default=timedelta(seconds=120),
+        description="Time waited between retry attempts, also used to extend the "
+        "search window forward on each retry.",
     )
     query_template: Optional[str] = Field(
         alias="SPLUNKES_QUERY_TEMPLATE",

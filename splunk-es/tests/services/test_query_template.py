@@ -103,8 +103,10 @@ class TestQueryTemplateResolution:
         assert "sourcetype=notable" in result
         assert 'src_ip IN ("10.0.0.1")' in result
         assert 'dst_ip IN ("10.0.0.9")' in result
-        assert "earliest=2024-01-01T00:00:00Z" in result
-        assert "latest=2024-01-01T23:59:59Z" in result
+        # earliest/latest are converted to epoch seconds so Splunk time-range
+        # matching works (2024-01-01T00:00:00Z -> 1704067200, ...23:59:59Z -> 1704153599).
+        assert "earliest=1704067200" in result
+        assert "latest=1704153599" in result
         assert "| table _time, src_ip, dst_ip" in result
 
     def test_empty_template_falls_back_to_default(self):
@@ -207,7 +209,11 @@ class TestQueryTemplateResolution:
         assert 'dst_ip IN ("10.0.0.5")' in result
 
     def test_start_end_date_from_signatures(self):
-        """Test that start_date/end_date from signatures replace relative time."""
+        """Test that start_date/end_date from signatures replace relative time.
+
+        Splunk's earliest/latest modifiers do not parse ISO-8601 'Z' timestamps,
+        so the signature dates must be emitted as Unix epoch seconds.
+        """
         client = self._create_client()
         criteria = SplunkESSearchCriteria(
             source_ips=["10.0.0.1"],
@@ -218,9 +224,11 @@ class TestQueryTemplateResolution:
 
         result = client._build_spl_query(criteria)
 
-        assert "earliest=2026-06-12T08:00:00Z" in result
-        assert "latest=2026-06-12T09:00:00Z" in result
+        # 2026-06-12T08:00:00Z == 1781251200, 2026-06-12T09:00:00Z == 1781254800
+        assert "earliest=1781251200" in result
+        assert "latest=1781254800" in result
         assert "earliest=-" not in result
+        assert "2026-06-12T" not in result
 
     def test_start_date_only_fallback_end_to_now(self):
         """Test that missing end_date falls back to 'now'."""
@@ -234,7 +242,7 @@ class TestQueryTemplateResolution:
 
         result = client._build_spl_query(criteria)
 
-        assert "earliest=2026-06-12T08:00:00Z" in result
+        assert "earliest=1781251200" in result
         assert "latest=now" in result
 
     def test_no_dates_fallback_to_time_window(self):
