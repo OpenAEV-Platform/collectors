@@ -260,7 +260,7 @@ class NetWitnessClientAPI:
         for ip in ips or []:
             try:
                 valid_ips.append(str(ipaddress.ip_address(ip)))
-            except (ValueError, TypeError):
+            except ValueError, TypeError:
                 self.logger.warning(
                     f"{LOG_PREFIX} Skipping invalid IP value from signature: {ip!r}"
                 )
@@ -419,7 +419,7 @@ class NetWitnessClientAPI:
                         f"{LOG_PREFIX} No sessions found after all retry attempts"
                     )
                     return []
-            except (NetWitnessAuthenticationError, NetWitnessValidationError):
+            except NetWitnessAuthenticationError, NetWitnessValidationError:
                 raise
             except (
                 NetWitnessAPIError,

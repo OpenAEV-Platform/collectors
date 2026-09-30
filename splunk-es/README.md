@@ -89,19 +89,17 @@ following placeholders, resolved at runtime:
 | `{alerts_index}`       | The configured Splunk index (`SPLUNKES_ALERTS_INDEX`).                        |
 | `{source_ips}`         | Source IP values quoted for the Splunk `IN` operator (`*` if none).          |
 | `{target_ips}`         | Target IP values quoted for the Splunk `IN` operator (`*` if none).          |
-| `{implant_urls}`       | Implant callback URL paths quoted for the Splunk `IN` operator (`*` if none).|
-| `{implant_names}`      | Implant process names quoted for the Splunk `IN` operator (`*` if none).     |
+| `{hostnames}`          | Hostname values quoted for the Splunk `IN` operator (`*` if none).           |
 | `{start_date}`         | Start date from signatures, or a relative time fallback (e.g. `-3600s`).      |
 | `{end_date}`           | End date from signatures, or `now` fallback.                                  |
-| `{ip_conditions}`      | Legacy: auto-generated source + destination IP filter.                        |
-| `{process_conditions}` | Legacy: auto-generated URL path / process filter.                             |
-| `{time_window}`        | Legacy: computed earliest time in seconds.                                    |
 
 The query must include `| table _time` for proper alert parsing. The default template is:
 
 ```spl
-index={alerts_index} (src_ip IN ({source_ips}) OR src IN ({source_ips}) OR source_ip IN ({source_ips}) OR client_ip IN ({source_ips})) (dst_ip IN ({target_ips}) OR dest IN ({target_ips}) OR dest_ip IN ({target_ips}) OR destination_ip IN ({target_ips}) OR server_ip IN ({target_ips})) (url_path IN ({implant_urls}) OR url IN ({implant_urls}) OR path IN ({implant_urls}) OR query IN ({implant_urls}) OR process_name IN ({implant_names}) OR parent_process_name IN ({implant_names})) earliest={start_date} latest={end_date} | table _time, src_ip, src, source_ip, client_ip, dst_ip, dest, dest_ip, destination_ip, server_ip, signature, rule_name, event_type, severity, url_path, url, path, query, process_name, parent_process_name, _raw | sort -_time
+index={alerts_index} (src_ip IN ({source_ips}) OR src IN ({source_ips}) OR source_ip IN ({source_ips}) OR client_ip IN ({source_ips})) (dst_ip IN ({target_ips}) OR dest IN ({target_ips}) OR dest_ip IN ({target_ips}) OR destination_ip IN ({target_ips}) OR server_ip IN ({target_ips})) (host IN ({hostnames}) OR hostname IN ({hostnames}) OR host_name IN ({hostnames})) earliest={start_date} latest={end_date} | table _time, src_ip, src, source_ip, client_ip, dst_ip, dest, dest_ip, destination_ip, server_ip, host, hostname, signature, rule_name, event_type, severity, url_path, _raw | sort -_time
 ```
+
+Signature values that are not part of the enough-filter (process names, emails, hashes, custom headers, ...) are not query placeholders: they are matched after the fetch with a raw-text regex over each fetched alert's `_raw` field. An implant parent process name additionally matches through its callback URL rebuilt from the embedded UUIDs, because network events never show the `.exe` — which is why the projection carries `url_path` (the converter rebuilds the full implant name from it).
 
 ## Deployment
 

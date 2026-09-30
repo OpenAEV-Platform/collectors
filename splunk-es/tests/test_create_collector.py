@@ -91,6 +91,13 @@ def test_collector_config_missing_required_values() -> None:
     if "SPLUNKES_USERNAME" in os_environ:
         del os_environ["SPLUNKES_USERNAME"]
 
+    # The config base also matches the field NAME (validate_by_name=True), so a
+    # generic $USERNAME in the environment would otherwise satisfy `username`. Remove
+    # name-form env vars so the field is genuinely absent and validation fails.
+    for _k in ("username", "USERNAME"):
+        if _k in os_environ:
+            del os_environ[_k]
+
     # Then the collector config should raise a custom ConfigurationException
     with pytest.raises((CollectorConfigError, ValueError)):
         # When the collector is created

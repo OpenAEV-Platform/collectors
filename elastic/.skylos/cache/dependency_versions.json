@@ -1,0 +1,10 @@
+{
+  "schema_version": 2,
+  "statuses": {
+    "PyPI:pydantic:2.13": "present",
+    "PyPI:pydantic-settings:2.14": "present",
+    "PyPI:requests:2.33": "present",
+    "PyPI:pyoaev:3.260904.0": "present",
+    "PyPI:python-slugify:8.0.4": "present"
+  }
+}

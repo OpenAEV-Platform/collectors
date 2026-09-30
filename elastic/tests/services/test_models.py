@@ -91,3 +91,37 @@ class TestFromRawResponse:
 
         assert response.results[0].src_ip == "10.0.0.1"  # noqa: S101
         assert response.results[0].dst_ip == "10.0.0.2"  # noqa: S101
+
+    def test_multivalued_host_ip_all_reach_host_ips(self):
+        """Every host.ip address is kept (link-local IPv6 first, then IPv4).
+
+        Guards host-based correlation and the drilldown: from_raw_response must
+        expose the whole host.ip array, not just its first (often link-local
+        IPv6) element, and must also surface host.name and process.pid.
+        """
+        raw = {
+            "hits": {
+                "hits": [
+                    {
+                        "_source": {
+                            "@timestamp": "2026-01-01T00:00:00Z",
+                            "host": {
+                                "name": "host-a",
+                                "ip": [
+                                    "fe80::5877:b9a2:4260:6413",
+                                    "192.0.2.10",
+                                ],
+                            },
+                            "process": {"pid": 1556},
+                        }
+                    }
+                ]
+            }
+        }
+
+        alert = ElasticResponse.from_raw_response(raw).results[0]
+
+        assert "192.0.2.10" in alert.host_ips  # noqa: S101
+        assert "fe80::5877:b9a2:4260:6413" in alert.host_ips  # noqa: S101
+        assert alert.host_name == "host-a"  # noqa: S101
+        assert alert.pid == 1556  # noqa: S101

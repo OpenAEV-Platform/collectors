@@ -92,3 +92,29 @@ class ElasticAuthenticationError(ElasticServiceError):
     """Raised when authentication fails."""
 
     pass
+
+
+class ElasticUngradableError(ElasticServiceError):
+    """Raised when an expectation cannot be graded either way.
+
+    Used when the expectation carries no usable signature (e.g. only unknown /
+    non-canonical signature types after normalization): the collector can assert
+    neither Detected nor Not Detected, so the expectation is left pending
+    (omitted from the results) and re-served next cycle, rather than recorded as
+    a false 'Not Detected'.
+    """
+
+    pass
+
+
+# Error classes that mean "could not query/decide this cycle" (transient outage
+# or ungradable), for which the expectation must be LEFT PENDING (omitted from
+# results) instead of graded 'Not Detected'. Kept explicit so the batch loop can
+# distinguish them from a genuine "queried successfully, nothing matched".
+LEAVE_PENDING_ERRORS = (
+    ElasticAPIError,
+    ElasticNetworkError,
+    ElasticAuthenticationError,
+    ElasticTimeoutError,
+    ElasticUngradableError,
+)

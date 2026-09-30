@@ -24,7 +24,7 @@ class DefenderO365SourceHandler(SourceHandler):
                     else:
                         # we consider, if the END_DATE is naive, that is was produced as UTC
                         dt = dt.replace(tzinfo=UTC)
-                except (ValueError, TypeError):
+                except ValueError, TypeError:
                     continue
                 if earliest is None or dt < earliest:
                     earliest = dt

@@ -132,7 +132,7 @@ class Collector(CollectorDaemon):  # type: ignore[misc]
                 f"{results.skipped} skipped"
             )
 
-        except (KeyboardInterrupt, SystemExit):
+        except KeyboardInterrupt, SystemExit:
             self.logger.info(f"{LOG_PREFIX} Collector stopping...")
             os._exit(0)
         except Exception as e:

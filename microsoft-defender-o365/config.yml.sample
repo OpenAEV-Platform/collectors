@@ -5,7 +5,7 @@ openaev:
 
 collector:
   id: "ChangeMe"  # collector ID must be a unique string, e.g. UUIDv4
-#  name: "Template"  # name of the collector
+#  name: "Microsoft Defender o365"  # name of the collector
 #  platform: "EDR"  # type of security platform this collector works for
 #  period: "PT2M"  # collection interval (ISO 8601 format)
 #  log_level: "error"  # determine the verbosity of the logs

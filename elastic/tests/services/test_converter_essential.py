@@ -155,6 +155,42 @@ class TestConverterEssential:
         assert len(source_ips) == 1  # noqa: S101
         assert source_ips == ["192.168.1.100"]  # noqa: S101
 
+    def test_extract_source_ips_includes_host_ips(self):
+        """Endpoint alerts expose the executing host addresses via ``host_ips``.
+
+        For process/endpoint alerts that carry no ``source.ip``, the converter
+        must fall back to the host's own addresses (ECS ``host.ip``) so an
+        expectation source IP (e.g. the asset IP) can still be correlated even
+        when the first host address is a link-local IPv6.
+        """
+        converter = Converter()
+        alert = ElasticAlertFactory.build(
+            src_ip=None,
+            host_ips=["fe80::5877:b9a2:4260:6413", "192.0.2.10"],
+        )
+
+        source_ips = converter._extract_source_ips(alert)
+
+        assert "192.0.2.10" in source_ips  # noqa: S101
+
+    def test_parent_process_name_prefers_drilldown_marker(self):
+        """A drilldown-recovered implant marker wins over the URL-path heuristic.
+
+        The marker ties the alert to a specific inject+agent, so it must be
+        used verbatim for deterministic correlation rather than re-deriving one
+        from a URL path.
+        """
+        converter = Converter()
+        marker = (
+            "oaev-implant-0ef06748-10db-4ad0-b718-5b02f169407b"
+            "-agent-a7dbf250-e41f-461a-830c-fc93704ed8d2"
+        )
+        alert = ElasticAlertFactory.build(url_path=None, implant_marker=marker)
+
+        result = converter._extract_parent_process_name(alert)
+
+        assert result == marker  # noqa: S101
+
     def test_extract_target_ips_from_dst_ip(self):
         """Test extracting target IPs from the alert ``dst_ip`` field.
 
