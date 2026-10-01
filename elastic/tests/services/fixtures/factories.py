@@ -51,9 +51,12 @@ class ConfigLoaderElasticFactory(ModelFactory[_ConfigLoaderElastic]):
 
     __check_model__ = False
 
+    authentication_type = Use(lambda: None)
     api_key = Use(lambda: None)
     username = Use(lambda: "test-user")
     password = Use(lambda: "test-password")  # noqa: S106
+    client_cert = Use(lambda: None)
+    client_key = Use(lambda: None)
 
     @classmethod
     def build(cls, **kwargs):
@@ -77,7 +80,10 @@ class ConfigLoaderElasticFactory(ModelFactory[_ConfigLoaderElastic]):
         os.environ["ELASTIC_ALERTS_INDEX"] = ".alerts-security.alerts-*"
         os.environ["ELASTIC_MAX_RETRY"] = "1"
         os.environ["ELASTIC_OFFSET"] = "PT0S"
+        os.environ.pop("ELASTIC_AUTHENTICATION_TYPE", None)
         os.environ.pop("ELASTIC_API_KEY", None)
+        os.environ.pop("ELASTIC_CLIENT_CERT", None)
+        os.environ.pop("ELASTIC_CLIENT_KEY", None)
         os.environ.pop("ELASTIC_KIBANA_URL", None)
         return super().build(**kwargs)
 

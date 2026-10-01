@@ -9,14 +9,24 @@ services:
       # - OPENAEV_TENANT_ID=ChangeMe
       - COLLECTOR_ID=ChangeMe
       - ELASTIC_BASE_URL=https://change.me
-      # Authentication: provide ELASTIC_API_KEY (preferred) or username/password
+      # Authentication: provide ELASTIC_API_KEY (preferred) or username/password,
+      # or (self-managed / ECK only) a client certificate and key for the PKI
+      # realm, each as the BASE64-ENCODED PEM file (e.g. `base64 -w0 client.crt`).
+      # Optionally pin the method (API_KEY, USER_PASSWORD or PKI).
+      # - ELASTIC_AUTHENTICATION_TYPE=USER_PASSWORD
       # - ELASTIC_API_KEY=ChangeMe
       - ELASTIC_USERNAME=ChangeMe
       - ELASTIC_PASSWORD=ChangeMe
+      # - ELASTIC_CLIENT_CERT=${ELASTIC_CLIENT_CERT}
+      # - ELASTIC_CLIENT_KEY=${ELASTIC_CLIENT_KEY}
+      # CA bundle stays a path: mount it with the volume below.
+      # - ELASTIC_CA_CERT=/certs/ca.crt
       - ELASTIC_ALERTS_INDEX=.alerts-security.alerts-*
       # Optional editable Lucene query_string (unset = built-in default).
       # - ELASTIC_QUERY_TEMPLATE=
       # Raw endpoint/process events index for the implant-marker drilldown
       # (empty = disable drilldown, IP + time correlation only).
       # - ELASTIC_EVENTS_INDEX=logs-windows.sysmon_operational-*,logs-endpoint.events.process-*
+    # volumes:
+    #   - ./certs:/certs:ro
     restart: always
