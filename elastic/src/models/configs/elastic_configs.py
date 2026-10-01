@@ -164,7 +164,7 @@ class _ConfigLoaderElastic(ConfigBaseSettings):
 
     @model_validator(mode="after")
     def _validate_auth(self) -> "_ConfigLoaderElastic":
-        """Ensure either an API key or a username/password pair is configured.
+        """Ensure an API key, a username/password pair or a client certificate and key is configured.
 
         Returns:
             The validated configuration instance.
@@ -173,10 +173,15 @@ class _ConfigLoaderElastic(ConfigBaseSettings):
             ValueError: If no usable authentication method is configured.
 
         """
-        if not self.api_key and not (self.username and self.password):
+        if (
+            not self.api_key
+            and not (self.username and self.password)
+            and not (self.client_cert and self.client_key)
+        ):
             raise ValueError(
-                "Elastic authentication requires either ELASTIC_API_KEY or both "
-                "ELASTIC_USERNAME and ELASTIC_PASSWORD"
+                "Elastic authentication requires ELASTIC_API_KEY, both "
+                "ELASTIC_USERNAME and ELASTIC_PASSWORD, or both "
+                "ELASTIC_CLIENT_CERT and ELASTIC_CLIENT_KEY"
             )
         return self
 
