@@ -34,9 +34,9 @@ class _ConfigLoaderElastic(ConfigBaseSettings):
         default="https://localhost:9200",
         description="Base URL of the Elasticsearch API (e.g., https://elastic.company.com:9200).",
     )
-    authentication_type: AuthenticationType = Field(
+    authentication_type: Optional[AuthenticationType] = Field(
         alias="ELASTIC_AUTHENTICATION_TYPE",
-        default=AuthenticationType.USER_PASSWORD,
+        default=None,
         description=(
             "Authentication method to use for Elasticsearch. One of: "
             "API_KEY, USER_PASSWORD, PKI. If unset, the collector infers the "

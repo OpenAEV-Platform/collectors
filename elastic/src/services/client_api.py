@@ -153,9 +153,17 @@ class ElasticClientAPI:
 
         try:
             self.base_url = str(self.config.elastic.base_url).rstrip("/")
-
-            self.authentication_provider = self._get_authentication_provider(self.config.elastic.authentication_type)
-            
+            self.api_key = (
+                self.config.elastic.api_key.get_secret_value()
+                if self.config.elastic.api_key
+                else None
+            )
+            self.username = self.config.elastic.username
+            self.password = (
+                self.config.elastic.password.get_secret_value()
+                if self.config.elastic.password
+                else None
+            )
             self.alerts_index = (
                 self.config.elastic.alerts_index or ".alerts-security.alerts-*"
             )
@@ -192,16 +200,7 @@ class ElasticClientAPI:
             )
 
         try:
-            self.session = self.authentication_provider.get_session()
-
-            self.session.verify = self.ca_cert or self.verify_ssl
-            if not self.ca_cert and not self.verify_ssl:
-                self.logger.warning(
-                    f"{LOG_PREFIX} TLS certificate verification is DISABLED "
-                    "(ELASTIC_VERIFY_SSL=false). Credentials are exposed to "
-                    "interception - do NOT use in production; trust the cluster "
-                    "CA (ELASTIC_CA_CERT) instead."
-                )
+            self.session = self._create_session()
             self.parent_process_parser = ParentProcessParser()
         except ElasticValidationError:
             raise
@@ -210,11 +209,14 @@ class ElasticClientAPI:
 
         self.logger.info(f"{LOG_PREFIX} Elastic Security API client initialized")
 
-    def _get_authentication_provider(self, auth_type: AuthenticationType) -> AuthenticationProvider:
+    def _get_authentication_provider(self, auth_type: AuthenticationType | None) -> AuthenticationProvider:
         """Return an authentication provider based on the specified type.
 
+        When no type is configured, it is inferred from the settings: API key,
+        then username/password, then client certificate.
+
         Args:
-            auth_type: The type of authentication to use.
+            auth_type: The type of authentication to use, or None to infer it.
 
         Returns:
             An instance of the appropriate AuthenticationProvider subclass.
@@ -222,6 +224,19 @@ class ElasticClientAPI:
         Raises:
             ElasticValidationError: If the specified authentication type is unsupported.
         """
+        if auth_type is None:
+            if self.api_key:
+                auth_type = AuthenticationType.API_KEY
+            elif self.username and self.password:
+                auth_type = AuthenticationType.USER_PASSWORD
+            elif self.config.elastic.client_cert and self.config.elastic.client_key:
+                auth_type = AuthenticationType.PKI
+            else:
+                raise ElasticValidationError(
+                    "An API key, a username/password pair or a client "
+                    "certificate and key are required"
+                )
+
         if auth_type == "API_KEY":
             if not self.api_key:
                 raise ElasticValidationError(
@@ -246,7 +261,10 @@ class ElasticClientAPI:
             raise ElasticValidationError(f"Unsupported authentication type: {auth_type}")
 
     def _create_session(self) -> requests.Session:
-        """Create an HTTP session with API-key or basic authentication.
+        """Create an HTTP session authenticated by the configured provider.
+
+        The provider only attaches its credentials; the common headers and the
+        TLS verification are applied here.
 
         Returns:
             Configured requests.Session with authentication.
@@ -255,20 +273,15 @@ class ElasticClientAPI:
             ElasticValidationError: If no authentication is configured.
 
         """
-        session = requests.Session()
-        headers = {
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-        }
-        if self.api_key:
-            headers["Authorization"] = f"ApiKey {self.api_key}"
-        elif self.username and self.password:
-            session.auth = (self.username, self.password)
-        else:
-            raise ElasticValidationError(
-                "Either an API key or a username/password pair is required"
-            )
-        session.headers.update(headers)
+        session = self._get_authentication_provider(
+            self.config.elastic.authentication_type
+        ).get_session()
+        session.headers.update(
+            {
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+            }
+        )
         # TLS: prefer verifying against a provided CA bundle (ca_cert), else fall
         # back to verify_ssl (bool). Disabling verification is a loud, deliberate
         # downgrade.

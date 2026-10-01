@@ -11,10 +11,7 @@ from polyfactory.factories.pydantic_factory import ModelFactory
 from src.collector.models import ExpectationResult, ExpectationTrace
 from src.models.configs.collector_configs import _ConfigLoaderOAEV
 from src.models.configs.config_loader import ConfigLoader, ConfigLoaderCollector
-from src.models.configs.elastic_configs import (
-    AuthenticationType,
-    _ConfigLoaderElastic,
-)
+from src.models.configs.elastic_configs import _ConfigLoaderElastic
 from src.services.models import ElasticAlert, ElasticSearchCriteria
 
 
@@ -54,7 +51,7 @@ class ConfigLoaderElasticFactory(ModelFactory[_ConfigLoaderElastic]):
 
     __check_model__ = False
 
-    authentication_type = Use(lambda: AuthenticationType.USER_PASSWORD)
+    authentication_type = Use(lambda: None)
     api_key = Use(lambda: None)
     username = Use(lambda: "test-user")
     password = Use(lambda: "test-password")  # noqa: S106
