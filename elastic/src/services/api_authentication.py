@@ -1,7 +1,8 @@
-from typing import Protocol
 from pathlib import Path
+from typing import Protocol
 
 import requests
+
 
 class AuthenticationProvider(Protocol):
     """Provides an HTTP session carrying the credentials for Elasticsearch.
@@ -41,6 +42,7 @@ class UserPasswordAuthentication:
         session.auth = (self._username, self._password)
         return session
 
+
 class PKIAuthentication:
     """Authenticate with an X.509 client certificate (Elasticsearch PKI realm).
 
@@ -51,13 +53,19 @@ class PKIAuthentication:
     ELASTIC_CLIENT_CERT / ELASTIC_CLIENT_KEY should have been written to disk by the configuration manager before the collector starts. The default paths are ``pki/pki-client.crt`` and ``pki/pki-client.key``.
     """
 
-    def __init__(self, client_cert_path: Path = Path("pki/pki-client.crt"), client_key_path: Path = Path("pki/pki-client.key")) -> None:
+    def __init__(
+        self,
+        client_cert_path: Path = Path("pki/pki-client.crt"),
+        client_key_path: Path = Path("pki/pki-client.key"),
+    ) -> None:
         # check that the files exist and are readable; requests will raise a less clear error if they don't
         if not client_cert_path.is_file():
-            raise FileNotFoundError(f"Client certificate file not found: {client_cert_path}")
+            raise FileNotFoundError(
+                f"Client certificate file not found: {client_cert_path}"
+            )
         if not client_key_path.is_file():
             raise FileNotFoundError(f"Client key file not found: {client_key_path}")
-        
+
         self._client_cert_path = client_cert_path
         self._client_key_path = client_key_path
 

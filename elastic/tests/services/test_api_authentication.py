@@ -1,11 +1,7 @@
 """Tests for the Elasticsearch API authentication providers."""
 
-from pathlib import Path
-from unittest.mock import MagicMock, patch
-
 import pytest
 import requests
-
 from src.services.api_authentication import (
     ApiKeyAuthentication,
     PKIAuthentication,
@@ -23,8 +19,12 @@ def pki_files(tmp_path):
     key_file = pki_dir / "pki-client.key"
 
     # Create dummy certificate and key files
-    cert_file.write_text("-----BEGIN CERTIFICATE-----\nMIIC...\n-----END CERTIFICATE-----")
-    key_file.write_text("-----BEGIN PRIVATE KEY-----\nMIIE...\n-----END PRIVATE KEY-----")
+    cert_file.write_text(
+        "-----BEGIN CERTIFICATE-----\nMIIC...\n-----END CERTIFICATE-----"
+    )
+    key_file.write_text(
+        "-----BEGIN PRIVATE KEY-----\nMIIE...\n-----END PRIVATE KEY-----"
+    )
 
     yield cert_file, key_file
 

@@ -17,7 +17,6 @@ import base64
 
 import pytest
 import requests
-
 from src.services.api_authentication import (
     ApiKeyAuthentication,
     AuthenticationProvider,

@@ -3,22 +3,25 @@
 import base64
 import os
 from datetime import timedelta
+from enum import Enum
 from pathlib import Path
 from typing import Optional
 
 from pydantic import Field, SecretStr, field_validator, model_validator
 from src.models.configs import ConfigBaseSettings
-from enum import Enum
 
 PKI_CERT_DIR = Path("src/pki")
 DEFAULT_CLIENT_CERT_PATH = PKI_CERT_DIR / "pki-client.crt"
 DEFAULT_CLIENT_KEY_PATH = PKI_CERT_DIR / "pki-client.key"
 
+
 class AuthenticationType(str, Enum):
     """Enum for supported authentication types."""
+
     API_KEY = "API_KEY"
     USER_PASSWORD = "USER_PASSWORD"
     PKI = "PKI"
+
 
 class _ConfigLoaderElastic(ConfigBaseSettings):
     """Elastic Security API configuration settings.
@@ -136,7 +139,7 @@ class _ConfigLoaderElastic(ConfigBaseSettings):
         "Elasticsearch TLS certificate (recommended for self-signed clusters "
         "instead of disabling verification). Overrides ELASTIC_VERIFY_SSL.",
     )
-    client_cert: Optional[str] = Field (
+    client_cert: Optional[str] = Field(
         alias="ELASTIC_CLIENT_CERT",
         default=None,
         description="Single line base64 encoded PEM client certificate for PKI authentication. ",
@@ -216,7 +219,9 @@ class _ConfigLoaderElastic(ConfigBaseSettings):
         return value
 
     @field_validator("client_key", mode="after")
-    def _record_client_key_on_disk(cls, value: Optional[SecretStr], info) -> Optional[str]:
+    def _record_client_key_on_disk(
+        cls, value: Optional[SecretStr], info
+    ) -> Optional[str]:
         """Write the base64-encoded client key to the pki/pki-client.key file.
 
         This is needed because requests (and the underlying ssl module) only

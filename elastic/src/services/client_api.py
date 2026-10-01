@@ -15,6 +15,17 @@ from requests.exceptions import (  # type: ignore[import-untyped]
 )
 
 from ..models.configs.config_loader import ConfigLoader
+from ..models.configs.elastic_configs import (
+    DEFAULT_CLIENT_CERT_PATH,
+    DEFAULT_CLIENT_KEY_PATH,
+    AuthenticationType,
+)
+from .api_authentication import (
+    ApiKeyAuthentication,
+    AuthenticationProvider,
+    PKIAuthentication,
+    UserPasswordAuthentication,
+)
 from .exception import (
     ElasticAPIError,
     ElasticAuthenticationError,
@@ -26,9 +37,6 @@ from .exception import (
 from .models import ElasticAlert, ElasticResponse, ElasticSearchCriteria
 from .utils.parent_process_parser import ParentProcessParser
 from .utils.url import redact_userinfo
-
-from ..models.configs.elastic_configs import DEFAULT_CLIENT_CERT_PATH, DEFAULT_CLIENT_KEY_PATH, AuthenticationType
-from ..services.api_authentication import AuthenticationProvider, ApiKeyAuthentication, UserPasswordAuthentication, PKIAuthentication
 
 LOG_PREFIX = "[ElasticClientAPI]"
 
@@ -209,7 +217,9 @@ class ElasticClientAPI:
 
         self.logger.info(f"{LOG_PREFIX} Elastic Security API client initialized")
 
-    def _get_authentication_provider(self, auth_type: AuthenticationType | None) -> AuthenticationProvider:
+    def _get_authentication_provider(
+        self, auth_type: AuthenticationType | None
+    ) -> AuthenticationProvider:
         """Return an authentication provider based on the specified type.
 
         When no type is configured, it is inferred from the settings: API key,
@@ -250,15 +260,18 @@ class ElasticClientAPI:
                 )
             return UserPasswordAuthentication(self.username, self.password)
         elif auth_type == "PKI":
-            if not self.config.elastic.client_cert or not self.config.elastic.client_key:
+            if (
+                not self.config.elastic.client_cert
+                or not self.config.elastic.client_key
+            ):
                 raise ElasticValidationError(
                     "Client certificate and key are required for PKI authentication"
                 )
-            return PKIAuthentication(
-                DEFAULT_CLIENT_CERT_PATH, DEFAULT_CLIENT_KEY_PATH
-            )
+            return PKIAuthentication(DEFAULT_CLIENT_CERT_PATH, DEFAULT_CLIENT_KEY_PATH)
         else:
-            raise ElasticValidationError(f"Unsupported authentication type: {auth_type}")
+            raise ElasticValidationError(
+                f"Unsupported authentication type: {auth_type}"
+            )
 
     def _create_session(self) -> requests.Session:
         """Create an HTTP session authenticated by the configured provider.

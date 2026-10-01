@@ -22,6 +22,7 @@ was detected.
   - [Usage](#usage)
   - [Behavior](#behavior)
   - [Required permissions and API endpoints](#required-permissions-and-api-endpoints)
+  - [PKI authentication (client certificate)](#pki-authentication-client-certificate)
   - [Debugging](#debugging)
   - [Integration tests](#integration-tests)
   - [Additional information](#additional-information)
@@ -40,7 +41,8 @@ PREVENTION expectations are not supported.
 
 - OpenAEV Platform >= 1.19.0
 - An Elasticsearch cluster storing Elastic Security detection alerts (default index pattern `.alerts-security.alerts-*`)
-- An Elasticsearch API key (preferred) or a username/password pair with read access to that alerts index
+- An Elasticsearch API key (preferred), a username/password pair, or a client certificate mapped by a PKI realm
+  (self-managed / ECK only), with read access to that alerts index
 - Optionally, a Kibana instance to build alert links in the expectation traces
 - For a manual (non-Docker) deployment: Python 3.14 and [Poetry](https://python-poetry.org/) >= 2.1
 
@@ -73,9 +75,12 @@ The collector is configured either through environment variables (recommended, r
 | Parameter    | config.yml             | Docker environment variable | Default                     | Mandatory   | Description                                                                                                                                                |
 |--------------|------------------------|-----------------------------|-----------------------------|-------------|----------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Base URL     | `elastic.base_url`     | `ELASTIC_BASE_URL`          | `https://localhost:9200`    | Yes         | Base URL of the Elasticsearch API (e.g. `https://elastic.company.com:9200`).                                                                              |
+| Authentication Type | `elastic.authentication_type` | `ELASTIC_AUTHENTICATION_TYPE` | / (inferred)     | No          | Authentication method: `API_KEY`, `USER_PASSWORD` or `PKI`. When unset, it is inferred: API key, then username/password, then client certificate. When set, the settings of that method are required. |
 | API Key      | `elastic.api_key`      | `ELASTIC_API_KEY`           | /                           | Conditional | Elasticsearch API key (preferred). When set, it is used instead of username/password.                                                                     |
 | Username     | `elastic.username`     | `ELASTIC_USERNAME`          | /                           | Conditional | Username for HTTP basic authentication (used when no API key is set).                                                                                     |
 | Password     | `elastic.password`     | `ELASTIC_PASSWORD`          | /                           | Conditional | Password for HTTP basic authentication.                                                                                                                   |
+| Client Cert  | `elastic.client_cert`  | `ELASTIC_CLIENT_CERT`       | /                           | Conditional | PKI client certificate, as the **base64-encoded PEM file** (`base64 -w0 client.crt`), not a path. See [PKI authentication](#pki-authentication-client-certificate). |
+| Client Key   | `elastic.client_key`   | `ELASTIC_CLIENT_KEY`        | /                           | Conditional | Unencrypted private key of the client certificate, as the **base64-encoded PEM file** (`base64 -w0 client.key`), not a path.                             |
 | Alerts Index | `elastic.alerts_index` | `ELASTIC_ALERTS_INDEX`      | `.alerts-security.alerts-*` | No          | Index or index pattern to search for detection alerts.                                                                                                    |
 | Query Template | `elastic.query_template` | `ELASTIC_QUERY_TEMPLATE` | / (built-in default)        | No          | Editable Lucene `query_string` used to fetch and correlate alerts. Placeholders: `{source_ips}` `{target_ips}` `{implant_urls}` `{implant_names}` `{start_date}` `{end_date}` `{time_window}` `{alerts_index}`. Empty uses the multi-field default. |
 | Events Index | `elastic.events_index` | `ELASTIC_EVENTS_INDEX`      | `logs-windows.sysmon_operational-*,logs-endpoint.events.process-*` | No | Raw endpoint/process events index used by the source-event drilldown to recover the implant marker. Set empty to disable the drilldown (IP + time correlation only). |
@@ -86,8 +91,9 @@ The collector is configured either through environment variables (recommended, r
 | Offset       | `elastic.offset`       | `ELASTIC_OFFSET`            | PT30S                       | No          | Delay between retry attempts to absorb alert ingestion latency, as an ISO 8601 duration.                                                                  |
 | Max Retry    | `elastic.max_retry`    | `ELASTIC_MAX_RETRY`         | 3                           | No          | Maximum number of retry attempts after the initial query returns no results.                                                                              |
 
-> Note: authentication is required. Provide either `ELASTIC_API_KEY` (preferred) or both `ELASTIC_USERNAME` and
-> `ELASTIC_PASSWORD`. The collector fails to start if neither is configured.
+> Note: authentication is required. Provide `ELASTIC_API_KEY` (preferred), both `ELASTIC_USERNAME` and
+> `ELASTIC_PASSWORD`, or both `ELASTIC_CLIENT_CERT` and `ELASTIC_CLIENT_KEY` (PKI). The collector fails to start if none
+> is configured, or if `ELASTIC_AUTHENTICATION_TYPE` names a method whose settings are missing.
 
 ## Deployment
 
@@ -236,8 +242,9 @@ On each run, the collector:
 
 ## Required permissions and API endpoints
 
-The collector is **read-only** and needs no cluster or Kibana privileges. Prefer an **API key** (scoped, revocable) over
-basic auth; if you must use basic auth, use a dedicated least-privilege service account, never a personal/admin user.
+The collector is **read-only** and needs no cluster or Kibana privileges. Prefer an **API key** (scoped, revocable) or a
+**client certificate** (see [PKI authentication](#pki-authentication-client-certificate)) over basic auth; if you must
+use basic auth, use a dedicated least-privilege service account, never a personal/admin user.
 
 Grant `read` + `view_index_metadata` on the alerts index **and** the events index used by the drilldown:
 
@@ -258,13 +265,84 @@ Grant `read` + `view_index_metadata` on the alerts index **and** the events inde
 ```
 
 - API endpoints used: `POST /<alerts_index>/_search` and `POST /<events_index>/_search`
-  (`Authorization: ApiKey` header, or HTTP basic auth). No Kibana API is called (trace links are only *built*).
+  (`Authorization: ApiKey` header, HTTP basic auth, or a TLS client certificate). No Kibana API is called (trace links
+  are only *built*).
 - If the events-index read is **denied** (`401`/`403`) or the index does **not exist** (`404`), the drilldown does not
   silently degrade: the affected expectations are **left pending** (never graded as a false *Not Detected*) and an
   actionable error is logged each cycle. Fix it by granting the read, or by running in **SIEM-only mode** (set
   `ELASTIC_EVENTS_INDEX=""` above) so correlation intentionally degrades to IP + time.
 - References: [Elasticsearch search API](https://www.elastic.co/guide/en/elasticsearch/reference/current/search-search.html),
   [Create API key](https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-create-api-key.html).
+
+## PKI authentication (client certificate)
+
+Instead of an API key or a password, the collector can authenticate with an X.509 client certificate through an
+Elasticsearch [PKI realm](https://www.elastic.co/docs/deploy-manage/users-roles/cluster-or-deployment-auth/pki). The
+certificate is presented during the TLS handshake and no `Authorization` header is sent. PKI realms are only available
+on **self-managed and ECK** clusters, not on Elastic Cloud Hosted or Elastic Cloud Enterprise: use an API key there.
+
+### Elasticsearch side
+
+1. Request client certificates on the HTTP layer, trust the CA that signs them, and add a `pki` realm in
+   `elasticsearch.yml`, then restart the nodes:
+
+   ```yaml
+   xpack.security.http.ssl.client_authentication: optional
+   # CA that signs the client certificates (or xpack.security.http.ssl.truststore.path)
+   xpack.security.http.ssl.certificate_authorities: ["certs/client-ca.crt"]
+   # Only the realms listed here are used: keep the ones the cluster relies on.
+   xpack.security.authc.realms.native.native1.order: 0
+   xpack.security.authc.realms.pki.pki1.order: 1
+   ```
+
+   `optional` keeps the clients that authenticate with an API key or a password (Kibana, other integrations) working;
+   `required` rejects every connection that presents no client certificate.
+
+2. Give the certificate the collector's read-only role. A PKI user has no role until it is mapped. Create the
+   `elastic-collector` role with `PUT /_security/role/elastic-collector`, using the `cluster` and `indices` of the
+   descriptor in [Required permissions](#required-permissions-and-api-endpoints), then map the certificate's
+   distinguished name to it:
+
+   ```
+   PUT /_security/role_mapping/openaev-collector-pki
+   {
+     "roles": ["elastic-collector"],
+     "rules": { "field": { "dn": "CN=openaev-collector,OU=Security,O=Example" } },
+     "enabled": true
+   }
+   ```
+
+3. Check the identity seen by Elasticsearch:
+
+   ```bash
+   curl --cacert ca.crt --cert client.crt --key client.key https://elastic.company.com:9200/_security/_authenticate
+   ```
+
+   The response shows the certificate CN as `username`, a `pki` type under `authentication_realm`, the
+   `elastic-collector` role, and the exact DN to use in the role mapping under `metadata.pki_dn`.
+
+### Collector side
+
+- The certificate must be signed by a CA the HTTP layer trusts, and its private key must be **unencrypted**:
+  `requests` cannot load a passphrase-protected key.
+- Pass the certificate and key as **base64-encoded PEM files** (values, not paths). The CA bundle that verifies the
+  cluster certificate (`ELASTIC_CA_CERT`) stays a path:
+
+  ```bash
+  ELASTIC_AUTHENTICATION_TYPE=PKI
+  ELASTIC_CLIENT_CERT="$(base64 -w0 client.crt)"
+  ELASTIC_CLIENT_KEY="$(base64 -w0 client.key)"
+  ELASTIC_CA_CERT=/certs/ca.crt
+  ```
+
+- Set `ELASTIC_AUTHENTICATION_TYPE=PKI`, or leave the API key and username/password unset: when the type is inferred,
+  they take precedence over the certificate.
+- At startup the collector decodes both values, checks that they are PEM files of the expected type, and writes them to
+  `src/pki/pki-client.crt` and `src/pki/pki-client.key` (mode `0600`) under its working directory (`/collector` in the
+  image), because `requests` only loads client certificates from files. That directory must be writable: with a
+  read-only root filesystem, mount a writable volume on `/collector/src/pki`.
+- **Kubernetes:** a Secret injected through `secretKeyRef` is base64-decoded by Kubernetes, so the Secret value must be
+  the base64 string itself (for example under `stringData`).
 
 ## Tuning detection latency
 
@@ -306,6 +384,8 @@ separate Kibana host.
   (a bundle path) rather than disabling verification. `ELASTIC_VERIFY_SSL=false` is a **lab-only** downgrade that exposes
   credentials to interception and logs a loud warning.
 - Put credentials in `ELASTIC_API_KEY` / `ELASTIC_USERNAME` / `ELASTIC_PASSWORD`, **not** inline in `ELASTIC_BASE_URL`.
+- With PKI, the decoded private key is written to `src/pki/pki-client.key` (mode `0600`) and is not removed when the
+  collector stops: keep that directory private to the collector user.
 - `debug` logging records hostnames, IPs and alert links; enable it transiently and keep logs on-host.
 
 ## Debugging
