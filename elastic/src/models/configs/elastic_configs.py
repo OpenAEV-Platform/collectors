@@ -1,11 +1,21 @@
 """Configuration for Elastic Security integration."""
 
+import base64
+import os
 from datetime import timedelta
+from pathlib import Path
 from typing import Optional
 
 from pydantic import Field, SecretStr, field_validator, model_validator
 from src.models.configs import ConfigBaseSettings
+from enum import Enum
 
+
+class AuthenticationType(str, Enum):
+    """Enum for supported authentication types."""
+    API_KEY = "API_KEY"
+    USER_PASSWORD = "USER_PASSWORD"
+    PKI = "PKI"
 
 class _ConfigLoaderElastic(ConfigBaseSettings):
     """Elastic Security API configuration settings.
@@ -20,6 +30,16 @@ class _ConfigLoaderElastic(ConfigBaseSettings):
         alias="ELASTIC_BASE_URL",
         default="https://localhost:9200",
         description="Base URL of the Elasticsearch API (e.g., https://elastic.company.com:9200).",
+    )
+    authentication_type: AuthenticationType = Field(
+        alias="ELASTIC_AUTHENTICATION_TYPE",
+        default=AuthenticationType.USER_PASSWORD,
+        description=(
+            "Authentication method to use for Elasticsearch. One of: "
+            "API_KEY, USER_PASSWORD, PKI. If unset, the collector infers the "
+            "method from the other settings (API key takes precedence over "
+            "username/password, which takes precedence over PKI)."
+        ),
     )
     api_key: Optional[SecretStr] = Field(
         alias="ELASTIC_API_KEY",
@@ -113,6 +133,16 @@ class _ConfigLoaderElastic(ConfigBaseSettings):
         "Elasticsearch TLS certificate (recommended for self-signed clusters "
         "instead of disabling verification). Overrides ELASTIC_VERIFY_SSL.",
     )
+    client_cert: Optional[str] = Field (
+        alias="ELASTIC_CLIENT_CERT",
+        default=None,
+        description="Single line base64 encoded PEM client certificate for PKI authentication. ",
+    )
+    client_key: Optional[SecretStr] = Field(
+        alias="ELASTIC_CLIENT_KEY",
+        default=None,
+        description="Single line base64 encoded PEM client key for PKI authentication.",
+    )
 
     @field_validator("events_index", "query_template", "ca_cert", mode="before")
     @classmethod
@@ -146,3 +176,113 @@ class _ConfigLoaderElastic(ConfigBaseSettings):
                 "ELASTIC_USERNAME and ELASTIC_PASSWORD"
             )
         return self
+
+    @field_validator("client_cert", mode="after")
+    def _record_client_cert_on_disk(cls, value: Optional[str], info) -> Optional[str]:
+        """Write the base64-encoded client certificate to the pki/pki-client.crt file.
+
+        This is needed because requests (and the underlying ssl module) only
+        accept a file path for the client certificate and key, not their
+        contents. The file is created with mode 0o600 (readable only by the
+        current user).
+
+        Args:
+            value: The base64-encoded PEM content of the client cert or key.
+            info: Validation info, used to determine which field is being
+                validated.
+        """
+        if value is None:
+            return None
+
+        pem_content = _decode_base64_pem(value, "ELASTIC_CLIENT_CERT")
+        _validate_pem_format(pem_content, "CERTIFICATE")
+
+        pki_dir = Path("src/pki")
+        pki_dir.mkdir(parents=True, exist_ok=True)
+
+        cert_path = pki_dir / "pki-client.crt"
+        with open(cert_path, "w", encoding="utf-8") as f:
+            f.write(pem_content if pem_content.endswith("\n") else f"{pem_content}\n")
+        os.chmod(cert_path, 0o600)
+
+        return value
+
+    @field_validator("client_key", mode="after")
+    def _record_client_key_on_disk(cls, value: Optional[SecretStr], info) -> Optional[str]:
+        """Write the base64-encoded client key to the pki/pki-client.key file.
+
+        This is needed because requests (and the underlying ssl module) only
+        accept a file path for the client certificate and key, not their
+        contents. The file is created with mode 0o600 (readable only by the
+        current user).
+
+        Args:
+            value: The base64-encoded PEM content of the client cert or key.
+            info: Validation info, used to determine which field is being
+                validated.
+        """
+        if value is None:
+            return None
+
+        pem_content = _decode_base64_pem(value.get_secret_value(), "ELASTIC_CLIENT_KEY")
+        _validate_pem_format(pem_content, "PRIVATE KEY")
+
+        pki_dir = Path("src/pki")
+        pki_dir.mkdir(parents=True, exist_ok=True)
+
+        key_path = pki_dir / "pki-client.key"
+        with open(key_path, "w", encoding="utf-8") as f:
+            f.write(pem_content if pem_content.endswith("\n") else f"{pem_content}\n")
+        os.chmod(key_path, 0o600)
+
+        return value
+
+
+def _decode_base64_pem(value: str, field_name: str) -> str:
+    """Decode a base64-encoded PEM string.
+
+    Args:
+        value: Base64-encoded PEM content (single-line or wrapped).
+        field_name: Name of the field being validated (for error messages).
+
+    Returns:
+        The decoded PEM content as a string.
+
+    Raises:
+        ValueError: If the base64 decoding fails.
+
+    """
+    value_stripped = value.replace("\n", "").replace(" ", "")
+
+    try:
+        decoded = base64.b64decode(value_stripped, validate=True)
+        return decoded.decode("utf-8")
+    except Exception as e:
+        raise ValueError(f"{field_name} must be the base64-encoded PEM") from e
+
+
+def _validate_pem_format(content: str, expected_type: str) -> None:
+    """Validate that content is a valid PEM file of the expected type.
+
+    Args:
+        content: The PEM content to validate.
+        expected_type: Expected PEM type (e.g., "CERTIFICATE", "PRIVATE KEY").
+
+    Raises:
+        ValueError: If the PEM format is invalid or type doesn't match.
+
+    """
+    content = content.strip()
+
+    if not content.startswith("-----BEGIN "):
+        raise ValueError("the decoded value is not PEM")
+
+    if not content.endswith("-----"):
+        raise ValueError("the decoded value is not PEM")
+
+    first_line = content.split("\n")[0]
+    if expected_type not in first_line:
+        raise ValueError("the decoded value is not PEM")
+
+    if expected_type == "PRIVATE KEY" and "ENCRYPTED" in first_line:
+        raise ValueError("ELASTIC_CLIENT_KEY must be unencrypted")
