@@ -60,6 +60,10 @@ polyfactory = "^2.22.2"
 testpaths = [
     "./tests",
 ]
+markers = [
+    "integration: real calls to an Elasticsearch cluster (run with `pytest tests_integration -m integration`)",
+]
+addopts = "-m 'not integration'"
 
 [tool.ruff]
 exclude = [

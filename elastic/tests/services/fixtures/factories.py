@@ -11,7 +11,10 @@ from polyfactory.factories.pydantic_factory import ModelFactory
 from src.collector.models import ExpectationResult, ExpectationTrace
 from src.models.configs.collector_configs import _ConfigLoaderOAEV
 from src.models.configs.config_loader import ConfigLoader, ConfigLoaderCollector
-from src.models.configs.elastic_configs import _ConfigLoaderElastic
+from src.models.configs.elastic_configs import (
+    AuthenticationType,
+    _ConfigLoaderElastic,
+)
 from src.services.models import ElasticAlert, ElasticSearchCriteria
 
 
@@ -51,9 +54,12 @@ class ConfigLoaderElasticFactory(ModelFactory[_ConfigLoaderElastic]):
 
     __check_model__ = False
 
+    authentication_type = Use(lambda: AuthenticationType.USER_PASSWORD)
     api_key = Use(lambda: None)
     username = Use(lambda: "test-user")
     password = Use(lambda: "test-password")  # noqa: S106
+    client_cert = Use(lambda: None)
+    client_key = Use(lambda: None)
 
     @classmethod
     def build(cls, **kwargs):
@@ -77,7 +83,10 @@ class ConfigLoaderElasticFactory(ModelFactory[_ConfigLoaderElastic]):
         os.environ["ELASTIC_ALERTS_INDEX"] = ".alerts-security.alerts-*"
         os.environ["ELASTIC_MAX_RETRY"] = "1"
         os.environ["ELASTIC_OFFSET"] = "PT0S"
+        os.environ.pop("ELASTIC_AUTHENTICATION_TYPE", None)
         os.environ.pop("ELASTIC_API_KEY", None)
+        os.environ.pop("ELASTIC_CLIENT_CERT", None)
+        os.environ.pop("ELASTIC_CLIENT_KEY", None)
         os.environ.pop("ELASTIC_KIBANA_URL", None)
         return super().build(**kwargs)
 

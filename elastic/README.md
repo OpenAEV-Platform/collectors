@@ -23,6 +23,7 @@ was detected.
   - [Behavior](#behavior)
   - [Required permissions and API endpoints](#required-permissions-and-api-endpoints)
   - [Debugging](#debugging)
+  - [Integration tests](#integration-tests)
   - [Additional information](#additional-information)
 
 ## Introduction
@@ -314,6 +315,39 @@ causes of "nothing detected": wrong `ELASTIC_ALERTS_INDEX`; a `ELASTIC_TIME_WIND
 or no detection rule enabled for the technique. A denied read (`401`/`403`) or missing index (`404`) — on the alerts index
 or the events index used by the drilldown — surfaces an actionable error and leaves the affected expectations **pending**
 (re-served next cycle) rather than grading a silent false *Not Detected*.
+
+## Integration tests
+
+`tests_integration/` holds tests that send real requests to an Elasticsearch cluster. They are marked `integration` and
+are never run by `poetry run pytest` (unit tests only).
+
+`test_api_authentication_integration.py` sends an HTTPS `GET` to `ELASTIC_SEARCH_URL` with each authentication method
+and checks that:
+
+- valid credentials (API key, username/password, PKI client certificate) get a `200`;
+- an unknown API key and a wrong password get a `4XX`;
+- a self-signed client certificate (generated with `openssl`) is refused by the server during the TLS handshake. No HTTP
+  status exists in that case, so the test expects an `SSLError` carrying the server's TLS alert.
+
+Parameters are read from `tests_integration/integration_test.env` only (shell variables are ignored). The file is
+git-ignored. Relative paths in it are resolved from `tests_integration/`.
+
+| Parameter            | Description                                                               |
+|----------------------|---------------------------------------------------------------------------|
+| `ELASTIC_SEARCH_URL` | Endpoint the tests `GET`, e.g. `https://localhost:9200/_security/_authenticate` |
+| `CA_CERT_PATH`       | CA certificate that signed the cluster HTTP certificate                   |
+| `ELASTIC_USER`       | Username for basic authentication                                         |
+| `ELASTIC_PASSWORD`   | Password for basic authentication                                         |
+| `ELASTIC_API_KEY`    | Encoded API key (base64 of `id:api_key`)                                  |
+| `ELASTIC_CERT_PATH`  | PKI client certificate, signed by a CA the PKI realm trusts               |
+| `ELASTIC_KEY_PATH`   | Private key of the PKI client certificate                                 |
+
+From the `elastic/` directory:
+
+```bash
+cp tests_integration/integration_test.env.sample tests_integration/integration_test.env  # then fill it in
+poetry run pytest tests_integration -m integration -v
+```
 
 ## Known limitations (current)
 
