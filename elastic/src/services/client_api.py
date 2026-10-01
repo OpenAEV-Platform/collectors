@@ -27,6 +27,9 @@ from .models import ElasticAlert, ElasticResponse, ElasticSearchCriteria
 from .utils.parent_process_parser import ParentProcessParser
 from .utils.url import redact_userinfo
 
+from ..models.configs.elastic_configs import DEFAULT_CLIENT_CERT_PATH, DEFAULT_CLIENT_KEY_PATH, AuthenticationType
+from ..services.api_authentication import AuthenticationProvider, ApiKeyAuthentication, UserPasswordAuthentication, PKIAuthentication
+
 LOG_PREFIX = "[ElasticClientAPI]"
 
 DEFAULT_TIME_WINDOW_HOURS = 1
@@ -150,17 +153,9 @@ class ElasticClientAPI:
 
         try:
             self.base_url = str(self.config.elastic.base_url).rstrip("/")
-            self.api_key = (
-                self.config.elastic.api_key.get_secret_value()
-                if self.config.elastic.api_key
-                else None
-            )
-            self.username = self.config.elastic.username
-            self.password = (
-                self.config.elastic.password.get_secret_value()
-                if self.config.elastic.password
-                else None
-            )
+
+            self.authentication_provider = self._get_authentication_provider(self.config.elastic.authentication_type)
+            
             self.alerts_index = (
                 self.config.elastic.alerts_index or ".alerts-security.alerts-*"
             )
@@ -197,7 +192,16 @@ class ElasticClientAPI:
             )
 
         try:
-            self.session = self._create_session()
+            self.session = self.authentication_provider.get_session()
+
+            self.session.verify = self.ca_cert or self.verify_ssl
+            if not self.ca_cert and not self.verify_ssl:
+                self.logger.warning(
+                    f"{LOG_PREFIX} TLS certificate verification is DISABLED "
+                    "(ELASTIC_VERIFY_SSL=false). Credentials are exposed to "
+                    "interception - do NOT use in production; trust the cluster "
+                    "CA (ELASTIC_CA_CERT) instead."
+                )
             self.parent_process_parser = ParentProcessParser()
         except ElasticValidationError:
             raise
@@ -205,6 +209,41 @@ class ElasticClientAPI:
             raise ElasticSessionError(f"Failed to create HTTP session: {e}") from e
 
         self.logger.info(f"{LOG_PREFIX} Elastic Security API client initialized")
+
+    def _get_authentication_provider(self, auth_type: AuthenticationType) -> AuthenticationProvider:
+        """Return an authentication provider based on the specified type.
+
+        Args:
+            auth_type: The type of authentication to use.
+
+        Returns:
+            An instance of the appropriate AuthenticationProvider subclass.
+
+        Raises:
+            ElasticValidationError: If the specified authentication type is unsupported.
+        """
+        if auth_type == "API_KEY":
+            if not self.api_key:
+                raise ElasticValidationError(
+                    "API key is required for API_KEY authentication"
+                )
+            return ApiKeyAuthentication(self.api_key)
+        elif auth_type == "USER_PASSWORD":
+            if not self.username or not self.password:
+                raise ElasticValidationError(
+                    "Username and password are required for USER_PASSWORD authentication"
+                )
+            return UserPasswordAuthentication(self.username, self.password)
+        elif auth_type == "PKI":
+            if not self.config.elastic.client_cert or not self.config.elastic.client_key:
+                raise ElasticValidationError(
+                    "Client certificate and key are required for PKI authentication"
+                )
+            return PKIAuthentication(
+                DEFAULT_CLIENT_CERT_PATH, DEFAULT_CLIENT_KEY_PATH
+            )
+        else:
+            raise ElasticValidationError(f"Unsupported authentication type: {auth_type}")
 
     def _create_session(self) -> requests.Session:
         """Create an HTTP session with API-key or basic authentication.

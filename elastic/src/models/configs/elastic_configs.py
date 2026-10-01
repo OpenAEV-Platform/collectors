@@ -10,6 +10,9 @@ from pydantic import Field, SecretStr, field_validator, model_validator
 from src.models.configs import ConfigBaseSettings
 from enum import Enum
 
+PKI_CERT_DIR = Path("src/pki")
+DEFAULT_CLIENT_CERT_PATH = PKI_CERT_DIR / "pki-client.crt"
+DEFAULT_CLIENT_KEY_PATH = PKI_CERT_DIR / "pki-client.key"
 
 class AuthenticationType(str, Enum):
     """Enum for supported authentication types."""
@@ -197,10 +200,10 @@ class _ConfigLoaderElastic(ConfigBaseSettings):
         pem_content = _decode_base64_pem(value, "ELASTIC_CLIENT_CERT")
         _validate_pem_format(pem_content, "CERTIFICATE")
 
-        pki_dir = Path("src/pki")
+        pki_dir = PKI_CERT_DIR
         pki_dir.mkdir(parents=True, exist_ok=True)
 
-        cert_path = pki_dir / "pki-client.crt"
+        cert_path = DEFAULT_CLIENT_CERT_PATH
         with open(cert_path, "w", encoding="utf-8") as f:
             f.write(pem_content if pem_content.endswith("\n") else f"{pem_content}\n")
         os.chmod(cert_path, 0o600)
@@ -227,10 +230,10 @@ class _ConfigLoaderElastic(ConfigBaseSettings):
         pem_content = _decode_base64_pem(value.get_secret_value(), "ELASTIC_CLIENT_KEY")
         _validate_pem_format(pem_content, "PRIVATE KEY")
 
-        pki_dir = Path("src/pki")
+        pki_dir = PKI_CERT_DIR
         pki_dir.mkdir(parents=True, exist_ok=True)
 
-        key_path = pki_dir / "pki-client.key"
+        key_path = DEFAULT_CLIENT_KEY_PATH
         with open(key_path, "w", encoding="utf-8") as f:
             f.write(pem_content if pem_content.endswith("\n") else f"{pem_content}\n")
         os.chmod(key_path, 0o600)
