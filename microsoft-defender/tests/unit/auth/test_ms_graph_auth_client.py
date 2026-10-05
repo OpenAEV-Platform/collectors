@@ -22,6 +22,7 @@ class TestMSGraphAuthClient(unittest.TestCase):
         config.client_cert_data = client_cert_data
         client_cert_thumbprint = MagicMock()
         config.client_cert_thumbprint = client_cert_thumbprint
+        config.client_cert_passphrase = None
 
         auth_client = module.MSGraphAuthClient(config)
 
@@ -32,6 +33,39 @@ class TestMSGraphAuthClient(unittest.TestCase):
             client_credential={
                 "private_key": client_cert_data.get_secret_value.return_value,
                 "thumbprint": client_cert_thumbprint.get_secret_value.return_value,
+            },
+        )
+        self.assertEqual(
+            auth_client.app, m_confidential_client_application.return_value
+        )
+
+    def test_ms_graph_auth_client_init_cert_with_passphrase_case(
+        self,
+        m_authority_builder,
+        m_azure_public,
+        m_confidential_client_application,
+    ):
+        config = MagicMock()
+        config.tenant_id = sentinel.tenant_id
+        config.use_certificate_auth = True
+        config.client_id = sentinel.client_id
+        client_cert_data = MagicMock()
+        config.client_cert_data = client_cert_data
+        client_cert_thumbprint = MagicMock()
+        config.client_cert_thumbprint = client_cert_thumbprint
+        client_cert_passphrase = MagicMock()
+        config.client_cert_passphrase = client_cert_passphrase
+
+        auth_client = module.MSGraphAuthClient(config)
+
+        m_authority_builder.assert_called_with(m_azure_public, sentinel.tenant_id)
+        m_confidential_client_application.assert_called_with(
+            sentinel.client_id,
+            authority=m_authority_builder.return_value,
+            client_credential={
+                "private_key": client_cert_data.get_secret_value.return_value,
+                "thumbprint": client_cert_thumbprint.get_secret_value.return_value,
+                "passphrase": client_cert_passphrase.get_secret_value.return_value,
             },
         )
         self.assertEqual(

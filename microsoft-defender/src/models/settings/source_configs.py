@@ -49,6 +49,10 @@ class _ConfigLoaderSource(ConfigBaseSettings):
         default=None,
         description="SHA-1 thumbprint of the client certificate registered on the Entra ID application. Required when use_certificate_auth is enabled.",
     )
+    client_cert_passphrase: SecretStr | None = Field(
+        default=None,
+        description="Passphrase protecting the client certificate private key. Only needed when the private key is encrypted.",
+    )
     base_url: HttpUrl = Field(
         default=HttpUrl("https://graph.microsoft.com/v1.0"),
         description="Base URL for the Microsoft Graph API.",
