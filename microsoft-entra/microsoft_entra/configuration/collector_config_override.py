@@ -37,7 +37,7 @@ class CollectorConfigOverride(ConfigLoaderCollector):
     )
     microsoft_entra_client_cert_data: SecretStr | None = Field(
         default=None,
-        description="PEM encoded private key of the client certificate registered on the Entra ID application. Required when microsoft_entra_use_certificate_auth is enabled.",
+        description="PEM bundle of the certificate followed by the private key of the client certificate registered on the Entra ID application. Required when microsoft_entra_use_certificate_auth is enabled.",
     )
     microsoft_entra_client_cert_thumbprint: SecretStr | None = Field(
         default=None,

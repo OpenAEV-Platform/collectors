@@ -14,7 +14,7 @@ collector:
   microsoft_entra_use_certificate_auth: false
   microsoft_entra_client_secret: ''  # required unless microsoft_entra_use_certificate_auth is true
   # required when microsoft_entra_use_certificate_auth is true
-  # microsoft_entra_client_cert_data: "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"
+  # microsoft_entra_client_cert_data: "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----\n-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"
   # microsoft_entra_client_cert_thumbprint: "AB12CD34EF56AB12CD34EF56AB12CD34EF56AB12"
   # optional, when the private key is encrypted
   # microsoft_entra_client_cert_passphrase: ''
