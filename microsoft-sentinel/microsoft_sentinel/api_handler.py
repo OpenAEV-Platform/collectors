@@ -13,6 +13,10 @@ class SentinelApiHandler:
         tenant_id,
         client_id,
         client_secret,
+        use_certificate_auth=False,
+        client_cert_data=None,
+        client_cert_thumbprint=None,
+        client_cert_passphrase=None,
         ssl_verify=True,
     ):
         # Variables
@@ -20,15 +24,29 @@ class SentinelApiHandler:
         self.tenant_id = tenant_id
         self.client_id = client_id
         self.client_secret = client_secret
+        self.use_certificate_auth = use_certificate_auth
+        self.client_cert_data = client_cert_data
+        self.client_cert_thumbprint = client_cert_thumbprint
+        self.client_cert_passphrase = client_cert_passphrase
         self.ssl_verify = ssl_verify
         self._auth()
 
     def _auth(self):
         # Authentication
+        if self.use_certificate_auth:
+            client_credential = {
+                "private_key": self.client_cert_data,
+                "thumbprint": self.client_cert_thumbprint,
+            }
+            if self.client_cert_passphrase:
+                client_credential["passphrase"] = self.client_cert_passphrase
+        else:
+            client_credential = self.client_secret
+
         app = msal.ConfidentialClientApplication(
             self.client_id,
             authority="https://login.microsoftonline.com/" + self.tenant_id,
-            client_credential=self.client_secret,
+            client_credential=client_credential,
         )
         result = app.acquire_token_silent(
             "https://api.loganalytics.io/.default", account=None
