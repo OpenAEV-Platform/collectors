@@ -21,7 +21,12 @@ def _install_dependency_stubs() -> None:
         def __init__(self, *args, **kwargs):
             pass
 
+    class CertificateCredential:  # pragma: no cover - import-time fallback only
+        def __init__(self, *args, **kwargs):
+            pass
+
     azure_identity_aio.ClientSecretCredential = ClientSecretCredential
+    azure_identity_aio.CertificateCredential = CertificateCredential
 
     msgraph_module = ensure_module("msgraph")
 
@@ -66,8 +71,8 @@ def test_process_message_runs_create_groups_via_asyncio_run():
 
     with (
         patch(
-            "microsoft_entra.openaev_microsoft_entra.ClientSecretCredential"
-        ) as mock_credential,
+            "microsoft_entra.openaev_microsoft_entra.CertificateCredential"
+        ) as mock_certificate_credential,
         patch(
             "microsoft_entra.openaev_microsoft_entra.GraphServiceClient"
         ) as mock_graph_client,
@@ -80,13 +85,16 @@ def test_process_message_runs_create_groups_via_asyncio_run():
 
         collector._process_message()
 
-        mock_credential.assert_called_once_with(
+        mock_certificate_credential.assert_called_once_with(
             tenant_id="value-microsoft_entra_tenant_id",
             client_id="value-microsoft_entra_client_id",
-            client_secret="value-microsoft_entra_client_secret",
+            certificate_data=b"value-microsoft_entra_client_cert_data",
+            thumbprint="value-microsoft_entra_client_cert_thumbprint",
+            password=b"value-microsoft_entra_client_cert_passphrase",
         )
         mock_graph_client.assert_called_once_with(
-            mock_credential.return_value, ["https://graph.microsoft.com/.default"]
+            mock_certificate_credential.return_value,
+            ["https://graph.microsoft.com/.default"],
         )
         mock_asyncio_run.assert_called_once()
         collector.create_groups.assert_called_once_with(graph_client_instance)
@@ -107,6 +115,7 @@ def test_process_message_asyncio_run_works_without_existing_event_loop():
 
     with (
         patch("microsoft_entra.openaev_microsoft_entra.ClientSecretCredential"),
+        patch("microsoft_entra.openaev_microsoft_entra.CertificateCredential"),
         patch("microsoft_entra.openaev_microsoft_entra.GraphServiceClient"),
     ):
         # Ensure there is no current event loop set on this thread, mirroring
