@@ -28,7 +28,7 @@ class TestConfigLoaderSource(unittest.TestCase):
         self.assertEqual(config.rate_limit_requests_per_minute, 150)
         self.assertEqual(config.max_fetch_retries, 5)
 
-    def init_full(self):
+    def test_init_full(self):
         tenant_id = "my-tenant_id"
         client_id = "my-client_id"
         use_certificate_auth = True
@@ -36,7 +36,7 @@ class TestConfigLoaderSource(unittest.TestCase):
         client_cert_data = "my-cert_data"
         client_cert_thumbprint = "634e2e0df68a53b88f2e6e1a44d2ed03fc586a6f"
         client_cert_passphrase = "my-passphrase"
-        base_url = "http://my.url"
+        base_url = "http://my.url/"
         filter_service_source = "myFilter"
         rate_limit_request_per_minute = 42
         max_fetch_retries = 13
