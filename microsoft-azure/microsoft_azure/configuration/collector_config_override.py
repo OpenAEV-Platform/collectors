@@ -87,10 +87,10 @@ class CollectorConfigOverride(ConfigLoaderCollector):
         description="Duration between two scheduled runs of the collector (ISO 8601 format).",
     )
     microsoft_azure_tenant_id: str = Field(
-        description="Azure Active Directory tenant ID for Microsoft Sentinel.",
+        description="Azure Active Directory tenant ID.",
     )
     microsoft_azure_client_id: str = Field(
-        description="Azure AD application (client) ID for Microsoft Sentinel.",
+        description="Azure AD application (client) ID.",
     )
 
     # Declared before the credential fields so that their validators can read it
