@@ -9,20 +9,22 @@ class MSGraphAuthClient:
         authority = AuthorityBuilder(AZURE_PUBLIC, config.tenant_id)
 
         if config.use_certificate_auth:
-            self.app = ConfidentialClientApplication(
-                config.client_id,
-                authority=authority,
-                client_credential={
-                    "private_key": config.client_cert_data.get_secret_value(),
-                    "thumbprint": config.client_cert_thumbprint.get_secret_value(),
-                },
-            )
+            client_credential = {
+                "private_key": config.client_cert_data.get_secret_value(),
+                "thumbprint": config.client_cert_thumbprint.get_secret_value(),
+            }
+            if config.client_cert_passphrase:
+                client_credential["passphrase"] = (
+                    config.client_cert_passphrase.get_secret_value()
+                )
         else:
-            self.app = ConfidentialClientApplication(
-                config.client_id,
-                authority=authority,
-                client_credential=config.client_secret.get_secret_value(),
-            )
+            client_credential = config.client_secret.get_secret_value()
+
+        self.app = ConfidentialClientApplication(
+            config.client_id,
+            authority=authority,
+            client_credential=client_credential,
+        )
 
     def get_access_token(self) -> str:
         """Returns a valid bearer token string.

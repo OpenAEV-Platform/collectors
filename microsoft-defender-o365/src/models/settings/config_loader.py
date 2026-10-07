@@ -154,6 +154,9 @@ class ConfigLoader(ConfigBaseSettings):
                 "source_client_cert_thumbprint": {
                     "data": self.source.client_cert_thumbprint
                 },
+                "source_client_cert_passphrase": {
+                    "data": self.source.client_cert_passphrase
+                },
                 "source_base_url": {"data": str(self.source.base_url)},
                 "source_filter_service_source": {
                     "data": self.source.filter_service_source

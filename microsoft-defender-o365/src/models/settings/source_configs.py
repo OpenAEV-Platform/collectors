@@ -1,6 +1,13 @@
 """Configuration for Microsoft Defender for Office 365 business integration."""
 
-from pydantic import Field, HttpUrl, SecretStr, ValidationInfo, field_validator
+from pydantic import (
+    Field,
+    HttpUrl,
+    SecretStr,
+    ValidationInfo,
+    field_validator,
+    model_validator,
+)
 from pydantic_settings import SettingsConfigDict
 from src.models.settings import ConfigBaseSettings
 
@@ -36,13 +43,15 @@ class _ConfigLoaderSource(ConfigBaseSettings):
     )
     client_cert_data: SecretStr | None = Field(
         default=None,
-        description="Content of the client certificate. Required when "
-        "use_certificate_auth is enabled.",
+        description="PEM encoded private key of the client certificate registered on the Entra ID application. Required when use_certificate_auth is enabled.",
     )
     client_cert_thumbprint: SecretStr | None = Field(
         default=None,
-        description="Thumbprint of the client certificate. Required when "
-        "use_certificate_auth is enabled.",
+        description="SHA-1 thumbprint of the client certificate registered on the Entra ID application. Required when use_certificate_auth is enabled.",
+    )
+    client_cert_passphrase: SecretStr | None = Field(
+        default=None,
+        description="Passphrase protecting the client certificate private key. Only needed when the private key is encrypted.",
     )
     base_url: HttpUrl = Field(
         default=HttpUrl("https://graph.microsoft.com/v1.0"),
@@ -65,52 +74,42 @@ class _ConfigLoaderSource(ConfigBaseSettings):
         "fails transiently.",
     )
 
-    @field_validator("client_cert_data")
+    @field_validator("client_cert_data", mode="before")
     @classmethod
-    def _validate_client_cert_data(
-        cls, value: str | None, info: ValidationInfo
-    ) -> str | None:
-        """Require client_cert_data when certificate auth mode is enabled.
+    def _normalize_client_cert_data(cls, value: object) -> object:
+        """Unescape PEM material coming from environment variables."""
 
-        Args:
-            value: The provided client_cert_data value, if any.
-            info: Pydantic validation info, exposing already-validated field values.
+        def normalize(raw: str | None) -> str | None:
+            if raw is None:
+                return None
+            cleaned = raw.strip()
+            if not cleaned:
+                return None
+            return cleaned.replace("\\n", "\n")
 
-        Returns:
-            The validated value.
-
-        Raises:
-            ValueError: If certificate auth mode is enabled and no path was provided.
-
-        """
-        if info.data.get("use_certificate_auth") and not value:
-            raise ValueError(
-                "client_cert_data is required when use_certificate_auth is enabled"
-            )
+        if isinstance(value, SecretStr):
+            normalized = normalize(value.get_secret_value())
+            return None if normalized is None else SecretStr(normalized)
+        if isinstance(value, str):
+            return normalize(value)
         return value
 
-    @field_validator("client_cert_thumbprint")
+    @field_validator("client_cert_thumbprint", mode="before")
     @classmethod
-    def _validate_client_cert_thumbprint(
-        cls, value: str | None, info: ValidationInfo
-    ) -> str | None:
-        """Require client_cert_thumbprint when certificate auth mode is enabled.
+    def _normalize_client_cert_thumbprint(cls, value: object) -> object:
+        """Strip separators from the thumbprint and validate its shape."""
 
-        Args:
-            value: The provided client_cert_thumbprint value, if any.
-            info: Pydantic validation info, exposing already-validated field values.
+        def normalize(raw: str | None) -> str | None:
+            if raw is None:
+                return None
+            cleaned = raw.replace(":", "").replace(" ", "").strip().upper()
+            return cleaned or None
 
-        Returns:
-            The validated value.
-
-        Raises:
-            ValueError: If certificate auth mode is enabled and no thumbprint was provided.
-
-        """
-        if info.data.get("use_certificate_auth") and not value:
-            raise ValueError(
-                "client_cert_thumbprint is required when use_certificate_auth is enabled"
-            )
+        if isinstance(value, SecretStr):
+            normalized = normalize(value.get_secret_value())
+            return None if normalized is None else SecretStr(normalized)
+        if isinstance(value, str):
+            return normalize(value)
         return value
 
     @field_validator("client_secret")
@@ -132,8 +131,42 @@ class _ConfigLoaderSource(ConfigBaseSettings):
                 provided.
 
         """
-        if not info.data.get("use_certificate_auth") and not value:
+        use_cert = bool(info.data.get("use_certificate_auth"))
+        if use_cert:
+            return value
+        if value is None or not value.get_secret_value().strip():
             raise ValueError(
-                "client_secret is required when use_certificate_auth is disabled"
+                "client_secret is required when use_certificate_auth is false"
             )
         return value
+
+    @model_validator(mode="after")
+    def _validate_certificate_requirements(self) -> "_ConfigLoaderSource":
+        if not self.use_certificate_auth:
+            return self
+
+        if (
+            not self.client_cert_data
+            or not self.client_cert_data.get_secret_value().strip()
+        ):
+            raise ValueError(
+                "client_cert_data is required when use_certificate_auth is true"
+            )
+
+        thumbprint = (
+            self.client_cert_thumbprint.get_secret_value()
+            if self.client_cert_thumbprint
+            else ""
+        )
+        if not thumbprint:
+            raise ValueError(
+                "client_cert_thumbprint is required when use_certificate_auth is true"
+            )
+        if len(thumbprint) != 40 or any(
+            ch not in "0123456789ABCDEF" for ch in thumbprint
+        ):
+            raise ValueError(
+                "client_cert_thumbprint must be a 40-character hexadecimal SHA-1 thumbprint"
+            )
+
+        return self
