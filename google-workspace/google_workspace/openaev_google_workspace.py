@@ -10,6 +10,12 @@ from googleapiclient.discovery import build
 from pyoaev.configuration import Configuration
 from pyoaev.daemons import CollectorDaemon
 
+SCOPES = [
+    "https://www.googleapis.com/auth/admin.directory.user.readonly",
+    "https://www.googleapis.com/auth/admin.directory.group.readonly",
+    "https://www.googleapis.com/auth/admin.directory.group.member.readonly",
+]
+
 
 class OpenAEVGoogleWorkspace(CollectorDaemon):
     def __init__(
@@ -48,24 +54,11 @@ class OpenAEVGoogleWorkspace(CollectorDaemon):
         if not delegated_admin_email:
             raise ValueError("Google Workspace delegated admin email is required")
 
-        scopes = [
-            "https://www.googleapis.com/auth/admin.directory.user.readonly",
-            "https://www.googleapis.com/auth/admin.directory.group.readonly",
-            "https://www.googleapis.com/auth/admin.directory.group.member.readonly",
-        ]
-
-        auth_type = (
-            self._configuration.get("google_workspace_auth_type")
-            or "service_account_json"
-        ).lower()
-
-        if auth_type == "certificate":
-            credentials = self._build_certificate_credentials(
-                scopes, delegated_admin_email
-            )
+        if self._configuration.get("google_workspace_auth_type") == "certificate":
+            credentials = self._build_certificate_credentials(delegated_admin_email)
         else:
             credentials = self._build_service_account_json_credentials(
-                scopes, delegated_admin_email
+                delegated_admin_email
             )
 
         # Build the Admin SDK service
@@ -73,7 +66,7 @@ class OpenAEVGoogleWorkspace(CollectorDaemon):
         return service
 
     def _build_service_account_json_credentials(
-        self, scopes: List[str], delegated_admin_email: str
+        self, delegated_admin_email: str
     ) -> service_account.Credentials:
         """Build credentials from the downloaded service account JSON key."""
         service_account_json_str = self._configuration.get(
@@ -90,12 +83,12 @@ class OpenAEVGoogleWorkspace(CollectorDaemon):
 
         return service_account.Credentials.from_service_account_info(
             service_account_info,
-            scopes=scopes,
+            scopes=SCOPES,
             subject=delegated_admin_email,
         )
 
     def _build_certificate_credentials(
-        self, scopes: List[str], delegated_admin_email: str
+        self, delegated_admin_email: str
     ) -> service_account.Credentials:
         """Build credentials from a standalone client email + private key/certificate pair.
 
@@ -144,7 +137,7 @@ class OpenAEVGoogleWorkspace(CollectorDaemon):
             signer,
             client_email,
             token_uri,
-            scopes=scopes,
+            scopes=SCOPES,
             subject=delegated_admin_email,
         )
 

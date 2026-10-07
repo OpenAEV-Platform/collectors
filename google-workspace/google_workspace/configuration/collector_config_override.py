@@ -1,4 +1,5 @@
 from datetime import timedelta
+from typing import Literal
 
 from pydantic import Field, model_validator
 from pyoaev.configuration import ConfigLoaderCollector
@@ -20,7 +21,7 @@ class CollectorConfigOverride(ConfigLoaderCollector):
         default=timedelta(hours=1),
         description="Duration between two scheduled runs of the collector (ISO 8601 format).",
     )
-    google_workspace_auth_type: str = Field(
+    google_workspace_auth_type: Literal["service_account_json", "certificate"] = Field(
         default="service_account_json",
         description=(
             "Authentication mode: 'service_account_json' (default) uses the "
@@ -93,8 +94,7 @@ class CollectorConfigOverride(ConfigLoaderCollector):
 
     @model_validator(mode="after")
     def _validate_auth_material(self) -> "CollectorConfigOverride":
-        auth_type = (self.google_workspace_auth_type or "service_account_json").lower()
-        if auth_type == "certificate":
+        if self.google_workspace_auth_type == "certificate":
             missing = [
                 name
                 for name, value in (
@@ -118,15 +118,9 @@ class CollectorConfigOverride(ConfigLoaderCollector):
                     "google_workspace_auth_type is 'certificate' but the "
                     f"following fields are missing: {', '.join(missing)}"
                 )
-        elif auth_type == "service_account_json":
-            if not self.google_workspace_service_account_json:
-                raise ValueError(
-                    "google_workspace_service_account_json is required when "
-                    "google_workspace_auth_type is 'service_account_json'"
-                )
-        else:
+        elif not self.google_workspace_service_account_json:
             raise ValueError(
-                "google_workspace_auth_type must be either 'service_account_json' "
-                f"or 'certificate', got {auth_type!r}"
+                "google_workspace_service_account_json is required when "
+                "google_workspace_auth_type is 'service_account_json'"
             )
         return self
