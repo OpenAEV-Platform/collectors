@@ -440,5 +440,5 @@ class OpenAEVAWSResources(CollectorDaemon):
             self.logger.error(f"Error during EC2 collection: {str(e)}")
 
 
-if __name__ == "__main__":
+def main():
     OpenAEVAWSResources(configuration=ConfigLoader().to_daemon_config()).start()
