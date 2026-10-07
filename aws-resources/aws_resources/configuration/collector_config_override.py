@@ -22,12 +22,6 @@ class AWSAuthType(StrEnum):
     ROLES_ANYWHERE = "roles_anywhere"
 
 
-# Kept for backward-compatible imports elsewhere in the codebase.
-AUTH_TYPE_CREDENTIAL_PROVIDER_CHAIN = AWSAuthType.CREDENTIAL_PROVIDER_CHAIN
-AUTH_TYPE_CREDENTIALS = AWSAuthType.CREDENTIALS
-AUTH_TYPE_ROLES_ANYWHERE = AWSAuthType.ROLES_ANYWHERE
-
-
 class CollectorConfigOverride(ConfigLoaderCollector):
     id: str = Field(
         default="openaev_aws_resources",
@@ -55,24 +49,24 @@ class CollectorConfigOverride(ConfigLoaderCollector):
             "certificate through IAM Roles Anywhere"
         ),
     )
-    aws_access_key_id: str = Field(
-        default="",
+    aws_access_key_id: str | None = Field(
+        default=None,
         description="AWS Access Key ID",
     )
-    aws_secret_access_key: str = Field(
-        default="",
+    aws_secret_access_key: str | None = Field(
+        default=None,
         description="AWS Secret Access Key",
     )
-    aws_session_token: str = Field(
-        default="",
+    aws_session_token: str | None = Field(
+        default=None,
         description="AWS Session Token (for temporary credentials)",
     )
-    aws_assume_role_arn: str = Field(
-        default="",
+    aws_assume_role_arn: str | None = Field(
+        default=None,
         description="ARN of IAM role to assume",
     )
-    aws_regions: str = Field(
-        default="",
+    aws_regions: str | None = Field(
+        default=None,
         description="Comma-separated list of AWS regions",
     )
     aws_roles_anywhere_trust_anchor_arn: str | None = Field(

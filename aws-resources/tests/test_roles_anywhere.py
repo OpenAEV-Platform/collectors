@@ -27,6 +27,7 @@ def make_signer(identity, **overrides):
         "trust_anchor_arn": TRUST_ANCHOR_ARN,
         "profile_arn": PROFILE_ARN,
         "role_arn": ROLE_ARN,
+        "session_duration": 3600,
     }
     kwargs.update(overrides)
     return RolesAnywhereSigner(**kwargs)

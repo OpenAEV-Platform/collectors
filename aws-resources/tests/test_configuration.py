@@ -6,8 +6,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 from aws_resources.auth.roles_anywhere import RolesAnywhereSigner, normalize_pem
 from aws_resources.configuration.collector_config_override import (
-    AUTH_TYPE_CREDENTIALS,
-    AUTH_TYPE_ROLES_ANYWHERE,
     AWSAuthType,
     CollectorConfigOverride,
 )
@@ -20,7 +18,7 @@ BASE = {"id": "openaev_aws_resources", "name": "AWS Resources"}
 def roles_anywhere_config(identity, **overrides):
     values = {
         **BASE,
-        "aws_auth_type": AUTH_TYPE_ROLES_ANYWHERE,
+        "aws_auth_type": AWSAuthType.ROLES_ANYWHERE,
         "aws_roles_anywhere_trust_anchor_arn": TRUST_ANCHOR_ARN,
         "aws_roles_anywhere_profile_arn": PROFILE_ARN,
         "aws_roles_anywhere_role_arn": ROLE_ARN,
@@ -34,7 +32,7 @@ def roles_anywhere_config(identity, **overrides):
 def credentials_config(**overrides):
     values = {
         **BASE,
-        "aws_auth_type": AUTH_TYPE_CREDENTIALS,
+        "aws_auth_type": AWSAuthType.CREDENTIALS,
         "aws_access_key_id": "AKIA_TEST",
         "aws_secret_access_key": "secret",
     }
@@ -48,7 +46,7 @@ class TestAuthTypeValidation:
         config = CollectorConfigOverride(
             **roles_anywhere_config(rsa_identity, aws_auth_type=value)
         )
-        assert config.aws_auth_type == AUTH_TYPE_ROLES_ANYWHERE
+        assert config.aws_auth_type == AWSAuthType.ROLES_ANYWHERE
 
     def test_defaults_to_credential_provider_chain_mode(self):
         config = CollectorConfigOverride(**BASE)
@@ -56,8 +54,8 @@ class TestAuthTypeValidation:
 
     def test_credential_provider_chain_mode_does_not_require_aws_keys(self):
         config = CollectorConfigOverride(**BASE)
-        assert config.aws_access_key_id == ""
-        assert config.aws_secret_access_key == ""
+        assert config.aws_access_key_id is None
+        assert config.aws_secret_access_key is None
 
     def test_unknown_auth_type_is_rejected(self):
         with pytest.raises(ValidationError):
@@ -70,7 +68,7 @@ class TestAuthTypeValidation:
 
     def test_credentials_mode_accepts_complete_config(self):
         config = CollectorConfigOverride(**credentials_config())
-        assert config.aws_auth_type == AUTH_TYPE_CREDENTIALS
+        assert config.aws_auth_type == AWSAuthType.CREDENTIALS
         assert config.aws_access_key_id == "AKIA_TEST"
         assert config.aws_secret_access_key == "secret"
 
@@ -85,7 +83,7 @@ class TestAuthTypeValidation:
 
     def test_roles_anywhere_mode_accepts_complete_config(self, rsa_identity):
         config = CollectorConfigOverride(**roles_anywhere_config(rsa_identity))
-        assert config.aws_auth_type == AUTH_TYPE_ROLES_ANYWHERE
+        assert config.aws_auth_type == AWSAuthType.ROLES_ANYWHERE
         assert config.aws_roles_anywhere_session_duration == 3600
 
     @pytest.mark.parametrize(
@@ -146,8 +144,8 @@ class TestCollectorInitialisation:
             return module.OpenAEVAWSResources(configuration)
 
     def test_auth_type_is_read_from_configuration(self):
-        collector = self._build({"aws_auth_type": AUTH_TYPE_ROLES_ANYWHERE})
-        assert collector.auth_type == AUTH_TYPE_ROLES_ANYWHERE
+        collector = self._build({"aws_auth_type": AWSAuthType.ROLES_ANYWHERE})
+        assert collector.auth_type == AWSAuthType.ROLES_ANYWHERE
 
     def test_auth_type_passes_through_missing_configuration_as_none(self):
         """Normalization and defaulting happen in CollectorConfigOverride; the
@@ -202,7 +200,7 @@ class TestSessionInitialisation:
     def test_static_credentials_path_is_preserved(self):
         collector = build_collector(
             {
-                "aws_auth_type": AUTH_TYPE_CREDENTIALS,
+                "aws_auth_type": AWSAuthType.CREDENTIALS,
                 "aws_access_key_id": "AKIA_TEST",
                 "aws_secret_access_key": "secret",
                 "aws_session_token": "token",
@@ -271,7 +269,7 @@ class TestSessionInitialisation:
     def test_roles_anywhere_path_builds_certificate_backed_session(self, rsa_identity):
         collector = build_collector(
             {
-                "aws_auth_type": AUTH_TYPE_ROLES_ANYWHERE,
+                "aws_auth_type": AWSAuthType.ROLES_ANYWHERE,
                 "aws_access_key_id": "",
                 "aws_secret_access_key": "",
                 "aws_session_token": "",
@@ -304,7 +302,7 @@ class TestSessionInitialisation:
     def test_roles_anywhere_accepts_escaped_newline_pem(self, rsa_identity):
         collector = build_collector(
             {
-                "aws_auth_type": AUTH_TYPE_ROLES_ANYWHERE,
+                "aws_auth_type": AWSAuthType.ROLES_ANYWHERE,
                 "aws_access_key_id": "",
                 "aws_secret_access_key": "",
                 "aws_session_token": "",
@@ -339,7 +337,7 @@ class TestSessionInitialisation:
     def test_roles_anywhere_session_is_used_for_assume_role(self, rsa_identity):
         collector = build_collector(
             {
-                "aws_auth_type": AUTH_TYPE_ROLES_ANYWHERE,
+                "aws_auth_type": AWSAuthType.ROLES_ANYWHERE,
                 "aws_access_key_id": "",
                 "aws_secret_access_key": "",
                 "aws_session_token": "",
@@ -363,10 +361,13 @@ class TestSessionInitialisation:
                 "SessionToken": "token",
             }
         }
-        with patch(
-            "aws_resources.openaev_aws_resources.build_boto3_session",
-            return_value=roles_anywhere_session,
-        ), patch("aws_resources.openaev_aws_resources.boto3") as boto3_module:
+        with (
+            patch(
+                "aws_resources.openaev_aws_resources.build_boto3_session",
+                return_value=roles_anywhere_session,
+            ),
+            patch("aws_resources.openaev_aws_resources.boto3") as boto3_module,
+        ):
             collector._init_aws_session()
 
         roles_anywhere_session.client.assert_called_once_with("sts")
@@ -381,7 +382,7 @@ class TestSessionInitialisation:
 
         collector = build_collector(
             {
-                "aws_auth_type": AUTH_TYPE_ROLES_ANYWHERE,
+                "aws_auth_type": AWSAuthType.ROLES_ANYWHERE,
                 "aws_access_key_id": "",
                 "aws_secret_access_key": "",
                 "aws_session_token": "",
@@ -444,17 +445,17 @@ class TestDaemonConfigHints:
     def test_credentials_mode_settings_are_exposed(self, monkeypatch):
         configuration = self._load(
             monkeypatch,
-            COLLECTOR_AWS_AUTH_TYPE=AUTH_TYPE_CREDENTIALS,
+            COLLECTOR_AWS_AUTH_TYPE=AWSAuthType.CREDENTIALS,
             COLLECTOR_AWS_ACCESS_KEY_ID="AKIA_TEST",
             COLLECTOR_AWS_SECRET_ACCESS_KEY="secret",
         )
-        assert configuration.get("aws_auth_type") == AUTH_TYPE_CREDENTIALS
+        assert configuration.get("aws_auth_type") == AWSAuthType.CREDENTIALS
         assert configuration.get("aws_access_key_id") == "AKIA_TEST"
 
     def test_roles_anywhere_settings_are_exposed(self, monkeypatch, rsa_identity):
         configuration = self._load(
             monkeypatch,
-            COLLECTOR_AWS_AUTH_TYPE=AUTH_TYPE_ROLES_ANYWHERE,
+            COLLECTOR_AWS_AUTH_TYPE=AWSAuthType.ROLES_ANYWHERE,
             COLLECTOR_AWS_ROLES_ANYWHERE_TRUST_ANCHOR_ARN=TRUST_ANCHOR_ARN,
             COLLECTOR_AWS_ROLES_ANYWHERE_PROFILE_ARN=PROFILE_ARN,
             COLLECTOR_AWS_ROLES_ANYWHERE_ROLE_ARN=ROLE_ARN,
@@ -462,7 +463,7 @@ class TestDaemonConfigHints:
             COLLECTOR_AWS_ROLES_ANYWHERE_PRIVATE_KEY=rsa_identity["private_key_pem"],
             COLLECTOR_AWS_ROLES_ANYWHERE_SESSION_DURATION="7200",
         )
-        assert configuration.get("aws_auth_type") == AUTH_TYPE_ROLES_ANYWHERE
+        assert configuration.get("aws_auth_type") == AWSAuthType.ROLES_ANYWHERE
         assert configuration.get("aws_roles_anywhere_trust_anchor_arn") == (
             TRUST_ANCHOR_ARN
         )
@@ -476,7 +477,7 @@ class TestDaemonConfigHints:
         """Certificates supplied through env vars keep their escaped newlines."""
         configuration = self._load(
             monkeypatch,
-            COLLECTOR_AWS_AUTH_TYPE=AUTH_TYPE_ROLES_ANYWHERE,
+            COLLECTOR_AWS_AUTH_TYPE=AWSAuthType.ROLES_ANYWHERE,
             COLLECTOR_AWS_ROLES_ANYWHERE_TRUST_ANCHOR_ARN=TRUST_ANCHOR_ARN,
             COLLECTOR_AWS_ROLES_ANYWHERE_PROFILE_ARN=PROFILE_ARN,
             COLLECTOR_AWS_ROLES_ANYWHERE_ROLE_ARN=ROLE_ARN,
@@ -498,6 +499,7 @@ class TestDaemonConfigHints:
             trust_anchor_arn=configuration.get("aws_roles_anywhere_trust_anchor_arn"),
             profile_arn=configuration.get("aws_roles_anywhere_profile_arn"),
             role_arn=configuration.get("aws_roles_anywhere_role_arn"),
+            session_duration=configuration.get("aws_roles_anywhere_session_duration"),
         )
         assert signer.region == "eu-west-1"
 
