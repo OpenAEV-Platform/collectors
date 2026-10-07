@@ -38,6 +38,7 @@ requests = ">=2.33,<3"
 pyoaev = "3.261005.0"
 boto3 = "1.40.21"
 botocore = "1.40.21"
+cryptography = ">=50,<51"
 
 [tool.poetry.dependencies.python-slugify]
 version = ">=8.0.4,<9"
@@ -53,6 +54,15 @@ mypy = "^1.17.1"
 pip-audit = "^2.9.0"
 pre-commit = "^4.6.0"
 ruff = "^0.14.13"
+
+[tool.poetry.group.test.dependencies]
+pytest = "^9.1.1"
+polyfactory = "^2.22.2"
+
+[tool.pytest.ini_options]
+testpaths = [
+    "./tests",
+]
 
 [tool.ruff]
 exclude = [
