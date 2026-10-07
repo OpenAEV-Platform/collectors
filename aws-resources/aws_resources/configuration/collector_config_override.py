@@ -8,9 +8,8 @@ from pyoaev.configuration import ConfigLoaderCollector
 class AWSAuthType(StrEnum):
     """The AWS authentication modes supported by the collector.
 
-    - ``CREDENTIAL_PROVIDER_CHAIN``: legacy/default behavior, delegates
-      credential resolution entirely to boto3 (environment, shared config,
-      EC2/ECS instance role, ...).
+    - ``CREDENTIAL_PROVIDER_CHAIN``: delegates credential resolution entirely
+      to boto3 (environment, shared config, EC2/ECS instance role, ...).
     - ``CREDENTIALS``: explicit static credentials (access key + secret key,
       with an optional session token).
     - ``ROLES_ANYWHERE``: derive temporary credentials from an X.509 client
@@ -46,7 +45,9 @@ class CollectorConfigOverride(ConfigLoaderCollector):
             "credentials on its own (environment, shared config, instance role, "
             "...), 'credentials' for explicit static access key/secret, or "
             "'roles_anywhere' to derive temporary credentials from an X.509 client "
-            "certificate through IAM Roles Anywhere"
+            "certificate through IAM Roles Anywhere. When left empty, it is "
+            "'credentials' if both aws_access_key_id and aws_secret_access_key "
+            "are set, 'credential_provider_chain' otherwise"
         ),
     )
     aws_access_key_id: str | None = Field(
@@ -110,6 +111,30 @@ class CollectorConfigOverride(ConfigLoaderCollector):
         le=43200,
         description="Lifetime in seconds of the temporary credentials (900 to 43200)",
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _infer_auth_type(cls, data: object) -> object:
+        """Keep configurations predating aws_auth_type working unchanged.
+
+        Without an explicit mode, use the static keys when both are set and fall
+        back to boto3's default credential chain otherwise, as the collector
+        always did.
+        """
+        if not isinstance(data, dict) or str(data.get("aws_auth_type") or "").strip():
+            return data
+        has_static_keys = all(
+            str(data.get(name) or "").strip()
+            for name in ("aws_access_key_id", "aws_secret_access_key")
+        )
+        return {
+            **data,
+            "aws_auth_type": (
+                AWSAuthType.CREDENTIALS
+                if has_static_keys
+                else AWSAuthType.CREDENTIAL_PROVIDER_CHAIN
+            ),
+        }
 
     @field_validator("aws_auth_type", mode="before")
     @classmethod

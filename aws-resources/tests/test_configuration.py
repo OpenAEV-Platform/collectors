@@ -57,6 +57,32 @@ class TestAuthTypeValidation:
         assert config.aws_access_key_id is None
         assert config.aws_secret_access_key is None
 
+    @pytest.mark.parametrize("auth_type", [None, "", "  "])
+    def test_unset_auth_type_uses_credentials_when_both_keys_are_set(self, auth_type):
+        config = CollectorConfigOverride(**credentials_config(aws_auth_type=auth_type))
+        assert config.aws_auth_type == AWSAuthType.CREDENTIALS
+
+    @pytest.mark.parametrize(
+        "keys",
+        [
+            {},
+            {"aws_access_key_id": "AKIA_TEST"},
+            {"aws_secret_access_key": "secret"},
+            {"aws_access_key_id": "", "aws_secret_access_key": ""},
+        ],
+    )
+    def test_unset_auth_type_uses_provider_chain_without_both_keys(self, keys):
+        config = CollectorConfigOverride(**BASE, **keys)
+        assert config.aws_auth_type == AWSAuthType.CREDENTIAL_PROVIDER_CHAIN
+
+    def test_explicit_auth_type_is_not_overridden_by_keys(self):
+        config = CollectorConfigOverride(
+            **credentials_config(
+                aws_auth_type=AWSAuthType.CREDENTIAL_PROVIDER_CHAIN,
+            )
+        )
+        assert config.aws_auth_type == AWSAuthType.CREDENTIAL_PROVIDER_CHAIN
+
     def test_unknown_auth_type_is_rejected(self):
         with pytest.raises(ValidationError):
             CollectorConfigOverride(**BASE, aws_auth_type="mtls")
@@ -441,6 +467,42 @@ class TestDaemonConfigHints:
         assert configuration.get("aws_auth_type") == (
             AWSAuthType.CREDENTIAL_PROVIDER_CHAIN
         )
+
+    def test_keys_without_auth_type_select_credentials_mode(self, monkeypatch):
+        """docker-compose passes an empty auth type when AWS_AUTH_TYPE is unset."""
+        configuration = self._load(
+            monkeypatch,
+            COLLECTOR_AWS_AUTH_TYPE="",
+            COLLECTOR_AWS_ACCESS_KEY_ID="AKIA_TEST",
+            COLLECTOR_AWS_SECRET_ACCESS_KEY="secret",
+        )
+        assert configuration.get("aws_auth_type") == AWSAuthType.CREDENTIALS
+
+    def test_legacy_unprefixed_env_vars_are_still_honored(self, monkeypatch):
+        environ = {
+            key: value
+            for key, value in os.environ.items()
+            if not key.startswith(("COLLECTOR_", "AWS_"))
+        }
+        environ.update(
+            {
+                "AWS_REGIONS": "eu-west-3",
+                "AWS_ASSUME_ROLE_ARN": ROLE_ARN,
+                "COLLECTOR_AWS_REGIONS": "",
+            }
+        )
+        monkeypatch.setattr(os, "environ", environ)
+
+        from aws_resources import openaev_aws_resources
+
+        with (
+            patch.object(openaev_aws_resources, "ConfigLoader"),
+            patch.object(openaev_aws_resources, "OpenAEVAWSResources"),
+        ):
+            openaev_aws_resources.main()
+
+        assert os.environ["COLLECTOR_AWS_REGIONS"] == "eu-west-3"
+        assert os.environ["COLLECTOR_AWS_ASSUME_ROLE_ARN"] == ROLE_ARN
 
     def test_credentials_mode_settings_are_exposed(self, monkeypatch):
         configuration = self._load(

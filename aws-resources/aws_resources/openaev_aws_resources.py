@@ -1,3 +1,5 @@
+import os
+
 import boto3
 from aws_resources.auth.roles_anywhere import (
     RolesAnywhereError,
@@ -441,4 +443,14 @@ class OpenAEVAWSResources(CollectorDaemon):
 
 
 def main():
+    for key in [
+        "AWS_ACCESS_KEY",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN",
+        "AWS_ASSUME_ROLE_ARN",
+        "AWS_REGIONS",
+    ]:
+        if not os.environ.get(f"COLLECTOR_{key}") and os.environ.get(key):
+            os.environ[f"COLLECTOR_{key}"] = os.environ.get(key)
+
     OpenAEVAWSResources(configuration=ConfigLoader().to_daemon_config()).start()
