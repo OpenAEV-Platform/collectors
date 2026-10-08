@@ -1,0 +1,33 @@
+name: Bandit
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  sats-bandit-analysis:
+    name: bandit - SATS analysis (Optional)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v8.1.0
+        with:
+          python-version: "3.14"
+
+      - name: Install bandit
+        run: |
+          uv venv && uv pip install bandit
+
+      - name: Run bandit
+        continue-on-error: true
+        run: |
+          uv run bandit -ll -r . --exclude ./.venv
