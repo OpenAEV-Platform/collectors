@@ -55,10 +55,6 @@ jobs:
         with:
           python-version: "3.14"
 
-      - name: Clone pyoaev (satisfies Poetry path dependency)
-        working-directory: ..
-        run: git clone -b main https://github.com/OpenAEV-Platform/client-python
-
       - name: Install Poetry
         run: pip install poetry==2.3.2
 
