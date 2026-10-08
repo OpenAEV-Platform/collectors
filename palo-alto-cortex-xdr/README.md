@@ -39,7 +39,7 @@ the originating Cortex XDR alert.
 - A Palo Alto Cortex XDR tenant
 - A Cortex XDR API key (Standard or Advanced) with read access to alerts, together with its API Key ID and the tenant
   FQDN (for example `api-example.xdr.us.paloaltonetworks.com`)
-- For a manual (non-Docker) deployment: Python >= 3.12 and [Poetry](https://python-poetry.org/) >= 2.1
+- For a manual (non-Docker) deployment: Python >= 3.14 and [Poetry](https://python-poetry.org/) >= 2.1
 
 ## Configuration variables
 

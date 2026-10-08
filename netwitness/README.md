@@ -38,7 +38,7 @@ a detection source, so this collector validates DETECTION expectations only; PRE
 - OpenAEV Platform >= 1.19.0
 - A NetWitness Core service (Broker on port 50103 or Concentrator on port 50105) with the RESTful API reachable
 - A Core service username/password (Core SDK) or a NetWitness Platform API bearer token allowed to run Core SDK queries
-- For a manual (non-Docker) deployment: Python >= 3.11 and [Poetry](https://python-poetry.org/) >= 2.1
+- For a manual (non-Docker) deployment: Python >= 3.14 and [Poetry](https://python-poetry.org/) >= 2.1
 
 ## Configuration variables
 

@@ -38,7 +38,7 @@ synchronization on every run: teams and players are upserted (created or updated
 - A Microsoft Entra ID tenant
 - A Microsoft Entra ID application registration (client ID + client secret) granted the `Directory.Read.All` application
   permission (with admin consent)
-- For a manual (non-Docker) deployment: Python >= 3.11 and [Poetry](https://python-poetry.org/) >= 2.1
+- For a manual (non-Docker) deployment: Python >= 3.14 and [Poetry](https://python-poetry.org/) >= 2.1
 
 ## Configuration variables
 

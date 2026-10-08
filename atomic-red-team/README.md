@@ -47,7 +47,7 @@ reconcile detection / prevention expectations.
 - A running OpenAEV platform, reachable from where the collector runs, with an administrator API token
 - Outbound network access to GitHub (`raw.githubusercontent.com` / `github.com`) to download the Atomic Red Team index
 - No API key or account is required (the Atomic Red Team data is public)
-- For a manual (non-Docker) deployment: Python >= 3.11 and [Poetry](https://python-poetry.org/) >= 2.1
+- For a manual (non-Docker) deployment: Python >= 3.14 and [Poetry](https://python-poetry.org/) >= 2.1
 
 ## Configuration variables
 

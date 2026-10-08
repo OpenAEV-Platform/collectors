@@ -42,7 +42,7 @@ connect to a security platform and does not reconcile detection / prevention exp
 - A running OpenAEV platform, reachable from where the collector runs, with an administrator API token
 - Outbound network access to GitHub (`raw.githubusercontent.com`) to download the payload manifest and archives
 - No API key or account is required (the OpenAEV payload library is public)
-- For a manual (non-Docker) deployment: Python >= 3.11 and [Poetry](https://python-poetry.org/) >= 2.1
+- For a manual (non-Docker) deployment: Python >= 3.14 and [Poetry](https://python-poetry.org/) >= 2.1
 
 ## Configuration variables
 

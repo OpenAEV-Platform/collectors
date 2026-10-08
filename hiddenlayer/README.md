@@ -44,7 +44,7 @@ self-hosted AIDR container.
 - One of:
   - A HiddenLayer SaaS subscription with OAuth2 API client credentials (client id and client secret), or
   - A reachable self-hosted HiddenLayer AIDR container (no credentials)
-- For a manual (non-Docker) deployment: Python >= 3.11 and [Poetry](https://python-poetry.org/) >= 2.1
+- For a manual (non-Docker) deployment: Python >= 3.14 and [Poetry](https://python-poetry.org/) >= 2.1
 
 ## Configuration variables
 

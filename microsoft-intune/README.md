@@ -40,7 +40,7 @@ are kept current.
 - A Microsoft Intune tenant with managed devices
 - A Microsoft Entra ID application registration (client ID + client secret) granted the
   `DeviceManagementManagedDevices.Read.All` application permission (with admin consent)
-- For a manual (non-Docker) deployment: Python >= 3.11 and [Poetry](https://python-poetry.org/) >= 2.1
+- For a manual (non-Docker) deployment: Python >= 3.14 and [Poetry](https://python-poetry.org/) >= 2.1
 
 ## Configuration variables
 

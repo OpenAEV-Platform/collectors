@@ -46,7 +46,7 @@ blocks flagged prompts, which is what distinguishes a PREVENTION from a DETECTIO
   `pyoaev`; platforms without AI red-team support are not compatible)
 - A Lakera Guard subscription with API access
 - A Lakera Guard API key (and optionally a project id selecting the policy to apply)
-- For a manual (non-Docker) deployment: Python >= 3.11 and [Poetry](https://python-poetry.org/) >= 2.1
+- For a manual (non-Docker) deployment: Python >= 3.14 and [Poetry](https://python-poetry.org/) >= 2.1
 
 ## Configuration variables
 
