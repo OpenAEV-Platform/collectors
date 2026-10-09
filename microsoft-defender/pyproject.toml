@@ -12,7 +12,7 @@ packages = [
 [tool.poetry.dependencies]
 pydantic = "^2.13.3"
 pydantic-settings = "^2.14.0"
-pyoaev = "3.261005.0"
+pyoaev = "3.261009.0"
 requests = "^2.33.0"
 msal = "^1.37.0"
 urllib3 = "^2.7.0"
@@ -129,7 +129,7 @@ icon-path = "src/img/microsoft-defender-logo.png"
 
 [project]
 name = "openaev-microsoft-defender-collector"
-version = "3.261005.0"
+version = "3.261009.0"
 description = "A Collector for the Microsoft Defender security software"
 license = "Apache-2.0"
 readme = "README.md"
