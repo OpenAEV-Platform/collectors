@@ -56,7 +56,7 @@ the resulting detection and prevention expectations (see [Detection and preventi
 - A running XTM One platform, reachable from where the collector runs
 - An XTM One API key (`fcp-...`) with access to the agents you want to import (create one in XTM One under Profile > API
   Keys)
-- For a manual (non-Docker) deployment: Python >= 3.11 and [Poetry](https://python-poetry.org/) >= 2.1
+- For a manual (non-Docker) deployment: Python >= 3.14 and [Poetry](https://python-poetry.org/) >= 2.1
 
 ## Configuration variables
 

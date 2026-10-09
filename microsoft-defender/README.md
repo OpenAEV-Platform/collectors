@@ -40,7 +40,7 @@ attaching a trace that links back to the originating Defender alert.
 - A Microsoft Defender for Endpoint subscription onboarded to the Microsoft 365 Defender portal
 - An Entra ID (Azure AD) application registration with the Microsoft Graph `ThreatHunting.Read.All` application
   permission (admin consent granted), and its tenant ID, client ID, and client secret
-- For a manual (non-Docker) deployment: Python >= 3.11 and [Poetry](https://python-poetry.org/) >= 2.1
+- For a manual (non-Docker) deployment: Python >= 3.14 and [Poetry](https://python-poetry.org/) >= 2.1
 
 ## Configuration variables
 

@@ -40,7 +40,7 @@ expectations are not supported.
 - OpenAEV Platform >= 1.19.0
 - A Splunk Enterprise Security instance with the REST API reachable (typically on management port 8089)
 - A Splunk user account with REST API search access and read access to the configured events index
-- For a manual (non-Docker) deployment: Python >= 3.11 and [Poetry](https://python-poetry.org/) >= 2.1
+- For a manual (non-Docker) deployment: Python >= 3.14 and [Poetry](https://python-poetry.org/) >= 2.1
 
 ## Configuration variables
 

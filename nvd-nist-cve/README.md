@@ -41,7 +41,7 @@ does not connect to a security platform and does not reconcile detection / preve
 - A running OpenAEV platform, reachable from where the collector runs, with an administrator API token
 - Outbound network access to the NVD API (`https://services.nvd.nist.gov`)
 - An NVD API key is optional but strongly recommended to raise the request rate limits enforced by NVD
-- For a manual (non-Docker) deployment: Python >= 3.11 and [Poetry](https://python-poetry.org/) >= 2.1
+- For a manual (non-Docker) deployment: Python >= 3.14 and [Poetry](https://python-poetry.org/) >= 2.1
 
 ## Configuration variables
 
