@@ -3,6 +3,7 @@ SIEM-only drilldown fallback."""
 
 from unittest.mock import Mock
 
+import pytest
 from src.services import signature_compat
 from src.services.exception import (
     ElasticAPIError,
@@ -543,3 +544,51 @@ class TestEmptyConfigNormalization:
         assert (  # noqa: S101
             _ConfigLoaderElastic._empty_str_to_none("logs-*") == "logs-*"
         )
+
+    @pytest.mark.parametrize(
+        ("api_key", "username", "password"),
+        [
+            # Username/password auth: the platform sends the unused API key as "".
+            ("", "elastic", "changeme"),
+            # API key auth: the platform sends the unused username/password as "".
+            ("key", "", ""),
+        ],
+        ids=["basic-auth", "api-key"],
+    )
+    def test_blank_optional_env_vars_load_as_unset(
+        self, monkeypatch, api_key, username, password
+    ):
+        """Blank optional settings sent by the platform must not fail validation."""
+        from src.models.configs.elastic_configs import _ConfigLoaderElastic
+
+        # Arrange
+        monkeypatch.setenv("ELASTIC_BASE_URL", "http://es.example.com:9200")
+        monkeypatch.setenv("ELASTIC_API_KEY", api_key)
+        monkeypatch.setenv("ELASTIC_USERNAME", username)
+        monkeypatch.setenv("ELASTIC_PASSWORD", password)
+        monkeypatch.setenv("ELASTIC_KIBANA_URL", "")
+        monkeypatch.setenv("ELASTIC_CA_CERT", "")
+
+        # Act
+        config = _ConfigLoaderElastic()
+
+        # Assert
+        assert (config.api_key is None) == (api_key == "")  # noqa: S101
+        assert config.username == (username or None)  # noqa: S101
+        assert (config.password is None) == (password == "")  # noqa: S101
+        assert config.kibana_url is None  # noqa: S101
+        assert config.ca_cert is None  # noqa: S101
+
+    def test_all_blank_auth_still_rejected(self, monkeypatch):
+        """Blank credentials are unset, so a config without any auth still fails."""
+        from pydantic import ValidationError
+        from src.models.configs.elastic_configs import _ConfigLoaderElastic
+
+        # Arrange
+        monkeypatch.setenv("ELASTIC_BASE_URL", "http://es.example.com:9200")
+        for key in ("ELASTIC_API_KEY", "ELASTIC_USERNAME", "ELASTIC_PASSWORD"):
+            monkeypatch.setenv(key, "")
+
+        # Act / Assert
+        with pytest.raises(ValidationError, match="Elastic authentication requires"):
+            _ConfigLoaderElastic()
