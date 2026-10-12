@@ -309,6 +309,16 @@ separate Kibana host.
 
 ## Debugging
 
+At startup the collector checks both connections, so you can tell them apart before running any inject:
+
+- **OpenAEV**: `Connected to OpenAEV at <url>: collector registered` (info) once the collector is registered. If
+  OpenAEV is unreachable, setup fails instead. Afterwards, the keep-alive ping only logs failures
+  (`Error pinging the API: ...`).
+- **Elastic**: the collector counts the alerts index once. On success it logs
+  `Connected to Elastic at <url>: N alert(s) in '<index>'` (info). On failure it logs
+  `Elastic connectivity check failed ...` (error, so it shows at the default level) with the reason: network, TLS,
+  `401`/`403` or `404`. The collector keeps running, and Elastic is queried again when expectations come in.
+
 Set `COLLECTOR_LOG_LEVEL=debug` for verbose logs (expectation polling, the queries issued, matching decisions). Common
 causes of "nothing detected": wrong `ELASTIC_ALERTS_INDEX`; a `ELASTIC_TIME_WINDOW` shorter than your ingestion latency;
 or no detection rule enabled for the technique. A denied read (`401`/`403`) or missing index (`404`) — on the alerts index

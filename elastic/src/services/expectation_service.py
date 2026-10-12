@@ -906,6 +906,15 @@ class ElasticExpectationService:
             error_message=result_dict.get("error"),
         )
 
+    def check_connectivity(self) -> bool:
+        """Check that Elastic is reachable and the alerts index readable.
+
+        Returns:
+            True if the alerts index answered, False otherwise.
+
+        """
+        return self.client_api.check_connectivity()
+
     def get_service_info(self) -> dict[str, Any]:
         """Get information about this service provider.
 
