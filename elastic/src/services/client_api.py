@@ -187,13 +187,22 @@ class ElasticClientAPI:
         if configured_template:
             self._validate_template_placeholders(configured_template)
             self.query_template = configured_template
-            self.logger.info(
-                f"{LOG_PREFIX} Using custom query template from configuration"
-            )
+            if " ".join(configured_template.split()) == " ".join(
+                DEFAULT_QUERY_TEMPLATE.split()
+            ):
+                # The catalog prefills the built-in query: report it as such.
+                self.logger.info(
+                    f"{LOG_PREFIX} Using the built-in default query template"
+                )
+            else:
+                self.logger.info(
+                    f"{LOG_PREFIX} Using a custom query template from configuration"
+                )
         else:
             self.query_template = DEFAULT_QUERY_TEMPLATE
-            self.logger.debug(
-                f"{LOG_PREFIX} No custom query template configured, using default"
+            self.logger.info(
+                f"{LOG_PREFIX} No query template configured, using the built-in "
+                "default query template"
             )
 
         try:

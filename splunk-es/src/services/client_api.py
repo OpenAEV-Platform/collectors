@@ -113,13 +113,22 @@ class SplunkESClientAPI:
         self.query_template = self.config.splunk_es.query_template
         if self.query_template:
             self._validate_template_placeholders(self.query_template)
-            self.logger.info(
-                f"{LOG_PREFIX} Using custom query template from configuration"
-            )
+            if " ".join(self.query_template.split()) == " ".join(
+                DEFAULT_QUERY_TEMPLATE.split()
+            ):
+                # The catalog prefills the built-in query: report it as such.
+                self.logger.info(
+                    f"{LOG_PREFIX} Using the built-in default query template"
+                )
+            else:
+                self.logger.info(
+                    f"{LOG_PREFIX} Using a custom query template from configuration"
+                )
         else:
             self.query_template = DEFAULT_QUERY_TEMPLATE
-            self.logger.debug(
-                f"{LOG_PREFIX} No custom query template configured, using default"
+            self.logger.info(
+                f"{LOG_PREFIX} No query template configured, using the built-in "
+                "default query template"
             )
 
         try:

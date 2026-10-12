@@ -37,6 +37,38 @@ class TestQueryTemplateResolution:
             config.splunk_es.query_template = None
         return SplunkESClientAPI(config=config)
 
+    @pytest.mark.parametrize(
+        ("template", "expected"),
+        [
+            (None, "No query template configured, using the built-in default"),
+            ("DEFAULT", "Using the built-in default query template"),
+            ("DEFAULT_REFLOWED", "Using the built-in default query template"),
+            (
+                "index={alerts_index} | table _time",
+                "Using a custom query template",
+            ),
+        ],
+        ids=["unset", "default", "default-reflowed", "custom"],
+    )
+    def test_query_template_choice_is_logged(self, template, expected):
+        """The log says whether the built-in default or a custom query runs.
+
+        The catalog prefills the built-in query, so a configured template equal
+        to it (whitespace aside) must not be reported as custom.
+        """
+        # Arrange
+        if template == "DEFAULT":
+            template = DEFAULT_QUERY_TEMPLATE
+        elif template == "DEFAULT_REFLOWED":
+            template = DEFAULT_QUERY_TEMPLATE.replace(" | ", "\n  | ")
+
+        # Act
+        client = self._create_client(query_template=template)
+
+        # Assert
+        messages = [str(c.args[0]) for c in client.logger.info.call_args_list]
+        assert any(expected in m for m in messages)  # noqa: S101
+
     def test_default_template_produces_valid_query(self):
         """Test that the default template resolves to a valid SPL query.
 

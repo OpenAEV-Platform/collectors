@@ -57,7 +57,7 @@ class TestSplunkESClientAPI(unittest.TestCase):
         config_splunk_es.offset = offset
         config_splunk_es.max_retry = sentinel.max_retry
         config_splunk_es.time_window = sentinel.time_window
-        config_splunk_es.query_template = sentinel.query_template
+        config_splunk_es.query_template = "index={alerts_index} | table _time"
         config.splunk_es = config_splunk_es
 
         client_api = module.SplunkESClientAPI(config)
@@ -69,8 +69,12 @@ class TestSplunkESClientAPI(unittest.TestCase):
         self.assertEqual(client_api.offset, offset.total_seconds.return_value)
         self.assertEqual(client_api.max_retry, sentinel.max_retry)
         self.assertEqual(client_api.time_window, sentinel.time_window)
-        self.assertEqual(client_api.query_template, sentinel.query_template)
-        m_validate_template_placeholders.assert_called_with(sentinel.query_template)
+        self.assertEqual(
+            client_api.query_template, "index={alerts_index} | table _time"
+        )
+        m_validate_template_placeholders.assert_called_with(
+            "index={alerts_index} | table _time"
+        )
         m_create_session.assert_called_once()
         self.assertEqual(client_api.session, m_create_session.return_value)
 
