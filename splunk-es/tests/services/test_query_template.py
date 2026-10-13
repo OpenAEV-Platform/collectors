@@ -6,6 +6,7 @@ import pytest
 from src.services.client_api import (
     ALLOWED_PLACEHOLDERS,
     DEFAULT_QUERY_TEMPLATE,
+    LEGACY_DEFAULT_QUERY_TEMPLATES,
     SplunkESClientAPI,
 )
 from src.services.exception import SplunkESValidationError
@@ -68,6 +69,38 @@ class TestQueryTemplateResolution:
         # Assert
         messages = [str(c.args[0]) for c in client.logger.info.call_args_list]
         assert any(expected in m for m in messages)  # noqa: S101
+
+    @pytest.mark.parametrize(
+        "legacy_template",
+        [
+            LEGACY_DEFAULT_QUERY_TEMPLATES[0],
+            LEGACY_DEFAULT_QUERY_TEMPLATES[1],
+            "  " + LEGACY_DEFAULT_QUERY_TEMPLATES[1].replace(" | ", "\n  | ") + "\n",
+        ],
+        ids=["process-conditions", "implant-placeholders", "implant-reflowed"],
+    )
+    def test_legacy_default_template_runs_builtin_default(self, legacy_template):
+        """A former catalog default stored on an instance runs the built-in query.
+
+        Instances created from the catalog kept a copy of its default, whose
+        placeholders this version rejects: they must start, not crash-loop.
+        """
+        # Act
+        client = self._create_client(query_template=legacy_template)
+
+        # Assert
+        assert client.query_template == DEFAULT_QUERY_TEMPLATE  # noqa: S101
+        warnings = [str(c.args[0]) for c in client.logger.warning.call_args_list]
+        assert any(  # noqa: S101
+            "former built-in default" in message for message in warnings
+        )
+
+    def test_custom_template_with_legacy_placeholder_raises(self):
+        """Only the exact former defaults are mapped: a custom query still fails."""
+        with pytest.raises(SplunkESValidationError, match="implant_names"):
+            self._create_client(
+                query_template=LEGACY_DEFAULT_QUERY_TEMPLATES[1] + " | head 10"
+            )
 
     def test_default_template_produces_valid_query(self):
         """Test that the default template resolves to a valid SPL query.
