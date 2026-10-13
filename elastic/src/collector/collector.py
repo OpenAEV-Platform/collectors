@@ -86,7 +86,9 @@ class Collector(CollectorDaemon):  # type: ignore[misc]
             self.elastic_service = ElasticExpectationService(self.config_instance)
             self.elastic_service.check_connectivity()
 
-            self.trace_service = ElasticTraceService(self.config_instance)
+            self.trace_service = ElasticTraceService(
+                self.config_instance, client_api=self.elastic_service.client_api
+            )
 
             self.expectation_handler = GenericExpectationHandler(self.elastic_service)
 

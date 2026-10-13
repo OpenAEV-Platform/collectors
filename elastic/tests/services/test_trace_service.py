@@ -37,6 +37,14 @@ class TestElasticTraceService:
         with pytest.raises(ElasticValidationError):
             ElasticTraceService(config=None)
 
+    def test_init_reuses_given_client(self):
+        """A given client is reused, so the collector builds and logs a single one."""
+        client_api = Mock()
+
+        service = ElasticTraceService(create_test_config(), client_api=client_api)
+
+        assert service.client_api is client_api
+
     def test_create_traces_from_results_success(self):
         """A valid result produces a single trace with a source-IP alert name."""
         service = ElasticTraceService(config=create_test_config())

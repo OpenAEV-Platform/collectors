@@ -92,3 +92,28 @@ def test_setup_unreachable_openaev_is_not_reported_connected(
         collector._setup()
     assert "Connected to OpenAEV" not in _info_messages(collector)  # noqa: S101
     service.check_connectivity.assert_not_called()
+
+
+@patch("pyoaev.daemons.CollectorDaemon._setup")
+def test_setup_shares_one_elastic_client(_daemon_setup):  # type: ignore
+    """The trace service reuses the expectation service's client (one client, one log)."""
+    # Arrange
+    mock_env = mock_env_vars(os_environ, COLLECTOR_ENV)
+    with (
+        patch("src.collector.collector.ElasticExpectationService") as service_cls,
+        patch("src.collector.collector.ElasticTraceService") as trace_cls,
+        patch("src.collector.collector.GenericExpectationManager"),
+        patch("src.collector.collector.OpenAEVDetectionHelper"),
+    ):
+        collector = Collector()
+        collector.logger = Mock()
+
+        # Act
+        collector._setup()
+
+    mock_env.stop()
+
+    # Assert
+    assert (  # noqa: S101
+        trace_cls.call_args.kwargs["client_api"] is service_cls.return_value.client_api
+    )
