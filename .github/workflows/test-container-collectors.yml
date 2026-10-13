@@ -72,14 +72,13 @@ jobs:
         if: ${{ hashFiles(format('{0}/Dockerfile', matrix.collector)) != '' }}
         with:
           image: localpytest-${{ matrix.collector }}:latest
-          options: -v ${{ github.workspace }}:/tmp/github_workspace/
+          options: -v ${{ github.workspace }}:/tmp/github_workspace/ -e POETRY_VIRTUALENVS_CREATE=false -e POETRY_INSTALLER_RE_RESOLVE=false -e POETRY_CACHE_DIR=/tmp/poetry-cache -e POETRY_CONFIG_DIR=/tmp/poetry-config
           run: |
+            source /collector/.venv/bin/activate
             cd /tmp/github_workspace/${{ matrix.collector }}
             echo "> install and configure poetry"
-            python -m pip install poetry
-            python -m poetry config installer.re-resolve false
-            python -m poetry config virtualenvs.create false
+            python -m pip install -vvv poetry
             echo "> install dev and test dependencies"
-            python -m poetry install --only=dev,test
+            python -m poetry install -vvv --only=dev,test
             echo "> run pytest through coverage"
             python -m coverage run -m pytest
