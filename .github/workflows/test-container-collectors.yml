@@ -77,8 +77,8 @@ jobs:
             source /collector/.venv/bin/activate
             cd /tmp/github_workspace/${{ matrix.collector }}
             echo "> install and configure poetry"
-            python -m pip install -vvv poetry
+            python -m pip install poetry
             echo "> install dev and test dependencies"
-            python -m poetry install -vvv --only=dev,test
+            python -m poetry install --only=dev,test
             echo "> run pytest through coverage"
-            python -m coverage run -m pytest
+            python -m pytest
