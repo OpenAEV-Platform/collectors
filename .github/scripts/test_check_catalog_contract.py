@@ -93,6 +93,26 @@ class CheckCollectorTest(unittest.TestCase):
         self.assertIn("['implant_urls']", errors[0])
         self.assertIn("openaev_acme", errors[0])
 
+    def test_former_default_the_collector_still_accepts_passes(self):
+        client = CLIENT + (
+            "LEGACY_DEFAULT_QUERY_TEMPLATES = (\n"
+            '    "ip IN ({source_ips}) "\n'
+            '    "url IN ({implant_urls})",\n'
+            ")\n"
+        )
+        errors, notes = self._check(
+            {
+                "ACME_API_KEY": {
+                    "type": "string",
+                    "default": "ip IN ({source_ips})\n  url IN ({implant_urls})",
+                }
+            },
+            settings=SETTINGS,
+            client=client,
+        )
+        self.assertEqual(errors, [])
+        self.assertTrue(any("former default" in note for note in notes))
+
     def test_allowed_placeholders_pass(self):
         errors, _ = self._check(
             {"ACME_API_KEY": {"type": "string", "default": "{source_ips} {start_date}"}}

@@ -16,7 +16,9 @@ For each collector directory given on the command line, the matching catalog con
    nested pydantic-settings name (``<section>_<field>``) derived from its settings
    models. The base settings that pyoaev defines (``BASE_SETTINGS``) are skipped;
 2. every ``{placeholder}`` of a string default belongs to the collector's
-   ``ALLOWED_PLACEHOLDERS`` (when the collector defines one).
+   ``ALLOWED_PLACEHOLDERS`` (when the collector defines one), unless the default is one
+   of the former defaults the collector still accepts (``LEGACY_DEFAULT_QUERY_TEMPLATES``,
+   compared whitespace aside), since instances keep the default they were created with.
 
 Everything is read statically: no collector code or dependency is imported.
 
@@ -82,6 +84,7 @@ class CollectorSources:
     strings: set[str]
     nested_names: set[str]
     allowed_placeholders: set[str] | None
+    legacy_defaults: set[str] = field(default_factory=set)
 
     def reads(self, setting: str) -> bool:
         key = setting.upper()
@@ -219,11 +222,37 @@ def _allowed_placeholders(tree: ast.Module) -> set[str] | None:
     return None
 
 
+def _normalize(template: str) -> str:
+    return " ".join(template.split())
+
+
+def _legacy_defaults(tree: ast.Module) -> set[str]:
+    """Former defaults the collector maps to its built-in one (whitespace-normalized)."""
+    for node in ast.walk(tree):
+        targets = []
+        if isinstance(node, ast.Assign):
+            targets, value = node.targets, node.value
+        elif isinstance(node, ast.AnnAssign) and node.value is not None:
+            targets, value = [node.target], node.value
+        for target in targets:
+            if (
+                isinstance(target, ast.Name)
+                and target.id == "LEGACY_DEFAULT_QUERY_TEMPLATES"
+            ):
+                return {
+                    _normalize(item.value)
+                    for item in ast.walk(value)
+                    if isinstance(item, ast.Constant) and isinstance(item.value, str)
+                }
+    return set()
+
+
 def analyse_collector(collector: Path) -> CollectorSources:
     """Statically read the settings and placeholders a collector understands."""
     strings: set[str] = set()
     classes: dict[str, _Class] = {}
     allowed: set[str] | None = None
+    legacy: set[str] = set()
     for path in _python_files(collector):
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
         strings |= {
@@ -235,10 +264,12 @@ def analyse_collector(collector: Path) -> CollectorSources:
         found = _allowed_placeholders(tree)
         if found is not None:
             allowed = (allowed or set()) | found
+        legacy |= _legacy_defaults(tree)
     return CollectorSources(
         strings=strings,
         nested_names=_nested_names(classes),
         allowed_placeholders=allowed,
+        legacy_defaults=legacy,
     )
 
 
@@ -288,7 +319,13 @@ def check_collector(
             )
             continue
         unknown = used - sources.allowed_placeholders
-        if unknown:
+        if unknown and _normalize(default) in sources.legacy_defaults:
+            notes.append(
+                f"{collector.name}: the catalog default of '{key}' is a former "
+                "default the collector maps to its built-in one: consider updating "
+                f"the '{slug}' entry of openaev {CATALOG_FILE}"
+            )
+        elif unknown:
             errors.append(
                 f"{collector.name}: the catalog default of '{key}' uses "
                 f"{sorted(unknown)}, which the collector rejects (allowed: "
