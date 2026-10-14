@@ -2,13 +2,13 @@
 
 ## Repository Overview
 
-**OpenAEV collectors** - Python integrations for security tools (EDR, XDR, SIEM, etc.) to collect data for OpenAEV platform. Monorepo with 15 collectors.
+**OpenAEV collectors** - Python integrations for security tools (EDR, XDR, SIEM, etc.) to collect data for OpenAEV platform. Monorepo with one directory per collector, plus `libs/collectors-sdk/` (the collector runtime SDK).
 
 **Key Facts:**
 - **Language**: Python 3.14 for all collectors, development environments, builds, and CI
 - **Package Manager**: Poetry 2.3.2+
 - **CI/CD**: CircleCI
-- **Collectors**: 8 in root pyproject.toml (atomic-red-team, crowdstrike, microsoft-defender, microsoft-entra, microsoft-sentinel, mitre-attack, nvd-nist-cve, tanium-threat-response), 7 standalone (aws-resources, google-workspace, microsoft-azure, microsoft-intune, openaev, sentinelone, splunk-es)
+- **Collectors**: one directory per collector, each with its own `pyproject.toml`; `template/` is the starting point for a new one
 
 ## Critical Build Requirements
 
@@ -30,6 +30,29 @@ poetry run pip install --editable ../client-python --force-reinstall
 ```
 
 The local override requires `client-python` to be cloned next to `collectors`.
+
+## pyoaev and the SDKs
+
+**Read this before touching imports or dependencies.** The shared runtime of `pyoaev` is
+moving into SDKs: `libs/collectors-sdk/` in this repository and `xtm-oaev-sdk` in `client-python`.
+`pyoaev` keeps the OpenAEV API client and serves the former names through deprecation
+shims. The released `pyoaev` versions the collectors pin today do **not** ship the SDKs.
+
+- **Keep the existing `pyoaev` imports** as long as the collector's pinned `pyoaev` does not
+  depend on the SDKs. **NEVER** import `collectors_sdk` or `xtm_oaev_sdk` in such a collector: the
+  install takes the released `pyoaev` from PyPI, where the SDKs do not exist, and the
+  collector fails at runtime.
+- **Check:** in the collector's environment, `pip show pyoaev` lists `collectors-sdk` under `Requires`.
+- **NEVER** change a `pyoaev` version pin, or add an SDK dependency, without team approval.
+- With the local editable `client-python` override, `pyoaev` now also requires `xtm-oaev-sdk`,
+  `collectors-sdk` and `injectors-sdk`. If they cannot be resolved, report it instead of
+  editing pins.
+- **Migrating** (only when requested, and once the check passes): replace each legacy
+  import with the one its `DeprecationWarning` names, from the package root
+  (`from collectors_sdk import CollectorDaemon`, never `public`, `seam` or `_core`), and pass the client yourself:
+  `CollectorDaemon(..., api_client=OpenAEV(...))`. See the [migration guide](https://github.com/OpenAEV-Platform/client-python/blob/main/libs/xtm-oaev-sdk/docs/migration_guide.md).
+- **Working in `libs/collectors-sdk/`:** follow `libs/collectors-sdk/CONTRIBUTING.md`. Run its linters from
+  the repository root and its tests from `libs/collectors-sdk/`; CI does not run them.
 
 ## Code Quality and Linting
 
@@ -105,6 +128,8 @@ collector-name/
 3. Run tests if they exist: `poetry run python -m unittest`
 4. Test locally if possible
 
+**Modify `libs/collectors-sdk/`:** see "pyoaev and the SDKs" above.
+
 **Add new collector:** Use `poetry new new_collector` then add the released `pyoaev` version as a direct dependency (see README.md)
 
 **Update dependencies:** Use Renovate bot (automated) or `poetry update <package>`. **NEVER modify pyoaev structure** without team approval.
@@ -119,7 +144,9 @@ collector-name/
 
 ## Key Files
 
-**Root:** `pyproject.toml`, `.circleci/config.yml`, `.pre-commit-config.yaml`, `.flake8`, `scripts/release.py`, `renovate.json`
+**Root:** `pyproject.toml`, `.circleci/config.yml`, `.pre-commit-config.yaml`, `.flake8`, `scripts/release.py`, `renovate.json`, `CLAUDE.md`
+
+**SDK:** `libs/collectors-sdk/` (`README.md`, `CONTRIBUTING.md`, `CHANGELOG.md`, `docs/tdr/`)
 
 **Per-collector:** `pyproject.toml`, `Dockerfile`, `docker-compose.yml`, `.env.sample`, `README.md`
 
