@@ -1,9 +1,26 @@
-"""Collector daemon runtime (API client injected, see ``xtm_oaev_sdk.BaseClient``)."""
+"""Collector daemon seam: the contract between the public daemon and the core.
 
-from collectors_sdk._core.daemons import (
+Closed: it imports nothing from ``collectors_sdk._core`` nor
+``collectors_sdk.public``. Any change to these contracts must bump
+:data:`SEAM_VERSION`.
+"""
+
+from collectors_sdk.seam.daemons.models import (
     DEFAULT_PERIOD_SECONDS,
     DEFAULT_PLATFORM_TAG_COLOR,
-    CollectorDaemon,
+)
+from collectors_sdk.seam.daemons.ports import (
+    CollectorRegistrationPort,
+    CollectorSchedulePort,
 )
 
-__all__ = ["CollectorDaemon", "DEFAULT_PERIOD_SECONDS", "DEFAULT_PLATFORM_TAG_COLOR"]
+#: Version of the collector daemon seam. Bump on any contract change.
+SEAM_VERSION = "1.0.0"
+
+__all__ = [
+    "SEAM_VERSION",
+    "DEFAULT_PERIOD_SECONDS",
+    "DEFAULT_PLATFORM_TAG_COLOR",
+    "CollectorRegistrationPort",
+    "CollectorSchedulePort",
+]

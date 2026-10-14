@@ -3,17 +3,17 @@
 __version__ = "0.1.0"
 
 # --- Daemons ---
-from collectors_sdk.seam.daemons import (
+from collectors_sdk.public.daemons import (
     DEFAULT_PERIOD_SECONDS,
     DEFAULT_PLATFORM_TAG_COLOR,
     CollectorDaemon,
 )
 
 # --- Detection ---
-from collectors_sdk.seam.detection import OpenAEVDetectionHelper
+from collectors_sdk.public.detection import OpenAEVDetectionHelper
 
 # --- Expectations ---
-from collectors_sdk.seam.expectations import (
+from collectors_sdk.public.expectations import (
     DetectionExpectation,
     Expectation,
     ExpectationSignature,

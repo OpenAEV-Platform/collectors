@@ -1,5 +1,5 @@
-"""Alert-element detection helpers."""
+"""Detection core: implementation of the detection seam port."""
 
-from .helper import OpenAEVDetectionHelper, _is_base64_encoded
+from .matcher import AlertMatcher
 
-__all__ = ["OpenAEVDetectionHelper", "_is_base64_encoded"]
+__all__ = ["AlertMatcher"]

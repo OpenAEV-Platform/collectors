@@ -1,9 +1,6 @@
-"""Collector daemon runtime."""
+"""Daemons core: implementations of the collector daemon seam ports."""
 
-from .collector_daemon import (
-    DEFAULT_PERIOD_SECONDS,
-    DEFAULT_PLATFORM_TAG_COLOR,
-    CollectorDaemon,
-)
+from .registration import CollectorRegistration
+from .schedule import CollectorSchedule
 
-__all__ = ["CollectorDaemon", "DEFAULT_PERIOD_SECONDS", "DEFAULT_PLATFORM_TAG_COLOR"]
+__all__ = ["CollectorRegistration", "CollectorSchedule"]

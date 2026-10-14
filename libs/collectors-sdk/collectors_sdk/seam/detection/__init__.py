@@ -1,7 +1,13 @@
-"""Alert-element detection helpers."""
+"""Detection seam: the contract between the public detection helper and the core.
 
-from collectors_sdk._core.detection import OpenAEVDetectionHelper, _is_base64_encoded
+Closed: it imports nothing from ``collectors_sdk._core`` nor
+``collectors_sdk.public``. Any change to these contracts must bump
+:data:`SEAM_VERSION`.
+"""
 
-# ``_is_base64_encoded`` is not public: it is surfaced here only so the legacy
-# ``pyoaev.helpers._is_base64_encoded`` path keeps resolving.
-__all__ = ["OpenAEVDetectionHelper", "_is_base64_encoded"]
+from collectors_sdk.seam.detection.ports import AlertMatchingPort
+
+#: Version of the detection seam. Bump on any contract change.
+SEAM_VERSION = "1.0.0"
+
+__all__ = ["SEAM_VERSION", "AlertMatchingPort"]

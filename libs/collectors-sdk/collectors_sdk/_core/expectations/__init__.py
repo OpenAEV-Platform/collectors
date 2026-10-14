@@ -1,17 +1,6 @@
-"""Inject expectation models."""
+"""Expectations core: implementations of the expectations seam ports."""
 
-from .expectation import (
-    DetectionExpectation,
-    Expectation,
-    ExpectationSignature,
-    ExpectationTypeEnum,
-    PreventionExpectation,
-)
+from .matcher import ExpectationMatcher
+from .updates import ExpectationUpdates
 
-__all__ = [
-    "DetectionExpectation",
-    "Expectation",
-    "ExpectationSignature",
-    "ExpectationTypeEnum",
-    "PreventionExpectation",
-]
+__all__ = ["ExpectationMatcher", "ExpectationUpdates"]

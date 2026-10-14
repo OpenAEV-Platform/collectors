@@ -3,11 +3,21 @@
 Built on the shared ``xtm-oaev-sdk``; never depends on the pyoaev client.
 
 Architecture:
-    _core/daemons/     Collector daemon implementation
-    _core/detection/   Alert-element detection implementation
-    _core/expectations/ Inject expectation models
-    seam/              Stable boundary between public/ and _core/
-    public/            User-facing re-exports
+    _core/daemons/        Collector registration and schedule
+    _core/detection/      Alert-element matching
+    _core/expectations/   Expectation matching and updates
+    seam/daemons/         Collector defaults and ports (closed, versioned)
+    seam/detection/       Alert-matching port (closed, versioned)
+    seam/expectations/    Expectation contracts and ports (closed, versioned)
+    public/daemons        CollectorDaemon adapter
+    public/detection      OpenAEVDetectionHelper adapter
+    public/expectations   Expectation adapters
+    public/               User-facing re-exports
+
+Port/adapter layering: ``seam`` holds the contracts and imports nothing from
+``_core`` nor ``public``; ``_core`` implements the seam ports and never imports
+``public``; ``public`` exposes adapters that speak seam types and delegate to
+``_core``, plus the seam contracts themselves — never a core object.
 
 The OpenAEV API client is injected (``api_client=``), conforming to
 ``xtm_oaev_sdk.BaseClient``.

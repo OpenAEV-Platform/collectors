@@ -1,18 +1,28 @@
-"""Inject expectation models: fetched from the platform, matched against
-alerts, and updated through the injected API client."""
+"""Expectations seam: the contract between the public expectations and the core.
 
-from collectors_sdk._core.expectations import (
-    DetectionExpectation,
-    Expectation,
+Closed: it imports nothing from ``collectors_sdk._core`` nor
+``collectors_sdk.public``. Any change to these contracts must bump
+:data:`SEAM_VERSION`.
+"""
+
+from collectors_sdk.seam.expectations.models import (
+    ExpectationData,
     ExpectationSignature,
     ExpectationTypeEnum,
-    PreventionExpectation,
+)
+from collectors_sdk.seam.expectations.ports import (
+    ExpectationMatchingPort,
+    ExpectationUpdatePort,
 )
 
+#: Version of the expectations seam. Bump on any contract change.
+SEAM_VERSION = "1.0.0"
+
 __all__ = [
-    "DetectionExpectation",
-    "Expectation",
+    "SEAM_VERSION",
+    "ExpectationData",
     "ExpectationSignature",
     "ExpectationTypeEnum",
-    "PreventionExpectation",
+    "ExpectationMatchingPort",
+    "ExpectationUpdatePort",
 ]
