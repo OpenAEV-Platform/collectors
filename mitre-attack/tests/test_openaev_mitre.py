@@ -1,12 +1,11 @@
 from unittest import TestCase
 from unittest.mock import MagicMock, call, patch
 
+from mitre_attack.configuration.config_loader import ConfigLoader
 from mitre_attack.openaev_mitre import OpenAEVMitre
-from pyoaev.configuration import Configuration
 from pyoaev.exceptions import OpenAEVUpdateError
 
 COLLECTOR_ID = "collector-42"
-PERIOD_SECONDS = 7 * 24 * 3600
 
 
 def _conflict():
@@ -74,18 +73,15 @@ def _stix_bundle(parent_count, child_count):
 
 
 def _configuration(batch_size=None):
-    config_hints = {
-        "openaev_url": {"data": "http://localhost:8080"},
-        "openaev_token": {"data": "super-token"},
-        "collector_id": {"data": COLLECTOR_ID},
-        "collector_name": {"data": "MITRE ATT&CK"},
-        "collector_period": {"data": PERIOD_SECONDS, "is_number": True},
-        "collector_log_level": {"data": "info"},
-        "collector_icon_filepath": {"data": "mitre_attack/img/icon-mitre-attack.png"},
+    environment = {
+        "OPENAEV_URL": "http://localhost:8080",
+        "OPENAEV_TOKEN": "super-token",
+        "COLLECTOR_ID": COLLECTOR_ID,
     }
     if batch_size is not None:
-        config_hints["collector_batch_size"] = {"data": batch_size, "is_number": True}
-    return Configuration(config_hints=config_hints)
+        environment["COLLECTOR_BATCH_SIZE"] = str(batch_size)
+    with patch.dict("os.environ", environment, clear=True):
+        return ConfigLoader().to_daemon_config()
 
 
 def _collector(bundle=None, batch_size=None):
@@ -126,6 +122,27 @@ class AttackPatternBatchingTest(TestCase):
         batches = _upserted_batches(collector)
         self.assertEqual(7, len(batches))
         self.assertTrue(all(len(batch) <= 40 for batch in batches))
+
+    def test_a_batch_size_of_0_sends_every_attack_pattern_in_one_call(self):
+        # -- PREPARE --
+        collector = _collector(batch_size=0)
+
+        # -- EXECUTE --
+        collector._process_message()
+
+        # -- ASSERT --
+        batches = _upserted_batches(collector)
+        self.assertEqual([250], [len(batch) for batch in batches])
+
+    def test_a_batch_size_of_0_with_an_empty_bundle_sends_nothing(self):
+        # -- PREPARE --
+        collector = _collector(bundle={"objects": []}, batch_size=0)
+
+        # -- EXECUTE --
+        collector._process_message()
+
+        # -- ASSERT --
+        collector.api.attack_pattern.upsert.assert_not_called()
 
     def test_every_attack_pattern_is_sent_exactly_once(self):
         # -- PREPARE --
@@ -263,7 +280,7 @@ class ConflictRetryTest(TestCase):
         self.assertEqual([100, 100, 100, 100, 50], [len(batch) for batch in batches])
         self.assertEqual(batches[1], batches[2])
         self.assertEqual(batches[1], batches[3])
-        self.assertEqual([call(10), call(10)], sleep.call_args_list)
+        self.assertEqual([call(10), call(20)], sleep.call_args_list)
         self.assertEqual(2, collector.logger.warning.call_count)
 
     def test_a_batch_still_rejected_after_5_attempts_stops_the_import(self, sleep):
@@ -279,7 +296,7 @@ class ConflictRetryTest(TestCase):
 
         # -- ASSERT --
         self.assertEqual(6, collector.api.attack_pattern.upsert.call_count)
-        self.assertEqual(4, sleep.call_count)
+        self.assertEqual([call(10), call(20), call(40), call(80)], sleep.call_args_list)
 
     def test_other_platform_errors_are_not_retried(self, sleep):
         # -- PREPARE --

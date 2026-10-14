@@ -23,6 +23,9 @@ class CollectorConfigOverride(ConfigLoaderCollector):
     )
     batch_size: int = Field(
         default=100,
-        ge=1,
-        description="Maximum number of attack patterns sent to OpenAEV in one upsert call.",
+        ge=0,
+        description=(
+            "Maximum number of attack patterns sent to OpenAEV in one upsert call. "
+            "0 sends them all in a single call."
+        ),
     )

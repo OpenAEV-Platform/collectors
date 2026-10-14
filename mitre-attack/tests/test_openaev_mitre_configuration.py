@@ -31,6 +31,14 @@ class OpenAEVMitreConfigurationTest(TestCase):
     @patch.dict(
         "os.environ", {**BASE_ENVIRONMENT, "COLLECTOR_BATCH_SIZE": "0"}, clear=True
     )
-    def test_batch_size_must_be_at_least_1(self):
+    def test_batch_size_accepts_0_to_disable_batching(self):
+        config = ConfigLoader().to_daemon_config()
+
+        self.assertEqual(0, config.get("collector_batch_size"))
+
+    @patch.dict(
+        "os.environ", {**BASE_ENVIRONMENT, "COLLECTOR_BATCH_SIZE": "-1"}, clear=True
+    )
+    def test_batch_size_must_not_be_negative(self):
         with self.assertRaises(ValidationError):
             ConfigLoader()

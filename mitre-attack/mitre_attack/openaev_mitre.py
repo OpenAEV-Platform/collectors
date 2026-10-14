@@ -9,10 +9,10 @@ from pyoaev.exceptions import OpenAEVUpdateError
 ENTERPRISE_ATTACK_URI = (
     "https://github.com/mitre/cti/raw/master/enterprise-attack/enterprise-attack.json"
 )
-DEFAULT_BATCH_SIZE = 100
 # The platform answers 409 while another attack pattern upsert runs for the tenant
 CONFLICT_MAX_ATTEMPTS = 5
-CONFLICT_RETRY_DELAY_SECONDS = 10
+# Doubled after each attempt: 10, 20, 40 then 80 seconds
+CONFLICT_RETRY_BASE_DELAY_SECONDS = 10
 
 
 class OpenAEVMitre(CollectorDaemon):
@@ -99,9 +99,9 @@ class OpenAEVMitre(CollectorDaemon):
         # Parents first: the platform resolves a sub-technique's parent by STIX id
         # and each batch is a separate transaction
         attack_patterns.sort(key=lambda ap: ap["attack_pattern_parent"] is not None)
-        batch_size = (
-            self._configuration.get("collector_batch_size") or DEFAULT_BATCH_SIZE
-        )
+        batch_size = self._configuration.get("collector_batch_size")
+        if not batch_size:  # 0 sends every attack pattern in one call
+            batch_size = max(len(attack_patterns), 1)
         for start in range(0, len(attack_patterns), batch_size):
             self._upsert_attack_patterns(attack_patterns[start : start + batch_size])
 
@@ -112,12 +112,12 @@ class OpenAEVMitre(CollectorDaemon):
             except OpenAEVUpdateError as err:
                 if err.response_code != 409 or attempt == CONFLICT_MAX_ATTEMPTS:
                     raise
+                delay = CONFLICT_RETRY_BASE_DELAY_SECONDS * 2 ** (attempt - 1)
                 self.logger.warning(
                     f"Another attack pattern import is running, retrying in "
-                    f"{CONFLICT_RETRY_DELAY_SECONDS} seconds "
-                    f"(attempt {attempt}/{CONFLICT_MAX_ATTEMPTS})"
+                    f"{delay} seconds (attempt {attempt}/{CONFLICT_MAX_ATTEMPTS})"
                 )
-                time.sleep(CONFLICT_RETRY_DELAY_SECONDS)
+                time.sleep(delay)
 
     def _process_message(self) -> None:
         response = self.session.get(url=ENTERPRISE_ATTACK_URI)
