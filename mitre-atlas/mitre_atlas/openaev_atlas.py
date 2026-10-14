@@ -1,9 +1,11 @@
 import logging
+import time
 
 import requests
 from mitre_atlas.configuration.config_loader import ConfigLoader
 from pyoaev.configuration import Configuration
 from pyoaev.daemons import CollectorDaemon
+from pyoaev.exceptions import OpenAEVUpdateError
 
 # MITRE ATLAS (Adversarial Threat Landscape for AI Systems) STIX 2.1 bundle. ATLAS publishes an
 # ATT&CK-compatible STIX representation (x-mitre-tactic objects, attack-pattern objects with
@@ -42,6 +44,12 @@ ATLAS_TACTIC_ORDER = {
 # ordered after all known tactics instead of at the front (order 0), so the canonical
 # ordering of the known phases is preserved.
 UNKNOWN_TACTIC_ORDER = max(ATLAS_TACTIC_ORDER.values()) + 1
+
+# The platform answers 409 while another attack pattern upsert runs for the tenant, and
+# when a concurrent kill chain phase or attack pattern write wins a database race
+CONFLICT_MAX_ATTEMPTS = 5
+# Doubled after each attempt: 10, 20, 40 then 80 seconds
+CONFLICT_RETRY_BASE_DELAY_SECONDS = 10
 
 
 class OpenAEVAtlas(CollectorDaemon):
@@ -83,7 +91,7 @@ class OpenAEVAtlas(CollectorDaemon):
                 ),
             }
             kill_chain_phases.append(kill_chain_phase)
-        return self.api.kill_chain_phase.upsert(kill_chain_phases)
+        return self._upsert(self.api.kill_chain_phase.upsert, kill_chain_phases)
 
     def _attack_patterns(self, attacks, kill_chain_phases, relationships):
         # Pre-index subtechnique-of relationships (source -> parent target) so parent
@@ -129,7 +137,32 @@ class OpenAEVAtlas(CollectorDaemon):
                 "attack_pattern_parent": attack_pattern_parent,
             }
             attack_patterns.append(attack_pattern)
-        self.api.attack_pattern.upsert(attack_patterns)
+        # Parents first: the platform resolves a sub-technique's parent by STIX id
+        # and each batch is a separate transaction
+        attack_patterns.sort(key=lambda ap: ap["attack_pattern_parent"] is not None)
+        batch_size = self._configuration.get("collector_batch_size")
+        if not batch_size:  # 0 sends every attack pattern in one call
+            batch_size = max(len(attack_patterns), 1)
+        for start in range(0, len(attack_patterns), batch_size):
+            self._upsert(
+                self.api.attack_pattern.upsert,
+                attack_patterns[start : start + batch_size],
+            )
+
+    def _upsert(self, upsert, items):
+        for attempt in range(1, CONFLICT_MAX_ATTEMPTS + 1):
+            try:
+                return upsert(items)
+            except OpenAEVUpdateError as err:
+                if err.response_code != 409 or attempt == CONFLICT_MAX_ATTEMPTS:
+                    raise
+                delay = CONFLICT_RETRY_BASE_DELAY_SECONDS * 2 ** (attempt - 1)
+                self.logger.warning(
+                    f"OpenAEV answered 409 (conflict with a concurrent import), "
+                    f"retrying in {delay} seconds "
+                    f"(attempt {attempt}/{CONFLICT_MAX_ATTEMPTS})"
+                )
+                time.sleep(delay)
 
     def _process_message(self) -> None:
         response = self.session.get(url=self.stix_url, timeout=60)
