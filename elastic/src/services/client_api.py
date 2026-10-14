@@ -187,13 +187,22 @@ class ElasticClientAPI:
         if configured_template:
             self._validate_template_placeholders(configured_template)
             self.query_template = configured_template
-            self.logger.info(
-                f"{LOG_PREFIX} Using custom query template from configuration"
-            )
+            if " ".join(configured_template.split()) == " ".join(
+                DEFAULT_QUERY_TEMPLATE.split()
+            ):
+                # The catalog prefills the built-in query: report it as such.
+                self.logger.info(
+                    f"{LOG_PREFIX} Using the built-in default query template"
+                )
+            else:
+                self.logger.info(
+                    f"{LOG_PREFIX} Using a custom query template from configuration"
+                )
         else:
             self.query_template = DEFAULT_QUERY_TEMPLATE
-            self.logger.debug(
-                f"{LOG_PREFIX} No custom query template configured, using default"
+            self.logger.info(
+                f"{LOG_PREFIX} No query template configured, using the built-in "
+                "default query template"
             )
 
         try:
@@ -1029,6 +1038,78 @@ class ElasticClientAPI:
                 parts.append(value)
         return " ".join(parts)
 
+    def _raise_for_alerts_status(self, response: requests.Response) -> None:
+        """Map a non-200 response on the alerts index to an actionable error.
+
+        Args:
+            response: Response of a request against the alerts index.
+
+        Raises:
+            ElasticAuthenticationError: On 401 (bad credentials) or 403 (missing
+                read privilege on the alerts index).
+            ElasticAPIError: On 404 (index not found) or any other non-200 status.
+
+        """
+        if response.status_code == 401:
+            raise ElasticAuthenticationError(
+                "Authentication with Elastic Security failed: check "
+                "ELASTIC_API_KEY or ELASTIC_USERNAME/ELASTIC_PASSWORD."
+            )
+        if response.status_code == 403:
+            # Actionable: the credential is valid but lacks read on the index.
+            raise ElasticAuthenticationError(
+                "Authorization failed (403): the credential lacks 'read' on "
+                f"'{self.alerts_index}'. Grant read + view_index_metadata on "
+                "the alerts index and (for the drilldown) the events index. "
+                "See README 'Required permissions'."
+            )
+        if response.status_code == 404:
+            raise ElasticAPIError(
+                f"Index '{self.alerts_index}' not found (404): check "
+                "ELASTIC_ALERTS_INDEX / ELASTIC_EVENTS_INDEX match indices that "
+                "exist in this cluster."
+            )
+        if response.status_code != 200:
+            raise ElasticAPIError(
+                f"Elastic Security API returned status {response.status_code}: {response.text}"
+            )
+
+    def check_connectivity(self) -> bool:
+        """Check at startup that Elastic is reachable and the alerts index readable.
+
+        Counts the documents of the alerts index, which exercises the network
+        path, TLS, the credentials and the read privilege in one call. The check
+        never raises: Elastic may come up after the collector, and each
+        processing cycle retries on its own. Success is logged at info, failure
+        at error so it shows even at the default log level.
+
+        Returns:
+            True if the alerts index answered, False otherwise.
+
+        """
+        endpoint = f"{self.base_url}/{self.alerts_index}/_count"
+        target = redact_userinfo(self.base_url)
+        try:
+            response = self.session.get(endpoint, timeout=REQUEST_TIMEOUT_SECONDS)
+            self._raise_for_alerts_status(response)
+            count = response.json().get("count")
+        except (ElasticAuthenticationError, ElasticAPIError) as e:
+            self.logger.error(
+                f"{LOG_PREFIX} Elastic connectivity check failed on {target}: {e}"
+            )
+            return False
+        except Exception as e:
+            self.logger.error(
+                f"{LOG_PREFIX} Elastic connectivity check failed, cannot reach "
+                f"{target}: {redact_userinfo(str(e))}"
+            )
+            return False
+        self.logger.info(
+            f"{LOG_PREFIX} Connected to Elastic at {target}: "
+            f"{count} alert(s) in '{self.alerts_index}'"
+        )
+        return True
+
     def _execute_query(
         self, search_criteria: ElasticSearchCriteria, extend_end_seconds: int = 0
     ) -> list[ElasticAlert]:
@@ -1055,30 +1136,7 @@ class ElasticClientAPI:
             response = self.session.post(
                 endpoint, json=body, timeout=REQUEST_TIMEOUT_SECONDS
             )
-
-            if response.status_code == 401:
-                raise ElasticAuthenticationError(
-                    "Authentication with Elastic Security failed: check "
-                    "ELASTIC_API_KEY or ELASTIC_USERNAME/ELASTIC_PASSWORD."
-                )
-            if response.status_code == 403:
-                # Actionable: the credential is valid but lacks read on the index.
-                raise ElasticAuthenticationError(
-                    "Authorization failed (403): the credential lacks 'read' on "
-                    f"'{self.alerts_index}'. Grant read + view_index_metadata on "
-                    "the alerts index and (for the drilldown) the events index. "
-                    "See README 'Required permissions'."
-                )
-            if response.status_code == 404:
-                raise ElasticAPIError(
-                    f"Index '{self.alerts_index}' not found (404): check "
-                    "ELASTIC_ALERTS_INDEX / ELASTIC_EVENTS_INDEX match indices that "
-                    "exist in this cluster."
-                )
-            if response.status_code != 200:
-                raise ElasticAPIError(
-                    f"Elastic Security API returned status {response.status_code}: {response.text}"
-                )
+            self._raise_for_alerts_status(response)
 
             elastic_response = ElasticResponse.from_raw_response(response.json())
             self.logger.info(

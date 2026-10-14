@@ -34,11 +34,18 @@ class ElasticTraceService:
     and converts them into OpenAEV expectation traces using proper Pydantic models.
     """
 
-    def __init__(self, config: ConfigLoader | None = None) -> None:
+    def __init__(
+        self,
+        config: ConfigLoader | None = None,
+        client_api: ElasticClientAPI | None = None,
+    ) -> None:
         """Initialize the Elastic Security trace service.
 
         Args:
             config: Configuration loader instance for trace service settings.
+            client_api: Client to reuse (the expectation service's), so the
+                collector builds and logs a single client. Created from
+                ``config`` when omitted.
 
         Raises:
             ElasticValidationError: If config is None.
@@ -49,7 +56,7 @@ class ElasticTraceService:
 
         self.logger = logging.getLogger(__name__)
         self.config = config
-        self.client_api = ElasticClientAPI(config)
+        self.client_api = client_api or ElasticClientAPI(config)
         self.logger.debug(f"{LOG_PREFIX} Elastic Security trace service initialized")
 
     def create_traces_from_results(

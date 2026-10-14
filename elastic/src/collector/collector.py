@@ -7,6 +7,7 @@ from pyoaev.helpers import OpenAEVDetectionHelper  # type: ignore[import-untyped
 from src.services.expectation_service import ElasticExpectationService
 from src.services.trace_service import ElasticTraceService
 from src.services.utils import ElasticConfig
+from src.services.utils.url import redact_userinfo
 
 from .exception import (
     CollectorConfigError,
@@ -72,11 +73,22 @@ class Collector(CollectorDaemon):  # type: ignore[misc]
 
             super()._setup()
 
+            # The daemon setup registers the collector and raises if OpenAEV is
+            # unreachable; afterwards only ping failures are logged.
+            self.logger.info(
+                f"{LOG_PREFIX} Connected to OpenAEV at "
+                f"{redact_userinfo(str(self.config_instance.openaev.url))}: "
+                "collector registered"
+            )
+
             self.logger.debug(f"{LOG_PREFIX} Initializing Elastic Security services...")
 
             self.elastic_service = ElasticExpectationService(self.config_instance)
+            self.elastic_service.check_connectivity()
 
-            self.trace_service = ElasticTraceService(self.config_instance)
+            self.trace_service = ElasticTraceService(
+                self.config_instance, client_api=self.elastic_service.client_api
+            )
 
             self.expectation_handler = GenericExpectationHandler(self.elastic_service)
 

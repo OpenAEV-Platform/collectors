@@ -286,6 +286,39 @@ class TestElasticClientAPIEssential:
         query_string = query["query"]["bool"]["must"][0]["query_string"]["query"]
         assert query_string == 'host.ip:("192.0.2.20")'  # noqa: S101
 
+    @pytest.mark.parametrize(
+        ("template", "expected"),
+        [
+            (None, "No query template configured, using the built-in default"),
+            ("DEFAULT", "Using the built-in default query template"),
+            ("DEFAULT_REFLOWED", "Using the built-in default query template"),
+            ("host.ip:({source_ips})", "Using a custom query template"),
+        ],
+        ids=["unset", "default", "default-reflowed", "custom"],
+    )
+    def test_query_template_choice_is_logged(self, template, expected):
+        """The log says whether the built-in default or a custom query runs.
+
+        The catalog prefills the built-in query, so a configured template equal
+        to it (whitespace aside) must not be reported as custom.
+        """
+        from src.services.client_api import DEFAULT_QUERY_TEMPLATE
+
+        # Arrange
+        if template == "DEFAULT":
+            template = DEFAULT_QUERY_TEMPLATE
+        elif template == "DEFAULT_REFLOWED":
+            template = DEFAULT_QUERY_TEMPLATE.replace(" OR ", "\n    OR ")
+        config = create_test_config()
+        config.elastic.query_template = template
+
+        # Act
+        client = ElasticClientAPI(config=config)
+
+        # Assert
+        messages = [str(c.args[0]) for c in client.logger.info.call_args_list]
+        assert any(expected in m for m in messages)  # noqa: S101
+
     def test_invalid_query_template_placeholder_raises(self):
         """An unknown placeholder is rejected at initialization."""
         config = create_test_config()

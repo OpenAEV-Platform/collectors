@@ -78,7 +78,9 @@ class Collector(CollectorDaemon):  # type: ignore[misc]
 
             self.splunkes_service = SplunkESExpectationService(self.config_instance)
 
-            self.trace_service = SplunkESTraceService(self.config_instance)
+            self.trace_service = SplunkESTraceService(
+                self.config_instance, client_api=self.splunkes_service.client_api
+            )
 
             self.expectation_handler = GenericExpectationHandler(self.splunkes_service)
 

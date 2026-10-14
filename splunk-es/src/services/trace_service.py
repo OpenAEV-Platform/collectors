@@ -29,11 +29,18 @@ class SplunkESTraceService:
     and converts them into OpenAEV expectation traces using proper Pydantic models.
     """
 
-    def __init__(self, config: ConfigLoader | None = None) -> None:
+    def __init__(
+        self,
+        config: ConfigLoader | None = None,
+        client_api: SplunkESClientAPI | None = None,
+    ) -> None:
         """Initialize the Splunk ES trace service.
 
         Args:
             config: Configuration loader instance for trace service settings.
+            client_api: Client to reuse (the expectation service's), so the
+                collector builds and logs a single client. Created from
+                ``config`` when omitted.
 
         Raises:
             SplunkESValidationError: If config is None.
@@ -44,7 +51,7 @@ class SplunkESTraceService:
 
         self.logger = logging.getLogger(__name__)
         self.config = config
-        self.client_api = SplunkESClientAPI(config)
+        self.client_api = client_api or SplunkESClientAPI(config)
         self.logger.debug(f"{LOG_PREFIX} Splunk ES trace service initialized")
 
     def create_traces_from_results(

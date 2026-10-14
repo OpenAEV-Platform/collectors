@@ -53,6 +53,32 @@ ALLOWED_PLACEHOLDERS = {
     "end_date",
 }
 
+# Defaults the OpenAEV catalog used to prefill, stored as-is on deployed
+# instances. Their {process_conditions} / {implant_urls} / {implant_names}
+# placeholders were dropped in #489 (implant matching moved to the regex
+# engine), so they would now fail validation: run the built-in query instead.
+LEGACY_DEFAULT_QUERY_TEMPLATES = (
+    "index={alerts_index} "
+    "(src_ip IN ({source_ips}) OR src IN ({source_ips}) OR source_ip IN ({source_ips}) OR client_ip IN ({source_ips})) "
+    "(dst_ip IN ({target_ips}) OR dest IN ({target_ips}) OR dest_ip IN ({target_ips}) "
+    "OR destination_ip IN ({target_ips}) OR server_ip IN ({target_ips})) "
+    "{process_conditions} earliest={start_date} latest={end_date} "
+    "| table _time, src_ip, src, source_ip, client_ip, dst_ip, dest, dest_ip, "
+    "destination_ip, server_ip, signature, rule_name, event_type, severity, "
+    "url_path, url, path, query, _raw | sort -_time",
+    "index={alerts_index} "
+    "(src_ip IN ({source_ips}) OR src IN ({source_ips}) OR source_ip IN ({source_ips}) OR client_ip IN ({source_ips})) "
+    "(dst_ip IN ({target_ips}) OR dest IN ({target_ips}) OR dest_ip IN ({target_ips}) "
+    "OR destination_ip IN ({target_ips}) OR server_ip IN ({target_ips})) "
+    "(url_path IN ({implant_urls}) OR url IN ({implant_urls}) OR path IN ({implant_urls}) "
+    "OR query IN ({implant_urls}) OR process_name IN ({implant_names}) "
+    "OR parent_process_name IN ({implant_names})) "
+    "earliest={start_date} latest={end_date} "
+    "| table _time, src_ip, src, source_ip, client_ip, dst_ip, dest, dest_ip, "
+    "destination_ip, server_ip, signature, rule_name, event_type, severity, "
+    "url_path, url, path, query, process_name, parent_process_name, _raw | sort -_time",
+)
+
 
 class _SafeFormatter(string.Formatter):
     """Restricted formatter that prevents attribute/index access in format strings."""
@@ -67,6 +93,11 @@ class _SafeFormatter(string.Formatter):
 
 
 _safe_formatter = _SafeFormatter()
+
+
+def _normalize_whitespace(template: str) -> str:
+    """Collapse whitespace runs so a reflowed template compares equal."""
+    return " ".join(template.split())
 
 
 class SplunkESClientAPI:
@@ -111,15 +142,33 @@ class SplunkESClientAPI:
             )
 
         self.query_template = self.config.splunk_es.query_template
-        if self.query_template:
-            self._validate_template_placeholders(self.query_template)
-            self.logger.info(
-                f"{LOG_PREFIX} Using custom query template from configuration"
+        if self.query_template and _normalize_whitespace(self.query_template) in {
+            _normalize_whitespace(legacy) for legacy in LEGACY_DEFAULT_QUERY_TEMPLATES
+        }:
+            self.logger.warning(
+                f"{LOG_PREFIX} The configured query template is a former built-in "
+                "default this version no longer supports: using the current "
+                "built-in default query template instead"
             )
+            self.query_template = DEFAULT_QUERY_TEMPLATE
+        elif self.query_template:
+            self._validate_template_placeholders(self.query_template)
+            if _normalize_whitespace(self.query_template) == _normalize_whitespace(
+                DEFAULT_QUERY_TEMPLATE
+            ):
+                # The catalog prefills the built-in query: report it as such.
+                self.logger.info(
+                    f"{LOG_PREFIX} Using the built-in default query template"
+                )
+            else:
+                self.logger.info(
+                    f"{LOG_PREFIX} Using a custom query template from configuration"
+                )
         else:
             self.query_template = DEFAULT_QUERY_TEMPLATE
-            self.logger.debug(
-                f"{LOG_PREFIX} No custom query template configured, using default"
+            self.logger.info(
+                f"{LOG_PREFIX} No query template configured, using the built-in "
+                "default query template"
             )
 
         try:
