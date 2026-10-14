@@ -15,9 +15,14 @@ SDK. The former `pyoaev` paths keep working, each one firing a `DeprecationWarni
 - `detection`: `OpenAEVDetectionHelper` (from `pyoaev.helpers`). Seam `1.0.0`.
 - `expectations`: `Expectation`, `DetectionExpectation`, `PreventionExpectation`,
   `ExpectationSignature`, `ExpectationTypeEnum` (from
-  `pyoaev.apis.inject_expectation.model`). Seam `1.0.0`.
+  `pyoaev.apis.inject_expectation.model`), and `expectations_models_for_source` with its
+  `ExpectationApiProtocol` (from `InjectExpectationManager.expectations_models_for_source`).
+  Seam `1.0.0`.
 
 ### Changed (compared with pyoaev)
 
 - `CollectorDaemon` stops building the API client. Pass `api_client=` yourself.
+- The client stops building the expectation models. Call
+  `expectations_models_for_source(api.inject_expectation, source_id)` instead of
+  `api.inject_expectation.expectations_models_for_source(source_id)`, now deprecated.
 - `requires-python` moves from `>=3.11` to `>=3.12`, like xtm-oaev-sdk it builds on.

@@ -36,6 +36,9 @@ Only when asked, and only once rule 2 passes:
   from the package root (`from collectors_sdk import CollectorDaemon`), never from
   `public`, `seam` or `_core`;
 - build the client yourself and pass it: `CollectorDaemon(..., api_client=OpenAEV(...))`;
+- build the expectation models with
+  `expectations_models_for_source(api.inject_expectation, source_id=...)`, not with the
+  deprecated `api.inject_expectation.expectations_models_for_source(...)`;
 - keep `pyoaev` for `OpenAEV` and the `pyoaev.apis` managers.
 
 The full import table and before/after examples are in the

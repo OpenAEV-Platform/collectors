@@ -4,7 +4,50 @@ from typing import Any, Callable, Protocol, runtime_checkable
 
 from collectors_sdk.seam.expectations.models import ExpectationSignature
 
-__all__ = ["ExpectationMatchingPort", "ExpectationUpdatePort"]
+__all__ = [
+    "ExpectationApiProtocol",
+    "ExpectationLoadingPort",
+    "ExpectationMatchingPort",
+    "ExpectationUpdatePort",
+]
+
+
+@runtime_checkable
+class ExpectationApiProtocol(Protocol):
+    """The platform API expectations are fetched from and reported to.
+
+    The OpenAEV client's inject expectation manager (``api.inject_expectation``
+    in pyoaev) implements it.
+    """
+
+    def expectations_assets_for_source(
+        self, source_id: str, **kwargs: Any
+    ) -> list[dict[str, Any]]:
+        """Expectations still waiting for a result from ``source_id``."""
+
+    def update(
+        self,
+        inject_expectation_id: str,
+        inject_expectation: dict[str, Any],
+        **kwargs: Any,
+    ) -> Any:
+        """Records the outcome of one expectation."""
+
+
+@runtime_checkable
+class ExpectationLoadingPort(Protocol):
+    """Turns the platform expectation data into expectation models."""
+
+    def models_for_source(
+        self,
+        api: ExpectationApiProtocol,
+        source_id: str,
+        detection: Callable[..., Any],
+        prevention: Callable[..., Any],
+        **kwargs: Any,
+    ) -> list[Any]:
+        """Models of the expectations waiting for ``source_id``, built with
+        ``detection`` or ``prevention`` depending on their type."""
 
 
 @runtime_checkable

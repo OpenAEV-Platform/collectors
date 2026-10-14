@@ -16,9 +16,11 @@ from collectors_sdk.public.detection import OpenAEVDetectionHelper
 from collectors_sdk.public.expectations import (
     DetectionExpectation,
     Expectation,
+    ExpectationApiProtocol,
     ExpectationSignature,
     ExpectationTypeEnum,
     PreventionExpectation,
+    expectations_models_for_source,
 )
 
 __all__ = [
@@ -30,9 +32,11 @@ __all__ = [
     # Expectations
     "DetectionExpectation",
     "Expectation",
+    "ExpectationApiProtocol",
     "ExpectationSignature",
     "ExpectationTypeEnum",
     "PreventionExpectation",
+    "expectations_models_for_source",
     # Detection
     "OpenAEVDetectionHelper",
 ]

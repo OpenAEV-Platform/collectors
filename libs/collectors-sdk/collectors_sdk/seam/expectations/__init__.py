@@ -11,6 +11,8 @@ from collectors_sdk.seam.expectations.models import (
     ExpectationTypeEnum,
 )
 from collectors_sdk.seam.expectations.ports import (
+    ExpectationApiProtocol,
+    ExpectationLoadingPort,
     ExpectationMatchingPort,
     ExpectationUpdatePort,
 )
@@ -23,6 +25,8 @@ __all__ = [
     "ExpectationData",
     "ExpectationSignature",
     "ExpectationTypeEnum",
+    "ExpectationApiProtocol",
+    "ExpectationLoadingPort",
     "ExpectationMatchingPort",
     "ExpectationUpdatePort",
 ]

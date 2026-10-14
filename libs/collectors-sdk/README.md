@@ -20,7 +20,7 @@ xtm-oaev-sdk  ←  collectors-sdk  ←  your collector
 | Capability | Public API | Former `pyoaev` path |
 |---|---|---|
 | daemons | `CollectorDaemon`, `DEFAULT_PERIOD_SECONDS`, `DEFAULT_PLATFORM_TAG_COLOR` | `pyoaev.daemons` |
-| expectations | `Expectation`, `DetectionExpectation`, `PreventionExpectation`, `ExpectationSignature`, `ExpectationTypeEnum` | `pyoaev.apis.inject_expectation.model` |
+| expectations | `Expectation`, `DetectionExpectation`, `PreventionExpectation`, `ExpectationSignature`, `ExpectationTypeEnum`, `expectations_models_for_source`, `ExpectationApiProtocol` | `pyoaev.apis.inject_expectation.model`, `InjectExpectationManager.expectations_models_for_source` |
 | detection | `OpenAEVDetectionHelper` | `pyoaev.helpers` |
 
 ## Quickstart
@@ -28,7 +28,7 @@ xtm-oaev-sdk  ←  collectors-sdk  ←  your collector
 ```python
 from pyoaev import OpenAEV
 from xtm_oaev_sdk import Configuration
-from collectors_sdk import CollectorDaemon
+from collectors_sdk import CollectorDaemon, expectations_models_for_source
 
 configuration = Configuration(config_hints={...})
 api = OpenAEV(
@@ -39,8 +39,8 @@ api = OpenAEV(
 
 
 def collect(collector: CollectorDaemon) -> None:
-    for expectation in collector.api.inject_expectation.expectations_models_for_source(
-        source_id=collector.get_id()
+    for expectation in expectations_models_for_source(
+        collector.api.inject_expectation, source_id=collector.get_id()
     ):
         ...  # expectation.match_alert(...), then expectation.update(...)
 

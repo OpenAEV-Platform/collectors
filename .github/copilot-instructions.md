@@ -50,7 +50,9 @@ shims. The released `pyoaev` versions the collectors pin today do **not** ship t
 - **Migrating** (only when requested, and once the check passes): replace each legacy
   import with the one its `DeprecationWarning` names, from the package root
   (`from collectors_sdk import CollectorDaemon`, never `public`, `seam` or `_core`), and pass the client yourself:
-  `CollectorDaemon(..., api_client=OpenAEV(...))`. See the [migration guide](https://github.com/OpenAEV-Platform/client-python/blob/main/libs/xtm-oaev-sdk/docs/migration_guide.md).
+  `CollectorDaemon(..., api_client=OpenAEV(...))`. Build the expectation models with
+  `expectations_models_for_source(api.inject_expectation, source_id=...)` instead of the
+  deprecated `api.inject_expectation.expectations_models_for_source(...)`. See the [migration guide](https://github.com/OpenAEV-Platform/client-python/blob/main/libs/xtm-oaev-sdk/docs/migration_guide.md).
 - **Working in `libs/collectors-sdk/`:** follow `libs/collectors-sdk/CONTRIBUTING.md`. Run its linters from
   the repository root and its tests from `libs/collectors-sdk/`; CI does not run them.
 

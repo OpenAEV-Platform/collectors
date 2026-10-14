@@ -5,9 +5,17 @@ Each adapter speaks the expectations seam types and delegates to the core
 implementation of its ports.
 """
 
-from collectors_sdk._core.expectations import ExpectationMatcher, ExpectationUpdates
+from typing import Any
+
+from collectors_sdk._core.expectations import (
+    ExpectationLoader,
+    ExpectationMatcher,
+    ExpectationUpdates,
+)
 from collectors_sdk.seam.expectations import (
+    ExpectationApiProtocol,
     ExpectationData,
+    ExpectationLoadingPort,
     ExpectationMatchingPort,
     ExpectationSignature,
     ExpectationTypeEnum,
@@ -18,13 +26,16 @@ from xtm_oaev_sdk import SignatureType
 __all__ = [
     "DetectionExpectation",
     "Expectation",
+    "ExpectationApiProtocol",
     "ExpectationSignature",
     "ExpectationTypeEnum",
     "PreventionExpectation",
+    "expectations_models_for_source",
 ]
 
 _matching: ExpectationMatchingPort = ExpectationMatcher()
 _updates: ExpectationUpdatePort = ExpectationUpdates()
+_loading: ExpectationLoadingPort = ExpectationLoader()
 
 
 class Expectation(ExpectationData):
@@ -126,3 +137,25 @@ class PreventionExpectation(Expectation):
 
     success_label: str = "Prevented"
     failure_label: str = "Not Prevented"
+
+
+def expectations_models_for_source(
+    api: ExpectationApiProtocol, source_id: str, **kwargs: Any
+) -> list[Expectation]:
+    """Returns all expectations from OpenAEV that have had no result yet
+        from the source_id (e.g. collector).
+
+    :param api: the inject expectation API of the OpenAEV client
+        (``api.inject_expectation`` in pyoaev)
+    :type api: ExpectationApiProtocol
+    :param source_id: the identifier of the collector requesting expectations
+    :type source_id: str
+    :param kwargs: additional data to pass to the endpoint
+    :type kwargs: dict, optional
+
+    :return: a list of expectation objects
+    :rtype: list[DetectionExpectation|PreventionExpectation]
+    """
+    return _loading.models_for_source(
+        api, source_id, DetectionExpectation, PreventionExpectation, **kwargs
+    )
