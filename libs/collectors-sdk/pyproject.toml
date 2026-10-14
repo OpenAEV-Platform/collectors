@@ -15,6 +15,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules"
 ]
 dependencies = [
+    "pydantic (>=2.13.3,<2.14.0)",
     "thefuzz (>=0.22,<0.23)",
     "xtm-oaev-sdk (>=0.1.0,<0.2.0)",
 ]

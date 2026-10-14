@@ -29,6 +29,7 @@ CollectorDaemon(
 | `CollectorDaemon` | `pyoaev.daemons.CollectorDaemon` |
 | `DEFAULT_PERIOD_SECONDS`, `DEFAULT_PLATFORM_TAG_COLOR` | `pyoaev.daemons.collector_daemon` |
 | `OpenAEVDetectionHelper` | `pyoaev.helpers.OpenAEVDetectionHelper` |
+| `Expectation`, `ExpectationSignature`, `DetectionExpectation`, `PreventionExpectation`, `ExpectationTypeEnum` | `pyoaev.apis.inject_expectation.model` |
 
 ## Development
 

@@ -5,6 +5,7 @@ Built on the shared ``xtm-oaev-sdk``; never depends on the pyoaev client.
 Architecture:
     _core/daemons/     Collector daemon implementation
     _core/detection/   Alert-element detection implementation
+    _core/expectations/ Inject expectation models
     seam/              Stable boundary between public/ and _core/
     public/            User-facing re-exports
 
