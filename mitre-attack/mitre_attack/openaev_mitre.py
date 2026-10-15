@@ -1,11 +1,18 @@
+import time
+
 import requests
 from mitre_attack.configuration.config_loader import ConfigLoader
 from pyoaev.configuration import Configuration
 from pyoaev.daemons import CollectorDaemon
+from pyoaev.exceptions import OpenAEVUpdateError
 
 ENTERPRISE_ATTACK_URI = (
     "https://github.com/mitre/cti/raw/master/enterprise-attack/enterprise-attack.json"
 )
+# The platform answers 409 while another attack pattern upsert runs for the tenant
+CONFLICT_MAX_ATTEMPTS = 5
+# Doubled after each attempt: 10, 20, 40 then 80 seconds
+CONFLICT_RETRY_BASE_DELAY_SECONDS = 10
 
 
 class OpenAEVMitre(CollectorDaemon):
@@ -89,8 +96,28 @@ class OpenAEVMitre(CollectorDaemon):
                 "attack_pattern_parent": attack_pattern_parent,
             }
             attack_patterns.append(attack_pattern)
-        # print(attack_patterns)
-        self.api.attack_pattern.upsert(attack_patterns)
+        # Parents first: the platform resolves a sub-technique's parent by STIX id
+        # and each batch is a separate transaction
+        attack_patterns.sort(key=lambda ap: ap["attack_pattern_parent"] is not None)
+        batch_size = self._configuration.get("collector_batch_size")
+        if not batch_size:  # 0 sends every attack pattern in one call
+            batch_size = max(len(attack_patterns), 1)
+        for start in range(0, len(attack_patterns), batch_size):
+            self._upsert_attack_patterns(attack_patterns[start : start + batch_size])
+
+    def _upsert_attack_patterns(self, attack_patterns):
+        for attempt in range(1, CONFLICT_MAX_ATTEMPTS + 1):
+            try:
+                return self.api.attack_pattern.upsert(attack_patterns)
+            except OpenAEVUpdateError as err:
+                if err.response_code != 409 or attempt == CONFLICT_MAX_ATTEMPTS:
+                    raise
+                delay = CONFLICT_RETRY_BASE_DELAY_SECONDS * 2 ** (attempt - 1)
+                self.logger.warning(
+                    f"Another attack pattern import is running, retrying in "
+                    f"{delay} seconds (attempt {attempt}/{CONFLICT_MAX_ATTEMPTS})"
+                )
+                time.sleep(delay)
 
     def _process_message(self) -> None:
         response = self.session.get(url=ENTERPRISE_ATTACK_URI)
