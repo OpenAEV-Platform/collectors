@@ -40,6 +40,11 @@ them before every change.
   collectors-sdk depends on `xtm-oaev-sdk (>=0.1.0,<0.2.0)`.
 - Seam changes bump the capability's `SEAM_VERSION` (`daemons`, `detection`,
   `expectations`) and land in [CHANGELOG.md](CHANGELOG.md).
+  Regenerate the seam golden in the same change, from `libs/collectors-sdk`:
+  `python test/seam/generate_seam_golden.py`. Until then, `test/seam/test_seam_golden.py`
+  fails on every seam object added, removed or changed. Same golden as xtm-oaev-sdk:
+  [its guide](https://github.com/OpenAEV-Platform/client-python/blob/main/libs/xtm-oaev-sdk/CONTRIBUTING.md#seam-golden-testseam)
+  covers what a fingerprint sees and how to read a failure.
 - Commits carry the `collectors-sdk` scope:
   `:recycle: refactor(collectors-sdk): enhancing port-adapter public boundaries`.
 - The decisions that belong to this SDK alone are in [docs/tdr/TDR_ToC.md](docs/tdr/TDR_ToC.md).

@@ -24,6 +24,10 @@ repository, and `pyoaev` serves its names to legacy connectors through deprecati
    matching methods to the core as callables, and `CollectorDaemon` stays a subclass of
    `xtm_oaev_sdk.BaseDaemon` customised only through its hooks.
 6. A seam change bumps that capability's `SEAM_VERSION` and gets an entry in `CHANGELOG.md`.
+   Then regenerate the seam golden in the same change:
+   `(cd libs/collectors-sdk && python test/seam/generate_seam_golden.py)`. NEVER
+   regenerate it to make a failing `test/seam/test_seam_golden.py` pass without a
+   deliberate seam change.
 
 ## Scope
 
@@ -36,6 +40,7 @@ xtm-oaev-sdk belongs to `client-python`: stop and say so instead of working arou
 - changing a seam contract or a `SEAM_VERSION`;
 - renaming or removing any public name;
 - adding or changing a dependency in `pyproject.toml`;
+- editing the seam golden `test/seam/fixtures/seam_golden.json`;
 - deleting any file.
 
 ## Done when
