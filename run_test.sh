@@ -16,9 +16,6 @@ RELEASE_REF="${RELEASE_REF:-main}"
 BRANCH="${CIRCLE_BRANCH:-${GITHUB_REF_NAME:-$RELEASE_REF}}"
 REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
 
-# Use pyoaev main by default
-PYOAEV_BRANCH="main"
-
 # Discover collectors with test directories
 discover_collectors() {
   find "$REPO_ROOT" \
@@ -74,12 +71,8 @@ run_collector_tests() {
   echo "→ poetry install --with test"
   poetry install --with test
 
-  # Force-reinstall pyoaev from git (correct branch)
-  echo "→ Installing pyoaev from branch $PYOAEV_BRANCH"
-  poetry run pip install --force-reinstall -q \
-    "git+https://github.com/OpenAEV-Platform/client-python.git@$PYOAEV_BRANCH"
-
   # Install coverage tooling
+  echo "→ pip install coverage"
   poetry run pip install -q coverage
 
   # Detect test directory
