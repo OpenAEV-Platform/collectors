@@ -1,6 +1,7 @@
 config.yml
 .env
 src/.env
+tests_integration/integration_test.env
 *.key
 *.pem
 *.p12
