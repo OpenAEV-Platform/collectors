@@ -38,7 +38,7 @@ synchronization on every run: players and teams are upserted (created or updated
 - A Google Workspace tenant and an administrator account for domain-wide delegation
 - A Google Cloud service account (JSON key) with domain-wide delegation authorized for the read-only Directory scopes,
   and the Admin SDK API enabled
-- For a manual (non-Docker) deployment: Python >= 3.11 and [Poetry](https://python-poetry.org/) >= 2.1
+- For a manual (non-Docker) deployment: Python >= 3.14 and [Poetry](https://python-poetry.org/) >= 2.1
 
 ## Configuration variables
 

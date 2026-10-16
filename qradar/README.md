@@ -37,7 +37,7 @@ detection source, so this collector validates DETECTION expectations only; PREVE
 - OpenAEV Platform >= 1.19.0
 - An IBM QRadar console with the REST API enabled
 - A QRadar authorized service token (preferred) or a username/password pair allowed to create and read Ariel searches
-- For a manual (non-Docker) deployment: Python >= 3.11 and [Poetry](https://python-poetry.org/) >= 2.1
+- For a manual (non-Docker) deployment: Python >= 3.14 and [Poetry](https://python-poetry.org/) >= 2.1
 
 ## Configuration variables
 

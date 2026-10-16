@@ -38,7 +38,7 @@ the originating Falcon alert.
 - OpenAEV Platform >= 1.19.0
 - A CrowdStrike Falcon subscription (the data available to the collector depends on your subscription tier)
 - A CrowdStrike Falcon API client with the `Alerts: Read` scope (Client ID and Client Secret)
-- For a manual (non-Docker) deployment: Python >= 3.11 and [Poetry](https://python-poetry.org/) >= 2.1
+- For a manual (non-Docker) deployment: Python >= 3.14 and [Poetry](https://python-poetry.org/) >= 2.1
 
 ## Configuration variables
 

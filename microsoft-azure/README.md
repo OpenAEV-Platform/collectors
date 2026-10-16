@@ -41,7 +41,7 @@ synchronization on every run: VMs are upserted (created or updated) so existing 
 - A Microsoft Entra ID application registration granted the `Reader` role on the target subscription, holding either:
   - a client secret (default), or
   - a client certificate uploaded to the application registration, when using certificate authentication
-- For a manual (non-Docker) deployment: Python >= 3.11 and [Poetry](https://python-poetry.org/) >= 2.1
+- For a manual (non-Docker) deployment: Python >= 3.14 and [Poetry](https://python-poetry.org/) >= 2.1
 
 ## Configuration variables
 
