@@ -1,7 +1,24 @@
 from datetime import timedelta
+from enum import StrEnum
 
-from pydantic import Field
+from pydantic import Field, field_validator, model_validator
 from pyoaev.configuration import ConfigLoaderCollector
+
+
+class AWSAuthType(StrEnum):
+    """The AWS authentication modes supported by the collector.
+
+    - ``CREDENTIAL_PROVIDER_CHAIN``: delegates credential resolution entirely
+      to boto3 (environment, shared config, EC2/ECS instance role, ...).
+    - ``CREDENTIALS``: explicit static credentials (access key + secret key,
+      with an optional session token).
+    - ``ROLES_ANYWHERE``: derive temporary credentials from an X.509 client
+      certificate through IAM Roles Anywhere.
+    """
+
+    CREDENTIAL_PROVIDER_CHAIN = "credential_provider_chain"
+    CREDENTIALS = "credentials"
+    ROLES_ANYWHERE = "roles_anywhere"
 
 
 class CollectorConfigOverride(ConfigLoaderCollector):
@@ -21,18 +38,134 @@ class CollectorConfigOverride(ConfigLoaderCollector):
         default="aws_resources/img/icon-aws-resources.png",
         description="Path to the icon file",
     )
-    aws_access_key_id: str = Field(
+    aws_auth_type: AWSAuthType = Field(
+        default=AWSAuthType.CREDENTIAL_PROVIDER_CHAIN,
+        description=(
+            "Authentication mode: 'credential_provider_chain' to let boto3 resolve "
+            "credentials on its own (environment, shared config, instance role, "
+            "...), 'credentials' for explicit static access key/secret, or "
+            "'roles_anywhere' to derive temporary credentials from an X.509 client "
+            "certificate through IAM Roles Anywhere. When left empty, it is "
+            "'credentials' if both aws_access_key_id and aws_secret_access_key "
+            "are set, 'credential_provider_chain' otherwise"
+        ),
+    )
+    aws_access_key_id: str | None = Field(
+        default=None,
         description="AWS Access Key ID",
     )
-    aws_secret_access_key: str = Field(
+    aws_secret_access_key: str | None = Field(
+        default=None,
         description="AWS Secret Access Key",
     )
-    aws_session_token: str = Field(
+    aws_session_token: str | None = Field(
+        default=None,
         description="AWS Session Token (for temporary credentials)",
     )
-    aws_assume_role_arn: str = Field(
+    aws_assume_role_arn: str | None = Field(
+        default=None,
         description="ARN of IAM role to assume",
     )
-    aws_regions: str = Field(
+    aws_regions: str | None = Field(
+        default=None,
         description="Comma-separated list of AWS regions",
     )
+    aws_roles_anywhere_trust_anchor_arn: str | None = Field(
+        default=None,
+        description="IAM Roles Anywhere trust anchor ARN (required for 'roles_anywhere')",
+    )
+    aws_roles_anywhere_profile_arn: str | None = Field(
+        default=None,
+        description="IAM Roles Anywhere profile ARN (required for 'roles_anywhere')",
+    )
+    aws_roles_anywhere_role_arn: str | None = Field(
+        default=None,
+        description="ARN of the IAM role to assume through IAM Roles Anywhere "
+        "(required for 'roles_anywhere')",
+    )
+    aws_roles_anywhere_certificate: str | None = Field(
+        default=None,
+        description="PEM-encoded X.509 client certificate (required for 'roles_anywhere')",
+    )
+    aws_roles_anywhere_private_key: str | None = Field(
+        default=None,
+        description="PEM-encoded private key matching the client certificate "
+        "(required for 'roles_anywhere')",
+    )
+    aws_roles_anywhere_certificate_chain: str | None = Field(
+        default=None,
+        description="Optional PEM-encoded intermediate certificate chain",
+    )
+    aws_roles_anywhere_private_key_passphrase: str | None = Field(
+        default=None,
+        description="Optional passphrase protecting the private key",
+    )
+    aws_roles_anywhere_region: str | None = Field(
+        default=None,
+        description="AWS region of the IAM Roles Anywhere endpoint. Derived from the "
+        "trust anchor ARN when left empty",
+    )
+    aws_roles_anywhere_session_duration: int = Field(
+        default=3600,
+        ge=900,
+        le=43200,
+        description="Lifetime in seconds of the temporary credentials (900 to 43200)",
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _infer_auth_type(cls, data: object) -> object:
+        """Keep configurations predating aws_auth_type working unchanged.
+
+        Without an explicit mode, use the static keys when both are set and fall
+        back to boto3's default credential chain otherwise, as the collector
+        always did.
+        """
+        if not isinstance(data, dict) or str(data.get("aws_auth_type") or "").strip():
+            return data
+        has_static_keys = all(
+            str(data.get(name) or "").strip()
+            for name in ("aws_access_key_id", "aws_secret_access_key")
+        )
+        return {
+            **data,
+            "aws_auth_type": (
+                AWSAuthType.CREDENTIALS
+                if has_static_keys
+                else AWSAuthType.CREDENTIAL_PROVIDER_CHAIN
+            ),
+        }
+
+    @field_validator("aws_auth_type", mode="before")
+    @classmethod
+    def _normalize_auth_type(cls, value: object) -> object:
+        """Normalize the aws auth type to lowercase"""
+        if isinstance(value, str):
+            return value.strip().lower()
+        return value
+
+    @model_validator(mode="after")
+    def _validate_auth_type(self) -> "CollectorConfigOverride":
+        """Ensure the settings required by the selected auth mode are present."""
+        required_by_auth_type = {
+            AWSAuthType.CREDENTIALS: (
+                "aws_access_key_id",
+                "aws_secret_access_key",
+            ),
+            AWSAuthType.ROLES_ANYWHERE: (
+                "aws_roles_anywhere_trust_anchor_arn",
+                "aws_roles_anywhere_profile_arn",
+                "aws_roles_anywhere_role_arn",
+                "aws_roles_anywhere_certificate",
+                "aws_roles_anywhere_private_key",
+            ),
+        }
+        required = required_by_auth_type.get(self.aws_auth_type, ())
+        missing = [name for name in required if not (getattr(self, name) or "").strip()]
+        if missing:
+            raise ValueError(
+                "the following settings are required when aws_auth_type is "
+                f"'{self.aws_auth_type}': {', '.join(missing)}"
+            )
+
+        return self
