@@ -38,7 +38,7 @@ supported.
 - OpenAEV Platform >= 1.19.0
 - A LogRhythm deployment with the Search API (`lr-search-api`) reachable through the API gateway (default port 8501)
 - A LogRhythm API bearer token (preferred) or a username/password pair allowed to run searches via the Search API
-- For a manual (non-Docker) deployment: Python >= 3.11 and [Poetry](https://python-poetry.org/) >= 2.1
+- For a manual (non-Docker) deployment: Python >= 3.14 and [Poetry](https://python-poetry.org/) >= 2.1
 
 ## Configuration variables
 

@@ -39,7 +39,7 @@ synchronization on every run: instances are upserted (created or updated) so exi
   role to assume)
 - IAM permissions allowing `ec2:DescribeInstances` and `ec2:DescribeRegions` (plus `sts:AssumeRole` when using
   AssumeRole)
-- For a manual (non-Docker) deployment: Python >= 3.11 and [Poetry](https://python-poetry.org/) >= 2.1
+- For a manual (non-Docker) deployment: Python >= 3.14 and [Poetry](https://python-poetry.org/) >= 2.1
 
 ## Configuration variables
 
