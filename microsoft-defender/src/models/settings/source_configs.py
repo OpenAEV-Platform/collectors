@@ -77,7 +77,7 @@ class _ConfigLoaderSource(ConfigBaseSettings):
     )
     retry_window: timedelta = Field(
         default=timedelta(minutes=10),
-        description="How long after the first attempt an unresolved expectation is re-attempted on every collector cycle, before one final attempt emits the verdict (ISO 8601 format)",
+        description="How long after the recorded end date an unresolved expectation is re-attempted on every collector cycle, before one final attempt emits the verdict (ISO 8601 format)",
     )
 
     @field_validator("client_cert_data", mode="before")

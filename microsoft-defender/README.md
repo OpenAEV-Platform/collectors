@@ -80,7 +80,7 @@ The collector is configured either through environment variables (recommended, r
 | Filter service source | `source.filter_service_source` | `SOURCE_FILTER_SERVICE_SOURCE` | microsoftDefenderForEndpoint | No | Value used to filter Microsoft Graph security alerts down to Defender for Endpoint alerts
 | Rate limit requests per minute | `source.rate_limit_requests_per_minute` | `SOURCE_RATE_LIMIT_REQUESTS_PER_MINUTE` | 150 | No | Maximum number of Microsoft Graph API requests issued per minute (must be >= 1)
 | Max fetch retries | `source.max_fetch_retries` | `SOURCE_MAX_FETCH_RETRIES` | 5 | No | Maximum number of retries when fetching data from Microsoft Graph fails transiently
-| Retry window | `source.retry_window` | `SOURCE_RETRY_WINDOW` | PT10M | No | Time after the first attempt before invalidating an expectation (ISO 8601 format)
+| Retry window | `source.retry_window` | `SOURCE_RETRY_WINDOW` | PT10M | No | Time after the recorded end date before invalidating an expectation (ISO 8601 format)
 
 ## Deployment
 
