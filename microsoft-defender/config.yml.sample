@@ -22,3 +22,4 @@ source:
 #  filter_service_source: "microsoftDefenderForEndpoint"  # value used to filter Microsoft Graph security alerts
 #  rate_limit_requests_per_minute: 150  # maximum number of Microsoft Graph API requests issued per minute (must be >= 1)
 #  max_fetch_retries: 5  # maximum number of retries when fetching data from Microsoft Graph fails transiently
+#  retry_window: "PT10M"  # time after the first attempt before invalidating an expectation (ISO 8601 format)
