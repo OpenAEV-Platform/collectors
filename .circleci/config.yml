@@ -211,6 +211,7 @@ commands:
       - run:
           name: Install Poetry
           command: |
+            pip install -U pip certifi
             pip install poetry==2.3.2
             poetry config installer.re-resolve false
 
@@ -521,6 +522,9 @@ jobs:
     executor: python_check
     steps:
       - checkout
+      - run:
+          name: update pip
+          command: pip install -U pip certifi
       - run:
           name: install dependencies
           command: pip install black isort --user
