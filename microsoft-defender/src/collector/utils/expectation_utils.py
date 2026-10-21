@@ -6,38 +6,63 @@ from pyoaev.apis.inject_expectation.model.expectation import (  # type: ignore[i
 from pyoaev.signatures.types import SignatureTypes
 
 
-def extract_end_date(expectation: Expectation) -> datetime | None:
+def extract_date(
+    expectation: Expectation, signature_type: SignatureTypes
+) -> datetime | None:
     """
     Try to extract and format the end date from the expectation
     """
-    end_date = None
+    date = None
     for sig in expectation.inject_expectation_signatures or []:
-        if sig.type != SignatureTypes.SIG_TYPE_END_DATE:
+        if sig.type != signature_type:
             continue
 
         try:
-            end_date = datetime.fromisoformat(sig.value)
+            date = datetime.fromisoformat(sig.value)
 
-            if end_date.tzinfo:
+            if date.tzinfo:
                 # if there is a timezone, we convert it to UTC
-                end_date = end_date.astimezone(UTC)
+                date = date.astimezone(UTC)
             else:
                 # we consider, if the END_DATE is naive, that is was produced as UTC
-                end_date = end_date.replace(tzinfo=UTC)
+                date = date.replace(tzinfo=UTC)
         except ValueError, TypeError:
             continue
 
+    return date
+
+
+def extract_end_date(expectation: Expectation) -> datetime | None:
+    end_date = extract_date(expectation, SignatureTypes.SIG_TYPE_END_DATE)
     return end_date
+
+
+def extract_start_date(expectation: Expectation) -> datetime | None:
+    start_date = extract_date(expectation, SignatureTypes.SIG_TYPE_START_DATE)
+    return start_date
 
 
 def time_window_over(expectation: Expectation, time_window: timedelta) -> bool:
     """
-    Check whether the expectation's time window is over
+    Check whether the expectation's time window is over.
+    Try with the end date first,
+    if unavailable use the start date but readjust
+    the time window with a factor of 1.5.
+    If also unavailable, just call it a day, because something is wrong here.
     """
+    factor = 1.0
+    date = extract_end_date(expectation)
 
-    end_date = extract_end_date(expectation)
-    if not end_date:
+    if not date:
+        # looking for the start date and readjusting the factor
+        factor = 1.5
+        date = extract_start_date(expectation)
+
+    if not date:
+        # if there is neither start_date nor end_date, drop it
         return True
 
     now = datetime.now(UTC)
-    return now > end_date + time_window
+    time_window = factor * time_window
+
+    return now > date + time_window
