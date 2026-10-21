@@ -78,6 +78,9 @@ jobs:
         with:
           python-version: "3.14"
 
+      - name: update pip
+        run: pip install -U pip certifi
+
       - name: Install Poetry
         run: pip install poetry==2.3.2
 

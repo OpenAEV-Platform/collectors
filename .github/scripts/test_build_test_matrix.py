@@ -14,6 +14,7 @@ ALPINE = """\
 # Common base stage for shared environment configuration.
 FROM python:3.14-alpine AS base
 FROM base AS builder
+RUN pip install -U pip certifi
 RUN pip install --no-cache-dir "poetry==2.3.2"
 FROM base AS runner
 """
@@ -26,6 +27,7 @@ RUN set -eux; \\
 FROM base AS builder
 RUN set -eux; \\
     microdnf -y --setopt=install_weak_deps=0 install python3.14-pip; \\
+    pip3.14 install -U pip certifi; \\
     pip3.14 install poetry==2.3.2;
 """
 
