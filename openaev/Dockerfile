@@ -1,14 +1,15 @@
 # Common base stage for shared environment configuration.
 FROM python:3.14-alpine AS base
 
-RUN apk --no-cache upgrade
-
 # Python runtime and Poetry build configuration.
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PATH="/collector/.venv/bin:$PATH"
 
 WORKDIR /collector
+
+RUN apk --no-cache upgrade
+RUN pip install -U pip certifi
 
 # Builder stage for installing dependencies and creating the application environment.
 FROM base AS builder
