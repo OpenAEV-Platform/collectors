@@ -1,6 +1,7 @@
 FROM registry.access.redhat.com/ubi9/ubi-minimal AS base
 
 RUN set -eux; \
+    microdnf -y upgrade --refresh; \
     microdnf -y --setopt=install_weak_deps=0 install python3.14; \
     microdnf clean all;
 
