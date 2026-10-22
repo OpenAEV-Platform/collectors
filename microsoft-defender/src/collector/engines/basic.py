@@ -275,7 +275,7 @@ class BasicCollectorEngine:
                 batch_results.append(result)
 
         self.logger.info(
-            f"{LOG_PREFIX} Batch processed: {len(batch_results)} results (including {error_count} errors, excluding {len(batch)} postponed expectations))"
+            f"{LOG_PREFIX} Batch processed: {len(batch_results)} results (including {error_count} errors, excluding {len(batch)-len(batch_results)} postponed expectations))"
         )
 
         return batch_results
