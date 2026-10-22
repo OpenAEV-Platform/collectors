@@ -13,10 +13,18 @@ collector:
 
 elastic:
   base_url: "https://elastic.company.com:9200"
-  # Authentication: provide an API key (preferred) OR a username/password pair.
+  # Authentication: provide an API key (preferred) OR a username/password pair
+  # OR (self-managed / ECK only) a client certificate and key for the PKI realm.
+  # Optionally pin the method (API_KEY, USER_PASSWORD or PKI); the settings of
+  # the other methods must then be left unset. Unset = inferred.
+  # authentication_type: "USER_PASSWORD"
   # api_key: "ChangeMe"
   username: "ChangeMe"
   password: "ChangeMe"
+  # PKI: certificate and unencrypted key as BASE64-ENCODED PEM files (not
+  # paths, not raw PEM), e.g. `base64 -w0 client.crt` / `base64 -w0 client.key`.
+  # client_cert: "ChangeMe"
+  # client_key: "ChangeMe"
   alerts_index: ".alerts-security.alerts-*"
   # Optional editable Lucene query_string (unset = built-in default).
   # Placeholders: {source_ips} {target_ips} {implant_urls} {implant_names}

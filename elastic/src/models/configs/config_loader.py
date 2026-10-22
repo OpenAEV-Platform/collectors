@@ -162,6 +162,9 @@ class ConfigLoader(ConfigBaseSettings):
                 "collector_icon_filepath": {"data": self.collector.icon_filepath},
                 # Elastic configuration (flattened)
                 "elastic_base_url": {"data": str(self.elastic.base_url)},
+                "elastic_authentication_type": {
+                    "data": self.elastic.authentication_type
+                },
                 "elastic_api_key": {
                     "data": (
                         self.elastic.api_key.get_secret_value()
@@ -186,6 +189,14 @@ class ConfigLoader(ConfigBaseSettings):
                 "elastic_offset": {"data": self.elastic.offset},
                 "elastic_verify_ssl": {"data": self.elastic.verify_ssl},
                 "elastic_ca_cert": {"data": self.elastic.ca_cert},
+                "elastic_client_cert": {"data": self.elastic.client_cert},
+                "elastic_client_key": {
+                    "data": (
+                        self.elastic.client_key.get_secret_value()
+                        if self.elastic.client_key
+                        else None
+                    )
+                },
             },
             config_base_model=self,
         )
