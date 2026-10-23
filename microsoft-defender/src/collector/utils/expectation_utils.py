@@ -12,7 +12,7 @@ def extract_date(
     """
     Try to extract and format the end date from the expectation
     """
-    date = None
+    date: datetime | None = None
     for sig in expectation.inject_expectation_signatures or []:
         if sig.type != signature_type:
             continue
@@ -33,12 +33,16 @@ def extract_date(
 
 
 def extract_end_date(expectation: Expectation) -> datetime | None:
-    end_date = extract_date(expectation, SignatureTypes.SIG_TYPE_END_DATE)
+    end_date: datetime | None = extract_date(
+        expectation, SignatureTypes.SIG_TYPE_END_DATE
+    )
     return end_date
 
 
 def extract_start_date(expectation: Expectation) -> datetime | None:
-    start_date = extract_date(expectation, SignatureTypes.SIG_TYPE_START_DATE)
+    start_date: datetime | None = extract_date(
+        expectation, SignatureTypes.SIG_TYPE_START_DATE
+    )
     return start_date
 
 
@@ -51,12 +55,12 @@ def time_window_over(expectation: Expectation, time_window: timedelta) -> bool:
     If also unavailable, just call it a day, because something is wrong here.
     """
     factor = 1.0
-    date = extract_end_date(expectation)
+    date: datetime | None = extract_end_date(expectation)
 
     if not date:
         # looking for the start date and readjusting the factor
         factor = 1.5
-        date = extract_start_date(expectation)
+        date: datetime | None = extract_start_date(expectation)
 
     if not date:
         # if there is neither start_date nor end_date, drop it
