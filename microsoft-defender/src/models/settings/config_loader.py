@@ -166,6 +166,7 @@ class ConfigLoader(ConfigBaseSettings):
                     "data": self.source.rate_limit_requests_per_minute
                 },
                 "source_max_fetch_retries": {"data": self.source.max_fetch_retries},
+                "source_retry_window": {"data": self.source.retry_window},
             },
             config_base_model=self,
         )
