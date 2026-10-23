@@ -74,8 +74,10 @@ jobs:
           image: localpytest-${{ matrix.collector }}:latest
           options: -v ${{ github.workspace }}:/tmp/github_workspace/ -e POETRY_VIRTUALENVS_CREATE=false -e POETRY_INSTALLER_RE_RESOLVE=false -e POETRY_CACHE_DIR=/tmp/poetry-cache -e POETRY_CONFIG_DIR=/tmp/poetry-config
           run: |
+            set -e
             source /collector/.venv/bin/activate
-            cd /tmp/github_workspace/${{ matrix.collector }}
+            cp -R /tmp/github_workspace /tmp/collector-tests
+            cd /tmp/collector-tests/${{ matrix.collector }}
             echo "> install and configure poetry"
             python -m pip install poetry
             echo "> install dev and test dependencies"
