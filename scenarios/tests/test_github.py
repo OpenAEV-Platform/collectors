@@ -3,7 +3,7 @@
 import pytest
 
 from scenarios.github import GitHubSource, SourceError
-from tests.fake_github import FakeGitHub, fake_github
+from tests.fake_github import Answer, FakeGitHub, fake_github
 
 REPOSITORY = "OpenAEV-Platform/scenarios"
 TOKEN = "github-token-for-tests"
@@ -114,8 +114,11 @@ def test_a_download_over_its_limit_is_refused() -> None:
 
 def test_too_many_redirects_are_refused() -> None:
     with fake_github() as fake:
+        hops = f"/repos/{REPOSITORY}/releases/assets/hop"
         for hop in range(7):
-            fake.redirect(f"/hop/{hop}", f"http://127.0.0.1:{fake.port}/hop/{hop + 1}")
+            fake.redirect(
+                f"{hops}{hop}", f"http://127.0.0.1:{fake.port}{hops}{hop + 1}"
+            )
         fake.json(
             RELEASE_PATH,
             {
@@ -123,7 +126,7 @@ def test_too_many_redirects_are_refused() -> None:
                     {
                         "name": "a.zip",
                         "size": 1,
-                        "url": f"http://127.0.0.1:{fake.port}/hop/0",
+                        "url": f"http://127.0.0.1:{fake.port}{hops}0",
                     }
                 ]
             },
@@ -156,3 +159,59 @@ def test_a_server_error_is_refused_without_the_token_in_its_message() -> None:
 def test_an_api_url_without_https_is_refused() -> None:
     with pytest.raises(SourceError, match="HTTPS"):
         GitHubSource("http://api.github.com", REPOSITORY, TOKEN)
+
+
+def test_an_asset_served_outside_the_release_s_assets_is_refused() -> None:
+    with fake_github() as fake:
+        fake.json(
+            RELEASE_PATH,
+            {
+                "assets": [
+                    {
+                        "name": "a.zip",
+                        "size": 1,
+                        "url": f"http://127.0.0.1:{fake.port}/x",
+                    }
+                ]
+            },
+        )
+        with pytest.raises(SourceError, match="served elsewhere"):
+            _source(fake).assets("2026.10.27.1")
+
+
+def test_a_release_answer_not_strict_json_is_refused() -> None:
+    with fake_github() as fake:
+        fake.raw(RELEASE_PATH, b'{"assets": [], "assets": []}')
+        with pytest.raises(SourceError, match="a key twice"):
+            _source(fake).assets("2026.10.27.1")
+
+
+def test_a_redirect_without_its_location_is_refused() -> None:
+    with fake_github() as fake:
+        fake.answers[POINTER_PATH] = Answer(302)
+        with pytest.raises(SourceError, match="redirects nowhere"):
+            _source(fake).pointer("edge")
+
+
+class _Redirected:
+    status_code = 302
+    headers = {"Location": "http://storage.example/x"}
+
+    def __enter__(self) -> "_Redirected":
+        return self
+
+    def __exit__(self, *_: object) -> None:
+        return None
+
+
+class _Redirecting:
+    def get(self, url: str, **_: object) -> _Redirected:
+        return _Redirected()
+
+
+def test_a_redirect_hop_off_https_is_refused_when_https_is_required() -> None:
+    source = GitHubSource(
+        "https://api.example", REPOSITORY, TOKEN, session=_Redirecting()  # type: ignore[arg-type]
+    )
+    with pytest.raises(SourceError, match="storage.example/x is not served over HTTPS"):
+        source.pointer("edge")

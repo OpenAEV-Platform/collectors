@@ -202,3 +202,27 @@ def test_the_dry_run_sink_says_what_it_would_send(
     assert f"release {RELEASE}" in said
     assert "1 scenario(s), 1 payload version(s)" in said
     assert "0b5c1a6e-4f0e-4b8e-9d2a-1c3e5f7a9b0d 1.0.0" in said
+
+
+def test_a_release_without_its_manifest_sends_nothing() -> None:
+    with fake_github() as fake:
+        _publish(fake, _files())
+        assets_path = f"/repos/{REPOSITORY}/releases/tags/{RELEASE}"
+        listed = json.loads(fake.answers[assets_path].body)
+        listed["assets"] = [a for a in listed["assets"] if a["name"] != "manifest.json"]
+        fake.json(assets_path, listed)
+        sink = Sink()
+        _collect(fake, sink).run()
+        assert sink.received == []
+
+
+def test_a_file_longer_than_listed_is_refused_as_it_is_read() -> None:
+    with fake_github() as fake:
+        _publish(fake, _files())
+        assets_path = f"/repos/{REPOSITORY}/releases/tags/{RELEASE}"
+        for asset in json.loads(fake.answers[assets_path].body)["assets"]:
+            if asset["name"] == ARCHIVE:
+                fake.raw(asset["url"].split(str(fake.port), 1)[1], ARCHIVE_BYTES + b"!")
+        sink = Sink()
+        _collect(fake, sink).run()
+        assert sink.received == []

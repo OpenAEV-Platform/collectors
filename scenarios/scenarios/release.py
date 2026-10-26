@@ -68,6 +68,8 @@ PAYLOAD_FILE_LIMIT = 256 * 1024
 MANIFEST_NAME = "manifest.json"
 _LOGIN = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
 _FILE_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
+_UUID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
+_SEMVER = re.compile(r"(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})")
 
 
 @dataclass(frozen=True)
@@ -97,7 +99,6 @@ def _listed_file(facts: Any, limit: int, where: str) -> ListedFile:
     if (
         not isinstance(name, str)
         or not _FILE_NAME.fullmatch(name)
-        or ".." in name
         or name == MANIFEST_NAME
     ):
         raise ValueError(f"{where} must name a plain file name, not {name!r}")
@@ -108,6 +109,14 @@ def _listed_file(facts: Any, limit: int, where: str) -> ListedFile:
     if not isinstance(sha256, str) or not _SHA256.fullmatch(sha256):
         raise ValueError(f"{where} needs a sha256 of 64 lower-case hex digits")
     return ListedFile(name, size, sha256, limit)
+
+
+def check_manifest_hash(manifest: bytes, pointer: Pointer) -> None:
+    """Refuse ``manifest`` unless it is the one ``pointer`` names, before it is read at all."""
+    if hashlib.sha256(manifest).hexdigest() != pointer.manifest_sha256:
+        raise ValueError(
+            "the manifest is not the one the pointer names: another SHA-256"
+        )
 
 
 def listed_release(
@@ -144,18 +153,26 @@ def listed_release(
         raise ValueError("the manifest lists no scenario")
     if not isinstance(payloads, list):
         raise ValueError("the manifest's payloads must be a list")
-    scenarios, files = [], []
+    scenarios: list[tuple[str, str]] = []
+    files: list[ListedFile] = []
     for index, item in enumerate(items):
         where = f"items[{index}]"
         if not isinstance(item, dict):
             raise ValueError(f"{where} must be an object")
         external_id, version = item.get("external_id"), item.get("version")
-        if not isinstance(external_id, str) or not isinstance(version, str):
-            raise ValueError(f"{where} needs its external_id and version")
+        if not isinstance(external_id, str) or not _UUID.fullmatch(external_id):
+            raise ValueError(f"{where} needs an external_id, a UUID in lower case")
+        if not isinstance(version, str) or not _SEMVER.fullmatch(version):
+            raise ValueError(f"{where} needs a version, MAJOR.MINOR.PATCH")
+        if any(external_id == known for known, _ in scenarios):
+            raise ValueError(f"the manifest lists the scenario {external_id} twice")
         scenarios.append((external_id, version))
-        files.append(
-            _listed_file(item.get("archive"), ARCHIVE_LIMIT, f"{where}.archive")
-        )
+        archive = _listed_file(item.get("archive"), ARCHIVE_LIMIT, f"{where}.archive")
+        if archive.name != f"{external_id}-{version}.zip":
+            raise ValueError(
+                f"{where}.archive is named after another scenario or version"
+            )
+        files.append(archive)
     for index, entry in enumerate(payloads):
         where = f"payloads[{index}]"
         if not isinstance(entry, dict):

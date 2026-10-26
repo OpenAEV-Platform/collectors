@@ -100,7 +100,17 @@ def _payload(**file: Any) -> list[dict[str, Any]]:
         (_manifest(items="x"), "items"),
         (_manifest(items=[]), "no scenario"),
         (_manifest(payloads={}), "payloads"),
-        (_manifest(items=[{"external_id": "x", "version": "1.0.0"}]), "archive"),
+        (
+            _manifest(
+                items=[
+                    {
+                        "external_id": "0b5c1a6e-4f0e-4b8e-9d2a-1c3e5f7a9b0d",
+                        "version": "1.0.0",
+                    }
+                ]
+            ),
+            "archive",
+        ),
         (
             _manifest(items=[{**_manifest()["items"][0], "external_id": 1}]),
             "external_id",
@@ -116,6 +126,21 @@ def _payload(**file: Any) -> list[dict[str, Any]]:
         (_manifest(payloads=_payload(size=PAYLOAD_FILE_LIMIT + 1)), "over"),
         (_manifest(payloads=[{"payload": "x", "version": "1.0.0"}]), "file"),
         (_manifest(payloads=_payload(name=ARCHIVE)), "listed twice"),
+        (_manifest(release_approver="a" * 40), "never approved"),
+        (_manifest(items=[{**_manifest()["items"][0], "external_id": "X"}]), "UUID"),
+        (
+            _manifest(items=[{**_manifest()["items"][0], "version": "1.0"}]),
+            "MAJOR.MINOR.PATCH",
+        ),
+        (
+            _manifest(items=[{**_manifest()["items"][0], "version": "1.0.1"}]),
+            "named after another",
+        ),
+        (
+            _manifest(items=_manifest()["items"] * 2),
+            "scenario 0b5c1a6e-4f0e-4b8e-9d2a-1c3e5f7a9b0d twice",
+        ),
+        (_manifest(items=_item(name="a..zip")), "named after another"),
     ],
 )
 def test_a_manifest_out_of_what_the_collector_uses_is_refused(
@@ -162,3 +187,12 @@ def test_a_downloaded_file_has_the_listed_size_and_sha256() -> None:
         check_file(listed, b"abcd")
     with pytest.raises(ValueError, match="another SHA-256"):
         check_file(listed, b"abd")
+
+
+def test_the_bounds_are_the_repository_s() -> None:
+    assert (ARCHIVE_LIMIT, PAYLOAD_FILE_LIMIT) == (20 * 1024 * 1024, 256 * 1024)
+    _listed(
+        _manifest(
+            items=_item(size=ARCHIVE_LIMIT), payloads=_payload(size=PAYLOAD_FILE_LIMIT)
+        )
+    )

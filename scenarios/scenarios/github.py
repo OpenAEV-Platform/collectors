@@ -3,15 +3,18 @@ a public and a private repository alike. Every answer is read bounded; redirects
 by hand, a few at most, over HTTPS only, and the token goes to the API's host alone: an asset's
 download is redirected to GitHub's storage, which must never see it."""
 
-import json
+import time
 from dataclasses import dataclass
 from urllib.parse import urljoin, urlsplit
 
 import requests
 
+from scenarios.strict_json import read_strict_json
+
 POINTER_LIMIT = 4 * 1024
 RELEASE_LIMIT = 4 * 1024 * 1024
 MAX_REDIRECTS = 5
+DOWNLOAD_DEADLINE = 300  # seconds for one answer, however slowly it comes
 _REDIRECTS = frozenset({301, 302, 303, 307, 308})
 _CHUNK = 64 * 1024
 
@@ -58,6 +61,7 @@ class GitHubSource:
         url = (
             f"{self._api}/repos/{self._repository}/contents/{channel}.json?ref=channels"
         )
+        # A private repository answers 404 without a token: the run says so, as "no pointer".
         return self.follow(
             url,
             limit=POINTER_LIMIT,
@@ -72,10 +76,10 @@ class GitHubSource:
             url, limit=RELEASE_LIMIT, accept="application/vnd.github+json"
         )
         try:
-            document = json.loads(data or b"")
+            document = read_strict_json(data or b"", limit=RELEASE_LIMIT)
         except ValueError as error:
             raise SourceError(
-                f"the release {release} is not as GitHub gives it"
+                f"the release {release} is not as GitHub gives it: {error}"
             ) from error
         listed = document.get("assets") if isinstance(document, dict) else None
         if not isinstance(listed, list):
@@ -98,6 +102,12 @@ class GitHubSource:
             if name in assets:
                 raise SourceError(
                     f"the release {release} has an asset named twice: {name}"
+                )
+            if not link.startswith(
+                f"{self._api}/repos/{self._repository}/releases/assets/"
+            ):
+                raise SourceError(
+                    f"the release {release} has an asset served elsewhere: {name}"
                 )
             assets[name] = Asset(name, size, link)
         return assets
@@ -150,17 +160,23 @@ class GitHubSource:
                     return None
                 if response.status_code != 200:
                     raise SourceError(f"{where} answered {response.status_code}")
-                return _bounded(response, limit, where)
+                return _bounded(
+                    response, limit, where, time.monotonic() + DOWNLOAD_DEADLINE
+                )
         raise SourceError(f"too many redirects, over {MAX_REDIRECTS}")
 
 
-def _bounded(response: requests.Response, limit: int, where: str) -> bytes:
+def _bounded(
+    response: requests.Response, limit: int, where: str, deadline: float
+) -> bytes:
     data = bytearray()
     try:
         for chunk in response.iter_content(_CHUNK):
             data += chunk
             if len(data) > limit:
                 raise SourceError(f"{where} is over {limit} bytes")
+            if time.monotonic() > deadline:
+                raise SourceError(f"{where} took over {DOWNLOAD_DEADLINE} seconds")
     except requests.RequestException as error:
         raise SourceError(f"cannot read {where}: {type(error).__name__}") from error
     return bytes(data)

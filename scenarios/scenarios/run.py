@@ -13,6 +13,7 @@ from scenarios.release import (
     Pointer,
     check_assets,
     check_file,
+    check_manifest_hash,
     listed_release,
     pointer_from,
 )
@@ -60,7 +61,10 @@ class DryRunSink:
             f"{len(listed.scenarios)} scenario(s), {listed.payload_versions} payload version(s); "
             "nothing is sent to the platform"
         )
-        for external_id, version in listed.scenarios:
+        for (
+            external_id,
+            version,
+        ) in listed.scenarios:  # a UUID and a version: nothing to escape
             self._logger.info(f"Dry run: scenario {external_id} {version}")
 
 
@@ -100,7 +104,8 @@ class Collect:
         data = self._source.pointer(self._channel)
         if data is None:
             self._logger.info(
-                f"{self._repository} has no release on {self._channel} yet"
+                f"{self._repository} has no release on {self._channel} yet, "
+                "or it is private and no token reads it"
             )
             return None
         pointer = pointer_from(
@@ -117,6 +122,9 @@ class Collect:
         if MANIFEST_NAME not in assets:
             raise ValueError(f"the release {pointer.release} has no {MANIFEST_NAME}")
         manifest = self._source.download(assets[MANIFEST_NAME], limit=MANIFEST_LIMIT)
+        check_manifest_hash(
+            manifest, pointer
+        )  # before reading 20 MiB of what may be anything
         document = read_strict_json(manifest, limit=MANIFEST_LIMIT)
         listed = listed_release(
             manifest,
@@ -128,7 +136,7 @@ class Collect:
         check_assets(listed.files, {name: asset.size for name, asset in assets.items()})
         files = {}
         for expected in listed.files:
-            data = self._source.download(assets[expected.name], limit=expected.limit)
+            data = self._source.download(assets[expected.name], limit=expected.size)
             check_file(expected, data)
             files[expected.name] = data
         return VerifiedRelease(pointer, manifest, document, listed, files)
