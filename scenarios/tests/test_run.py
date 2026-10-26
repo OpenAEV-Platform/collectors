@@ -7,10 +7,10 @@ import logging
 from typing import Any
 
 import pytest
+from tests.fake_github import FakeGitHub, fake_github
 
 from scenarios.github import GitHubSource
 from scenarios.run import Collect, DryRunSink, VerifiedRelease
-from tests.fake_github import FakeGitHub, fake_github
 
 REPOSITORY = "OpenAEV-Platform/scenarios"
 RELEASE = "2026.10.27.1"

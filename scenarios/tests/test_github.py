@@ -4,9 +4,9 @@ import time
 
 import pytest
 import requests
+from tests.fake_github import Answer, FakeGitHub, fake_github
 
 from scenarios.github import GitHubSource, SourceError
-from tests.fake_github import Answer, FakeGitHub, fake_github
 
 REPOSITORY = "OpenAEV-Platform/scenarios"
 TOKEN = "github-token-for-tests"
