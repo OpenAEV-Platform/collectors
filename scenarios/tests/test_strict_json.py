@@ -52,3 +52,17 @@ def test_a_document_over_the_limit_is_refused_before_it_is_read() -> None:
 def test_a_very_deep_document_is_refused_not_crashed() -> None:
     with pytest.raises(ValueError, match="deeper than 64"):
         read_strict_json(b"[" * 100_000 + b"]" * 100_000, limit=1_000_000)
+
+
+def test_a_wide_document_is_checked_in_memory_bound_by_its_depth() -> None:
+    import tracemalloc
+
+    from scenarios.strict_json import _check
+
+    wide = list(range(1_000_000))
+    tracemalloc.start()
+    _check(wide)
+    _, peak = tracemalloc.get_traced_memory()
+    tracemalloc.stop()
+
+    assert peak < 1_000_000

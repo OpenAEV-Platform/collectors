@@ -5,6 +5,8 @@ beyond the range a double holds exactly, no unpaired surrogate, at most 64 level
 
 import json
 import math
+from collections.abc import Iterator
+from itertools import chain
 from typing import Any
 
 MAX_DEPTH = 64
@@ -38,22 +40,31 @@ def _float(text: str) -> float:
     return value
 
 
+_END = object()
+
+
 def _check(document: Any) -> None:
     """Refuse a document deeper than ``MAX_DEPTH``, or holding an unpaired surrogate, walked
-    without recursion."""
-    stack: list[tuple[Any, int]] = [(document, 1)]
+    without recursion, one child at a time: what the walk holds grows with the depth only.
+    """
+    stack: list[tuple[Iterator[Any], int]] = [(iter((document,)), 1)]
     while stack:
-        value, depth = stack.pop()
-        if isinstance(value, str):
+        children, depth = stack[-1]
+        value = next(children, _END)
+        if value is _END:
+            stack.pop()
+        elif isinstance(value, str):
             if any("\ud800" <= character <= "\udfff" for character in value):
                 raise ValueError("not strict JSON: an unpaired surrogate")
         elif isinstance(value, (dict, list)):
             if depth > MAX_DEPTH:
                 raise ValueError(f"not strict JSON: deeper than {MAX_DEPTH} levels")
-            children = value.items() if isinstance(value, dict) else enumerate(value)
-            for key, child in children:
-                stack.append((key, depth))
-                stack.append((child, depth + 1))
+            inner = (
+                chain.from_iterable(value.items())
+                if isinstance(value, dict)
+                else iter(value)
+            )
+            stack.append((inner, depth + 1))
 
 
 def read_strict_json(data: bytes, *, limit: int) -> Any:

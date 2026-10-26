@@ -181,13 +181,7 @@ class GitHubSource:
                 headers["Authorization"] = f"Bearer {self._token}"
             where = f"{parts.netloc}{parts.path}"
             try:
-                response = self._session.get(
-                    url,
-                    headers=headers,
-                    timeout=self._timeout,
-                    allow_redirects=False,
-                    stream=True,
-                )
+                response = self._get(url, headers)
             except requests.RequestException as error:
                 raise SourceError(
                     f"cannot read {where}: {type(error).__name__}"
@@ -207,6 +201,25 @@ class GitHubSource:
                     response, limit, where, time.monotonic() + DOWNLOAD_DEADLINE
                 )
         raise SourceError(f"too many redirects, over {MAX_REDIRECTS}")
+
+    def _get(self, url: str, headers: dict[str, str]) -> requests.Response:
+        """The answer to a GET of ``url``, its body unread. Sent through the transport
+        directly: the session would read a redirect's body whole, even with redirects left to
+        the caller, to prepare the next request."""
+        prepared = self._session.prepare_request(
+            requests.Request("GET", url, headers=headers)
+        )
+        settings = self._session.merge_environment_settings(
+            prepared.url, {}, True, None, None
+        )
+        return self._session.get_adapter(str(prepared.url)).send(
+            prepared,
+            stream=True,
+            timeout=self._timeout,
+            verify=settings["verify"] if settings["verify"] is not None else True,
+            cert=settings["cert"],
+            proxies=settings["proxies"],
+        )
 
 
 def _bounded(

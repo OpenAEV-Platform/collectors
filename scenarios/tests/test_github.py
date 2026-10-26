@@ -209,14 +209,16 @@ class _Redirected:
 
 
 class _Redirecting:
-    def get(self, url: str, **_: object) -> _Redirected:
+    def send(self, request: object, **_: object) -> _Redirected:
         return _Redirected()
 
 
-def test_a_redirect_hop_off_https_is_refused_when_https_is_required() -> None:
-    source = GitHubSource(
-        "https://api.example", REPOSITORY, TOKEN, session=_Redirecting()  # type: ignore[arg-type]
-    )
+def test_a_redirect_hop_off_https_is_refused_when_https_is_required(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session = requests.Session()
+    monkeypatch.setattr(session, "get_adapter", lambda url: _Redirecting())
+    source = GitHubSource("https://api.example", REPOSITORY, TOKEN, session=session)
     with pytest.raises(SourceError, match="storage.example/x is not served over HTTPS"):
         source.pointer("edge")
 
@@ -255,16 +257,18 @@ def test_an_answer_refused_by_the_api_is_refused(status: int) -> None:
             _source(fake).pointer("edge")
 
 
-def test_every_request_has_its_timeouts() -> None:
+def test_every_request_has_its_timeouts(monkeypatch: pytest.MonkeyPatch) -> None:
     asked: list[object] = []
 
-    class Session:
-        def get(self, url: str, **options: object) -> object:
+    class Adapter:
+        def send(self, request: object, **options: object) -> object:
             asked.append(options.get("timeout"))
             raise requests.ConnectTimeout("too slow")
 
+    session = requests.Session()
+    monkeypatch.setattr(session, "get_adapter", lambda url: Adapter())
     source = GitHubSource(
-        "https://api.example", REPOSITORY, None, timeout=(3, 7), session=Session()  # type: ignore[arg-type]
+        "https://api.example", REPOSITORY, None, timeout=(3, 7), session=session
     )
     with pytest.raises(SourceError, match="ConnectTimeout"):
         source.pointer("edge")
@@ -304,3 +308,18 @@ def test_one_call_at_most_is_left_in_flight(monkeypatch: pytest.MonkeyPatch) -> 
 
         after = sum(t.name == CALL_THREAD for t in threading.enumerate())
         assert after <= before + 1
+
+
+def test_the_body_of_a_redirect_is_never_read(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A redirect is followed from its headers: its body, however long or slow, is not read."""
+    monkeypatch.setattr("scenarios.github.DOWNLOAD_DEADLINE", 5)
+    with fake_github() as fake:
+        storage = f"http://localhost:{fake.port}/storage/1"
+        fake.answers[POINTER_PATH] = Answer(
+            302, b"x" * 2000, {"Location": storage}, trickle=0.02
+        )
+        fake.raw("/storage/1", b'{"pointer": 1}')
+        started = time.monotonic()
+
+        assert _source(fake).pointer("edge") == b'{"pointer": 1}'
+        assert time.monotonic() - started < 2
