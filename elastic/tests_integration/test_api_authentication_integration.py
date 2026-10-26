@@ -55,7 +55,9 @@ def _get(
             id="user_password",
         ),
         pytest.param(
-            lambda s: PKIAuthentication(s.elastic_cert_path, s.elastic_key_path),
+            lambda s: PKIAuthentication(
+                s.elastic_cert_path.read_text(), s.elastic_key_path.read_text()
+            ),
             id="pki",
         ),
     ],
@@ -94,7 +96,8 @@ def test_untrusted_client_certificate_is_refused(untrusted_client_cert, settings
     surfaces as an ``SSLError``. Matching ``_ALERT_`` tells it apart from a
     local failure to verify the cluster certificate (``CERTIFICATE_VERIFY_FAILED``).
     """
-    provider = PKIAuthentication(*untrusted_client_cert)
+    cert_path, key_path = untrusted_client_cert
+    provider = PKIAuthentication(cert_path.read_text(), key_path.read_text())
 
     with pytest.raises(requests.exceptions.SSLError, match="_ALERT_"):
         _get(provider, settings)

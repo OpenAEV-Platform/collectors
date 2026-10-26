@@ -15,11 +15,7 @@ from requests.exceptions import (  # type: ignore[import-untyped]
 )
 
 from ..models.configs.config_loader import ConfigLoader
-from ..models.configs.elastic_configs import (
-    DEFAULT_CLIENT_CERT_PATH,
-    DEFAULT_CLIENT_KEY_PATH,
-    AuthenticationType,
-)
+from ..models.configs.elastic_configs import AuthenticationType
 from .api_authentication import (
     ApiKeyAuthentication,
     AuthenticationProvider,
@@ -222,11 +218,10 @@ class ElasticClientAPI:
     ) -> AuthenticationProvider:
         """Return an authentication provider based on the specified type.
 
-        When no type is configured, it is inferred from the settings: API key,
-        then username/password, then client certificate.
-
         Args:
-            auth_type: The type of authentication to use, or None to infer it.
+            auth_type: The type of authentication to use, as resolved by the
+                configuration (pinned or inferred), or None when no
+                credentials are set.
 
         Returns:
             An instance of the appropriate AuthenticationProvider subclass.
@@ -235,17 +230,10 @@ class ElasticClientAPI:
             ElasticValidationError: If the specified authentication type is unsupported.
         """
         if auth_type is None:
-            if self.api_key:
-                auth_type = AuthenticationType.API_KEY
-            elif self.username and self.password:
-                auth_type = AuthenticationType.USER_PASSWORD
-            elif self.config.elastic.client_cert and self.config.elastic.client_key:
-                auth_type = AuthenticationType.PKI
-            else:
-                raise ElasticValidationError(
-                    "An API key, a username/password pair or a client "
-                    "certificate and key are required"
-                )
+            raise ElasticValidationError(
+                "An API key, a username/password pair or a client "
+                "certificate and key are required"
+            )
 
         if auth_type == "API_KEY":
             if not self.api_key:
@@ -260,14 +248,13 @@ class ElasticClientAPI:
                 )
             return UserPasswordAuthentication(self.username, self.password)
         elif auth_type == "PKI":
-            if (
-                not self.config.elastic.client_cert
-                or not self.config.elastic.client_key
-            ):
+            client_cert_pem = self.config.elastic.client_cert_pem
+            client_key_pem = self.config.elastic.client_key_pem
+            if not client_cert_pem or not client_key_pem:
                 raise ElasticValidationError(
                     "Client certificate and key are required for PKI authentication"
                 )
-            return PKIAuthentication(DEFAULT_CLIENT_CERT_PATH, DEFAULT_CLIENT_KEY_PATH)
+            return PKIAuthentication(client_cert_pem, client_key_pem)
         else:
             raise ElasticValidationError(
                 f"Unsupported authentication type: {auth_type}"
@@ -287,7 +274,7 @@ class ElasticClientAPI:
 
         """
         session = self._get_authentication_provider(
-            self.config.elastic.authentication_type
+            self.config.elastic.resolve_authentication_type()
         ).get_session()
         session.headers.update(
             {

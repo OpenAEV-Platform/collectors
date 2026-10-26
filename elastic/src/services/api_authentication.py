@@ -1,7 +1,17 @@
+import atexit
+import os
+import shutil
+import tempfile
 from pathlib import Path
 from typing import Protocol
 
 import requests
+
+# O_NOFOLLOW only exists on POSIX systems; O_EXCL already refuses an existing
+# path, symlinks included.
+_PRIVATE_FILE_FLAGS = (
+    os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
+)
 
 
 class AuthenticationProvider(Protocol):
@@ -50,27 +60,43 @@ class PKIAuthentication:
     header is sent: Elasticsearch maps the certificate subject to roles through
     its PKI realm.
 
-    ELASTIC_CLIENT_CERT / ELASTIC_CLIENT_KEY should have been written to disk by the configuration manager before the collector starts. The default paths are ``pki/pki-client.crt`` and ``pki/pki-client.key``.
+    ``requests`` only loads a client certificate and key from files, so both
+    are written to a private temporary directory (mode ``0700``, files mode
+    ``0600``), removed by :meth:`cleanup` or when the interpreter exits.
     """
 
-    def __init__(
-        self,
-        client_cert_path: Path = Path("pki/pki-client.crt"),
-        client_key_path: Path = Path("pki/pki-client.key"),
-    ) -> None:
-        # check that the files exist and are readable; requests will raise a less clear error if they don't
-        if not client_cert_path.is_file():
-            raise FileNotFoundError(
-                f"Client certificate file not found: {client_cert_path}"
-            )
-        if not client_key_path.is_file():
-            raise FileNotFoundError(f"Client key file not found: {client_key_path}")
-
-        self._client_cert_path = client_cert_path
-        self._client_key_path = client_key_path
+    def __init__(self, client_cert_pem: str, client_key_pem: str) -> None:
+        self._directory = Path(tempfile.mkdtemp(prefix="openaev-elastic-pki-"))
+        atexit.register(self.cleanup)
+        self._client_cert_path = _write_private_file(
+            self._directory / "client.crt", client_cert_pem
+        )
+        self._client_key_path = _write_private_file(
+            self._directory / "client.key", client_key_pem
+        )
 
     def get_session(self) -> requests.Session:
-        """Return a session using HTTP basic authentication."""
+        """Return a session presenting the client certificate during the TLS handshake."""
         session = requests.Session()
-        session.cert = (self._client_cert_path, self._client_key_path)
+        session.cert = (str(self._client_cert_path), str(self._client_key_path))
         return session
+
+    def cleanup(self) -> None:
+        """Remove the temporary directory holding the certificate and key."""
+        shutil.rmtree(self._directory, ignore_errors=True)
+
+
+def _write_private_file(path: Path, content: str) -> Path:
+    """Create ``path`` readable by its owner only, then write ``content``.
+
+    The mode is set when the file is created, so the content is never readable
+    by other users, and an existing file or symlink at ``path`` is refused.
+
+    Returns:
+        The path of the written file.
+
+    """
+    fd = os.open(path, _PRIVATE_FILE_FLAGS, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        f.write(content if content.endswith("\n") else f"{content}\n")
+    return path

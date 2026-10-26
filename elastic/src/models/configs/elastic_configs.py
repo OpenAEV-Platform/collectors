@@ -1,18 +1,12 @@
 """Configuration for Elastic Security integration."""
 
 import base64
-import os
 from datetime import timedelta
 from enum import Enum
-from pathlib import Path
 from typing import Optional
 
 from pydantic import Field, SecretStr, field_validator, model_validator
 from src.models.configs import ConfigBaseSettings
-
-PKI_CERT_DIR = Path("src/pki")
-DEFAULT_CLIENT_CERT_PATH = PKI_CERT_DIR / "pki-client.crt"
-DEFAULT_CLIENT_KEY_PATH = PKI_CERT_DIR / "pki-client.key"
 
 
 class AuthenticationType(str, Enum):
@@ -165,15 +159,61 @@ class _ConfigLoaderElastic(ConfigBaseSettings):
             return None
         return value
 
+    def resolve_authentication_type(self) -> AuthenticationType | None:
+        """Return the authentication method in effect.
+
+        The configured ``authentication_type`` wins. When it is unset, the
+        method is inferred from the settings: API key, then username/password,
+        then client certificate.
+
+        Returns:
+            The authentication method, or None when no credentials are set.
+
+        """
+        if self.authentication_type is not None:
+            return self.authentication_type
+        if self.api_key:
+            return AuthenticationType.API_KEY
+        if self.username and self.password:
+            return AuthenticationType.USER_PASSWORD
+        if self.client_cert and self.client_key:
+            return AuthenticationType.PKI
+        return None
+
+    @property
+    def client_cert_pem(self) -> str | None:
+        """Return the decoded PEM client certificate, or None when unset."""
+        if self.client_cert is None:
+            return None
+        pem_content = _decode_base64_pem(self.client_cert, "ELASTIC_CLIENT_CERT")
+        _validate_pem_format(pem_content, "CERTIFICATE")
+        return pem_content
+
+    @property
+    def client_key_pem(self) -> str | None:
+        """Return the decoded PEM client key, or None when unset."""
+        if self.client_key is None:
+            return None
+        pem_content = _decode_base64_pem(
+            self.client_key.get_secret_value(), "ELASTIC_CLIENT_KEY"
+        )
+        _validate_pem_format(pem_content, "PRIVATE KEY")
+        return pem_content
+
     @model_validator(mode="after")
     def _validate_auth(self) -> "_ConfigLoaderElastic":
         """Ensure an API key, a username/password pair or a client certificate and key is configured.
+
+        The client certificate and key are only decoded and checked when PKI
+        is the method in effect, so leftover PKI settings do not break a
+        configuration that uses another method.
 
         Returns:
             The validated configuration instance.
 
         Raises:
-            ValueError: If no usable authentication method is configured.
+            ValueError: If no usable authentication method is configured, or
+                if the client certificate or key is not a valid PEM file.
 
         """
         if (
@@ -186,69 +226,10 @@ class _ConfigLoaderElastic(ConfigBaseSettings):
                 "ELASTIC_USERNAME and ELASTIC_PASSWORD, or both "
                 "ELASTIC_CLIENT_CERT and ELASTIC_CLIENT_KEY"
             )
+        if self.resolve_authentication_type() == AuthenticationType.PKI:
+            # Decoding raises ValueError on an invalid certificate or key.
+            _ = self.client_cert_pem, self.client_key_pem
         return self
-
-    @field_validator("client_cert", mode="after")
-    def _record_client_cert_on_disk(cls, value: Optional[str], info) -> Optional[str]:
-        """Write the base64-encoded client certificate to the pki/pki-client.crt file.
-
-        This is needed because requests (and the underlying ssl module) only
-        accept a file path for the client certificate and key, not their
-        contents. The file is created with mode 0o600 (readable only by the
-        current user).
-
-        Args:
-            value: The base64-encoded PEM content of the client cert or key.
-            info: Validation info, used to determine which field is being
-                validated.
-        """
-        if value is None:
-            return None
-
-        pem_content = _decode_base64_pem(value, "ELASTIC_CLIENT_CERT")
-        _validate_pem_format(pem_content, "CERTIFICATE")
-
-        pki_dir = PKI_CERT_DIR
-        pki_dir.mkdir(parents=True, exist_ok=True)
-
-        cert_path = DEFAULT_CLIENT_CERT_PATH
-        with open(cert_path, "w", encoding="utf-8") as f:
-            f.write(pem_content if pem_content.endswith("\n") else f"{pem_content}\n")
-        os.chmod(cert_path, 0o600)
-
-        return value
-
-    @field_validator("client_key", mode="after")
-    def _record_client_key_on_disk(
-        cls, value: Optional[SecretStr], info
-    ) -> Optional[str]:
-        """Write the base64-encoded client key to the pki/pki-client.key file.
-
-        This is needed because requests (and the underlying ssl module) only
-        accept a file path for the client certificate and key, not their
-        contents. The file is created with mode 0o600 (readable only by the
-        current user).
-
-        Args:
-            value: The base64-encoded PEM content of the client cert or key.
-            info: Validation info, used to determine which field is being
-                validated.
-        """
-        if value is None:
-            return None
-
-        pem_content = _decode_base64_pem(value.get_secret_value(), "ELASTIC_CLIENT_KEY")
-        _validate_pem_format(pem_content, "PRIVATE KEY")
-
-        pki_dir = PKI_CERT_DIR
-        pki_dir.mkdir(parents=True, exist_ok=True)
-
-        key_path = DEFAULT_CLIENT_KEY_PATH
-        with open(key_path, "w", encoding="utf-8") as f:
-            f.write(pem_content if pem_content.endswith("\n") else f"{pem_content}\n")
-        os.chmod(key_path, 0o600)
-
-        return value
 
 
 def _decode_base64_pem(value: str, field_name: str) -> str:

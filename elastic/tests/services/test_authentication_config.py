@@ -1,13 +1,14 @@
 """Tests for the Elastic authentication settings and the inferred method."""
 
 import base64
+import tempfile
+from pathlib import Path
 from unittest.mock import Mock
 
 import pytest
 from pydantic import ValidationError
 from src.models.configs.elastic_configs import (
-    DEFAULT_CLIENT_CERT_PATH,
-    DEFAULT_CLIENT_KEY_PATH,
+    AuthenticationType,
     _ConfigLoaderElastic,
 )
 from src.services.client_api import ElasticClientAPI
@@ -26,8 +27,8 @@ def isolated_auth_env(monkeypatch, tmp_path):
     """Drop credentials from the environment and write the PKI files in tmp_path.
 
     The settings are also read by field name, so a host ``USERNAME`` counts as
-    a username. The client certificate and key are written relative to the
-    working directory.
+    a username. The client certificate and key are written to the temporary
+    directory, redirected to tmp_path.
     """
     for name in (
         "AUTHENTICATION_TYPE",
@@ -40,6 +41,7 @@ def isolated_auth_env(monkeypatch, tmp_path):
         monkeypatch.delenv(name, raising=False)
         monkeypatch.delenv(f"ELASTIC_{name}", raising=False)
     monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(tempfile, "tempdir", str(tmp_path))
 
 
 def test_client_certificate_alone_is_accepted():
@@ -49,8 +51,51 @@ def test_client_certificate_alone_is_accepted():
     )
 
     assert config.authentication_type is None  # noqa: S101
-    assert DEFAULT_CLIENT_CERT_PATH.read_text() == CERT_PEM  # noqa: S101
-    assert DEFAULT_CLIENT_KEY_PATH.read_text() == KEY_PEM  # noqa: S101
+    assert config.resolve_authentication_type() == AuthenticationType.PKI  # noqa: S101
+    assert config.client_cert_pem == CERT_PEM  # noqa: S101
+    assert config.client_key_pem == KEY_PEM  # noqa: S101
+
+
+def test_configuration_writes_no_file(tmp_path):
+    """Loading the configuration never writes the certificate or key to disk."""
+    _ConfigLoaderElastic(
+        ELASTIC_CLIENT_CERT=_b64(CERT_PEM), ELASTIC_CLIENT_KEY=_b64(KEY_PEM)
+    )
+
+    assert list(tmp_path.iterdir()) == []  # noqa: S101
+
+
+def test_invalid_client_certificate_is_rejected_when_pki_is_used():
+    """A client certificate that is not a base64 PEM fails the validation."""
+    with pytest.raises(ValidationError, match="ELASTIC_CLIENT_CERT"):
+        _ConfigLoaderElastic(
+            ELASTIC_CLIENT_CERT="not base64!", ELASTIC_CLIENT_KEY=_b64(KEY_PEM)
+        )
+
+
+@pytest.mark.parametrize(
+    "credentials",
+    [
+        pytest.param(
+            {"ELASTIC_AUTHENTICATION_TYPE": "API_KEY", "ELASTIC_API_KEY": "key"},
+            id="pinned_api_key",
+        ),
+        pytest.param({"ELASTIC_API_KEY": "key"}, id="inferred_api_key"),
+        pytest.param(
+            {"ELASTIC_USERNAME": "user", "ELASTIC_PASSWORD": "password"},
+            id="inferred_user_password",
+        ),
+    ],
+)
+def test_stale_pki_settings_are_ignored_by_other_methods(credentials):
+    """PKI settings are not checked when another method is in effect."""
+    config = _ConfigLoaderElastic(
+        ELASTIC_CLIENT_CERT="not base64!",
+        ELASTIC_CLIENT_KEY="not base64!",
+        **credentials,
+    )
+
+    assert config.resolve_authentication_type() != AuthenticationType.PKI  # noqa: S101
 
 
 def test_missing_authentication_is_rejected():
@@ -61,7 +106,7 @@ def test_missing_authentication_is_rejected():
         _ConfigLoaderElastic()
 
 
-def test_client_infers_pki_from_client_certificate():
+def test_client_infers_pki_from_client_certificate(tmp_path):
     """With only a certificate and key, the session presents the certificate."""
     config = Mock()
     config.elastic = _ConfigLoaderElastic(
@@ -70,10 +115,10 @@ def test_client_infers_pki_from_client_certificate():
 
     client = ElasticClientAPI(config=config)
 
-    assert client.session.cert == (  # noqa: S101
-        DEFAULT_CLIENT_CERT_PATH,
-        DEFAULT_CLIENT_KEY_PATH,
-    )
+    cert_path, key_path = client.session.cert
+    assert tmp_path in Path(cert_path).parents  # noqa: S101
+    assert Path(cert_path).read_text() == CERT_PEM  # noqa: S101
+    assert Path(key_path).read_text() == KEY_PEM  # noqa: S101
     assert client.session.auth is None  # noqa: S101
     assert "Authorization" not in client.session.headers  # noqa: S101
     assert client.session.headers["Content-Type"] == "application/json"  # noqa: S101

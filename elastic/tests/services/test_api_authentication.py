@@ -1,32 +1,29 @@
 """Tests for the Elasticsearch API authentication providers."""
 
+import os
+import stat
+import tempfile
+
 import pytest
 import requests
 from src.services.api_authentication import (
     ApiKeyAuthentication,
     PKIAuthentication,
     UserPasswordAuthentication,
+    _write_private_file,
 )
+
+CERT_PEM = "-----BEGIN CERTIFICATE-----\nMIIC\n-----END CERTIFICATE-----\n"
+KEY_PEM = "-----BEGIN PRIVATE KEY-----\nMIIE\n-----END PRIVATE KEY-----\n"
 
 
 @pytest.fixture
-def pki_files(tmp_path):
-    """Create temporary PKI certificate and key files."""
-    pki_dir = tmp_path / "pki"
-    pki_dir.mkdir()
-
-    cert_file = pki_dir / "pki-client.crt"
-    key_file = pki_dir / "pki-client.key"
-
-    # Create dummy certificate and key files
-    cert_file.write_text(
-        "-----BEGIN CERTIFICATE-----\nMIIC...\n-----END CERTIFICATE-----"
-    )
-    key_file.write_text(
-        "-----BEGIN PRIVATE KEY-----\nMIIE...\n-----END PRIVATE KEY-----"
-    )
-
-    yield cert_file, key_file
+def pki_auth(monkeypatch, tmp_path):
+    """Build a PKIAuthentication writing its files under tmp_path."""
+    monkeypatch.setattr(tempfile, "tempdir", str(tmp_path))
+    auth = PKIAuthentication(CERT_PEM, KEY_PEM)
+    yield auth
+    auth.cleanup()
 
 
 class TestApiKeyAuthentication:
@@ -95,63 +92,76 @@ class TestUserPasswordAuthentication:
 class TestPKIAuthentication:
     """Tests for PKIAuthentication."""
 
-    def test_init_with_custom_paths(self, pki_files):
-        """Custom certificate paths are stored during initialization."""
-        cert_path, key_path = pki_files
-        auth = PKIAuthentication(cert_path, key_path)
-        assert auth._client_cert_path == cert_path
-        assert auth._client_key_path == key_path
+    def test_init_writes_certificate_and_key(self, pki_auth):
+        """The certificate and key are written to files."""
+        assert pki_auth._client_cert_path.read_text() == CERT_PEM
+        assert pki_auth._client_key_path.read_text() == KEY_PEM
 
-    def test_init_with_default_paths(self, pki_files):
-        """Default certificate paths are used when not provided."""
-        cert_path, key_path = pki_files
-        # Rename to default paths
-        pki_dir = cert_path.parent
-        default_cert = pki_dir / "pki-client.crt"
-        default_key = pki_dir / "pki-client.key"
-        cert_path.rename(default_cert)
-        key_path.rename(default_key)
+    def test_init_uses_a_private_temporary_directory(self, pki_auth, tmp_path):
+        """The files live in a new temporary directory only the owner can access."""
+        directory = pki_auth._client_cert_path.parent
+        assert directory.parent == tmp_path
+        assert directory.name.startswith("openaev-elastic-pki-")
+        assert stat.S_IMODE(directory.stat().st_mode) == 0o700
 
-        auth = PKIAuthentication(default_cert, default_key)
-        assert auth._client_cert_path == default_cert
-        assert auth._client_key_path == default_key
+    def test_init_creates_files_readable_by_owner_only(self, pki_auth):
+        """The certificate and key files are created with mode 0600."""
+        for path in (pki_auth._client_cert_path, pki_auth._client_key_path):
+            assert stat.S_IMODE(path.stat().st_mode) == 0o600
 
-    def test_init_raises_if_cert_file_not_found(self, pki_files):
-        """FileNotFoundError is raised if the certificate file does not exist."""
-        _, key_path = pki_files
-        nonexistent_cert = key_path.parent / "nonexistent.crt"
+    def test_init_adds_a_missing_final_newline(self, monkeypatch, tmp_path):
+        """A PEM content without a final newline is written with one."""
+        monkeypatch.setattr(tempfile, "tempdir", str(tmp_path))
+        auth = PKIAuthentication(CERT_PEM.rstrip("\n"), KEY_PEM.rstrip("\n"))
+        assert auth._client_cert_path.read_text() == CERT_PEM
+        assert auth._client_key_path.read_text() == KEY_PEM
+        auth.cleanup()
 
-        with pytest.raises(
-            FileNotFoundError, match="Client certificate file not found"
-        ):
-            PKIAuthentication(nonexistent_cert, key_path)
+    def test_each_instance_uses_its_own_directory(
+        self, pki_auth, monkeypatch, tmp_path
+    ):
+        """Two providers never share, nor overwrite, the same files."""
+        monkeypatch.setattr(tempfile, "tempdir", str(tmp_path))
+        other = PKIAuthentication(CERT_PEM, KEY_PEM)
+        assert other._client_cert_path.parent != pki_auth._client_cert_path.parent
+        other.cleanup()
 
-    def test_init_raises_if_key_file_not_found(self, pki_files):
-        """FileNotFoundError is raised if the key file does not exist."""
-        cert_path, _ = pki_files
-        nonexistent_key = cert_path.parent / "nonexistent.key"
+    def test_write_refuses_a_symlink(self, tmp_path):
+        """An existing symlink at the target path is not followed."""
+        target = tmp_path / "target"
+        target.write_text("untouched")
+        link = tmp_path / "client.key"
+        os.symlink(target, link)
 
-        with pytest.raises(FileNotFoundError, match="Client key file not found"):
-            PKIAuthentication(cert_path, nonexistent_key)
+        with pytest.raises(FileExistsError):
+            _write_private_file(link, KEY_PEM)
+        assert target.read_text() == "untouched"
 
-    def test_get_session_returns_requests_session(self, pki_files):
+    def test_cleanup_removes_the_directory(self, pki_auth):
+        """cleanup removes the temporary directory and its files."""
+        directory = pki_auth._client_cert_path.parent
+
+        pki_auth.cleanup()
+
+        assert not directory.exists()
+
+    def test_get_session_returns_requests_session(self, pki_auth):
         """get_session returns a requests.Session instance."""
-        cert_path, key_path = pki_files
-        auth = PKIAuthentication(cert_path, key_path)
-        session = auth.get_session()
+        session = pki_auth.get_session()
         assert isinstance(session, requests.Session)
 
-    def test_get_session_sets_cert_tuple(self, pki_files):
-        """get_session sets the cert attribute with both certificate paths."""
-        cert_path, key_path = pki_files
-        auth = PKIAuthentication(cert_path, key_path)
-        session = auth.get_session()
-        assert session.cert == (cert_path, key_path)
+    def test_get_session_sets_cert_tuple(self, pki_auth):
+        """get_session sets the cert attribute with both file paths."""
+        session = pki_auth.get_session()
+        assert session.cert == (
+            str(pki_auth._client_cert_path),
+            str(pki_auth._client_key_path),
+        )
+        assert session.auth is None
+        assert "Authorization" not in session.headers
 
-    def test_get_session_creates_new_session_each_call(self, pki_files):
+    def test_get_session_creates_new_session_each_call(self, pki_auth):
         """Each call to get_session returns a new session instance."""
-        cert_path, key_path = pki_files
-        auth = PKIAuthentication(cert_path, key_path)
-        session1 = auth.get_session()
-        session2 = auth.get_session()
+        session1 = pki_auth.get_session()
+        session2 = pki_auth.get_session()
         assert session1 is not session2
