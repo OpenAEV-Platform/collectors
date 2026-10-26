@@ -3,7 +3,6 @@
 import base64
 from datetime import timedelta
 from enum import Enum
-from typing import Optional
 
 from pydantic import Field, SecretStr, field_validator, model_validator
 from src.models.configs import ConfigBaseSettings
@@ -31,7 +30,7 @@ class _ConfigLoaderElastic(ConfigBaseSettings):
         default="https://localhost:9200",
         description="Base URL of the Elasticsearch API (e.g., https://elastic.company.com:9200).",
     )
-    authentication_type: Optional[AuthenticationType] = Field(
+    authentication_type: AuthenticationType | None = Field(
         alias="ELASTIC_AUTHENTICATION_TYPE",
         default=None,
         description=(
@@ -41,27 +40,27 @@ class _ConfigLoaderElastic(ConfigBaseSettings):
             "username/password, which takes precedence over PKI)."
         ),
     )
-    api_key: Optional[SecretStr] = Field(
+    api_key: SecretStr | None = Field(
         alias="ELASTIC_API_KEY",
         default=None,
         description="Elasticsearch API key (preferred). When set, it is used instead of username/password.",
     )
-    username: Optional[str] = Field(
+    username: str | None = Field(
         alias="ELASTIC_USERNAME",
         default=None,
         description="Username for HTTP basic authentication (used when no API key is set).",
     )
-    password: Optional[SecretStr] = Field(
+    password: SecretStr | None = Field(
         alias="ELASTIC_PASSWORD",
         default=None,
         description="Password for HTTP basic authentication.",
     )
-    alerts_index: Optional[str] = Field(
+    alerts_index: str | None = Field(
         alias="ELASTIC_ALERTS_INDEX",
         default=".alerts-security.alerts-*",
         description="Index or index pattern to search for detection alerts.",
     )
-    query_template: Optional[str] = Field(
+    query_template: str | None = Field(
         alias="ELASTIC_QUERY_TEMPLATE",
         default=None,
         description=(
@@ -75,7 +74,7 @@ class _ConfigLoaderElastic(ConfigBaseSettings):
             "separately as an @timestamp filter."
         ),
     )
-    events_index: Optional[str] = Field(
+    events_index: str | None = Field(
         alias="ELASTIC_EVENTS_INDEX",
         default="logs-windows.sysmon_operational-*,logs-endpoint.events.process-*",
         description=(
@@ -88,7 +87,7 @@ class _ConfigLoaderElastic(ConfigBaseSettings):
             "fall back to host/IP + time correlation only."
         ),
     )
-    kibana_url: Optional[str] = Field(
+    kibana_url: str | None = Field(
         alias="ELASTIC_KIBANA_URL",
         default=None,
         description=(
@@ -98,7 +97,7 @@ class _ConfigLoaderElastic(ConfigBaseSettings):
             "reverse proxy or with no port in base_url)."
         ),
     )
-    time_window: Optional[timedelta] = Field(
+    time_window: timedelta | None = Field(
         alias="ELASTIC_TIME_WINDOW",
         default=timedelta(hours=1),
         description="Time window for searches when no dates are provided.",
@@ -133,12 +132,12 @@ class _ConfigLoaderElastic(ConfigBaseSettings):
         "Elasticsearch TLS certificate (recommended for self-signed clusters "
         "instead of disabling verification). Overrides ELASTIC_VERIFY_SSL.",
     )
-    client_cert: Optional[str] = Field(
+    client_cert: str | None = Field(
         alias="ELASTIC_CLIENT_CERT",
         default=None,
         description="Single line base64 encoded PEM client certificate for PKI authentication. ",
     )
-    client_key: Optional[SecretStr] = Field(
+    client_key: SecretStr | None = Field(
         alias="ELASTIC_CLIENT_KEY",
         default=None,
         description="Single line base64 encoded PEM client key for PKI authentication.",
