@@ -268,3 +268,17 @@ def test_every_request_has_its_timeouts() -> None:
     with pytest.raises(SourceError, match="ConnectTimeout"):
         source.pointer("edge")
     assert asked == [(3, 7)]
+
+
+def test_headers_that_trickle_are_cut_at_the_deadline(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("scenarios.github.DOWNLOAD_DEADLINE", 1)
+    with fake_github() as fake:
+        fake.answers[POINTER_PATH] = Answer(body=b"{}", trickle=0.05, trickle_all=True)
+        started = time.monotonic()
+
+        with pytest.raises(SourceError, match="took over 1 seconds"):
+            _source(fake).pointer("edge")
+
+        assert time.monotonic() - started < 3

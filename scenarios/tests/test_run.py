@@ -28,12 +28,12 @@ class Sink:
         self.received.append(release)
 
 
-def _manifest() -> bytes:
+def _manifest(release: str = RELEASE) -> bytes:
     document = {
         "schema_version": 1,
         "repository": REPOSITORY,
         "channel": "edge",
-        "release": RELEASE,
+        "release": release,
         "release_approver": "laugiov",
         "items": [
             {
@@ -61,18 +61,24 @@ def _manifest() -> bytes:
     return json.dumps(document).encode()
 
 
-def _publish(fake: FakeGitHub, files: dict[str, bytes], pointer: Any = None) -> None:
+def _publish(
+    fake: FakeGitHub,
+    files: dict[str, bytes],
+    pointer: Any = None,
+    release: str = RELEASE,
+) -> None:
     manifest = files["manifest.json"]
     pointer = pointer or {
         "schema_version": 1,
         "repository": REPOSITORY,
         "channel": "edge",
-        "release": RELEASE,
+        "release": release,
         "manifest_sha256": hashlib.sha256(manifest).hexdigest(),
     }
     fake.json(f"/repos/{REPOSITORY}/contents/edge.json?ref=channels", pointer)
     assets = []
-    for number, (name, data) in enumerate(sorted(files.items()), start=1):
+    base = len(fake.answers) * 10  # each release's assets their own numbers
+    for number, (name, data) in enumerate(sorted(files.items()), start=base + 1):
         path = f"/repos/{REPOSITORY}/releases/assets/{number}"
         fake.raw(path, data)
         assets.append(
@@ -82,7 +88,7 @@ def _publish(fake: FakeGitHub, files: dict[str, bytes], pointer: Any = None) -> 
                 "url": f"http://127.0.0.1:{fake.port}{path}",
             }
         )
-    fake.json(f"/repos/{REPOSITORY}/releases/tags/{RELEASE}", {"assets": assets})
+    fake.json(f"/repos/{REPOSITORY}/releases/tags/{release}", {"assets": assets})
 
 
 def _collect(fake: FakeGitHub, sink: Any) -> Collect:
@@ -259,3 +265,24 @@ def test_a_file_is_read_no_further_than_its_listed_size(
         with caplog.at_level(logging.ERROR):
             _collect(fake, Sink()).run()
     assert f"is over {len(ARCHIVE_BYTES)} bytes" in caplog.text
+
+
+def test_a_release_handled_once_is_never_handed_on_again() -> None:
+    """Even when its channel came back to it: A, then B, then A again."""
+    pointer_path = f"/repos/{REPOSITORY}/contents/edge.json?ref=channels"
+    later = "2026.10.28.1"
+    with fake_github() as fake:
+        sink = Sink()
+        collect = _collect(fake, sink)
+        _publish(fake, _files())
+        collect.run()
+        first = fake.answers[pointer_path]
+        _publish(fake, _files(**{"manifest.json": _manifest(later)}), release=later)
+        collect.run()
+        fake.answers[pointer_path] = first
+        collect.run()
+
+        assert [release.pointer.release for release in sink.received] == [
+            RELEASE,
+            later,
+        ]

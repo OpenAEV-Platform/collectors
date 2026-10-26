@@ -4,6 +4,7 @@ by hand, a few at most, over HTTPS only, and the token goes to the API's host al
 download is redirected to GitHub's storage, which must never see it."""
 
 import re
+import threading
 import time
 from dataclasses import dataclass
 from urllib.parse import urljoin, urlsplit
@@ -125,7 +126,37 @@ class GitHubSource:
     def follow(
         self, url: str, *, limit: int, accept: str, missing_ok: bool = False
     ) -> bytes | None:
-        """The body ``url`` answers, redirects followed; none for a 404 when ``missing_ok``."""
+        """The body ``url`` answers, redirects followed; none for a 404 when ``missing_ok``;
+        within ``DOWNLOAD_DEADLINE`` in all, headers, redirects and body alike. The call runs in
+        a thread of its own, so that a server however slow cannot hold the run past it: the
+        thread, left behind, ends with its connection's read timeout or the server's answer.
+        """
+        outcome: dict[str, bytes | None | BaseException] = {}
+        deadline = DOWNLOAD_DEADLINE
+
+        def call() -> None:
+            try:
+                outcome["data"] = self._follow(url, limit, accept, missing_ok)
+            except BaseException as error:  # noqa: B036 - handed to the caller as it is
+                outcome["error"] = error
+
+        worker = threading.Thread(target=call, daemon=True)
+        worker.start()
+        worker.join(deadline)
+        if worker.is_alive():
+            parts = urlsplit(url)
+            raise SourceError(
+                f"{parts.netloc}{parts.path} took over {deadline} seconds"
+            )
+        error = outcome.get("error")
+        if isinstance(error, BaseException):
+            raise error
+        data = outcome.get("data")
+        return data if isinstance(data, bytes) else None
+
+    def _follow(
+        self, url: str, limit: int, accept: str, missing_ok: bool
+    ) -> bytes | None:
         for _ in range(MAX_REDIRECTS + 1):
             parts = urlsplit(url)
             if self._https and parts.scheme != "https":

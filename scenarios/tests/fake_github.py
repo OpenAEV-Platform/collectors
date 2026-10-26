@@ -16,6 +16,7 @@ class Answer:
     body: bytes = b""
     headers: dict[str, str] = field(default_factory=dict)
     trickle: float = 0.0  # seconds between two bytes of the body, to answer slowly
+    trickle_all: bool = False  # the status line and headers too, not only the body
 
 
 @dataclass
@@ -51,6 +52,16 @@ def fake_github() -> Iterator[FakeGitHub]:
             answer = fake.answers.get(
                 self.path, Answer(404, b'{"message": "Not Found"}')
             )
+            if answer.trickle_all:
+                head = f"HTTP/1.1 {answer.status} OK\r\nContent-Length: {len(answer.body)}\r\n\r\n"
+                for byte in head.encode() + answer.body:
+                    try:
+                        self.wfile.write(bytes([byte]))
+                        self.wfile.flush()
+                    except OSError:
+                        return
+                    time.sleep(answer.trickle)
+                return
             self.send_response(answer.status)
             for name, value in answer.headers.items():
                 self.send_header(name, value)

@@ -4,6 +4,7 @@ manifest it names, and every file the manifest lists. Pure: what is read is give
 import datetime
 import hashlib
 import re
+from collections import Counter
 from dataclasses import dataclass
 from typing import Any
 
@@ -157,6 +158,7 @@ def listed_release(
         raise ValueError("the manifest's payloads must be a list")
     scenarios: list[tuple[str, str]] = []
     files: list[ListedFile] = []
+    seen: set[str] = set()
     for index, item in enumerate(items):
         where = f"items[{index}]"
         if not isinstance(item, dict):
@@ -166,8 +168,9 @@ def listed_release(
             raise ValueError(f"{where} needs an external_id, a UUID in lower case")
         if not isinstance(version, str) or not _SEMVER.fullmatch(version):
             raise ValueError(f"{where} needs a version, MAJOR.MINOR.PATCH")
-        if any(external_id == known for known, _ in scenarios):
+        if external_id in seen:
             raise ValueError(f"the manifest lists the scenario {external_id} twice")
+        seen.add(external_id)
         scenarios.append((external_id, version))
         archive = _listed_file(item.get("archive"), ARCHIVE_LIMIT, f"{where}.archive")
         if archive.name != f"{external_id}-{version}.zip":
@@ -182,8 +185,8 @@ def listed_release(
         files.append(
             _listed_file(entry.get("file"), PAYLOAD_FILE_LIMIT, f"{where}.file")
         )
-    names = [listed.name for listed in files]
-    twice = sorted({name for name in names if names.count(name) > 1})
+    counted = Counter(listed.name for listed in files)
+    twice = sorted(name for name, count in counted.items() if count > 1)
     if twice:
         raise ValueError(f"the manifest has a file listed twice: {', '.join(twice)}")
     if sum(listed.size for listed in files) > RELEASE_LIMIT:

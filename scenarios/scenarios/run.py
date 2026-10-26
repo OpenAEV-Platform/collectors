@@ -70,7 +70,7 @@ class DryRunSink:
 
 class Collect:
     """The runs of the collector, from ``source`` to ``sink``, for ``channel`` of
-    ``repository``; it keeps the pointer it last handed on."""
+    ``repository``; it keeps every pointer it handed on."""
 
     def __init__(
         self,
@@ -86,7 +86,7 @@ class Collect:
         self._repository = repository
         self._channel = channel
         self._logger = logger
-        self._handled: Pointer | None = None
+        self._handled: set[Pointer] = set()
 
     def run(self) -> None:
         """One run. A failing sink raises, and the release is tried again by the next run."""
@@ -98,7 +98,7 @@ class Collect:
         if release is None:
             return
         self.sink.send(release)
-        self._handled = release.pointer
+        self._handled.add(release.pointer)
 
     def _verified(self) -> VerifiedRelease | None:
         data = self._source.pointer(self._channel)
@@ -113,7 +113,7 @@ class Collect:
             repository=self._repository,
             channel=self._channel,
         )
-        if pointer == self._handled:
+        if pointer in self._handled:
             self._logger.info(
                 f"Release {pointer.release} of {self._channel} already handled"
             )
