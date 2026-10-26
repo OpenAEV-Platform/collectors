@@ -75,7 +75,7 @@ The collector is configured either through environment variables (recommended, r
 | Parameter    | config.yml             | Docker environment variable | Default                     | Mandatory   | Description                                                                                                                                                |
 |--------------|------------------------|-----------------------------|-----------------------------|-------------|----------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Base URL     | `elastic.base_url`     | `ELASTIC_BASE_URL`          | `https://localhost:9200`    | Yes         | Base URL of the Elasticsearch API (e.g. `https://elastic.company.com:9200`).                                                                              |
-| Authentication Type | `elastic.authentication_type` | `ELASTIC_AUTHENTICATION_TYPE` | / (inferred)     | No          | Authentication method: `API_KEY`, `USER_PASSWORD` or `PKI`. When unset, it is inferred: API key, then username/password, then client certificate. When set, the settings of that method are required. |
+| Authentication Type | `elastic.authentication_type` | `ELASTIC_AUTHENTICATION_TYPE` | / (inferred)     | No          | Authentication method: `API_KEY`, `USER_PASSWORD` or `PKI`. When unset, it is inferred: API key, then username/password, then client certificate. When set, the settings of that method are required and those of the other methods are ignored. |
 | API Key      | `elastic.api_key`      | `ELASTIC_API_KEY`           | /                           | Conditional | Elasticsearch API key (preferred). When set, it is used instead of username/password.                                                                     |
 | Username     | `elastic.username`     | `ELASTIC_USERNAME`          | /                           | Conditional | Username for HTTP basic authentication (used when no API key is set).                                                                                     |
 | Password     | `elastic.password`     | `ELASTIC_PASSWORD`          | /                           | Conditional | Password for HTTP basic authentication.                                                                                                                   |
@@ -337,10 +337,11 @@ on **self-managed and ECK** clusters, not on Elastic Cloud Hosted or Elastic Clo
 
 - Set `ELASTIC_AUTHENTICATION_TYPE=PKI`, or leave the API key and username/password unset: when the type is inferred,
   they take precedence over the certificate.
-- At startup the collector decodes both values, checks that they are PEM files of the expected type, and writes them to
-  `src/pki/pki-client.crt` and `src/pki/pki-client.key` (mode `0600`) under its working directory (`/collector` in the
-  image), because `requests` only loads client certificates from files. That directory must be writable: with a
-  read-only root filesystem, mount a writable volume on `/collector/src/pki`.
+- At startup the collector decodes both values and checks that they are PEM files of the expected type. These checks
+  only run when PKI is the method in effect. Because `requests` only loads client certificates from files, the
+  collector then writes them to a new private temporary directory (`openaev-elastic-pki-*` under `$TMPDIR`, `/tmp` by
+  default, mode `0700`, files mode `0600`), removed when the Python process exits normally. With a read-only root
+  filesystem, mount a writable volume on `/tmp` (for example an `emptyDir` on Kubernetes) or point `TMPDIR` to one.
 - **Kubernetes:** a Secret injected through `secretKeyRef` is base64-decoded by Kubernetes, so the Secret value must be
   the base64 string itself (for example under `stringData`).
 
@@ -384,8 +385,9 @@ separate Kibana host.
   (a bundle path) rather than disabling verification. `ELASTIC_VERIFY_SSL=false` is a **lab-only** downgrade that exposes
   credentials to interception and logs a loud warning.
 - Put credentials in `ELASTIC_API_KEY` / `ELASTIC_USERNAME` / `ELASTIC_PASSWORD`, **not** inline in `ELASTIC_BASE_URL`.
-- With PKI, the decoded private key is written to `src/pki/pki-client.key` (mode `0600`) and is not removed when the
-  collector stops: keep that directory private to the collector user.
+- With PKI, the decoded private key is written to a private temporary directory (mode `0700`, file mode `0600`) that
+  is removed when the Python process exits normally. A collector stopped by a signal (for example `docker stop`) leaves
+  it behind until the container is removed: keep `/tmp` private to the container.
 - `debug` logging records hostnames, IPs and alert links; enable it transiently and keep logs on-host.
 
 ## Debugging

@@ -16,7 +16,7 @@ elastic:
   # Authentication: provide an API key (preferred) OR a username/password pair
   # OR (self-managed / ECK only) a client certificate and key for the PKI realm.
   # Optionally pin the method (API_KEY, USER_PASSWORD or PKI); the settings of
-  # the other methods must then be left unset. Unset = inferred.
+  # the other methods are then ignored. Unset = inferred.
   # authentication_type: "USER_PASSWORD"
   # api_key: "ChangeMe"
   username: "ChangeMe"
