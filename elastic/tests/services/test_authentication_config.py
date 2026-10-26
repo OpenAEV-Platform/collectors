@@ -122,3 +122,38 @@ def test_client_infers_pki_from_client_certificate(tmp_path):
     assert client.session.auth is None  # noqa: S101
     assert "Authorization" not in client.session.headers  # noqa: S101
     assert client.session.headers["Content-Type"] == "application/json"  # noqa: S101
+
+
+@pytest.mark.parametrize(
+    "key_pem",
+    [
+        pytest.param(
+            "-----BEGIN ENCRYPTED PRIVATE KEY-----\nMIIF\n"
+            "-----END ENCRYPTED PRIVATE KEY-----\n",
+            id="pkcs8",
+        ),
+        pytest.param(
+            "-----BEGIN RSA PRIVATE KEY-----\nProc-Type: 4,ENCRYPTED\n"
+            "DEK-Info: AES-256-CBC,0123456789ABCDEF0123456789ABCDEF\n\nMIIE\n"
+            "-----END RSA PRIVATE KEY-----\n",
+            id="traditional_openssl",
+        ),
+    ],
+)
+def test_encrypted_client_key_is_rejected(key_pem):
+    """An encrypted private key fails the validation, whatever its format."""
+    with pytest.raises(ValidationError, match="must be unencrypted"):
+        _ConfigLoaderElastic(
+            ELASTIC_CLIENT_CERT=_b64(CERT_PEM), ELASTIC_CLIENT_KEY=_b64(key_pem)
+        )
+
+
+def test_unencrypted_rsa_client_key_is_accepted():
+    """A traditional, unencrypted RSA private key is accepted."""
+    key_pem = "-----BEGIN RSA PRIVATE KEY-----\nMIIE\n-----END RSA PRIVATE KEY-----\n"
+
+    config = _ConfigLoaderElastic(
+        ELASTIC_CLIENT_CERT=_b64(CERT_PEM), ELASTIC_CLIENT_KEY=_b64(key_pem)
+    )
+
+    assert config.client_key_pem == key_pem  # noqa: S101

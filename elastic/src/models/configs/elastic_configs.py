@@ -278,5 +278,9 @@ def _validate_pem_format(content: str, expected_type: str) -> None:
     if expected_type not in first_line:
         raise ValueError("the decoded value is not PEM")
 
-    if expected_type == "PRIVATE KEY" and "ENCRYPTED" in first_line:
+    # PKCS#8 declares encryption in the BEGIN line ("ENCRYPTED PRIVATE KEY"),
+    # traditional OpenSSL keys in a "Proc-Type: 4,ENCRYPTED" header.
+    if expected_type == "PRIVATE KEY" and (
+        "ENCRYPTED" in first_line or "Proc-Type: 4,ENCRYPTED" in content
+    ):
         raise ValueError("ELASTIC_CLIENT_KEY must be unencrypted")
