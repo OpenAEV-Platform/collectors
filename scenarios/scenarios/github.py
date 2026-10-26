@@ -1,0 +1,166 @@
+"""The channel's pointer and the release's files, read from the GitHub REST API, which serves
+a public and a private repository alike. Every answer is read bounded; redirects are followed
+by hand, a few at most, over HTTPS only, and the token goes to the API's host alone: an asset's
+download is redirected to GitHub's storage, which must never see it."""
+
+import json
+from dataclasses import dataclass
+from urllib.parse import urljoin, urlsplit
+
+import requests
+
+POINTER_LIMIT = 4 * 1024
+RELEASE_LIMIT = 4 * 1024 * 1024
+MAX_REDIRECTS = 5
+_REDIRECTS = frozenset({301, 302, 303, 307, 308})
+_CHUNK = 64 * 1024
+
+
+class SourceError(Exception):
+    """The source could not be read as it should be; the message never holds the token."""
+
+
+@dataclass(frozen=True)
+class Asset:
+    """A file of a release: its name, its size as GitHub gives it, and the API URL to get it."""
+
+    name: str
+    size: int
+    url: str
+
+
+class GitHubSource:
+    """The releases of ``repository``, read from the GitHub API at ``api_url``."""
+
+    def __init__(
+        self,
+        api_url: str,
+        repository: str,
+        token: str | None,
+        *,
+        require_https: bool = True,
+        timeout: tuple[float, float] = (10, 60),
+        session: requests.Session | None = None,
+    ) -> None:
+        self._https = require_https
+        if require_https and urlsplit(api_url).scheme != "https":
+            raise SourceError("the GitHub API URL must use HTTPS")
+        self._api = api_url.rstrip("/")
+        self._host = urlsplit(self._api).netloc
+        self._repository = repository
+        self._token = token
+        self._timeout = timeout
+        self._session = session or requests.Session()
+
+    def pointer(self, channel: str) -> bytes | None:
+        """The bytes of ``channel``'s pointer on the ``channels`` branch; none when the
+        repository has no pointer for it yet."""
+        url = (
+            f"{self._api}/repos/{self._repository}/contents/{channel}.json?ref=channels"
+        )
+        return self.follow(
+            url,
+            limit=POINTER_LIMIT,
+            accept="application/vnd.github.raw+json",
+            missing_ok=True,
+        )
+
+    def assets(self, release: str) -> dict[str, Asset]:
+        """The files of the release named ``release``, by name."""
+        url = f"{self._api}/repos/{self._repository}/releases/tags/{release}"
+        data = self.follow(
+            url, limit=RELEASE_LIMIT, accept="application/vnd.github+json"
+        )
+        try:
+            document = json.loads(data or b"")
+        except ValueError as error:
+            raise SourceError(
+                f"the release {release} is not as GitHub gives it"
+            ) from error
+        listed = document.get("assets") if isinstance(document, dict) else None
+        if not isinstance(listed, list):
+            raise SourceError(
+                f"the release {release} is not as GitHub gives it: no assets"
+            )
+        assets: dict[str, Asset] = {}
+        for value in listed:
+            name = value.get("name") if isinstance(value, dict) else None
+            size = value.get("size") if isinstance(value, dict) else None
+            link = value.get("url") if isinstance(value, dict) else None
+            if (
+                not isinstance(name, str)
+                or type(size) is not int
+                or not isinstance(link, str)
+            ):
+                raise SourceError(
+                    f"the release {release} is not as GitHub gives it: an asset"
+                )
+            if name in assets:
+                raise SourceError(
+                    f"the release {release} has an asset named twice: {name}"
+                )
+            assets[name] = Asset(name, size, link)
+        return assets
+
+    def download(self, asset: Asset, *, limit: int) -> bytes:
+        """The bytes of ``asset``, at most ``limit``."""
+        data = self.follow(asset.url, limit=limit, accept="application/octet-stream")
+        if data is None:
+            raise SourceError(f"{asset.name} cannot be downloaded: not found")
+        return data
+
+    def follow(
+        self, url: str, *, limit: int, accept: str, missing_ok: bool = False
+    ) -> bytes | None:
+        """The body ``url`` answers, redirects followed; none for a 404 when ``missing_ok``."""
+        for _ in range(MAX_REDIRECTS + 1):
+            parts = urlsplit(url)
+            if self._https and parts.scheme != "https":
+                raise SourceError(
+                    f"{parts.netloc}{parts.path} is not served over HTTPS"
+                )
+            headers = {
+                "Accept": accept,
+                "User-Agent": "openaev-scenarios-collector",
+                "X-GitHub-Api-Version": "2022-11-28",
+            }
+            if self._token and parts.netloc == self._host:
+                headers["Authorization"] = f"Bearer {self._token}"
+            where = f"{parts.netloc}{parts.path}"
+            try:
+                response = self._session.get(
+                    url,
+                    headers=headers,
+                    timeout=self._timeout,
+                    allow_redirects=False,
+                    stream=True,
+                )
+            except requests.RequestException as error:
+                raise SourceError(
+                    f"cannot read {where}: {type(error).__name__}"
+                ) from error
+            with response:
+                if response.status_code in _REDIRECTS:
+                    location = response.headers.get("Location")
+                    if not location:
+                        raise SourceError(f"{where} redirects nowhere")
+                    url = urljoin(url, location)
+                    continue
+                if response.status_code == 404 and missing_ok:
+                    return None
+                if response.status_code != 200:
+                    raise SourceError(f"{where} answered {response.status_code}")
+                return _bounded(response, limit, where)
+        raise SourceError(f"too many redirects, over {MAX_REDIRECTS}")
+
+
+def _bounded(response: requests.Response, limit: int, where: str) -> bytes:
+    data = bytearray()
+    try:
+        for chunk in response.iter_content(_CHUNK):
+            data += chunk
+            if len(data) > limit:
+                raise SourceError(f"{where} is over {limit} bytes")
+    except requests.RequestException as error:
+        raise SourceError(f"cannot read {where}: {type(error).__name__}") from error
+    return bytes(data)

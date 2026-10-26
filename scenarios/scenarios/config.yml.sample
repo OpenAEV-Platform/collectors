@@ -1,0 +1,18 @@
+openaev:
+  url: 'http://localhost:3001'
+  token: 'ChangeMe'
+  # only required for multi-tenancy (Enterprise Edition), keep commented otherwise
+  # tenant_id: 'ChangeMe'
+
+collector:
+  id: 'ChangeMe'
+  name: 'OpenAEV Scenarios'
+  period: 'PT1H'
+  log_level: 'error'
+
+scenarios:
+  repository: 'OpenAEV-Platform/scenarios'
+  channel: 'edge'
+  github_api_url: 'https://api.github.com'
+  # only required while the repository is private
+  # github_token: 'ChangeMe'
