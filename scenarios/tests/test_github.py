@@ -1,12 +1,13 @@
 """Reading a channel's pointer and a release's files from the GitHub REST API."""
 
+import threading
 import time
 
 import pytest
 import requests
 from tests.fake_github import Answer, FakeGitHub, fake_github
 
-from scenarios.github import GitHubSource, SourceError
+from scenarios.github import CALL_THREAD, GitHubSource, SourceError
 
 REPOSITORY = "OpenAEV-Platform/scenarios"
 TOKEN = "github-token-for-tests"
@@ -282,3 +283,24 @@ def test_headers_that_trickle_are_cut_at_the_deadline(
             _source(fake).pointer("edge")
 
         assert time.monotonic() - started < 3
+
+
+def test_one_call_at_most_is_left_in_flight(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A call cut at its deadline keeps its thread until its connection ends: the next calls
+    wait for it to end rather than pile threads and connections up."""
+    monkeypatch.setattr("scenarios.github.DOWNLOAD_DEADLINE", 0.5)
+    with fake_github() as fake:
+        fake.answers[POINTER_PATH] = Answer(
+            body=b"{}" * 20, trickle=0.05, trickle_all=True
+        )
+        source = _source(fake)
+        before = sum(t.name == CALL_THREAD for t in threading.enumerate())
+
+        with pytest.raises(SourceError, match="took over"):
+            source.pointer("edge")
+        for _ in range(3):
+            with pytest.raises(SourceError, match="still in flight"):
+                source.pointer("edge")
+
+        after = sum(t.name == CALL_THREAD for t in threading.enumerate())
+        assert after <= before + 1

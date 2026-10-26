@@ -17,6 +17,7 @@ from scenarios.strict_json import read_strict_json
 POINTER_LIMIT = 4 * 1024
 RELEASE_LIMIT = 4 * 1024 * 1024
 MAX_REDIRECTS = 5
+CALL_THREAD = "scenarios-source-call"
 DOWNLOAD_DEADLINE = 300  # seconds for one answer, however slowly it comes
 _REDIRECTS = frozenset({301, 302, 303, 307, 308})
 _CHUNK = 64 * 1024
@@ -57,6 +58,7 @@ class GitHubSource:
         self._token = token
         self._timeout = timeout
         self._session = session or requests.Session()
+        self._in_flight: threading.Thread | None = None
         self._asset_url = re.compile(
             re.escape(f"{self._api}/repos/{repository}/releases/assets/") + "[0-9]+"
         )
@@ -130,7 +132,13 @@ class GitHubSource:
         within ``DOWNLOAD_DEADLINE`` in all, headers, redirects and body alike. The call runs in
         a thread of its own, so that a server however slow cannot hold the run past it: the
         thread, left behind, ends with its connection's read timeout or the server's answer.
+        Until it ends, every call is refused rather than left in flight beside it: one thread
+        and one connection at most are ever left behind.
         """
+        if self._in_flight is not None and self._in_flight.is_alive():
+            raise SourceError(
+                "a call cut at its deadline is still in flight: try again later"
+            )
         outcome: dict[str, bytes | None | BaseException] = {}
         deadline = DOWNLOAD_DEADLINE
 
@@ -140,10 +148,11 @@ class GitHubSource:
             except BaseException as error:  # noqa: B036 - handed to the caller as it is
                 outcome["error"] = error
 
-        worker = threading.Thread(target=call, daemon=True)
+        worker = threading.Thread(target=call, name=CALL_THREAD, daemon=True)
         worker.start()
         worker.join(deadline)
         if worker.is_alive():
+            self._in_flight = worker
             parts = urlsplit(url)
             raise SourceError(
                 f"{parts.netloc}{parts.path} took over {deadline} seconds"
