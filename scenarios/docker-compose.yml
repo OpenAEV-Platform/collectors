@@ -8,10 +8,12 @@ services:
       # - OPENAEV_TENANT_ID=${OPENAEV_TENANT_ID}
       - COLLECTOR_ID=${COLLECTOR_ID}
       - COLLECTOR_NAME=${COLLECTOR_NAME:-"OpenAEV Scenarios"}
-      - COLLECTOR_LOG_LEVEL=${COLLECTOR_LOG_LEVEL:-warn}
+      # info shows what each run checked; the collector runs dry until it can send releases
+      - COLLECTOR_LOG_LEVEL=${COLLECTOR_LOG_LEVEL:-info}
       - COLLECTOR_PERIOD=${COLLECTOR_PERIOD:-PT1H}
       - SCENARIOS_REPOSITORY=${SCENARIOS_REPOSITORY:-OpenAEV-Platform/scenarios}
       - SCENARIOS_CHANNEL=${SCENARIOS_CHANNEL:-edge}
+      - SCENARIOS_GITHUB_API_URL=${SCENARIOS_GITHUB_API_URL:-https://api.github.com}
       # only required while the repository is private
       # - SCENARIOS_GITHUB_TOKEN=${SCENARIOS_GITHUB_TOKEN}
     restart: unless-stopped

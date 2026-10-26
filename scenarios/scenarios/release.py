@@ -65,6 +65,8 @@ def pointer_from(document: Any, *, repository: str, channel: str) -> Pointer:
 # of a payload version.
 ARCHIVE_LIMIT = 20 * 1024 * 1024
 PAYLOAD_FILE_LIMIT = 256 * 1024
+# What one release may weigh in all, held in memory until it is handed on whole.
+RELEASE_LIMIT = 512 * 1024 * 1024
 MANIFEST_NAME = "manifest.json"
 _LOGIN = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
 _FILE_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
@@ -184,6 +186,8 @@ def listed_release(
     twice = sorted({name for name in names if names.count(name) > 1})
     if twice:
         raise ValueError(f"the manifest has a file listed twice: {', '.join(twice)}")
+    if sum(listed.size for listed in files) > RELEASE_LIMIT:
+        raise ValueError(f"the release is over {RELEASE_LIMIT} bytes in all")
     return ListedRelease(tuple(scenarios), len(payloads), tuple(files))
 
 
@@ -201,7 +205,7 @@ def check_assets(files: tuple[ListedFile, ...], assets: dict[str, int]) -> None:
     unlisted = sorted(set(assets) - {listed.name for listed in files} - {MANIFEST_NAME})
     if unlisted:
         raise ValueError(
-            f"the release has assets the manifest does not list: {', '.join(unlisted)}"
+            f"the release has assets the manifest does not list: {', '.join(map(repr, unlisted))}"
         )
 
 

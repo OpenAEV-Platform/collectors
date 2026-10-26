@@ -1,6 +1,9 @@
 """Reading a channel's pointer and a release's files from the GitHub REST API."""
 
+import time
+
 import pytest
+import requests
 
 from scenarios.github import GitHubSource, SourceError
 from tests.fake_github import Answer, FakeGitHub, fake_github
@@ -114,7 +117,7 @@ def test_a_download_over_its_limit_is_refused() -> None:
 
 def test_too_many_redirects_are_refused() -> None:
     with fake_github() as fake:
-        hops = f"/repos/{REPOSITORY}/releases/assets/hop"
+        hops = f"/repos/{REPOSITORY}/releases/assets/10"
         for hop in range(7):
             fake.redirect(
                 f"{hops}{hop}", f"http://127.0.0.1:{fake.port}{hops}{hop + 1}"
@@ -215,3 +218,53 @@ def test_a_redirect_hop_off_https_is_refused_when_https_is_required() -> None:
     )
     with pytest.raises(SourceError, match="storage.example/x is not served over HTTPS"):
         source.pointer("edge")
+
+
+def test_an_answer_that_trickles_is_cut_at_its_deadline(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("scenarios.github.DOWNLOAD_DEADLINE", 1)
+    with fake_github() as fake:
+        fake.answers[POINTER_PATH] = Answer(body=b"x" * 100, trickle=0.05)
+        started = time.monotonic()
+
+        with pytest.raises(SourceError, match="took over 1 seconds"):
+            _source(fake).pointer("edge")
+
+        assert time.monotonic() - started < 3
+
+
+def test_an_asset_url_that_is_not_an_asset_number_is_refused() -> None:
+    with fake_github() as fake:
+        sneaky = (
+            f"http://127.0.0.1:{fake.port}/repos/{REPOSITORY}/releases/assets/../../x"
+        )
+        fake.json(
+            RELEASE_PATH, {"assets": [{"name": "a.zip", "size": 1, "url": sneaky}]}
+        )
+        with pytest.raises(SourceError, match="served elsewhere"):
+            _source(fake).assets("2026.10.27.1")
+
+
+@pytest.mark.parametrize("status", [403, 429, 500])
+def test_an_answer_refused_by_the_api_is_refused(status: int) -> None:
+    with fake_github() as fake:
+        fake.raw(POINTER_PATH, b"{}", status=status)
+        with pytest.raises(SourceError, match=f"answered {status}"):
+            _source(fake).pointer("edge")
+
+
+def test_every_request_has_its_timeouts() -> None:
+    asked: list[object] = []
+
+    class Session:
+        def get(self, url: str, **options: object) -> object:
+            asked.append(options.get("timeout"))
+            raise requests.ConnectTimeout("too slow")
+
+    source = GitHubSource(
+        "https://api.example", REPOSITORY, None, timeout=(3, 7), session=Session()  # type: ignore[arg-type]
+    )
+    with pytest.raises(SourceError, match="ConnectTimeout"):
+        source.pointer("edge")
+    assert asked == [(3, 7)]

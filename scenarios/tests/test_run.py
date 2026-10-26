@@ -226,3 +226,36 @@ def test_a_file_longer_than_listed_is_refused_as_it_is_read() -> None:
         sink = Sink()
         _collect(fake, sink).run()
         assert sink.received == []
+
+
+def test_the_manifest_s_hash_is_checked_before_it_is_read(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    with fake_github() as fake:
+        _publish(fake, _files())
+        manifest_path = None
+        for asset in json.loads(
+            fake.answers[f"/repos/{REPOSITORY}/releases/tags/{RELEASE}"].body
+        )["assets"]:
+            if asset["name"] == "manifest.json":
+                manifest_path = asset["url"].split(str(fake.port), 1)[1]
+        fake.raw(manifest_path, b'{"a": 1, "a": 2}' + b" " * (len(_manifest()) - 16))
+        with caplog.at_level(logging.ERROR):
+            _collect(fake, Sink()).run()
+    assert "another SHA-256" in caplog.text
+    assert "a key twice" not in caplog.text
+
+
+def test_a_file_is_read_no_further_than_its_listed_size(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    with fake_github() as fake:
+        _publish(fake, _files())
+        for asset in json.loads(
+            fake.answers[f"/repos/{REPOSITORY}/releases/tags/{RELEASE}"].body
+        )["assets"]:
+            if asset["name"] == ARCHIVE:
+                fake.raw(asset["url"].split(str(fake.port), 1)[1], b"x" * 100_000)
+        with caplog.at_level(logging.ERROR):
+            _collect(fake, Sink()).run()
+    assert f"is over {len(ARCHIVE_BYTES)} bytes" in caplog.text

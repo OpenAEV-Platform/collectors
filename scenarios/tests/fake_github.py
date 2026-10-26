@@ -3,6 +3,7 @@ it is asked, with which token."""
 
 import json
 import threading
+import time
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
@@ -14,6 +15,7 @@ class Answer:
     status: int = 200
     body: bytes = b""
     headers: dict[str, str] = field(default_factory=dict)
+    trickle: float = 0.0  # seconds between two bytes of the body, to answer slowly
 
 
 @dataclass
@@ -54,7 +56,16 @@ def fake_github() -> Iterator[FakeGitHub]:
                 self.send_header(name, value)
             self.send_header("Content-Length", str(len(answer.body)))
             self.end_headers()
-            self.wfile.write(answer.body)
+            if not answer.trickle:
+                self.wfile.write(answer.body)
+                return
+            for byte in answer.body:
+                try:
+                    self.wfile.write(bytes([byte]))
+                    self.wfile.flush()
+                except OSError:
+                    return
+                time.sleep(answer.trickle)
 
         def log_message(self, format: str, *args: object) -> None:  # noqa: A002
             pass

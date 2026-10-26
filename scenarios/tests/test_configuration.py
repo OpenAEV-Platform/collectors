@@ -64,6 +64,7 @@ def test_the_token_is_never_shown_with_the_settings(
     [
         ("SCENARIOS_CHANNEL", "nightly"),
         ("SCENARIOS_REPOSITORY", "no-owner"),
+        ("SCENARIOS_REPOSITORY", "owner/.."),
         ("SCENARIOS_GITHUB_API_URL", "http://api.github.com"),
     ],
 )

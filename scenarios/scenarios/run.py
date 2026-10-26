@@ -64,7 +64,7 @@ class DryRunSink:
         for (
             external_id,
             version,
-        ) in listed.scenarios:  # a UUID and a version: nothing to escape
+        ) in listed.scenarios:
             self._logger.info(f"Dry run: scenario {external_id} {version}")
 
 
@@ -122,9 +122,8 @@ class Collect:
         if MANIFEST_NAME not in assets:
             raise ValueError(f"the release {pointer.release} has no {MANIFEST_NAME}")
         manifest = self._source.download(assets[MANIFEST_NAME], limit=MANIFEST_LIMIT)
-        check_manifest_hash(
-            manifest, pointer
-        )  # before reading 20 MiB of what may be anything
+        # The manifest's hash first, before reading 20 MiB of what may be anything.
+        check_manifest_hash(manifest, pointer)
         document = read_strict_json(manifest, limit=MANIFEST_LIMIT)
         listed = listed_release(
             manifest,

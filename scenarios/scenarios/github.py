@@ -3,11 +3,13 @@ a public and a private repository alike. Every answer is read bounded; redirects
 by hand, a few at most, over HTTPS only, and the token goes to the API's host alone: an asset's
 download is redirected to GitHub's storage, which must never see it."""
 
+import re
 import time
 from dataclasses import dataclass
 from urllib.parse import urljoin, urlsplit
 
 import requests
+import urllib3
 
 from scenarios.strict_json import read_strict_json
 
@@ -54,6 +56,9 @@ class GitHubSource:
         self._token = token
         self._timeout = timeout
         self._session = session or requests.Session()
+        self._asset_url = re.compile(
+            re.escape(f"{self._api}/repos/{repository}/releases/assets/") + "[0-9]+"
+        )
 
     def pointer(self, channel: str) -> bytes | None:
         """The bytes of ``channel``'s pointer on the ``channels`` branch; none when the
@@ -101,13 +106,11 @@ class GitHubSource:
                 )
             if name in assets:
                 raise SourceError(
-                    f"the release {release} has an asset named twice: {name}"
+                    f"the release {release} has an asset named twice: {name!r}"
                 )
-            if not link.startswith(
-                f"{self._api}/repos/{self._repository}/releases/assets/"
-            ):
+            if not self._asset_url.fullmatch(link):
                 raise SourceError(
-                    f"the release {release} has an asset served elsewhere: {name}"
+                    f"the release {release} has an asset served elsewhere: {name!r}"
                 )
             assets[name] = Asset(name, size, link)
         return assets
@@ -116,7 +119,7 @@ class GitHubSource:
         """The bytes of ``asset``, at most ``limit``."""
         data = self.follow(asset.url, limit=limit, accept="application/octet-stream")
         if data is None:
-            raise SourceError(f"{asset.name} cannot be downloaded: not found")
+            raise SourceError(f"{asset.name!r} cannot be downloaded: not found")
         return data
 
     def follow(
@@ -169,14 +172,17 @@ class GitHubSource:
 def _bounded(
     response: requests.Response, limit: int, where: str, deadline: float
 ) -> bytes:
+    """The body of ``response``, at most ``limit`` bytes, read before ``deadline``: each read
+    returns what one receive gives, so that the deadline is checked however slowly it comes.
+    """
     data = bytearray()
     try:
-        for chunk in response.iter_content(_CHUNK):
+        while chunk := response.raw.read1(_CHUNK, decode_content=True):
             data += chunk
             if len(data) > limit:
                 raise SourceError(f"{where} is over {limit} bytes")
             if time.monotonic() > deadline:
                 raise SourceError(f"{where} took over {DOWNLOAD_DEADLINE} seconds")
-    except requests.RequestException as error:
+    except (requests.RequestException, urllib3.exceptions.HTTPError, OSError) as error:
         raise SourceError(f"cannot read {where}: {type(error).__name__}") from error
     return bytes(data)

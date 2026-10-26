@@ -30,7 +30,7 @@ class SourceConfig(BaseConfigModel):
     @field_validator("repository")
     @classmethod
     def _owner_and_name(cls, value: str) -> str:
-        if not _REPOSITORY.fullmatch(value):
+        if not _REPOSITORY.fullmatch(value) or value.split("/")[1] in {".", ".."}:
             raise ValueError("give the repository as owner/name")
         return value
 

@@ -49,9 +49,9 @@ if present (see `scenarios/config.yml.sample` and `.env.sample`).
 | Parameter        | config.yml                | Docker environment variable | Default                            | Mandatory | Description                                          |
 |------------------|---------------------------|-----------------------------|------------------------------------|-----------|------------------------------------------------------|
 | Collector ID     | `collector.id`            | `COLLECTOR_ID`              |                                    | Yes       | A unique `UUIDv4` identifier for this collector.     |
-| Collector Name   | `collector.name`          | `COLLECTOR_NAME`            |                                    | Yes       | Name of the collector.                               |
+| Collector Name   | `collector.name`          | `COLLECTOR_NAME`            | `OpenAEV Scenarios`                | No        | Name of the collector.                               |
 | Collector Period | `collector.period`        | `COLLECTOR_PERIOD`          | `PT1H`                             | No        | Time between two runs (ISO 8601).                    |
-| Log Level        | `collector.log_level`     | `COLLECTOR_LOG_LEVEL`       | `error`                            | No        | One of `debug`, `info`, `warn`, `error`.             |
+| Log Level        | `collector.log_level`     | `COLLECTOR_LOG_LEVEL`       | `error`                            | No        | One of `debug`, `info`, `warn`, `error`; `info` shows what each run checked. |
 | Icon Filepath    | `collector.icon_filepath` | `COLLECTOR_ICON_FILEPATH`   | `scenarios/img/icon-scenarios.png` | No        | Path to the icon of the collector.                   |
 
 ### Source environment variables

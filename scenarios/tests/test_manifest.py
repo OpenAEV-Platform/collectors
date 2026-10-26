@@ -8,6 +8,7 @@ import pytest
 from scenarios.release import (
     ARCHIVE_LIMIT,
     PAYLOAD_FILE_LIMIT,
+    RELEASE_LIMIT,
     ListedFile,
     Pointer,
     check_assets,
@@ -196,3 +197,13 @@ def test_the_bounds_are_the_repository_s() -> None:
             items=_item(size=ARCHIVE_LIMIT), payloads=_payload(size=PAYLOAD_FILE_LIMIT)
         )
     )
+
+
+def test_a_release_over_its_bound_in_all_is_refused(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    assert RELEASE_LIMIT == 512 * 1024 * 1024
+    monkeypatch.setattr("scenarios.release.RELEASE_LIMIT", 12)
+    _listed(_manifest(items=_item(size=9), payloads=_payload(size=3)))
+    with pytest.raises(ValueError, match="over 12 bytes in all"):
+        _listed(_manifest(items=_item(size=10), payloads=_payload(size=3)))

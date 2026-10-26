@@ -6,6 +6,8 @@ from pyoaev.configuration import ConfigLoaderCollector
 
 class CollectorConfigOverride(ConfigLoaderCollector):
 
+    name: str = Field(default="OpenAEV Scenarios", description="Name of the collector.")
+
     icon_filepath: str | None = Field(
         default="scenarios/img/icon-scenarios.png",
         description="Path to the icon file",

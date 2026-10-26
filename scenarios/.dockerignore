@@ -3,6 +3,8 @@
 
 # Configuration files
 config.yml
+**/config.yml
+**/.env
 src/config.yml
 src/.env
 .env

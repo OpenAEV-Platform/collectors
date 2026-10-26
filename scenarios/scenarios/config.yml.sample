@@ -8,7 +8,7 @@ collector:
   id: 'ChangeMe'
   name: 'OpenAEV Scenarios'
   period: 'PT1H'
-  log_level: 'error'
+  log_level: 'info'
 
 scenarios:
   repository: 'OpenAEV-Platform/scenarios'
