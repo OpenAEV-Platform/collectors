@@ -52,7 +52,8 @@ def time_window_over(expectation: Expectation, time_window: timedelta) -> bool:
     Try with the end date first,
     if unavailable use the start date but readjust
     the time window with a factor of 1.5.
-    If also unavailable, just call it a day, because something is wrong here.
+    If both are not available, the collector doesn't take a decision
+    and let the platform handle it.
     """
     factor = 1.0
     date: datetime | None = extract_end_date(expectation)
@@ -63,8 +64,8 @@ def time_window_over(expectation: Expectation, time_window: timedelta) -> bool:
         date: datetime | None = extract_start_date(expectation)
 
     if not date:
-        # if there is neither start_date nor end_date, drop it
-        return True
+        # if there is neither start_date nor end_date, let it be
+        return False
 
     now = datetime.now(UTC)
     time_window = factor * time_window

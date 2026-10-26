@@ -168,4 +168,4 @@ class TestExpectationUtils(unittest.TestCase):
 
         time_window = MagicMock()
 
-        self.assertTrue(module.time_window_over(expectation, time_window))
+        self.assertFalse(module.time_window_over(expectation, time_window))
