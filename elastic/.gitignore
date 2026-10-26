@@ -3,6 +3,7 @@ config.yml
 src/.env
 tests_integration/integration_test.env
 *.key
+*.crt
 *.pem
 *.p12
 

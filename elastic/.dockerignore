@@ -63,6 +63,7 @@ pip-delete-this-directory.txt
 # Secrets & sensitive files (ALWAYS EXCLUDED FOR SECURITY)
 .env.*
 *.key
+*.crt
 *.pem
 *_rsa
 *_rsa.*
