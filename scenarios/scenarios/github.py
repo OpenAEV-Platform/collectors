@@ -15,12 +15,17 @@ import urllib3
 from scenarios.strict_json import read_strict_json
 
 POINTER_LIMIT = 4 * 1024
-RELEASE_LIMIT = 4 * 1024 * 1024
+RELEASE_ANSWER_LIMIT = 4 * 1024 * 1024  # GitHub's answer listing a release's files
 MAX_REDIRECTS = 5
 CALL_THREAD = "scenarios-source-call"
 DOWNLOAD_DEADLINE = 300  # seconds for one answer, however slowly it comes
 _REDIRECTS = frozenset({301, 302, 303, 307, 308})
 _CHUNK = 64 * 1024
+
+
+def _no_auth(request: requests.PreparedRequest) -> requests.PreparedRequest:
+    """The request as it is: what the session would add from a .netrc is never added."""
+    return request
 
 
 class SourceError(Exception):
@@ -81,10 +86,10 @@ class GitHubSource:
         """The files of the release named ``release``, by name."""
         url = f"{self._api}/repos/{self._repository}/releases/tags/{release}"
         data = self.follow(
-            url, limit=RELEASE_LIMIT, accept="application/vnd.github+json"
+            url, limit=RELEASE_ANSWER_LIMIT, accept="application/vnd.github+json"
         )
         try:
-            document = read_strict_json(data or b"", limit=RELEASE_LIMIT)
+            document = read_strict_json(data or b"", limit=RELEASE_ANSWER_LIMIT)
         except ValueError as error:
             raise SourceError(
                 f"the release {release} is not as GitHub gives it: {error}"
@@ -182,7 +187,7 @@ class GitHubSource:
             where = f"{parts.netloc}{parts.path}"
             try:
                 response = self._get(url, headers)
-            except requests.RequestException as error:
+            except (requests.RequestException, OSError) as error:
                 raise SourceError(
                     f"cannot read {where}: {type(error).__name__}"
                 ) from error
@@ -207,7 +212,8 @@ class GitHubSource:
         directly: the session would read a redirect's body whole, even with redirects left to
         the caller, to prepare the next request."""
         prepared = self._session.prepare_request(
-            requests.Request("GET", url, headers=headers)
+            # No authentication but the token: a .netrc would replace it, or follow redirects.
+            requests.Request("GET", url, headers=headers, auth=_no_auth)
         )
         settings = self._session.merge_environment_settings(
             prepared.url, {}, True, None, None
@@ -227,6 +233,7 @@ def _bounded(
 ) -> bytes:
     """The body of ``response``, at most ``limit`` bytes, read before ``deadline``: each read
     returns what one receive gives, so that the deadline is checked however slowly it comes.
+    The caller stops waiting at its own deadline; this one ends the thread it leaves behind.
     """
     data = bytearray()
     try:

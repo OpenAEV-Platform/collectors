@@ -61,10 +61,7 @@ class DryRunSink:
             f"{len(listed.scenarios)} scenario(s), {listed.payload_versions} payload version(s); "
             "nothing is sent to the platform"
         )
-        for (
-            external_id,
-            version,
-        ) in listed.scenarios:
+        for external_id, version in listed.scenarios:
             self._logger.info(f"Dry run: scenario {external_id} {version}")
 
 

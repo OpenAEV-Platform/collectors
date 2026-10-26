@@ -35,7 +35,7 @@ packages = [
 pydantic = ">=2.13,<3"
 pydantic-settings = ">=2.14,<3"
 requests = ">=2.33,<3"
-urllib3 = ">=2.0,<3"
+urllib3 = ">=2.2,<3"  # read1, which reads what one receive gives
 pyoaev = "3.261026.0"
 
 [tool.poetry.group.dev.dependencies]

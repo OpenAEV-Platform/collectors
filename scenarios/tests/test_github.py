@@ -1,7 +1,9 @@
 """Reading a channel's pointer and a release's files from the GitHub REST API."""
 
+import gzip
 import threading
 import time
+from pathlib import Path
 
 import pytest
 import requests
@@ -323,3 +325,44 @@ def test_the_body_of_a_redirect_is_never_read(monkeypatch: pytest.MonkeyPatch) -
 
         assert _source(fake).pointer("edge") == b'{"pointer": 1}'
         assert time.monotonic() - started < 2
+
+
+def test_a_netrc_never_replaces_the_token_nor_reaches_the_storage(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    netrc = tmp_path / "netrc"
+    netrc.write_text(
+        "machine 127.0.0.1 login someone password secret\n"
+        "machine localhost login someone password secret\n"
+    )
+    netrc.chmod(0o600)
+    monkeypatch.setenv("NETRC", str(netrc))
+    with fake_github() as fake:
+        storage = f"http://localhost:{fake.port}/storage/1"
+        fake.redirect(POINTER_PATH, storage)
+        fake.raw("/storage/1", b"{}")
+
+        _source(fake).pointer("edge")
+
+        assert [asked[2] for asked in fake.asked] == [f"Bearer {TOKEN}", None]
+
+
+def test_a_transport_error_is_a_source_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    class Adapter:
+        def send(self, request: object, **options: object) -> object:
+            raise OSError("no such certificate bundle")
+
+    session = requests.Session()
+    monkeypatch.setattr(session, "get_adapter", lambda url: Adapter())
+    source = GitHubSource("https://api.example", REPOSITORY, None, session=session)
+    with pytest.raises(SourceError, match="OSError"):
+        source.pointer("edge")
+
+
+def test_an_answer_github_compresses_is_read_decompressed() -> None:
+    with fake_github() as fake:
+        fake.answers[POINTER_PATH] = Answer(
+            body=gzip.compress(b'{"pointer": 1}'), headers={"Content-Encoding": "gzip"}
+        )
+
+        assert _source(fake).pointer("edge") == b'{"pointer": 1}'
