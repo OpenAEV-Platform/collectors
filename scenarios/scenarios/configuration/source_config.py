@@ -24,7 +24,7 @@ class SourceConfig(BaseConfigModel):
     )
     github_token: SecretStr | None = Field(
         default=None,
-        description="A GitHub token that can read the repository, needed while it is private.",
+        description="A fine-grained GitHub token, Contents: read on this repository only, needed while it is private.",
     )
     dry_run: bool = Field(
         default=True,

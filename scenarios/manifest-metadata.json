@@ -10,7 +10,7 @@
   "max_confidence_level": 80,
   "support_version": "",
   "subscription_link": "",
-  "source_code": "",
+  "source_code": "https://github.com/OpenAEV-Platform/collectors/tree/main/scenarios",
   "manager_supported": false,
   "container_version": "rolling",
   "container_image": "openaev/collector-scenarios",
