@@ -1,9 +1,25 @@
 services:
   collector-splunkes:
     image: openaev/collector-splunk-es:rolling
-    # Every setting comes from .env (copy src/.env.sample next to this file).
-    # Settings missing from .env stay unset, so the collector applies its own
-    # defaults.
-    env_file:
-      - .env
+    # Variables listed without a value are read from .env (copy src/.env.sample
+    # next to this file) or from the shell. Those set in neither stay unset, so
+    # the collector applies its own defaults. To set one here instead, write
+    # VAR=value; it takes precedence over .env.
+    environment:
+      - OPENAEV_URL
+      - OPENAEV_TOKEN
+      - OPENAEV_TENANT_ID
+      - COLLECTOR_ID
+      - COLLECTOR_NAME
+      - COLLECTOR_PLATFORM
+      - COLLECTOR_PERIOD
+      - COLLECTOR_LOG_LEVEL
+      - SPLUNKES_BASE_URL
+      - SPLUNKES_USERNAME
+      - SPLUNKES_PASSWORD
+      - SPLUNKES_ALERTS_INDEX
+      - SPLUNKES_TIME_WINDOW
+      - SPLUNKES_MAX_RETRY
+      - SPLUNKES_OFFSET
+      - SPLUNKES_QUERY_TEMPLATE
     restart: always

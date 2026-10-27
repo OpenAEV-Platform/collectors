@@ -1,9 +1,28 @@
 services:
   collector-microsoft-defender-o365:
     image: openaev/collector-microsoft-defender-o365:rolling
-    # Every setting comes from .env (copy .env.sample).
-    # Settings missing from .env stay unset, so the collector applies its own
-    # defaults.
-    env_file:
-      - .env
+    # Variables listed without a value are read from .env (copy .env.sample) or
+    # from the shell. Those set in neither stay unset, so the collector applies
+    # its own defaults. To set one here instead, write VAR=value; it takes
+    # precedence over .env.
+    environment:
+      - OPENAEV_URL
+      - OPENAEV_TOKEN
+      - OPENAEV_TENANT_ID
+      - COLLECTOR_ID
+      - COLLECTOR_NAME
+      - COLLECTOR_PLATFORM
+      - COLLECTOR_PERIOD
+      - COLLECTOR_LOG_LEVEL
+      - SOURCE_TENANT_ID
+      - SOURCE_CLIENT_ID
+      - SOURCE_USE_CERTIFICATE_AUTH
+      - SOURCE_CLIENT_SECRET
+      - SOURCE_CLIENT_CERT_DATA
+      - SOURCE_CLIENT_CERT_THUMBPRINT
+      - SOURCE_CLIENT_CERT_PASSPHRASE
+      - SOURCE_BASE_URL
+      - SOURCE_FILTER_SERVICE_SOURCE
+      - SOURCE_RATE_LIMIT_REQUESTS_PER_MINUTE
+      - SOURCE_MAX_FETCH_RETRIES
     restart: always

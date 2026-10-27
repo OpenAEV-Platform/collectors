@@ -21,7 +21,7 @@ As of now, outside of `src/collector` (generic) and `src/source` (custom) there 
 
 Your custom configuration will be propagated through the source handler to the `__init__.py` of you data fetcher object as a `source_config` parameter. From there, it can be used at your convenience.
 
-*Nota bene*: for now, please keep the `SOURCE_EXPECTATION_BATCH_SIZE` available in the custom parameters.
+*Nota bene*: for now, please keep the `CUSTOM_EXPECTATION_BATCH_SIZE` available in the custom parameters.
 
 Do not hesitate to check the `CONTRIBUTING.md` for more details regarding the collector design and help regarding development setup.
 
@@ -80,9 +80,9 @@ Below are the parameters you'll need to set for the collector:
 
 | Parameter                | config.yml                           | Docker environment variable            | Default                     | Mandatory | Description                                                                                        |
 |--------------------------|--------------------------------------|----------------------------------------|-----------------------------|-----------|----------------------------------------------------------------------------------------------------|
-| Key                  | `source.key`                          | `SOURCE_KEY`                      |value                        | No        | Template example key value                                                                 |
-| Time Window              | `source.time_window`              | `SOURCE_TIME_WINDOW`              | PT1H                        | No        | Default search time window when no date signatures are provided (ISO 8601 format)                |
-| Expectation Batch Size   | `source.expectation_batch_size`   | `SOURCE_EXPECTATION_BATCH_SIZE`   | 50                          | No        | Number of expectations to process in each batch for batch-based processing                         |
+| Key                  | `source.key`                          | `CUSTOM_KEY`                      |value                        | No        | Template example key value                                                                 |
+| Time Window              | `source.time_window`              | `CUSTOM_TIME_WINDOW`              | PT1H                        | No        | Default search time window when no date signatures are provided (ISO 8601 format)                |
+| Expectation Batch Size   | `source.expectation_batch_size`   | `CUSTOM_EXPECTATION_BATCH_SIZE`   | 50                          | No        | Number of expectations to process in each batch for batch-based processing                         |
 
 ### Example Configuration Files
 
@@ -109,7 +109,7 @@ source:
 export OPENAEV_URL="https://your-openaev-instance.com"
 export OPENAEV_TOKEN="your-openaev-token"
 export COLLECTOR_ID="template--your-unique-uuid"
-export SOURCE_KEY="value"
+export CUSTOM_KEY="value"
 ```
 
 ## Deployment
@@ -168,7 +168,7 @@ docker run -d \
   -e OPENAEV_URL="https://your-openaev-instance.com" \
   -e OPENAEV_TOKEN="your-token" \
   -e COLLECTOR_ID="template--your-uuid" \
-  -e SOURCE_KEY="your-value" \
+  -e CUSTOM_KEY="your-value" \
   openaev-template-collector
 
 # Or run with configuration file mounted
@@ -178,17 +178,18 @@ docker run -d \
 ```
 
 Or create a `.env` file from `.env.sample` and fill in your values, then start the collector with the provided
-`docker-compose.yml`, which passes the whole `.env` file to the container (`env_file`):
+`docker-compose.yml`, which reads the settings it lists from `.env` or from the shell:
 
 ```shell
 cp .env.sample .env
 docker compose up -d
 ```
 
-Settings left out of `.env` keep the collector's defaults. To check what actually reached the collector:
+Settings left out of `.env` keep the collector's defaults. A value written directly in the `environment` section of
+`docker-compose.yml` (`VAR=value`) takes precedence over `.env`. To check what actually reached the collector:
 
 ```shell
-docker compose exec collector-template env | grep -E '^(OPENAEV|COLLECTOR|SOURCE)_'
+docker compose exec collector-template env | grep -E '^(OPENAEV|COLLECTOR|CUSTOM)_'
 ```
 
 ## Behavior

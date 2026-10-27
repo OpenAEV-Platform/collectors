@@ -242,14 +242,15 @@ docker run \
 ### Using Docker Compose
 
 Create a `.env` file next to `docker-compose.yml` from `src/.env.sample` and fill in your values. The provided
-`docker-compose.yml` passes the whole `.env` file to the container (`env_file`):
+`docker-compose.yml` reads the settings it lists from `.env` or from the shell:
 
 ```shell
 cp src/.env.sample .env
 docker compose up -d
 ```
 
-Settings left out of `.env` keep the collector's defaults. To check what actually reached the collector:
+Settings left out of `.env` keep the collector's defaults. A value written directly in the `environment` section of
+`docker-compose.yml` (`VAR=value`) takes precedence over `.env`. To check what actually reached the collector:
 
 ```shell
 docker compose exec collector-palo-alto-cortex-xsoar env | grep -E '^(OPENAEV|COLLECTOR|PALO_ALTO_CORTEX_XSOAR)_'

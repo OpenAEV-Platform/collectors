@@ -1,9 +1,30 @@
 services:
   collector-qradar:
     image: openaev/collector-qradar:rolling
-    # Every setting comes from .env (copy src/.env.sample next to this file).
-    # Settings missing from .env stay unset, so the collector applies its own
-    # defaults.
-    env_file:
-      - .env
+    # Variables listed without a value are read from .env (copy src/.env.sample
+    # next to this file) or from the shell. Those set in neither stay unset, so
+    # the collector applies its own defaults. To set one here instead, write
+    # VAR=value; it takes precedence over .env.
+    environment:
+      - OPENAEV_URL
+      - OPENAEV_TOKEN
+      - OPENAEV_TENANT_ID
+      - COLLECTOR_ID
+      - COLLECTOR_NAME
+      - COLLECTOR_PLATFORM
+      - COLLECTOR_PERIOD
+      - COLLECTOR_LOG_LEVEL
+      - QRADAR_BASE_URL
+      - QRADAR_TOKEN
+      - QRADAR_USERNAME
+      - QRADAR_PASSWORD
+      - QRADAR_API_VERSION
+      - QRADAR_DATA_SOURCE
+      - QRADAR_CONSOLE_URL
+      - QRADAR_VERIFY_SSL
+      - QRADAR_TIME_WINDOW
+      - QRADAR_MAX_RETRY
+      - QRADAR_OFFSET
+      - QRADAR_SEARCH_TIMEOUT
+      - QRADAR_POLL_INTERVAL
     restart: always

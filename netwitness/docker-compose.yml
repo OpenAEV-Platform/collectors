@@ -1,9 +1,27 @@
 services:
   collector-netwitness:
     image: openaev/collector-netwitness:rolling
-    # Every setting comes from .env (copy src/.env.sample next to this file).
-    # Settings missing from .env stay unset, so the collector applies its own
-    # defaults.
-    env_file:
-      - .env
+    # Variables listed without a value are read from .env (copy src/.env.sample
+    # next to this file) or from the shell. Those set in neither stay unset, so
+    # the collector applies its own defaults. To set one here instead, write
+    # VAR=value; it takes precedence over .env.
+    environment:
+      - OPENAEV_URL
+      - OPENAEV_TOKEN
+      - OPENAEV_TENANT_ID
+      - COLLECTOR_ID
+      - COLLECTOR_NAME
+      - COLLECTOR_PLATFORM
+      - COLLECTOR_PERIOD
+      - COLLECTOR_LOG_LEVEL
+      - NETWITNESS_BASE_URL
+      - NETWITNESS_TOKEN
+      - NETWITNESS_USERNAME
+      - NETWITNESS_PASSWORD
+      - NETWITNESS_MAX_RESULTS
+      - NETWITNESS_CONSOLE_URL
+      - NETWITNESS_VERIFY_SSL
+      - NETWITNESS_TIME_WINDOW
+      - NETWITNESS_MAX_RETRY
+      - NETWITNESS_OFFSET
     restart: always

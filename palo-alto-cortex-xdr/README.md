@@ -85,14 +85,15 @@ docker build . -t openaev/collector-palo-alto-cortex-xdr:latest
 ```
 
 Create a `.env` file next to `docker-compose.yml` from `src/.env.sample` and fill in your values, then start the
-collector with the provided `docker-compose.yml`, which passes the whole `.env` file to the container (`env_file`):
+collector with the provided `docker-compose.yml`, which reads the settings it lists from `.env` or from the shell:
 
 ```shell
 cp src/.env.sample .env
 docker compose up -d
 ```
 
-Settings left out of `.env` keep the collector's defaults. To check what actually reached the collector:
+Settings left out of `.env` keep the collector's defaults. A value written directly in the `environment` section of
+`docker-compose.yml` (`VAR=value`) takes precedence over `.env`. To check what actually reached the collector:
 
 ```shell
 docker compose exec collector-palo-alto-cortex-xdr env | grep -E '^(OPENAEV|COLLECTOR|PALO_ALTO_CORTEX_XDR)_'

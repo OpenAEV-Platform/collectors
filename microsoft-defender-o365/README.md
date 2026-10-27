@@ -193,14 +193,15 @@ docker run -d \
 ```
 
 Or create a `.env` file from `.env.sample` and fill in your values, then start the collector with the provided
-`docker-compose.yml`, which passes the whole `.env` file to the container (`env_file`):
+`docker-compose.yml`, which reads the settings it lists from `.env` or from the shell:
 
 ```shell
 cp .env.sample .env
 docker compose up -d
 ```
 
-Settings left out of `.env` keep the collector's defaults. To check what actually reached the collector:
+Settings left out of `.env` keep the collector's defaults. A value written directly in the `environment` section of
+`docker-compose.yml` (`VAR=value`) takes precedence over `.env`. To check what actually reached the collector:
 
 ```shell
 docker compose exec collector-microsoft-defender-o365 env | grep -E '^(OPENAEV|COLLECTOR|SOURCE)_'
