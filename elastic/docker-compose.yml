@@ -1,22 +1,14 @@
-version: "3"
 services:
   collector-elastic:
     image: openaev/collector-elastic:rolling
-    environment:
-      - OPENAEV_URL=http://localhost
-      - OPENAEV_TOKEN=ChangeMe
-      # only required for multi-tenancy (Enterprise Edition), keep commented otherwise
-      # - OPENAEV_TENANT_ID=ChangeMe
-      - COLLECTOR_ID=ChangeMe
-      - ELASTIC_BASE_URL=https://change.me
-      # Authentication: provide ELASTIC_API_KEY (preferred) or username/password
-      # - ELASTIC_API_KEY=ChangeMe
-      - ELASTIC_USERNAME=ChangeMe
-      - ELASTIC_PASSWORD=ChangeMe
-      - ELASTIC_ALERTS_INDEX=.alerts-security.alerts-*
-      # Optional editable Lucene query_string (unset = built-in default).
-      # - ELASTIC_QUERY_TEMPLATE=
-      # Raw endpoint/process events index for the implant-marker drilldown
-      # (empty = disable drilldown, IP + time correlation only).
-      # - ELASTIC_EVENTS_INDEX=logs-windows.sysmon_operational-*,logs-endpoint.events.process-*
+    # Every setting comes from .env (copy src/.env.sample next to this file).
+    # Settings missing from .env stay unset, so the collector applies its own
+    # defaults; an explicitly empty value has a meaning for some of them
+    # (e.g. ELASTIC_EVENTS_INDEX= disables the implant-marker drilldown).
+    env_file:
+      - .env
+    # Uncomment to trust a private CA (e.g. elasticsearch-certutil) and set
+    # ELASTIC_CA_CERT=/certs/ca.pem in .env.
+    # volumes:
+    #   - ./certs:/certs:ro
     restart: always
