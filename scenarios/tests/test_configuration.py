@@ -81,3 +81,11 @@ def test_the_dry_run_is_set_from_the_environment(
     monkeypatch: pytest.MonkeyPatch, given: str, dry: bool
 ) -> None:
     assert _config(monkeypatch, SCENARIOS_DRY_RUN=given).get("scenarios_dry_run") is dry
+
+
+@pytest.mark.parametrize("given", ["", "maybe", "sometimes"])
+def test_a_dry_run_neither_true_nor_false_is_refused(
+    monkeypatch: pytest.MonkeyPatch, given: str
+) -> None:
+    with pytest.raises(ValidationError):
+        _config(monkeypatch, SCENARIOS_DRY_RUN=given)

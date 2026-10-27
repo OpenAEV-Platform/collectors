@@ -3,6 +3,7 @@ call it receives with its path, its Authorization header and the parts of its bo
 
 import json
 import threading
+import time
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
@@ -30,6 +31,7 @@ class FakePlatform:
     status: int = 200
     body: bytes = b""
     headers: dict[str, str] = field(default_factory=dict)
+    trickle: float = 0.0  # seconds between two bytes of the body, to answer slowly
     calls: list[Call] = field(default_factory=list)
     port: int = 0
 
@@ -80,7 +82,16 @@ def fake_platform() -> Iterator[FakePlatform]:
                 self.send_header(name, value)
             self.send_header("Content-Length", str(len(fake.body)))
             self.end_headers()
-            self.wfile.write(fake.body)
+            if not fake.trickle:
+                self.wfile.write(fake.body)
+                return
+            for byte in fake.body:
+                try:
+                    self.wfile.write(bytes([byte]))
+                    self.wfile.flush()
+                except OSError:  # the client stopped reading
+                    return
+                time.sleep(fake.trickle)
 
         def log_message(self, *arguments: object) -> None:
             pass

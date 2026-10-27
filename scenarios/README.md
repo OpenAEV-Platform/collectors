@@ -31,7 +31,10 @@ pointer names, and checks it against its manifest before anything reaches the pl
 Every JSON document is read strictly (UTF-8, no key twice, no `NaN`, no integer beyond
 ±(2^53 − 1), at most 64 levels deep), every answer is read within a bound, redirects are followed
 over HTTPS only, and the GitHub token is sent to the GitHub API's host alone. The OpenAEV token
-goes to the platform's URL alone: the sync follows no redirect.
+goes to the platform's URL alone: the sync follows no redirect, reads its answer within 1 MiB and
+10 minutes, and takes it only for the release it sent. A platform reached over `http://` gets
+the token and the release in clear: the collector warns at start; use `https://` outside a
+private network.
 
 ## Requirements
 

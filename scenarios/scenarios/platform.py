@@ -3,25 +3,32 @@ the manifest and every file the release lists, the archives and the payload vers
 under its own name. The platform checks them again before it uses anything.
 
 The token goes to the platform's URL alone: no redirect is followed, and no .netrc replaces it.
-The answer is read bounded. A call that fails raises, and the next run sends the release again;
-the platform keeps the last release it applied, so a release sent twice changes nothing.
+The answer is read bounded, within a deadline, and must be about the release sent. A call that
+fails raises, and the next run sends the release again; the platform keeps the last release it
+applied, so a release sent twice changes nothing.
 """
 
+import time
 from typing import Any, Protocol
+from urllib.parse import urlsplit
 
 import requests
+import urllib3
 
 from scenarios.run import VerifiedRelease
 from scenarios.strict_json import read_strict_json
 
 ANSWER_LIMIT = 1024 * 1024
 TIMEOUT = (10, 300)  # seconds to connect, then between two reads of the answer
+DEADLINE = 600  # seconds for the whole answer, however slowly it comes
 _CHUNK = 64 * 1024
 _TYPES = {".zip": "application/zip", ".json": "application/json"}
 
 
 class Logger(Protocol):
     def info(self, message: str) -> Any: ...
+
+    def warning(self, message: str) -> Any: ...
 
     def error(self, message: str) -> Any: ...
 
@@ -60,6 +67,10 @@ class PlatformSink:
         self._token = token
         self._logger = logger
         self._session = session or requests.Session()
+        if urlsplit(url).scheme != "https":
+            logger.warning(
+                "The platform is reached over HTTP: the token and the release go in clear"
+            )
 
     def send(self, release: VerifiedRelease) -> None:
         parts: list[tuple[str, tuple[str, bytes, str]]] = [
@@ -70,6 +81,10 @@ class PlatformSink:
             parts.append(("archives", (listed.name, data, _content_type(listed.name))))
         answer = self._post(parts)
         name = answer["release"]
+        if name != release.pointer.release:
+            raise PlatformError(
+                f"the platform answered for release {name}, not {release.pointer.release}"
+            )
         if not answer["applied"]:
             self._logger.info(f"The platform already holds release {name}")
             return
@@ -104,14 +119,24 @@ class PlatformSink:
                     f"the platform answered {response.status_code} to the sync"
                 )
             body = bytearray()
+            deadline = time.monotonic() + DEADLINE
             try:
-                for chunk in response.iter_content(_CHUNK):
+                # What one receive gives, so that the deadline is checked however slowly it comes.
+                while chunk := response.raw.read1(_CHUNK, decode_content=True):
                     body += chunk
                     if len(body) > ANSWER_LIMIT:
                         raise PlatformError(
                             f"the platform's answer is over {ANSWER_LIMIT} bytes"
                         )
-            except requests.RequestException as error:
+                    if time.monotonic() > deadline:
+                        raise PlatformError(
+                            f"the platform's answer took over {DEADLINE} seconds"
+                        )
+            except (
+                requests.RequestException,
+                urllib3.exceptions.HTTPError,
+                OSError,
+            ) as error:
                 raise PlatformError(
                     f"cannot read the platform's answer: {type(error).__name__}"
                 ) from error

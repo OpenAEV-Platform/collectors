@@ -122,8 +122,8 @@ def test_a_redirect_is_never_followed() -> None:
 
 @pytest.mark.parametrize(
     "body",
-    [b"not json", b"[]", b'{"applied": "yes"}', b"{" + b" " * 2_000_000 + b"}"],
-    ids=["not-json", "a-list", "wrong-types", "over-its-limit"],
+    [b"not json", b"[]", b'{"applied": "yes"}'],
+    ids=["not-json", "a-list", "wrong-types"],
 )
 def test_an_answer_out_of_its_shape_raises(body: bytes) -> None:
     with fake_platform() as fake:
@@ -145,3 +145,39 @@ def test_a_netrc_never_replaces_the_token(
         _sink(fake).send(_release())
 
     assert fake.calls[0].authorization == f"Bearer {TOKEN}"
+
+
+def test_an_answer_over_its_limit_stops_being_read() -> None:
+    with fake_platform() as fake:
+        fake.status, fake.body = 200, b"{" + b" " * 2_000_000 + b"}"
+        fake.headers = {"Content-Type": "application/json"}
+        with pytest.raises(PlatformError, match="answer is over 1048576 bytes"):
+            _sink(fake).send(_release())
+
+
+def test_an_answer_for_another_release_raises() -> None:
+    with fake_platform() as fake:
+        fake.answer(_applied(release="2026.10.20.1"))
+        with pytest.raises(PlatformError, match="2026.10.20.1"):
+            _sink(fake).send(_release())
+
+
+def test_an_answer_that_trickles_stops_at_the_deadline(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("scenarios.platform.DEADLINE", 1.0)
+    with fake_platform() as fake:
+        fake.answer(_applied())
+        fake.trickle = 0.2  # seconds between two bytes
+        with pytest.raises(PlatformError, match="took over"):
+            _sink(fake).send(_release())
+
+
+def test_a_platform_reached_over_http_is_said_to_be(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    with caplog.at_level(logging.INFO):
+        PlatformSink("http://openaev:8080", TOKEN, None, logging.getLogger("t"))
+        PlatformSink("https://openaev.example.org", TOKEN, None, logging.getLogger("t"))
+
+    assert caplog.text.count("over HTTP") == 1
