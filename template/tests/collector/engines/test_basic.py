@@ -353,6 +353,7 @@ class TestBasicCollectorEngine(unittest.TestCase):
         expectation3 = MagicMock()
         expectation4 = MagicMock()
         batch = [expectation1, expectation2, expectation3, expectation4]
+        m_time_window_over.side_effect = [True, False]
         result1 = MagicMock()
         result2 = MagicMock()
         result3 = MagicMock()
