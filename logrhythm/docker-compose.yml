@@ -1,17 +1,30 @@
-version: "3"
 services:
   collector-logrhythm:
     image: openaev/collector-logrhythm:rolling
+    # Variables listed without a value are read from .env (copy src/.env.sample
+    # next to this file) or from the shell. Those set in neither stay unset, so
+    # the collector applies its own defaults. To set one here instead, write
+    # VAR=value; it takes precedence over .env.
     environment:
-      - OPENAEV_URL=http://localhost
-      - OPENAEV_TOKEN=ChangeMe
-      # only required for multi-tenancy (Enterprise Edition), keep commented otherwise
-      # - OPENAEV_TENANT_ID=ChangeMe
-      - COLLECTOR_ID=ChangeMe
-      - LOGRHYTHM_BASE_URL=https://change.me
-      # Authentication: provide LOGRHYTHM_TOKEN (preferred, bearer token) or username/password
-      - LOGRHYTHM_TOKEN=ChangeMe
-      # - LOGRHYTHM_USERNAME=ChangeMe
-      # - LOGRHYTHM_PASSWORD=ChangeMe
-      - LOGRHYTHM_QUERY_EVENT_MANAGER=true
+      - OPENAEV_URL
+      - OPENAEV_TOKEN
+      - OPENAEV_TENANT_ID
+      - COLLECTOR_ID
+      - COLLECTOR_NAME
+      - COLLECTOR_PLATFORM
+      - COLLECTOR_PERIOD
+      - COLLECTOR_LOG_LEVEL
+      - LOGRHYTHM_BASE_URL
+      - LOGRHYTHM_TOKEN
+      - LOGRHYTHM_USERNAME
+      - LOGRHYTHM_PASSWORD
+      - LOGRHYTHM_QUERY_EVENT_MANAGER
+      - LOGRHYTHM_MAX_MSGS
+      - LOGRHYTHM_CONSOLE_URL
+      - LOGRHYTHM_VERIFY_SSL
+      - LOGRHYTHM_TIME_WINDOW
+      - LOGRHYTHM_MAX_RETRY
+      - LOGRHYTHM_OFFSET
+      - LOGRHYTHM_SEARCH_TIMEOUT
+      - LOGRHYTHM_POLL_INTERVAL
     restart: always

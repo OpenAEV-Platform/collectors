@@ -1,14 +1,22 @@
 services:
   collector-palo-alto-cortex-xdr:
     image: openaev/collector-palo-alto-cortex-xdr:rolling
+    # Variables listed without a value are read from .env (copy src/.env.sample
+    # next to this file) or from the shell. Those set in neither stay unset, so
+    # the collector applies its own defaults. To set one here instead, write
+    # VAR=value; it takes precedence over .env.
     environment:
-      - OPENAEV_URL=http://localhost
-      - OPENAEV_TOKEN=ChangeMe
-      # only required for multi-tenancy (Enterprise Edition), keep commented otherwise
-      # - OPENAEV_TENANT_ID=ChangeMe
-      - COLLECTOR_ID=ChangeMe
-      - PALO_ALTO_CORTEX_XDR_FQDN=ChangeMe
-      - PALO_ALTO_CORTEX_XDR_API_KEY=ChangeMe
-      - PALO_ALTO_CORTEX_XDR_API_KEY_ID=ChangeMe
-      #- PALO_ALTO_CORTEX_XDR_API_KEY_TYPE=standard
+      - OPENAEV_URL
+      - OPENAEV_TOKEN
+      - OPENAEV_TENANT_ID
+      - COLLECTOR_ID
+      - COLLECTOR_NAME
+      - COLLECTOR_PLATFORM
+      - COLLECTOR_PERIOD
+      - COLLECTOR_LOG_LEVEL
+      - PALO_ALTO_CORTEX_XDR_FQDN
+      - PALO_ALTO_CORTEX_XDR_API_KEY
+      - PALO_ALTO_CORTEX_XDR_API_KEY_ID
+      - PALO_ALTO_CORTEX_XDR_API_KEY_TYPE
+      - PALO_ALTO_CORTEX_XDR_TIME_WINDOW
     restart: always

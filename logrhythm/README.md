@@ -42,8 +42,8 @@ supported.
 
 ## Configuration variables
 
-The collector is configured either through environment variables (recommended, read from `docker-compose.yml` / the
-`.env` file for a Docker deployment) or through a `config.yml` file (for a manual deployment). Copy the provided
+The collector is configured either through environment variables (recommended, read from the `.env` file for a
+Docker deployment) or through a `config.yml` file (for a manual deployment). Copy the provided
 `src/.env.sample` / `src/config.yml.sample` and fill in the values flagged with `ChangeMe`.
 
 ### OpenAEV environment variables
@@ -95,11 +95,19 @@ Build the Docker image (or use the published `openaev/collector-logrhythm` image
 docker build . -t openaev/collector-logrhythm:latest
 ```
 
-Create a `.env` file from `src/.env.sample` and fill in your values, then start the collector with the provided
-`docker-compose.yml` (which reads those variables):
+Create a `.env` file next to `docker-compose.yml` from `src/.env.sample` and fill in your values, then start the
+collector with the provided `docker-compose.yml`, which reads the settings it lists from `.env` or from the shell:
 
 ```shell
+cp src/.env.sample .env
 docker compose up -d
+```
+
+Settings left out of `.env` keep the collector's defaults. A value written directly in the `environment` section of
+`docker-compose.yml` (`VAR=value`) takes precedence over `.env`. To check what actually reached the collector:
+
+```shell
+docker compose exec collector-logrhythm env | grep -E '^(OPENAEV|COLLECTOR|LOGRHYTHM)_'
 ```
 
 ### Manual Deployment with Poetry
