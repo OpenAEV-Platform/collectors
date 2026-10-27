@@ -151,6 +151,7 @@ class ConfigLoader(ConfigBaseSettings):
                 "source_expectation_batch_size": {
                     "data": self.source.expectation_batch_size
                 },
+                "source_retry_window": {"data": self.source.retry_window},
             },
             config_base_model=self,
         )
