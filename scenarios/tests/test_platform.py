@@ -4,12 +4,21 @@ so that the next run sends the release again."""
 
 import hashlib
 import logging
+import tracemalloc
 from pathlib import Path
 
 import pytest
+import requests
 from tests.fake_platform import FakePlatform, fake_platform
 
-from scenarios.platform import PlatformError, PlatformSink
+from scenarios.platform import (
+    CONNECT_TIMEOUT,
+    SYNC_READ_TIMEOUT,
+    MultipartBody,
+    PlatformError,
+    PlatformSink,
+    release_parts,
+)
 from scenarios.release import ListedFile, ListedRelease, Pointer
 from scenarios.run import VerifiedRelease
 
@@ -181,3 +190,119 @@ def test_a_platform_reached_over_http_is_said_to_be(
         PlatformSink("https://openaev.example.org", TOKEN, None, logging.getLogger("t"))
 
     assert caplog.text.count("over HTTP") == 1
+
+
+def _requests_made(
+    parts: list[tuple[str, tuple[str, bytes, str]]],
+) -> tuple[bytes, str]:
+    """The body ``requests`` makes of ``files=parts``, and the boundary it chose."""
+    prepared = requests.Request(
+        "POST", "http://platform.invalid", files=parts
+    ).prepare()
+    assert isinstance(prepared.body, bytes)
+    return prepared.body, prepared.headers["Content-Type"].split("boundary=")[1]
+
+
+def test_the_body_is_what_requests_makes_of_the_files() -> None:
+    parts = release_parts(_release())
+    expected, boundary = _requests_made(parts)
+
+    body = MultipartBody(parts, boundary=boundary)
+
+    assert len(body) == len(expected)
+    assert body.content_type == f"multipart/form-data; boundary={boundary}"
+    assert body.read() == expected
+
+
+def test_the_body_is_read_in_pieces_of_any_size_and_ends() -> None:
+    parts = release_parts(_release())
+    expected, boundary = _requests_made(parts)
+    body = MultipartBody(parts, boundary=boundary)
+
+    pieces = []
+    while piece := body.read(7):
+        assert len(piece) <= 7
+        pieces.append(piece)
+
+    assert b"".join(pieces) == expected
+    assert body.read(7) == b""
+
+
+def test_a_file_name_is_written_as_requests_writes_it() -> None:
+    parts = [("archives", ('a "quoted" nam\u00e9.zip', b"x", "application/zip"))]
+    expected, boundary = _requests_made(parts)
+
+    assert MultipartBody(parts, boundary=boundary).read() == expected
+
+
+def test_the_body_does_not_copy_the_files() -> None:
+    size = 32 * 1024 * 1024
+    parts = [("archives", ("big.zip", bytes(size), "application/zip"))]
+    tracemalloc.start()
+    try:
+        body = MultipartBody(parts)
+        while body.read(64 * 1024):
+            pass
+        _, peak = tracemalloc.get_traced_memory()
+    finally:
+        tracemalloc.stop()
+
+    assert peak < 1024 * 1024  # a few pieces, never the file
+
+
+def test_the_call_is_the_multipart_requests_makes_and_has_its_length() -> None:
+    expected, old_boundary = _requests_made(release_parts(_release()))
+    with fake_platform() as fake:
+        fake.answer(_applied())
+        _sink(fake).send(_release())
+
+    (call,) = fake.calls
+    boundary = call.content_type.split("boundary=")[1]
+    assert call.content_type.startswith("multipart/form-data; boundary=")
+    assert call.body.replace(boundary.encode(), old_boundary.encode()) == expected
+    assert call.content_length == str(len(call.body))
+    assert call.transfer_encoding is None
+
+
+def test_the_answer_is_waited_for_as_long_as_the_sync_read_timeout(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The platform processes the release before it answers: the read timeout is the time it
+    may take, not the 5 minutes between two bytes of a download."""
+    with fake_platform() as fake:
+        fake.answer(_applied())
+        fake.delay = 1.0
+        monkeypatch.setattr("scenarios.platform.SYNC_READ_TIMEOUT", 0.3)
+        with pytest.raises(PlatformError, match="ReadTimeout"):
+            _sink(fake).send(_release())
+        monkeypatch.setattr("scenarios.platform.SYNC_READ_TIMEOUT", 5)
+        _sink(fake).send(_release())
+
+
+def test_the_sync_has_its_timeouts(monkeypatch: pytest.MonkeyPatch) -> None:
+    asked: list[object] = []
+
+    class Adapter:
+        def send(self, request: object, **options: object) -> object:
+            asked.append(options.get("timeout"))
+            raise requests.ConnectTimeout("too slow")
+
+    session = requests.Session()
+    monkeypatch.setattr(session, "get_adapter", lambda url: Adapter())
+    sink = PlatformSink(
+        "https://platform.example", TOKEN, None, logging.getLogger("t"), session=session
+    )
+    with pytest.raises(PlatformError, match="ConnectTimeout"):
+        sink.send(_release())
+
+    assert asked == [(CONNECT_TIMEOUT, SYNC_READ_TIMEOUT)]
+    assert SYNC_READ_TIMEOUT >= 15 * 60
+
+
+@pytest.mark.parametrize("status", [201, 202, 204])
+def test_a_status_other_than_the_sync_s_200_raises(status: int) -> None:
+    """The sync answers 200 once the release is applied; nothing else is taken for it."""
+    with fake_platform() as fake:
+        fake.answer(_applied(), status=status)
+        with pytest.raises(PlatformError, match=str(status)):
+            _sink(fake).send(_release())

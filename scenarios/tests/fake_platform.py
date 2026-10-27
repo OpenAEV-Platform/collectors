@@ -24,6 +24,10 @@ class Call:
     path: str
     authorization: str | None
     parts: tuple[Part, ...]
+    body: bytes = b""
+    content_type: str = ""
+    content_length: str | None = None
+    transfer_encoding: str | None = None
 
 
 @dataclass
@@ -32,6 +36,9 @@ class FakePlatform:
     body: bytes = b""
     headers: dict[str, str] = field(default_factory=dict)
     trickle: float = 0.0  # seconds between two bytes of the body, to answer slowly
+    delay: float = (
+        0.0  # seconds between the end of the call and the first byte of the answer
+    )
     calls: list[Call] = field(default_factory=list)
     port: int = 0
 
@@ -75,8 +82,13 @@ def fake_platform() -> Iterator[FakePlatform]:
                     self.path,
                     self.headers.get("Authorization"),
                     _parts(self.headers.get("Content-Type", ""), body),
+                    body,
+                    self.headers.get("Content-Type", ""),
+                    self.headers.get("Content-Length"),
+                    self.headers.get("Transfer-Encoding"),
                 )
             )
+            time.sleep(fake.delay)
             self.send_response(fake.status)
             for name, value in fake.headers.items():
                 self.send_header(name, value)
