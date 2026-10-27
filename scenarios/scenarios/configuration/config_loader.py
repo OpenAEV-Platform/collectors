@@ -34,6 +34,8 @@ class ConfigLoader(SettingsLoader):
                 "scenarios_github_token": {
                     "data": token.get_secret_value() if token is not None else None
                 },
+                # As text: pyoaev gives a boolean back as 1 or 0, and "true" or "false" as one.
+                "scenarios_dry_run": {"data": str(self.scenarios.dry_run).lower()},
             },
             config_base_model=self,
         )

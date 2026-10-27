@@ -1,0 +1,147 @@
+"""The platform sink: a verified release goes to the platform's catalogue in one call, the
+manifest and every file it lists; what the platform refuses is said; a call that fails raises,
+so that the next run sends the release again."""
+
+import hashlib
+import logging
+from pathlib import Path
+
+import pytest
+from tests.fake_platform import FakePlatform, fake_platform
+
+from scenarios.platform import PlatformError, PlatformSink
+from scenarios.release import ListedFile, ListedRelease, Pointer
+from scenarios.run import VerifiedRelease
+
+TOKEN = "platform-token"
+TENANT = "2b0f1c4e-6a7d-4e8f-9a1b-3c5d7e9f0a2b"
+ARCHIVE, PAYLOAD = "s-1.0.0.zip", "p-1.0.0.json"
+FILES = {ARCHIVE: b"an import archive", PAYLOAD: b'{"payload": 1}'}
+MANIFEST = b'{"release": "2026.10.27.1"}'
+
+
+def _release() -> VerifiedRelease:
+    listed = ListedRelease(
+        (("s", "1.0.0"),),
+        1,
+        tuple(
+            ListedFile(name, len(data), hashlib.sha256(data).hexdigest(), len(data))
+            for name, data in FILES.items()
+        ),
+    )
+    pointer = Pointer("2026.10.27.1", hashlib.sha256(MANIFEST).hexdigest())
+    return VerifiedRelease(pointer, MANIFEST, {}, listed, dict(FILES))
+
+
+def _sink(fake: FakePlatform, tenant: str | None = None) -> PlatformSink:
+    return PlatformSink(fake.url, TOKEN, tenant, logging.getLogger("t"))
+
+
+def _applied(**changes: object) -> dict[str, object]:
+    return {
+        "release": "2026.10.27.1",
+        "applied": True,
+        "added": 1,
+        "unchanged": 0,
+        "refused": [],
+        **changes,
+    }
+
+
+def test_the_manifest_and_every_file_go_in_one_call_with_the_token() -> None:
+    with fake_platform() as fake:
+        fake.answer(_applied())
+        _sink(fake).send(_release())
+
+    (call,) = fake.calls
+    assert call.path == "/api/catalog/sync"
+    assert call.authorization == f"Bearer {TOKEN}"
+    assert [(part.name, part.filename) for part in call.parts] == [
+        ("manifest", "manifest.json"),
+        ("archives", ARCHIVE),
+        ("archives", PAYLOAD),
+    ]
+    assert [part.data for part in call.parts] == [MANIFEST, *FILES.values()]
+
+
+def test_a_tenant_s_catalogue_is_synced_under_its_path() -> None:
+    with fake_platform() as fake:
+        fake.answer(_applied())
+        _sink(fake, TENANT).send(_release())
+
+    assert fake.calls[0].path == f"/api/tenants/{TENANT}/catalog/sync"
+
+
+def test_what_the_platform_refuses_is_said_and_the_release_counts_as_sent(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    refusal = {
+        "external_id": "s",
+        "version": "1.0.0",
+        "reason": "Archive hash mismatch",
+    }
+    with fake_platform() as fake:
+        fake.answer(_applied(added=0, refused=[refusal]))
+        with caplog.at_level(logging.INFO):
+            _sink(fake).send(_release())
+
+    assert "s 1.0.0 refused by the platform: Archive hash mismatch" in caplog.text
+    assert any(record.levelno == logging.ERROR for record in caplog.records)
+
+
+def test_a_release_the_platform_already_has_is_said_so(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    with fake_platform() as fake:
+        fake.answer(_applied(applied=False, added=0))
+        with caplog.at_level(logging.INFO):
+            _sink(fake).send(_release())
+
+    assert "already holds release 2026.10.27.1" in caplog.text
+
+
+@pytest.mark.parametrize("status", [400, 401, 403, 404, 500])
+def test_a_call_the_platform_refuses_raises_without_the_token(status: int) -> None:
+    with fake_platform() as fake:
+        fake.answer({"message": f"refused with {TOKEN}"}, status=status)
+        with pytest.raises(PlatformError) as error:
+            _sink(fake).send(_release())
+
+    assert str(status) in str(error.value)
+    assert TOKEN not in str(error.value)
+
+
+def test_a_redirect_is_never_followed() -> None:
+    with fake_platform() as fake:
+        fake.status, fake.headers = 307, {"Location": "http://elsewhere.invalid/"}
+        with pytest.raises(PlatformError, match="307"):
+            _sink(fake).send(_release())
+
+    assert len(fake.calls) == 1
+
+
+@pytest.mark.parametrize(
+    "body",
+    [b"not json", b"[]", b'{"applied": "yes"}', b"{" + b" " * 2_000_000 + b"}"],
+    ids=["not-json", "a-list", "wrong-types", "over-its-limit"],
+)
+def test_an_answer_out_of_its_shape_raises(body: bytes) -> None:
+    with fake_platform() as fake:
+        fake.status, fake.body = 200, body
+        fake.headers = {"Content-Type": "application/json"}
+        with pytest.raises(PlatformError):
+            _sink(fake).send(_release())
+
+
+def test_a_netrc_never_replaces_the_token(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    netrc = tmp_path / ".netrc"
+    netrc.write_text("machine 127.0.0.1 login someone password other\n")
+    netrc.chmod(0o600)
+    monkeypatch.setenv("NETRC", str(netrc))
+    with fake_platform() as fake:
+        fake.answer(_applied())
+        _sink(fake).send(_release())
+
+    assert fake.calls[0].authorization == f"Bearer {TOKEN}"

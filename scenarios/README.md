@@ -4,9 +4,9 @@ A collector that follows the releases of the [OpenAEV scenarios repository](http
 at each period, it reads the pointer of the channel it follows, downloads the release that
 pointer names, and checks it against its manifest before anything reaches the platform.
 
-> **Status:** the collector checks releases and says what it would send. Sending them to the
-> platform comes with the platform's catalogue interface; until then it runs dry and changes
-> nothing on the platform.
+> **Status:** by default the collector runs dry: it checks releases and says what it would
+> send, changing nothing on the platform. With `SCENARIOS_DRY_RUN=false` it sends them to the
+> platform's catalogue, which needs a platform that receives catalogue releases.
 
 ## What a run does
 
@@ -21,10 +21,17 @@ pointer names, and checks it against its manifest before anything reaches the pl
    download each and check its size and SHA-256.
 5. Hand the release on, whole. A release with any finding is not handed on at all: the run
    logs why and the next run tries again.
+6. Out of dry run, send it to the platform's catalogue in one call, `POST /api/catalog/sync`
+   (`/api/tenants/<tenant>/catalog/sync` with a tenant): the manifest in the `manifest` part,
+   and every file it lists in an `archives` part of its own, under its name. The platform checks
+   them again before it uses anything, and answers what it added, what it already had and what it
+   refused, with why: the run logs it. A call that fails is sent again by the next run; a release
+   the platform already holds changes nothing.
 
 Every JSON document is read strictly (UTF-8, no key twice, no `NaN`, no integer beyond
 ±(2^53 − 1), at most 64 levels deep), every answer is read within a bound, redirects are followed
-over HTTPS only, and the GitHub token is sent to the GitHub API's host alone.
+over HTTPS only, and the GitHub token is sent to the GitHub API's host alone. The OpenAEV token
+goes to the platform's URL alone: the sync follows no redirect.
 
 ## Requirements
 
@@ -62,6 +69,7 @@ if present (see `scenarios/config.yml.sample` and `.env.sample`).
 | Channel        | `scenarios.channel`        | `SCENARIOS_CHANNEL`         | `edge`                       | No        | `edge` (every release) or `stable` (the recommended ones).         |
 | GitHub API URL | `scenarios.github_api_url` | `SCENARIOS_GITHUB_API_URL`  | `https://api.github.com`     | No        | The GitHub REST API the releases are read from, over HTTPS.        |
 | GitHub Token   | `scenarios.github_token`   | `SCENARIOS_GITHUB_TOKEN`    |                              | No        | A token that can read the repository, needed while it is private. |
+| Dry Run        | `scenarios.dry_run`        | `SCENARIOS_DRY_RUN`         | `true`                       | No        | `true` checks each release and sends nothing; `false` sends it to the platform's catalogue. |
 
 ## Deployment
 

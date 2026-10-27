@@ -1,13 +1,14 @@
 """The scenarios collector: it follows a channel of the scenarios repository's releases and
-hands each new release, once checked, to the platform. Until the platform's interface for it
-is known, it runs dry: it checks the release and says what it would send."""
+hands each new release, once checked, to the platform's catalogue. By default it runs dry: it
+checks the release and says what it would send."""
 
 from pyoaev.configuration import Configuration
 from pyoaev.daemons import CollectorDaemon
 
 from scenarios.configuration.config_loader import ConfigLoader
 from scenarios.github import GitHubSource
-from scenarios.run import Collect, DryRunSink
+from scenarios.platform import PlatformSink
+from scenarios.run import Collect, DryRunSink, Sink
 
 
 class OpenAEVScenarios(CollectorDaemon):
@@ -24,9 +25,18 @@ class OpenAEVScenarios(CollectorDaemon):
             repository,
             str(token) if token else None,
         )
+        sink: Sink = DryRunSink(self.logger)
+        if configuration.get("scenarios_dry_run") is False:
+            tenant = configuration.get("openaev_tenant_id")
+            sink = PlatformSink(
+                str(configuration.get("openaev_url")),
+                str(configuration.get("openaev_token")),
+                str(tenant) if tenant else None,
+                self.logger,
+            )
         self._collect = Collect(
             source,
-            DryRunSink(self.logger),
+            sink,
             repository=repository,
             channel=str(configuration.get("scenarios_channel")),
             logger=self.logger,

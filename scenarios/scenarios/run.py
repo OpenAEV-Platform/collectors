@@ -43,7 +43,7 @@ class VerifiedRelease:
 
 
 class Sink(Protocol):
-    """Where a verified release goes: the platform, once its interface is known."""
+    """Where a verified release goes: the platform's catalogue, or a dry run."""
 
     def send(self, release: VerifiedRelease) -> None: ...
 

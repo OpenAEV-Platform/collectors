@@ -26,6 +26,14 @@ class SourceConfig(BaseConfigModel):
         default=None,
         description="A GitHub token that can read the repository, needed while it is private.",
     )
+    dry_run: bool = Field(
+        default=True,
+        description=(
+            "Check each release and say what would be sent, sending nothing. Set to false to "
+            "send it to the platform's catalogue, which needs a platform that receives "
+            "catalogue releases."
+        ),
+    )
 
     @field_validator("repository")
     @classmethod

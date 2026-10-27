@@ -32,6 +32,7 @@ def test_the_defaults_follow_edge_of_the_repository_every_hour(
     assert config.get("scenarios_github_api_url") == "https://api.github.com"
     assert config.get("scenarios_github_token") is None
     assert config.get("collector_period") == 3600
+    assert config.get("scenarios_dry_run") is True
 
 
 def test_the_source_is_set_from_the_environment(
@@ -73,3 +74,10 @@ def test_a_setting_out_of_its_values_is_refused(
 ) -> None:
     with pytest.raises(ValidationError):
         _config(monkeypatch, **{name: value})
+
+
+@pytest.mark.parametrize(("given", "dry"), [("false", False), ("true", True)])
+def test_the_dry_run_is_set_from_the_environment(
+    monkeypatch: pytest.MonkeyPatch, given: str, dry: bool
+) -> None:
+    assert _config(monkeypatch, SCENARIOS_DRY_RUN=given).get("scenarios_dry_run") is dry
