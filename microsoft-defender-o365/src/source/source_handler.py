@@ -1,6 +1,5 @@
 from datetime import datetime
 
-from pyoaev.signatures.types import SignatureTypes
 from src.collector.models.source import SourceHandler
 from src.collector.protocols.data_fetcher import FetchParamsHook
 from src.collector.types.collector import ExpectationsList
