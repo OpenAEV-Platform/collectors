@@ -1,12 +1,32 @@
 services:
   collector-elastic:
     image: openaev/collector-elastic:rolling
-    # Every setting comes from .env (copy src/.env.sample next to this file).
-    # Settings missing from .env stay unset, so the collector applies its own
-    # defaults; an explicitly empty value has a meaning for some of them
-    # (e.g. ELASTIC_EVENTS_INDEX= disables the implant-marker drilldown).
-    env_file:
-      - .env
+    # Variables listed without a value are read from .env (copy src/.env.sample
+    # next to this file) or from the shell. Those set in neither stay unset, so
+    # the collector applies its own defaults. To set one here instead, write
+    # VAR=value; it takes precedence over .env.
+    environment:
+      - OPENAEV_URL
+      - OPENAEV_TOKEN
+      - OPENAEV_TENANT_ID
+      - COLLECTOR_ID
+      - COLLECTOR_NAME
+      - COLLECTOR_PLATFORM
+      - COLLECTOR_PERIOD
+      - COLLECTOR_LOG_LEVEL
+      - ELASTIC_BASE_URL
+      - ELASTIC_API_KEY
+      - ELASTIC_USERNAME
+      - ELASTIC_PASSWORD
+      - ELASTIC_ALERTS_INDEX
+      - ELASTIC_QUERY_TEMPLATE
+      - ELASTIC_EVENTS_INDEX
+      - ELASTIC_KIBANA_URL
+      - ELASTIC_TIME_WINDOW
+      - ELASTIC_MAX_RETRY
+      - ELASTIC_OFFSET
+      - ELASTIC_VERIFY_SSL
+      - ELASTIC_CA_CERT
     # Uncomment to trust a private CA (e.g. elasticsearch-certutil) and set
     # ELASTIC_CA_CERT=/certs/ca.pem in .env.
     # volumes:
