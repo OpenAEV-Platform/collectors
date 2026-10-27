@@ -37,6 +37,16 @@ def is_release_name(value: object) -> bool:
     return True
 
 
+def release_order(release: str) -> tuple[int, int, int, int]:
+    """The place of the release named ``release`` among the others: its year, month, day and
+    number as integers, since the number has up to nine digits and "10" is before "9" as text;
+    ``ValueError`` when it is not a release name."""
+    found = _RELEASE.fullmatch(release) if is_release_name(release) else None
+    if found is None:
+        raise ValueError(f"{release!r} is not a release name")
+    return int(found[1]), int(found[2]), int(found[3]), int(found[4])
+
+
 def pointer_from(document: Any, *, repository: str, channel: str) -> Pointer:
     """The pointer ``document`` holds, for ``channel`` of ``repository``; ``ValueError`` with
     why when it is not shaped as the repository writes it, or is another's."""
@@ -66,7 +76,8 @@ def pointer_from(document: Any, *, repository: str, channel: str) -> Pointer:
 # of a payload version.
 ARCHIVE_LIMIT = 20 * 1024 * 1024
 PAYLOAD_FILE_LIMIT = 256 * 1024
-# What one release may weigh in all, held in memory until it is handed on whole.
+# What one release may weigh in all, the manifest and the files it lists, held in memory until it
+# is handed on whole.
 RELEASE_LIMIT = 512 * 1024 * 1024
 MANIFEST_NAME = "manifest.json"
 _LOGIN = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
@@ -126,12 +137,11 @@ def listed_release(
     manifest: bytes, document: Any, pointer: Pointer, *, repository: str, channel: str
 ) -> ListedRelease:
     """What the manifest ``document``, read from ``manifest``, lists, once it is the one
-    ``pointer`` names, of ``repository`` and ``channel``, and approved; ``ValueError`` with why
-    otherwise. Only what the collector uses is checked: the platform checks the rest."""
-    if hashlib.sha256(manifest).hexdigest() != pointer.manifest_sha256:
-        raise ValueError(
-            "the manifest is not the one the pointer names: another SHA-256"
-        )
+    ``pointer`` names, of ``repository`` and ``channel``; ``ValueError`` with why otherwise.
+    ``release_approver`` names the person who started the release workflow: only its form is
+    checked, nothing proves it. Only what the collector uses is checked: the platform checks the
+    rest."""
+    check_manifest_hash(manifest, pointer)
     if not isinstance(document, dict):
         raise ValueError("the manifest must be an object")
     if document.get("repository") != repository:
@@ -147,7 +157,7 @@ def listed_release(
         or not _LOGIN.fullmatch(approver)
     ):
         raise ValueError(
-            "the manifest names no release approver: it was never approved"
+            "the manifest names no one who started the release (release_approver)"
         )
     items, payloads = document.get("items"), document.get("payloads")
     if not isinstance(items, list):
@@ -189,7 +199,7 @@ def listed_release(
     twice = sorted(name for name, count in counted.items() if count > 1)
     if twice:
         raise ValueError(f"the manifest has a file listed twice: {', '.join(twice)}")
-    if sum(listed.size for listed in files) > RELEASE_LIMIT:
+    if len(manifest) + sum(listed.size for listed in files) > RELEASE_LIMIT:
         raise ValueError(f"the release is over {RELEASE_LIMIT} bytes in all")
     return ListedRelease(tuple(scenarios), len(payloads), tuple(files))
 

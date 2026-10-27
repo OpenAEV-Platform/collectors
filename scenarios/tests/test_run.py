@@ -7,7 +7,7 @@ import logging
 from typing import Any
 
 import pytest
-from tests.fake_github import FakeGitHub, fake_github
+from tests.fake_github import Answer, FakeGitHub, fake_github
 
 from scenarios.github import GitHubSource
 from scenarios.run import Collect, DryRunSink, VerifiedRelease
@@ -286,3 +286,92 @@ def test_a_release_handled_once_is_never_handed_on_again() -> None:
             RELEASE,
             later,
         ]
+
+
+def _later_than(collect: Collect, fake: FakeGitHub, release: str) -> None:
+    """The channel moves to ``release``, and a run follows."""
+    _publish(fake, _files(**{"manifest.json": _manifest(release)}), release=release)
+    collect.run()
+
+
+def test_a_pointer_going_back_to_an_older_release_is_refused(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Never handed on before, but older than the newest handed on: a rollback."""
+    with fake_github() as fake:
+        sink = Sink()
+        collect = _collect(fake, sink)
+        _later_than(collect, fake, "2026.10.28.1")
+        with caplog.at_level(logging.ERROR):
+            _later_than(collect, fake, RELEASE)
+
+        assert [release.pointer.release for release in sink.received] == [
+            "2026.10.28.1"
+        ]
+    assert f"release {RELEASE}, older than 2026.10.28.1" in caplog.text
+
+
+def test_releases_are_compared_by_their_numbers() -> None:
+    """The 9th release of a day comes before its 10th, though "10" is before "9" as text."""
+    with fake_github() as fake:
+        sink = Sink()
+        collect = _collect(fake, sink)
+        for release in ["2026.10.28.9", "2026.10.28.10", "2026.10.28.9"]:
+            _later_than(collect, fake, release)
+
+        assert [release.pointer.release for release in sink.received] == [
+            "2026.10.28.9",
+            "2026.10.28.10",
+        ]
+
+
+def test_a_release_refused_as_older_is_looked_at_again_by_the_next_run() -> None:
+    """The refusal is not remembered: only what was handed on counts."""
+    with fake_github() as fake:
+        sink = Sink()
+        collect = _collect(fake, sink)
+        _later_than(collect, fake, "2026.10.28.1")
+        _later_than(collect, fake, RELEASE)
+        _later_than(collect, fake, "2026.10.29.1")
+
+        assert [release.pointer.release for release in sink.received] == [
+            "2026.10.28.1",
+            "2026.10.29.1",
+        ]
+
+
+def test_a_release_the_sink_failed_on_is_not_the_newest_handed_on() -> None:
+    class Failing(Sink):
+        def send(self, release: VerifiedRelease) -> None:
+            raise RuntimeError("the platform is away")
+
+    with fake_github() as fake:
+        sink = Sink()
+        collect = _collect(fake, sink)
+        _later_than(collect, fake, RELEASE)
+        collect.sink = Failing()
+        with pytest.raises(RuntimeError):
+            _later_than(collect, fake, "2026.10.29.1")
+        collect.sink = sink
+        _later_than(collect, fake, "2026.10.28.1")
+
+        assert [release.pointer.release for release in sink.received] == [
+            RELEASE,
+            "2026.10.28.1",
+        ]
+
+
+def test_a_rate_limited_run_says_to_set_a_token_and_sends_nothing(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    with fake_github() as fake:
+        fake.answers[f"/repos/{REPOSITORY}/contents/edge.json?ref=channels"] = Answer(
+            403, b"{}", {"X-RateLimit-Remaining": "0"}
+        )
+        sink = Sink()
+        with caplog.at_level(logging.ERROR):
+            _collect(fake, sink).run()
+
+    assert sink.received == []
+    assert "rate limit" in caplog.text
+    assert "SCENARIOS_GITHUB_TOKEN" in caplog.text

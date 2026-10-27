@@ -23,6 +23,9 @@ class Answer:
 class FakeGitHub:
     answers: dict[str, Answer] = field(default_factory=dict)
     asked: list[tuple[str, str, str | None, str | None]] = field(default_factory=list)
+    encodings: list[str | None] = field(
+        default_factory=list
+    )  # Accept-Encoding of each call
     port: int = 0
 
     def json(self, path: str, document: object, status: int = 200) -> None:
@@ -49,6 +52,7 @@ def fake_github() -> Iterator[FakeGitHub]:
                     self.headers.get("Accept"),
                 )
             )
+            fake.encodings.append(self.headers.get("Accept-Encoding"))
             answer = fake.answers.get(
                 self.path, Answer(404, b'{"message": "Not Found"}')
             )

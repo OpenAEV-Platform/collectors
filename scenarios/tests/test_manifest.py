@@ -96,8 +96,8 @@ def _payload(**file: Any) -> list[dict[str, Any]]:
         (_manifest(repository="someone/else"), "another repository"),
         (_manifest(channel="stable"), "another channel"),
         (_manifest(release="2026.10.27.2"), "another release"),
-        (_without("release_approver"), "never approved"),
-        (_manifest(release_approver="Laugiov"), "never approved"),
+        (_without("release_approver"), "names no one who started the release"),
+        (_manifest(release_approver="Laugiov"), "names no one who started the release"),
         (_manifest(items="x"), "items"),
         (_manifest(items=[]), "no scenario"),
         (_manifest(payloads={}), "payloads"),
@@ -127,7 +127,7 @@ def _payload(**file: Any) -> list[dict[str, Any]]:
         (_manifest(payloads=_payload(size=PAYLOAD_FILE_LIMIT + 1)), "over"),
         (_manifest(payloads=[{"payload": "x", "version": "1.0.0"}]), "file"),
         (_manifest(payloads=_payload(name=ARCHIVE)), "listed twice"),
-        (_manifest(release_approver="a" * 40), "never approved"),
+        (_manifest(release_approver="a" * 40), "names no one who started the release"),
         (_manifest(items=[{**_manifest()["items"][0], "external_id": "X"}]), "UUID"),
         (
             _manifest(items=[{**_manifest()["items"][0], "version": "1.0"}]),
@@ -202,8 +202,14 @@ def test_the_bounds_are_the_repository_s() -> None:
 def test_a_release_over_its_bound_in_all_is_refused(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """The manifest weighs in the release, with the files it lists."""
     assert RELEASE_LIMIT == 512 * 1024 * 1024
-    monkeypatch.setattr("scenarios.release.RELEASE_LIMIT", 12)
-    _listed(_manifest(items=_item(size=9), payloads=_payload(size=3)))
-    with pytest.raises(ValueError, match="over 12 bytes in all"):
-        _listed(_manifest(items=_item(size=10), payloads=_payload(size=3)))
+    monkeypatch.setattr("scenarios.release.RELEASE_LIMIT", 20)
+    _listed(_manifest(items=_item(size=9), payloads=_payload(size=3)))  # 12 and 8: 20
+    with pytest.raises(ValueError, match="over 20 bytes in all"):
+        _listed(_manifest(items=_item(size=10), payloads=_payload(size=3)))  # 21
+    with pytest.raises(ValueError, match="over 20 bytes in all"):
+        _listed(
+            _manifest(items=_item(size=9), payloads=_payload(size=3)),
+            b"a manifest of 9",  # 12 and 15
+        )

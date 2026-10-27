@@ -20,6 +20,7 @@ MAX_REDIRECTS = 5
 CALL_THREAD = "scenarios-source-call"
 DOWNLOAD_DEADLINE = 300  # seconds for one answer, however slowly it comes
 _REDIRECTS = frozenset({301, 302, 303, 307, 308})
+_RATE_LIMITED = frozenset({403, 429})
 _CHUNK = 64 * 1024
 
 
@@ -64,6 +65,9 @@ class GitHubSource:
         self._timeout = timeout
         self._session = session or requests.Session()
         self._in_flight: threading.Thread | None = None
+        # The repository's, not the release's: an asset's number is global, and this API serves
+        # an asset of any release of the repository. What binds an asset to the release is the
+        # SHA-256 the manifest lists, checked on every file downloaded.
         self._asset_url = re.compile(
             re.escape(f"{self._api}/repos/{repository}/releases/assets/") + "[0-9]+"
         )
@@ -179,6 +183,9 @@ class GitHubSource:
                 )
             headers = {
                 "Accept": accept,
+                # Assets are archives and small documents: compression gains nothing, and
+                # none asked for is none to decompress. What is read is bounded all the same.
+                "Accept-Encoding": "identity",
                 "User-Agent": "openaev-scenarios-collector",
                 "X-GitHub-Api-Version": "2022-11-28",
             }
@@ -200,12 +207,26 @@ class GitHubSource:
                     continue
                 if response.status_code == 404 and missing_ok:
                     return None
+                if response.status_code in _RATE_LIMITED and (
+                    response.headers.get("X-RateLimit-Remaining") == "0"
+                ):
+                    raise SourceError(self._rate_limited())
                 if response.status_code != 200:
                     raise SourceError(f"{where} answered {response.status_code}")
                 return _bounded(
                     response, limit, where, time.monotonic() + DOWNLOAD_DEADLINE
                 )
         raise SourceError(f"too many redirects, over {MAX_REDIRECTS}")
+
+    def _rate_limited(self) -> str:
+        """Why the run stops when GitHub has no call left to give it: a run costs three calls
+        and one more for each file, and GitHub gives 60 an hour without a token."""
+        if self._token:
+            return "GitHub's rate limit is reached for the token: try again later"
+        return (
+            "GitHub's rate limit is reached for calls without a token (60 an hour): "
+            "set SCENARIOS_GITHUB_TOKEN"
+        )
 
     def _get(self, url: str, headers: dict[str, str]) -> requests.Response:
         """The answer to a GET of ``url``, its body unread. Sent through the transport

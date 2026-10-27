@@ -4,7 +4,7 @@ from typing import Any
 
 import pytest
 
-from scenarios.release import Pointer, pointer_from
+from scenarios.release import Pointer, pointer_from, release_order
 
 REPOSITORY = "OpenAEV-Platform/scenarios"
 SHA = "a" * 64
@@ -49,3 +49,18 @@ def test_a_pointer_is_read() -> None:
 def test_a_pointer_out_of_its_shape_is_refused(document: Any, why: str) -> None:
     with pytest.raises(ValueError, match=why):
         pointer_from(document, repository=REPOSITORY, channel="edge")
+
+
+def test_releases_are_ordered_by_their_numbers_not_by_their_characters() -> None:
+    assert release_order("2026.10.27.10") == (2026, 10, 27, 10)
+    assert release_order("2026.10.27.123456789") == (2026, 10, 27, 123456789)
+    ordered = ["2026.10.27.1", "2026.10.27.9", "2026.10.27.10", "2026.10.27.123456789"]
+    assert sorted(reversed(ordered), key=release_order) == ordered
+    assert sorted(ordered, key=str) != ordered  # as text, 10 comes before 9
+    assert release_order("2026.10.28.1") > release_order("2026.10.27.123456789")
+
+
+@pytest.mark.parametrize("name", ["", "latest", "2026.13.01.1", "2026.10.27.0"])
+def test_a_name_that_is_not_a_release_has_no_order(name: str) -> None:
+    with pytest.raises(ValueError, match="not a release name"):
+        release_order(name)

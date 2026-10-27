@@ -359,10 +359,54 @@ def test_a_transport_error_is_a_source_error(monkeypatch: pytest.MonkeyPatch) ->
         source.pointer("edge")
 
 
-def test_an_answer_github_compresses_is_read_decompressed() -> None:
+def test_every_request_asks_for_no_compression() -> None:
+    """Assets are archives and small documents: nothing to gain, and no decompression to bound."""
+    with fake_github() as fake:
+        storage = f"http://localhost:{fake.port}/storage/1"
+        fake.redirect(POINTER_PATH, storage)
+        fake.raw("/storage/1", b"{}")
+
+        _source(fake).pointer("edge")
+
+        assert fake.encodings == ["identity", "identity"]
+
+
+def test_an_answer_compressed_in_spite_of_it_is_read_decompressed_and_bounded() -> None:
     with fake_github() as fake:
         fake.answers[POINTER_PATH] = Answer(
             body=gzip.compress(b'{"pointer": 1}'), headers={"Content-Encoding": "gzip"}
         )
-
         assert _source(fake).pointer("edge") == b'{"pointer": 1}'
+
+        fake.answers[POINTER_PATH] = Answer(
+            body=gzip.compress(b" " * 1_000_000), headers={"Content-Encoding": "gzip"}
+        )
+        with pytest.raises(SourceError, match="is over 4096 bytes"):
+            _source(fake).pointer("edge")
+
+
+@pytest.mark.parametrize("status", [403, 429])
+def test_a_rate_limit_reached_without_a_token_says_to_set_one(status: int) -> None:
+    with fake_github() as fake:
+        fake.answers[POINTER_PATH] = Answer(
+            status, b"{}", {"X-RateLimit-Remaining": "0"}
+        )
+        with pytest.raises(SourceError, match="SCENARIOS_GITHUB_TOKEN"):
+            _source(fake, token=None).pointer("edge")
+
+
+def test_a_rate_limit_reached_with_a_token_is_said_without_asking_for_one() -> None:
+    with fake_github() as fake:
+        fake.answers[POINTER_PATH] = Answer(429, b"{}", {"X-RateLimit-Remaining": "0"})
+        with pytest.raises(SourceError, match="rate limit") as error:
+            _source(fake).pointer("edge")
+
+    assert "SCENARIOS_GITHUB_TOKEN" not in str(error.value)
+    assert TOKEN not in str(error.value)
+
+
+def test_a_refusal_with_calls_left_is_not_taken_for_a_rate_limit() -> None:
+    with fake_github() as fake:
+        fake.answers[POINTER_PATH] = Answer(403, b"{}", {"X-RateLimit-Remaining": "7"})
+        with pytest.raises(SourceError, match="answered 403"):
+            _source(fake, token=None).pointer("edge")

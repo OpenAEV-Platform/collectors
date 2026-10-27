@@ -1,6 +1,7 @@
 """A run of the collector: read the channel's pointer, download the release it names, check
 it, and hand it to the sink whole, or not at all. A release with any finding is not handed on:
-the run says why, and the next run tries again. A release handed on is not handed on again.
+the run says why, and the next run tries again. A release handed on is not handed on again,
+nor is one older than the newest handed on.
 """
 
 from dataclasses import dataclass
@@ -16,6 +17,7 @@ from scenarios.release import (
     check_manifest_hash,
     listed_release,
     pointer_from,
+    release_order,
 )
 from scenarios.strict_json import read_strict_json
 
@@ -67,7 +69,9 @@ class DryRunSink:
 
 class Collect:
     """The runs of the collector, from ``source`` to ``sink``, for ``channel`` of
-    ``repository``; it keeps every pointer it handed on."""
+    ``repository``; it keeps every pointer it handed on, and the newest release's name, in
+    memory: a restart forgets them, and the platform is the one to refuse what is older.
+    """
 
     def __init__(
         self,
@@ -84,6 +88,7 @@ class Collect:
         self._channel = channel
         self._logger = logger
         self._handled: set[Pointer] = set()
+        self._newest: str | None = None
 
     def run(self) -> None:
         """One run. A failing sink raises, and the release is tried again by the next run."""
@@ -96,6 +101,9 @@ class Collect:
             return
         self.sink.send(release)
         self._handled.add(release.pointer)
+        name, newest = release.pointer.release, self._newest
+        if newest is None or release_order(name) > release_order(newest):
+            self._newest = name
 
     def _verified(self) -> VerifiedRelease | None:
         data = self._source.pointer(self._channel)
@@ -110,6 +118,13 @@ class Collect:
             repository=self._repository,
             channel=self._channel,
         )
+        name, newest = pointer.release, self._newest
+        if newest is not None and release_order(name) < release_order(newest):
+            # The channel went back: a release no run handed on, yet older than one that was.
+            raise ValueError(
+                f"the pointer names release {name}, older than {newest}, already handed "
+                "on: the channel went back, and nothing is sent"
+            )
         if pointer in self._handled:
             self._logger.info(
                 f"Release {pointer.release} of {self._channel} already handled"
