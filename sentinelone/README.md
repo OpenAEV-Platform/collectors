@@ -47,8 +47,8 @@ links back to the originating SentinelOne threat.
 
 ## Configuration variables
 
-The collector is configured either through environment variables (recommended, read from `docker-compose.yml` for a
-Docker deployment) or through a `config.yml` file (for a manual deployment). Copy the provided `src/.env.sample` /
+The collector is configured either through environment variables (recommended, read from the `.env` file for a Docker
+deployment) or through a `config.yml` file (for a manual deployment). Copy the provided `src/.env.sample` /
 `src/config.yml.sample` and fill in the values flagged with `ChangeMe`.
 
 ### OpenAEV environment variables
@@ -86,10 +86,18 @@ Build the Docker image (or use the published `openaev/collector-sentinelone` ima
 docker build . -t openaev/collector-sentinelone:latest
 ```
 
-Set your values in the `environment` section of the provided `docker-compose.yml`, then start the collector:
+Create a `.env` file next to `docker-compose.yml` from `src/.env.sample` and fill in your values, then start the
+collector with the provided `docker-compose.yml`, which passes the whole `.env` file to the container (`env_file`):
 
 ```shell
+cp src/.env.sample .env
 docker compose up -d
+```
+
+Settings left out of `.env` keep the collector's defaults. To check what actually reached the collector:
+
+```shell
+docker compose exec collector-sentinelone env | grep -E '^(OPENAEV|COLLECTOR|SENTINELONE)_'
 ```
 
 ### Manual Deployment with Poetry

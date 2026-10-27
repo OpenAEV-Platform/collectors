@@ -1,12 +1,9 @@
 services:
   collector-palo-alto-cortex-xsoar:
     image: openaev/collector-palo-alto-cortex-xsoar:rolling
-    environment:
-      - OPENAEV_URL=http://localhost
-      - OPENAEV_TOKEN=ChangeMe
-      - COLLECTOR_ID=ChangeMe
-      - PALO_ALTO_CORTEX_XSOAR_API_URL=https://ChangeMe
-      - PALO_ALTO_CORTEX_XSOAR_API_KEY=ChangeMe
-      - PALO_ALTO_CORTEX_XSOAR_API_KEY_ID=ChangeMe
-      #- PALO_ALTO_CORTEX_XSOAR_API_KEY_TYPE=standard
+    # Every setting comes from .env (copy src/.env.sample next to this file).
+    # Settings missing from .env stay unset, so the collector applies its own
+    # defaults.
+    env_file:
+      - .env
     restart: always
