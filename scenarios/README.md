@@ -51,7 +51,7 @@ if present (see `scenarios/config.yml.sample` and `.env.sample`).
 | Parameter         | config.yml          | Docker environment variable | Mandatory | Description                                          |
 |-------------------|---------------------|-----------------------------|-----------|------------------------------------------------------|
 | OpenAEV URL       | `openaev.url`       | `OPENAEV_URL`               | Yes       | The URL of the OpenAEV platform.                     |
-| OpenAEV Token     | `openaev.token`     | `OPENAEV_TOKEN`             | Yes       | The default admin token set in the OpenAEV platform. |
+| OpenAEV Token     | `openaev.token`     | `OPENAEV_TOKEN`             | Yes       | The token of the account the collector runs as. To send releases, that account needs the **Sync content catalogue** right (`SYNC_CATALOG`), which no role holds by default: an administrator grants it to the collector's account alone. |
 | OpenAEV Tenant ID | `openaev.tenant_id` | `OPENAEV_TENANT_ID`         | No        | Tenant identifier for multi-tenant deployments.      |
 
 ### Base collector environment variables
