@@ -6,7 +6,7 @@ build-backend = "poetry.core.masonry.api"
 
 [project]
 name = "openaev-scenarios-collector"
-version = "3.261026.0"
+version = "3.261029.0"
 description = "A collector that follows the releases of the OpenAEV scenarios repository"
 readme = "README.md"
 authors = [
@@ -35,8 +35,8 @@ packages = [
 pydantic = ">=2.13,<3"
 pydantic-settings = ">=2.14,<3"
 requests = ">=2.33,<3"
-urllib3 = ">=2.6.3,<3"  # read1; bounded decompression (CVE-2025-66471, CVE-2026-21441)
-pyoaev = "3.261026.0"
+urllib3 = ">=2.6.3,<3"
+pyoaev = "3.261029.0"
 
 [tool.poetry.group.dev.dependencies]
 types-requests = "^2.32"
