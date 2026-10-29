@@ -6,6 +6,7 @@ import pytest
 from src.services.client_api import (
     ALLOWED_PLACEHOLDERS,
     DEFAULT_QUERY_TEMPLATE,
+    LEGACY_DEFAULT_QUERY_TEMPLATES,
     SplunkESClientAPI,
 )
 from src.services.exception import SplunkESValidationError
@@ -36,6 +37,70 @@ class TestQueryTemplateResolution:
         else:
             config.splunk_es.query_template = None
         return SplunkESClientAPI(config=config)
+
+    @pytest.mark.parametrize(
+        ("template", "expected"),
+        [
+            (None, "No query template configured, using the built-in default"),
+            ("DEFAULT", "Using the built-in default query template"),
+            ("DEFAULT_REFLOWED", "Using the built-in default query template"),
+            (
+                "index={alerts_index} | table _time",
+                "Using a custom query template",
+            ),
+        ],
+        ids=["unset", "default", "default-reflowed", "custom"],
+    )
+    def test_query_template_choice_is_logged(self, template, expected):
+        """The log says whether the built-in default or a custom query runs.
+
+        The catalog prefills the built-in query, so a configured template equal
+        to it (whitespace aside) must not be reported as custom.
+        """
+        # Arrange
+        if template == "DEFAULT":
+            template = DEFAULT_QUERY_TEMPLATE
+        elif template == "DEFAULT_REFLOWED":
+            template = DEFAULT_QUERY_TEMPLATE.replace(" | ", "\n  | ")
+
+        # Act
+        client = self._create_client(query_template=template)
+
+        # Assert
+        messages = [str(c.args[0]) for c in client.logger.info.call_args_list]
+        assert any(expected in m for m in messages)  # noqa: S101
+
+    @pytest.mark.parametrize(
+        "legacy_template",
+        [
+            LEGACY_DEFAULT_QUERY_TEMPLATES[0],
+            LEGACY_DEFAULT_QUERY_TEMPLATES[1],
+            "  " + LEGACY_DEFAULT_QUERY_TEMPLATES[1].replace(" | ", "\n  | ") + "\n",
+        ],
+        ids=["process-conditions", "implant-placeholders", "implant-reflowed"],
+    )
+    def test_legacy_default_template_runs_builtin_default(self, legacy_template):
+        """A former catalog default stored on an instance runs the built-in query.
+
+        Instances created from the catalog kept a copy of its default, whose
+        placeholders this version rejects: they must start, not crash-loop.
+        """
+        # Act
+        client = self._create_client(query_template=legacy_template)
+
+        # Assert
+        assert client.query_template == DEFAULT_QUERY_TEMPLATE  # noqa: S101
+        warnings = [str(c.args[0]) for c in client.logger.warning.call_args_list]
+        assert any(  # noqa: S101
+            "former built-in default" in message for message in warnings
+        )
+
+    def test_custom_template_with_legacy_placeholder_raises(self):
+        """Only the exact former defaults are mapped: a custom query still fails."""
+        with pytest.raises(SplunkESValidationError, match="implant_names"):
+            self._create_client(
+                query_template=LEGACY_DEFAULT_QUERY_TEMPLATES[1] + " | head 10"
+            )
 
     def test_default_template_produces_valid_query(self):
         """Test that the default template resolves to a valid SPL query.
@@ -103,8 +168,10 @@ class TestQueryTemplateResolution:
         assert "sourcetype=notable" in result
         assert 'src_ip IN ("10.0.0.1")' in result
         assert 'dst_ip IN ("10.0.0.9")' in result
-        assert "earliest=2024-01-01T00:00:00Z" in result
-        assert "latest=2024-01-01T23:59:59Z" in result
+        # earliest/latest are converted to epoch seconds so Splunk time-range
+        # matching works (2024-01-01T00:00:00Z -> 1704067200, ...23:59:59Z -> 1704153599).
+        assert "earliest=1704067200" in result
+        assert "latest=1704153599" in result
         assert "| table _time, src_ip, dst_ip" in result
 
     def test_empty_template_falls_back_to_default(self):
@@ -207,7 +274,11 @@ class TestQueryTemplateResolution:
         assert 'dst_ip IN ("10.0.0.5")' in result
 
     def test_start_end_date_from_signatures(self):
-        """Test that start_date/end_date from signatures replace relative time."""
+        """Test that start_date/end_date from signatures replace relative time.
+
+        Splunk's earliest/latest modifiers do not parse ISO-8601 'Z' timestamps,
+        so the signature dates must be emitted as Unix epoch seconds.
+        """
         client = self._create_client()
         criteria = SplunkESSearchCriteria(
             source_ips=["10.0.0.1"],
@@ -218,9 +289,11 @@ class TestQueryTemplateResolution:
 
         result = client._build_spl_query(criteria)
 
-        assert "earliest=2026-06-12T08:00:00Z" in result
-        assert "latest=2026-06-12T09:00:00Z" in result
+        # 2026-06-12T08:00:00Z == 1781251200, 2026-06-12T09:00:00Z == 1781254800
+        assert "earliest=1781251200" in result
+        assert "latest=1781254800" in result
         assert "earliest=-" not in result
+        assert "2026-06-12T" not in result
 
     def test_start_date_only_fallback_end_to_now(self):
         """Test that missing end_date falls back to 'now'."""
@@ -234,7 +307,7 @@ class TestQueryTemplateResolution:
 
         result = client._build_spl_query(criteria)
 
-        assert "earliest=2026-06-12T08:00:00Z" in result
+        assert "earliest=1781251200" in result
         assert "latest=now" in result
 
     def test_no_dates_fallback_to_time_window(self):

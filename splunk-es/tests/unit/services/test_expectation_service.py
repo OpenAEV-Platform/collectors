@@ -21,8 +21,8 @@ class TestSplunkESExpectationService(unittest.TestCase):
             expectation_service._regex_engine, module.RegexSignatureEngine
         )
         self.assertEqual(expectation_service.time_window, module.timedelta(hours=1))
-        self.assertEqual(expectation_service.max_retry, 3)
-        self.assertEqual(expectation_service.offset, 30)
+        self.assertEqual(expectation_service.max_retry, 5)
+        self.assertEqual(expectation_service.offset, 120)
 
     @patch.object(module, "SplunkESClientAPI")
     def test_init_full_config(self, m_splunk_es_client_api):

@@ -15,8 +15,9 @@ source:
   client_id: "ChangeMe"  # Azure AD application (client) identifier (mandatory)
 #  use_certificate_auth: false  # whether to authenticate using a client certificate instead of a client secret
   client_secret: "ChangeMe"  # Azure AD application client secret (mandatory unless certificate auth is used)
-#  client_cert_data: "ChangeMe"  # data of the client certificate (mandatory if certificate auth is used)
-#  client_cert_thumbprint: "ChangeMe"  # thumbprint of the client certificate (mandatory if certificate auth is used)
+#  client_cert_data: "ChangeMe"  # data of the certificate private key, PEM format (mandatory if certificate auth is used)
+#  client_cert_thumbprint: "ChangeMe"  # thumbprint of the certificate (mandatory if certificate auth is used)
+#  client_cert_passphrase: "ChangeMe"  # passphrase for the private key if the PEM export is encrypted
 #  base_url: "https://graph.microsoft.com/v1.0"  # base URL for the Microsoft Graph API
 #  filter_service_source: "microsoftDefenderForOffice365"  # value used to filter Microsoft Graph security alerts
 #  rate_limit_requests_per_minute: 150  # maximum number of Microsoft Graph API requests issued per minute (must be >= 1)

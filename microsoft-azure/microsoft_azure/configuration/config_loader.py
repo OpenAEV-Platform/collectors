@@ -1,8 +1,24 @@
 from microsoft_azure.configuration.collector_config_override import (
     CollectorConfigOverride,
 )
-from pydantic import Field
+from pydantic import Field, SecretStr
 from pyoaev.configuration import ConfigLoaderOAEV, Configuration, SettingsLoader
+
+
+def _reveal(value: SecretStr | None) -> str | None:
+    """Return the plain text behind an optional secret.
+
+    Credential fields are optional so that a deployment only has to provide the
+    material for the authentication mode it actually uses.
+
+    Args:
+        value: The optional secret to unwrap.
+
+    Returns:
+        The secret value, or None when the secret was not configured.
+
+    """
+    return None if value is None else value.get_secret_value()
 
 
 class ConfigLoader(SettingsLoader):
@@ -32,8 +48,24 @@ class ConfigLoader(SettingsLoader):
                 "microsoft_azure_client_id": {
                     "data": self.collector.microsoft_azure_client_id
                 },
+                "microsoft_azure_use_certificate_auth": {
+                    "data": self.collector.microsoft_azure_use_certificate_auth
+                },
                 "microsoft_azure_client_secret": {
-                    "data": self.collector.microsoft_azure_client_secret.get_secret_value()
+                    "data": _reveal(self.collector.microsoft_azure_client_secret)
+                },
+                "microsoft_azure_client_cert_data": {
+                    "data": _reveal(self.collector.microsoft_azure_client_cert_data)
+                },
+                "microsoft_azure_client_cert_thumbprint": {
+                    "data": _reveal(
+                        self.collector.microsoft_azure_client_cert_thumbprint
+                    )
+                },
+                "microsoft_azure_client_cert_passphrase": {
+                    "data": _reveal(
+                        self.collector.microsoft_azure_client_cert_passphrase
+                    )
                 },
                 "microsoft_azure_subscription_id": {
                     "data": self.collector.microsoft_azure_subscription_id

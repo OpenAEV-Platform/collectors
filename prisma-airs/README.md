@@ -43,7 +43,7 @@ attack content directly through the vendor API.
   `pyoaev`; platforms without AI red-team support are not compatible)
 - A Palo Alto Prisma AIRS (AI Runtime Security) subscription with API access
 - A Prisma AIRS API key (sent as the `x-pan-token` header) and an AI security profile name
-- For a manual (non-Docker) deployment: Python >= 3.11 and [Poetry](https://python-poetry.org/) >= 2.1
+- For a manual (non-Docker) deployment: Python >= 3.14 and [Poetry](https://python-poetry.org/) >= 2.1
 
 ## Configuration variables
 

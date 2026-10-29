@@ -143,16 +143,29 @@ class _ConfigLoaderElastic(ConfigBaseSettings):
         description="Single line base64 encoded PEM client key for PKI authentication.",
     )
 
-    @field_validator("events_index", "query_template", "ca_cert", mode="before")
+    @field_validator(
+        "api_key",
+        "username",
+        "password",
+        "kibana_url",
+        "events_index",
+        "query_template",
+        "ca_cert",
+        mode="before",
+    )
     @classmethod
     def _empty_str_to_none(cls, value: object) -> object:
         """Treat an explicitly empty/whitespace value as unset (None).
 
-        These fields carry a non-None default (or are used as an optional path),
-        so an explicitly empty value must mean "unset" rather than "" :
-        ``ELASTIC_EVENTS_INDEX=`` disables the drilldown (``drilldown_enabled`` is
-        ``bool(events_index)``), ``ELASTIC_QUERY_TEMPLATE=`` falls back to the
-        built-in query, and ``ELASTIC_CA_CERT=`` leaves TLS on ``verify_ssl``.
+        The platform passes every optional setting left blank in the catalog
+        form as an empty env var, which ``str_min_length=1`` would reject: with
+        API key auth the username/password are blank, and vice versa, so the
+        collector could never start. An empty value must mean "unset" rather
+        than "" : the unused auth method is ignored, ``ELASTIC_KIBANA_URL=``
+        derives Kibana from ``base_url``, ``ELASTIC_EVENTS_INDEX=`` disables the
+        drilldown (``drilldown_enabled`` is ``bool(events_index)``),
+        ``ELASTIC_QUERY_TEMPLATE=`` falls back to the built-in query, and
+        ``ELASTIC_CA_CERT=`` leaves TLS on ``verify_ssl``.
         """
         if isinstance(value, str) and not value.strip():
             return None

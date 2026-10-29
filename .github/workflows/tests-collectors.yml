@@ -37,6 +37,29 @@ jobs:
           RELEASE_REF: main
         run: python .github/scripts/build_test_matrix.py
 
+  # The platform deploys a collector with the settings of its OpenAEV catalog entry, a file of
+  # the openaev repository that no collector test reads: a collector change the catalog does
+  # not follow passes every test above and still breaks every catalog deployment (3.260917.0
+  # dropped two query placeholders the catalog default still used, so every Splunk ES
+  # collector deployed from the catalog failed at start-up). This checks the collectors the
+  # pull request changes against the catalog on openaev main; drift already on main does not
+  # block unrelated pull requests.
+  catalog-contract:
+    name: OpenAEV catalog contract
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Check the changed collectors against the OpenAEV catalog
+        run: python .github/scripts/check_catalog_contract.py --changed-since "origin/${{ github.base_ref }}"
+
   test:
     name: Test ${{ matrix.name }}
     needs: detect-test-files
@@ -54,10 +77,6 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.14"
-
-      - name: Clone pyoaev (satisfies Poetry path dependency)
-        working-directory: ..
-        run: git clone -b main https://github.com/OpenAEV-Platform/client-python
 
       - name: Install Poetry
         run: pip install poetry==2.3.2

@@ -75,3 +75,107 @@ class TestElasticClientAPIExtra:
         result = client.fetch_with_retry(SIGNATURES, "detection")
 
         assert result == []  # noqa: S101
+
+
+class TestCheckConnectivity:
+    """Startup connectivity check: never raises, logs the outcome."""
+
+    @staticmethod
+    def _client() -> ElasticClientAPI:
+        client = ElasticClientAPI(config=create_test_config())
+        client.logger = Mock()
+        return client
+
+    @staticmethod
+    def _response(status_code: int, count: int = 0) -> Mock:
+        response = Mock()
+        response.status_code = status_code
+        response.json.return_value = {"count": count}
+        response.text = ""
+        return response
+
+    @patch("requests.Session.get")
+    def test_reachable_index_logs_success(self, mock_get):
+        """A 200 on the alerts index is reported at info with the alert count."""
+        # Arrange
+        client = self._client()
+        mock_get.return_value = self._response(200, count=42)
+
+        # Act
+        result = client.check_connectivity()
+
+        # Assert
+        assert result is True  # noqa: S101
+        assert mock_get.call_args.args[0].endswith(  # noqa: S101
+            f"/{client.alerts_index}/_count"
+        )
+        message = client.logger.info.call_args.args[0]
+        assert "Connected to Elastic" in message  # noqa: S101
+        assert "42 alert(s)" in message  # noqa: S101
+        client.logger.error.assert_not_called()
+
+    @pytest.mark.parametrize(
+        ("status_code", "expected"),
+        [
+            (401, "Authentication with Elastic Security failed"),
+            (403, "Authorization failed (403)"),
+            (404, "not found (404)"),
+            (500, "returned status 500"),
+        ],
+    )
+    @patch("requests.Session.get")
+    def test_error_status_logs_error_without_raising(
+        self, mock_get, status_code, expected
+    ):
+        """An error status is reported at error with the actionable reason."""
+        # Arrange
+        client = self._client()
+        mock_get.return_value = self._response(status_code)
+
+        # Act
+        result = client.check_connectivity()
+
+        # Assert
+        assert result is False  # noqa: S101
+        assert expected in client.logger.error.call_args.args[0]  # noqa: S101
+
+    @pytest.mark.parametrize(
+        "error",
+        [
+            requests.exceptions.ConnectionError("Connection refused"),
+            requests.exceptions.SSLError("certificate verify failed"),
+            requests.exceptions.Timeout("timed out"),
+        ],
+        ids=["refused", "tls", "timeout"],
+    )
+    @patch("requests.Session.get")
+    def test_unreachable_cluster_logs_error_without_raising(self, mock_get, error):
+        """A network or TLS failure is reported at error, never raised."""
+        # Arrange
+        client = self._client()
+        mock_get.side_effect = error
+
+        # Act
+        result = client.check_connectivity()
+
+        # Assert
+        assert result is False  # noqa: S101
+        message = client.logger.error.call_args.args[0]
+        assert "cannot reach" in message  # noqa: S101
+        assert str(error) in message  # noqa: S101
+
+    @patch("requests.Session.get")
+    def test_credentials_in_base_url_are_redacted(self, mock_get):
+        """Credentials embedded in the base URL never reach the logs."""
+        # Arrange
+        client = self._client()
+        client.base_url = "https://elastic:s3cr3t@es.example.com:9200"
+        mock_get.side_effect = requests.exceptions.ConnectionError("refused")
+
+        # Act
+        client.check_connectivity()
+
+        # Assert
+        message = client.logger.error.call_args.args[0]
+        assert "s3cr3t" not in message  # noqa: S101
+        assert "es.example.com:9200" in message  # noqa: S101

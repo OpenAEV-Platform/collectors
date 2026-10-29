@@ -38,9 +38,9 @@ attaching a trace that links back to the originating Defender alert.
 
 - OpenAEV Platform >= 1.19.0
 - A Microsoft Defender for Endpoint subscription onboarded to the Microsoft 365 Defender portal
-- An Entra ID (Azure AD) application registration with the Microsoft Graph `ThreatHunting.Read.All` application
+- An Entra ID (Azure AD) application registration with the Microsoft Graph `SecurityAlert.Read.All` application
   permission (admin consent granted), and its tenant ID, client ID, and client secret
-- For a manual (non-Docker) deployment: Python >= 3.11 and [Poetry](https://python-poetry.org/) >= 2.1
+- For a manual (non-Docker) deployment: Python >= 3.14 and [Poetry](https://python-poetry.org/) >= 2.1
 
 ## Configuration variables
 
@@ -80,6 +80,7 @@ The collector is configured either through environment variables (recommended, r
 | Filter service source | `source.filter_service_source` | `SOURCE_FILTER_SERVICE_SOURCE` | microsoftDefenderForEndpoint | No | Value used to filter Microsoft Graph security alerts down to Defender for Endpoint alerts
 | Rate limit requests per minute | `source.rate_limit_requests_per_minute` | `SOURCE_RATE_LIMIT_REQUESTS_PER_MINUTE` | 150 | No | Maximum number of Microsoft Graph API requests issued per minute (must be >= 1)
 | Max fetch retries | `source.max_fetch_retries` | `SOURCE_MAX_FETCH_RETRIES` | 5 | No | Maximum number of retries when fetching data from Microsoft Graph fails transiently
+| Retry window | `source.retry_window` | `SOURCE_RETRY_WINDOW` | PT10M | No | Time after the recorded end date before invalidating an expectation (ISO 8601 format) - if the end date is not available, the start date is used with a factor 1.5 on the retry window (until the end date is available)
 
 ## Deployment
 
@@ -189,20 +190,18 @@ Expectations that remain unmatched after the 45-minute window are marked as fail
 
 ## Required permissions and API endpoints
 
-- Required permission: an Entra ID (Azure AD) application with the Microsoft Graph **`ThreatHunting.Read.All`**
+- Required permission: an Entra ID (Azure AD) application with the Microsoft Graph **`SecurityAlert.Read.All`**
   application permission, with admin consent granted.
 - API endpoints used:
   - `POST https://login.microsoftonline.com/<tenant_id>/oauth2/v2.0/token` (OAuth2 client-credentials authentication)
-  - `POST /security/runHuntingQuery` (Microsoft Graph Advanced Hunting)
+  - `GET /security/alerts_v2` (Microsoft Graph Security Alerts v2)
 - Reference: [Microsoft Graph permissions reference](https://learn.microsoft.com/en-us/graph/permissions-reference) and
-  [runHuntingQuery](https://learn.microsoft.com/en-us/graph/api/security-security-runhuntingquery).
+  [alerts v2](https://learn.microsoft.com/en-us/graph/api/resources/security-alert).
 
 ## Debugging
 
 Set `COLLECTOR_LOG_LEVEL=debug` to get verbose logs, including expectation polling, the number of alerts returned by the
-hunting query, and the matching decisions. You can copy/paste the KQL query into the Advanced Hunting sandbox at
-`https://security.microsoft.com/v2/advanced-hunting` to inspect the raw results. A common cause of "nothing detected" is
-a missing admin consent on `ThreatHunting.Read.All` or a wrong tenant ID / client secret.
+graph query, and the matching decisions. A common cause of "nothing detected" is a missing admin consent on `SecurityAlert.Read.All` or a wrong tenant ID / client secret.
 
 ## Additional information
 

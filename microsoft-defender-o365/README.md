@@ -41,7 +41,7 @@ Do not hesitate to check the `CONTRIBUTING.md` for more details regarding the co
 
 ## Configuration variables
 
-There are a number of configuration options, which are set either in `docker-compose.yml` (for Docker) or
+There are a number of configuration options, which are set either in a `.env` file (for Docker Compose) or
 in `config.yml` (for manual deployment).
 
 The collector supports multiple configuration sources in order of precedence:
@@ -190,6 +190,21 @@ docker run -d \
 docker run -d \
   -v /path/to/config.yml:/app/src/config.yml:ro \
   openaev-microsoft-defender-o365-collector
+```
+
+Or create a `.env` file from `.env.sample` and fill in your values, then start the collector with the provided
+`docker-compose.yml`, which reads the settings it lists from `.env` or from the shell:
+
+```shell
+cp .env.sample .env
+docker compose up -d
+```
+
+Settings left out of `.env` keep the collector's defaults. A value written directly in the `environment` section of
+`docker-compose.yml` (`VAR=value`) takes precedence over `.env`. To check what actually reached the collector:
+
+```shell
+docker compose exec collector-microsoft-defender-o365 env | grep -E '^(OPENAEV|COLLECTOR|SOURCE)_'
 ```
 
 ## Behavior

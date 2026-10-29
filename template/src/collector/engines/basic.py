@@ -1,3 +1,4 @@
+import itertools
 import logging
 import os
 
@@ -19,7 +20,6 @@ from src.collector.models.source import Source
 from src.collector.protocols.data_fetcher import DataFetcherProtocol
 from src.collector.protocols.source_handler import SourceHandlerProtocol
 from src.collector.types.collector import ExpectationsList, SourceConfig
-from src.collector.utils.retroport_itertools import batched
 
 LOG_PREFIX = "[BasicCollectorEngine]"
 
@@ -301,9 +301,9 @@ class BasicCollectorEngine:
             results = []
 
             if self.batching:
-                # using a retro-compatible batched
-                # instead of itertools.batched due to python 3.11 support
-                batches = batched(expectations, self.config.expectation_batch_size)
+                batches = itertools.batched(
+                    expectations, self.config.expectation_batch_size
+                )
             else:
                 batches = [
                     expectations,

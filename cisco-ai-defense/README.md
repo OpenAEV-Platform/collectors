@@ -43,7 +43,7 @@ attack content directly through the vendor API.
   `pyoaev`; platforms without AI red-team support are not compatible)
 - A Cisco AI Defense subscription with inspection API access
 - A Cisco AI Defense API key and the inspection API base URL for your region/tenant
-- For a manual (non-Docker) deployment: Python >= 3.11 and [Poetry](https://python-poetry.org/) >= 2.1
+- For a manual (non-Docker) deployment: Python >= 3.14 and [Poetry](https://python-poetry.org/) >= 2.1
 
 ## Configuration variables
 

@@ -44,7 +44,7 @@ platform and does not reconcile detection / prevention expectations.
 - A running OpenAEV platform, reachable from where the collector runs, with an administrator API token
 - Outbound network access to GitHub (`raw.githubusercontent.com`) to download the ATLAS STIX bundle
 - No API key or account is required (the MITRE ATLAS data is public)
-- For a manual (non-Docker) deployment: Python >= 3.11 and [Poetry](https://python-poetry.org/) >= 2.1
+- For a manual (non-Docker) deployment: Python >= 3.14 and [Poetry](https://python-poetry.org/) >= 2.1
 
 ## Configuration variables
 
@@ -67,6 +67,7 @@ The collector is configured either through environment variables (recommended, r
 | Collector ID     | `collector.id`        | `COLLECTOR_ID`              | /                                                                                    | Yes       | A unique `UUIDv4` identifier for this collector instance.                                                   |
 | Collector Name   | `collector.name`      | `COLLECTOR_NAME`            | MITRE ATLAS                                                                          | No        | The name of the collector as shown in OpenAEV.                                                             |
 | Collector Period | `collector.period`    | `COLLECTOR_PERIOD`          | P7D                                                                                  | No        | Interval between two runs, as an ISO 8601 duration (e.g. `P7D` = 7 days).                                   |
+| Batch Size       | `collector.batch_size` | `COLLECTOR_BATCH_SIZE`      | 100                                                                                  | No        | Maximum number of attack patterns per upsert call. `0` sends them all in one call.                         |
 | Log Level        | `collector.log_level` | `COLLECTOR_LOG_LEVEL`       | error                                                                                | No        | Verbosity of the logs. One of `debug`, `info`, `warn`, `error`.                                            |
 | STIX URL         | `collector.stix_url`  | `COLLECTOR_STIX_URL`        | `https://raw.githubusercontent.com/mitre-atlas/atlas-navigator-data/main/dist/stix-atlas.json` | No | Override URL of the MITRE ATLAS STIX bundle to ingest. Defaults to the official ATLAS export when unset.    |
 
@@ -153,7 +154,7 @@ flowchart LR
     end
     S -->|download STIX JSON| C
     C -->|upsert tactics with phase order| K
-    C -->|upsert techniques and sub-techniques| A
+    C -->|upsert techniques, then sub-techniques, in batches| A
 ```
 
 On each run, the collector:
@@ -163,7 +164,14 @@ On each run, the collector:
    and `subtechnique-of` relationships.
 3. Upserts the tactics as kill chain phases (kill chain name `mitre-atlas`), applying the canonical ATLAS matrix order.
 4. Upserts the techniques and sub-techniques as attack patterns, linking each to its kill chain phases and, for
-   sub-techniques, to its parent technique.
+   sub-techniques, to its parent technique. Attack patterns are sent in batches of `COLLECTOR_BATCH_SIZE` (`0` sends
+   them all in one call), techniques first and sub-techniques after, so that every parent technique exists in OpenAEV
+   before its sub-techniques.
+
+When OpenAEV answers a kill chain phase or attack pattern upsert with HTTP 409 (another attack pattern import is
+already running for the tenant, or a concurrent import won a database race), the same call is retried up to 4 times
+(5 attempts in total), waiting 10, 20, 40, then 80 seconds. If it still fails, the remaining calls are not sent and
+the run is retried on the next start or period.
 
 ## Data source
 

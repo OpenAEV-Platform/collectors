@@ -46,7 +46,7 @@ activity.
   client ID, client secret, the target workspace ID, subscription ID, and resource group
 - At least one OpenAEV EDR collector (for example Microsoft Defender) deployed and reconciling expectations; Sentinel
   matching uses the `alertId` metadata those collectors attach
-- For a manual (non-Docker) deployment: Python >= 3.11 and [Poetry](https://python-poetry.org/) >= 2.1
+- For a manual (non-Docker) deployment: Python >= 3.14 and [Poetry](https://python-poetry.org/) >= 2.1
 
 ## Configuration variables
 

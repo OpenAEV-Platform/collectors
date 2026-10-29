@@ -21,3 +21,11 @@ class CollectorConfigOverride(ConfigLoaderCollector):
         default=timedelta(days=7),
         description="Duration between two scheduled runs of the collector (ISO 8601 format).",
     )
+    batch_size: int = Field(
+        default=100,
+        ge=0,
+        description=(
+            "Maximum number of attack patterns sent to OpenAEV in one upsert call. "
+            "0 sends them all in a single call."
+        ),
+    )

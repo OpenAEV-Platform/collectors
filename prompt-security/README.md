@@ -42,7 +42,7 @@ content directly through the vendor API.
   `pyoaev`; platforms without AI red-team support are not compatible)
 - A Prompt Security tenant with protect API access
 - A Prompt Security tenant base URL and an application id (APP-ID) authorized to call the protect API
-- For a manual (non-Docker) deployment: Python >= 3.11 and [Poetry](https://python-poetry.org/) >= 2.1
+- For a manual (non-Docker) deployment: Python >= 3.14 and [Poetry](https://python-poetry.org/) >= 2.1
 
 ## Configuration variables
 

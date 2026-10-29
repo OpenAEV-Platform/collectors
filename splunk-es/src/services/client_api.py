@@ -1,9 +1,10 @@
 """Splunk ES API client for making HTTP requests with proper error handling."""
 
 import logging
+import re
 import string
 import time
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Any
 
 import requests  # type: ignore[import-untyped]
@@ -52,6 +53,32 @@ ALLOWED_PLACEHOLDERS = {
     "end_date",
 }
 
+# Defaults the OpenAEV catalog used to prefill, stored as-is on deployed
+# instances. Their {process_conditions} / {implant_urls} / {implant_names}
+# placeholders were dropped in #489 (implant matching moved to the regex
+# engine), so they would now fail validation: run the built-in query instead.
+LEGACY_DEFAULT_QUERY_TEMPLATES = (
+    "index={alerts_index} "
+    "(src_ip IN ({source_ips}) OR src IN ({source_ips}) OR source_ip IN ({source_ips}) OR client_ip IN ({source_ips})) "
+    "(dst_ip IN ({target_ips}) OR dest IN ({target_ips}) OR dest_ip IN ({target_ips}) "
+    "OR destination_ip IN ({target_ips}) OR server_ip IN ({target_ips})) "
+    "{process_conditions} earliest={start_date} latest={end_date} "
+    "| table _time, src_ip, src, source_ip, client_ip, dst_ip, dest, dest_ip, "
+    "destination_ip, server_ip, signature, rule_name, event_type, severity, "
+    "url_path, url, path, query, _raw | sort -_time",
+    "index={alerts_index} "
+    "(src_ip IN ({source_ips}) OR src IN ({source_ips}) OR source_ip IN ({source_ips}) OR client_ip IN ({source_ips})) "
+    "(dst_ip IN ({target_ips}) OR dest IN ({target_ips}) OR dest_ip IN ({target_ips}) "
+    "OR destination_ip IN ({target_ips}) OR server_ip IN ({target_ips})) "
+    "(url_path IN ({implant_urls}) OR url IN ({implant_urls}) OR path IN ({implant_urls}) "
+    "OR query IN ({implant_urls}) OR process_name IN ({implant_names}) "
+    "OR parent_process_name IN ({implant_names})) "
+    "earliest={start_date} latest={end_date} "
+    "| table _time, src_ip, src, source_ip, client_ip, dst_ip, dest, dest_ip, "
+    "destination_ip, server_ip, signature, rule_name, event_type, severity, "
+    "url_path, url, path, query, process_name, parent_process_name, _raw | sort -_time",
+)
+
 
 class _SafeFormatter(string.Formatter):
     """Restricted formatter that prevents attribute/index access in format strings."""
@@ -66,6 +93,11 @@ class _SafeFormatter(string.Formatter):
 
 
 _safe_formatter = _SafeFormatter()
+
+
+def _normalize_whitespace(template: str) -> str:
+    """Collapse whitespace runs so a reflowed template compares equal."""
+    return " ".join(template.split())
 
 
 class SplunkESClientAPI:
@@ -110,15 +142,33 @@ class SplunkESClientAPI:
             )
 
         self.query_template = self.config.splunk_es.query_template
-        if self.query_template:
-            self._validate_template_placeholders(self.query_template)
-            self.logger.info(
-                f"{LOG_PREFIX} Using custom query template from configuration"
+        if self.query_template and _normalize_whitespace(self.query_template) in {
+            _normalize_whitespace(legacy) for legacy in LEGACY_DEFAULT_QUERY_TEMPLATES
+        }:
+            self.logger.warning(
+                f"{LOG_PREFIX} The configured query template is a former built-in "
+                "default this version no longer supports: using the current "
+                "built-in default query template instead"
             )
+            self.query_template = DEFAULT_QUERY_TEMPLATE
+        elif self.query_template:
+            self._validate_template_placeholders(self.query_template)
+            if _normalize_whitespace(self.query_template) == _normalize_whitespace(
+                DEFAULT_QUERY_TEMPLATE
+            ):
+                # The catalog prefills the built-in query: report it as such.
+                self.logger.info(
+                    f"{LOG_PREFIX} Using the built-in default query template"
+                )
+            else:
+                self.logger.info(
+                    f"{LOG_PREFIX} Using a custom query template from configuration"
+                )
         else:
             self.query_template = DEFAULT_QUERY_TEMPLATE
-            self.logger.debug(
-                f"{LOG_PREFIX} No custom query template configured, using default"
+            self.logger.info(
+                f"{LOG_PREFIX} No query template configured, using the built-in "
+                "default query template"
             )
 
         try:
@@ -606,14 +656,18 @@ class SplunkESClientAPI:
             time_window_seconds = int(self.time_window.total_seconds())
             earliest_seconds = time_window_seconds + extend_end_seconds
 
-            # Resolve start_date/end_date: use signature values if available, else relative time
+            # Resolve start_date/end_date. Splunk's earliest/latest modifiers do
+            # NOT parse ISO-8601 timestamps with a 'Z' suffix (as sent in OpenAEV
+            # expectation signatures, e.g. 2026-09-11T08:02:10.806778868Z), which
+            # silently breaks the time bounds and returns 0 results. Convert them
+            # to epoch. Extend the latest bound on retries to widen the window.
+            start_epoch = self._to_epoch(search_criteria.start_date)
             start_date_str = (
-                search_criteria.start_date
-                if search_criteria.start_date
-                else f"-{earliest_seconds}s"
+                str(start_epoch) if start_epoch is not None else f"-{earliest_seconds}s"
             )
+            end_epoch = self._to_epoch(search_criteria.end_date)
             end_date_str = (
-                search_criteria.end_date if search_criteria.end_date else "now"
+                str(end_epoch + extend_end_seconds) if end_epoch is not None else "now"
             )
 
             self.logger.debug(
@@ -648,6 +702,41 @@ class SplunkESClientAPI:
             raise SplunkESValidationError(f"Invalid query template: {e}") from e
         except Exception as e:
             raise SplunkESValidationError(f"Failed to build SPL query: {e}") from e
+
+    @staticmethod
+    def _to_epoch(value: str | None) -> int | None:
+        """Convert an ISO-8601 timestamp to a Unix epoch integer for Splunk.
+
+        Splunk's ``earliest``/``latest`` search modifiers accept epoch or the
+        ``%m/%d/%Y:%H:%M:%S`` format only - they do NOT parse ISO-8601 strings
+        with a ``Z`` suffix or sub-second precision beyond microseconds (as sent
+        in OpenAEV expectation signatures). Passing those verbatim silently
+        breaks the time bounds and the search returns 0 results.
+
+        Args:
+            value: ISO-8601 timestamp (optionally with ``Z`` / nanoseconds), an
+                epoch string, or None.
+
+        Returns:
+            Epoch seconds as int, or None if empty / already relative /
+            unparseable (the caller then falls back to a relative window).
+
+        """
+        if not value:
+            return None
+        s = str(value).strip()
+        if not s or s.startswith("-") or s.startswith("+"):
+            return None
+        if s.isdigit():
+            return int(s)
+        # Normalise 'Z' to a numeric offset and trim fractional seconds to the
+        # 6 digits datetime.fromisoformat supports (drops nanoseconds).
+        s = s.replace("Z", "+00:00")
+        s = re.sub(r"(\.\d{6})\d+", r"\1", s)
+        try:
+            return int(datetime.fromisoformat(s).timestamp())
+        except ValueError:
+            return None
 
     @staticmethod
     def _build_ip_list(ips: list[str]) -> str:

@@ -38,12 +38,12 @@ a detection source, so this collector validates DETECTION expectations only; PRE
 - OpenAEV Platform >= 1.19.0
 - A NetWitness Core service (Broker on port 50103 or Concentrator on port 50105) with the RESTful API reachable
 - A Core service username/password (Core SDK) or a NetWitness Platform API bearer token allowed to run Core SDK queries
-- For a manual (non-Docker) deployment: Python >= 3.11 and [Poetry](https://python-poetry.org/) >= 2.1
+- For a manual (non-Docker) deployment: Python >= 3.14 and [Poetry](https://python-poetry.org/) >= 2.1
 
 ## Configuration variables
 
-The collector is configured either through environment variables (recommended, read from `docker-compose.yml` / the
-`.env` file for a Docker deployment) or through a `config.yml` file (for a manual deployment). Copy the provided
+The collector is configured either through environment variables (recommended, read from the `.env` file for a
+Docker deployment) or through a `config.yml` file (for a manual deployment). Copy the provided
 `src/.env.sample` / `src/config.yml.sample` and fill in the values flagged with `ChangeMe`.
 
 ### OpenAEV environment variables
@@ -92,11 +92,19 @@ Build the Docker image (or use the published `openaev/collector-netwitness` imag
 docker build . -t openaev/collector-netwitness:latest
 ```
 
-Create a `.env` file from `src/.env.sample` and fill in your values, then start the collector with the provided
-`docker-compose.yml` (which reads those variables):
+Create a `.env` file next to `docker-compose.yml` from `src/.env.sample` and fill in your values, then start the
+collector with the provided `docker-compose.yml`, which reads the settings it lists from `.env` or from the shell:
 
 ```shell
+cp src/.env.sample .env
 docker compose up -d
+```
+
+Settings left out of `.env` keep the collector's defaults. A value written directly in the `environment` section of
+`docker-compose.yml` (`VAR=value`) takes precedence over `.env`. To check what actually reached the collector:
+
+```shell
+docker compose exec collector-netwitness env | grep -E '^(OPENAEV|COLLECTOR|NETWITNESS)_'
 ```
 
 ### Manual Deployment with Poetry

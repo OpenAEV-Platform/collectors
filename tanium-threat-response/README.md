@@ -36,7 +36,7 @@ expectation as detected/not detected and attaching a trace that links back to th
 - OpenAEV Platform >= 1.19.0
 - A Tanium deployment with the Threat Response module enabled
 - A Tanium API token with read access to Threat Response data, plus the Tanium API URL and console URL
-- For a manual (non-Docker) deployment: Python >= 3.11 and [Poetry](https://python-poetry.org/) >= 2.1
+- For a manual (non-Docker) deployment: Python >= 3.14 and [Poetry](https://python-poetry.org/) >= 2.1
 
 ## Configuration variables
 

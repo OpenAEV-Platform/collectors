@@ -40,12 +40,12 @@ expectations are not supported.
 - OpenAEV Platform >= 1.19.0
 - A Splunk Enterprise Security instance with the REST API reachable (typically on management port 8089)
 - A Splunk user account with REST API search access and read access to the configured events index
-- For a manual (non-Docker) deployment: Python >= 3.11 and [Poetry](https://python-poetry.org/) >= 2.1
+- For a manual (non-Docker) deployment: Python >= 3.14 and [Poetry](https://python-poetry.org/) >= 2.1
 
 ## Configuration variables
 
-The collector is configured either through environment variables (recommended, read from `docker-compose.yml` / the
-`.env` file for a Docker deployment) or through a `config.yml` file (for a manual deployment). Copy the provided
+The collector is configured either through environment variables (recommended, read from the `.env` file for a
+Docker deployment) or through a `config.yml` file (for a manual deployment). Copy the provided
 `src/.env.sample` / `src/config.yml.sample` and fill in the values flagged with `ChangeMe`.
 
 ### OpenAEV environment variables
@@ -73,10 +73,10 @@ The collector is configured either through environment variables (recommended, r
 | Base URL       | `splunk_es.base_url`       | `SPLUNKES_BASE_URL`         | /            | Yes       | Splunk ES management URL (e.g. `https://splunk.company.com:8089`).                       |
 | Username       | `splunk_es.username`       | `SPLUNKES_USERNAME`         | /            | Yes       | Splunk username with REST API search permissions.                                       |
 | Password       | `splunk_es.password`       | `SPLUNKES_PASSWORD`         | /            | Yes       | Splunk user password.                                                                    |
-| Alerts Index   | `splunk_es.alerts_index`   | `SPLUNKES_ALERTS_INDEX`     | main         | No        | Splunk index to search for security alerts.                                              |
+| Alerts Index   | `splunk_es.alerts_index`   | `SPLUNKES_ALERTS_INDEX`     | notable      | No        | Splunk index to search for security alerts.                                              |
 | Time Window    | `splunk_es.time_window`    | `SPLUNKES_TIME_WINDOW`      | PT1H         | No        | Default search window when no date signatures are provided, as an ISO 8601 duration.     |
-| Offset         | `splunk_es.offset`         | `SPLUNKES_OFFSET`           | PT30S        | No        | Delay between retry attempts to absorb alert ingestion latency, as an ISO 8601 duration. |
-| Max Retry      | `splunk_es.max_retry`      | `SPLUNKES_MAX_RETRY`        | 3            | No        | Maximum number of retry attempts after the initial search returns no results.            |
+| Offset         | `splunk_es.offset`         | `SPLUNKES_OFFSET`           | PT2M         | No        | Delay between retry attempts to absorb alert ingestion latency, as an ISO 8601 duration. |
+| Max Retry      | `splunk_es.max_retry`      | `SPLUNKES_MAX_RETRY`        | 5            | No        | Maximum number of retry attempts after the initial search returns no results.            |
 | Query Template | `splunk_es.query_template` | `SPLUNKES_QUERY_TEMPLATE`   | *(built-in)* | No        | Custom SPL query template with placeholders (leave empty to use the default below).      |
 
 ### Query template
@@ -111,11 +111,19 @@ Build the Docker image (or use the published `openaev/collector-splunk-es` image
 docker build . -t openaev/collector-splunk-es:latest
 ```
 
-Create a `.env` file from `src/.env.sample` and fill in your values, then start the collector with the provided
-`docker-compose.yml` (which reads those variables):
+Create a `.env` file next to `docker-compose.yml` from `src/.env.sample` and fill in your values, then start the
+collector with the provided `docker-compose.yml`, which reads the settings it lists from `.env` or from the shell:
 
 ```shell
+cp src/.env.sample .env
 docker compose up -d
+```
+
+Settings left out of `.env` keep the collector's defaults. A value written directly in the `environment` section of
+`docker-compose.yml` (`VAR=value`) takes precedence over `.env`. To check what actually reached the collector:
+
+```shell
+docker compose exec collector-splunkes env | grep -E '^(OPENAEV|COLLECTOR|SPLUNKES)_'
 ```
 
 ### Manual Deployment with Poetry
