@@ -44,6 +44,19 @@ goes to the platform's URL alone: the sync follows no redirect, reads its answer
 the token and the release in clear: the collector warns at start; use `https://` outside a
 private network.
 
+## When the format changes
+
+The pointer and the manifest each carry a `schema_version`; the collector reads format 1 and
+refuses any other, for either file. Within a format, a later release may add fields, never rename
+or remove one: the collector ignores the fields it does not know, so an installed collector keeps
+syncing.
+
+A field the collector would have to understand to stay safe is not added that way. If ignoring a
+field would let the collector accept what it should refuse (a revocation, an expiry, a minimum
+collector version, a signed provenance), that field is a break: it comes with a new
+`schema_version`, published in a pointer of its own beside the one of format 1, which keeps
+moving while collectors upgrade.
+
 ## Requirements
 
 - OpenAEV Platform
