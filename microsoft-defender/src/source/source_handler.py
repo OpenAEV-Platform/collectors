@@ -5,7 +5,7 @@ from pyoaev.signatures.types import SignatureTypes
 from src.collector.models.source import SourceHandler
 from src.collector.protocols.data_fetcher import FetchParamsHook
 from src.collector.types.collector import AlertData, ExpectationsList, SignatureGroups
-from src.collector.utils.expectation_utils import extract_end_date
+from src.collector.utils.expectation_utils import extract_start_date, extract_end_date
 
 
 class DefenderSourceHandler(SourceHandler):
@@ -18,6 +18,14 @@ class DefenderSourceHandler(SourceHandler):
             if dt:
                 if earliest is None or dt < earliest:
                     earliest = dt
+
+        # if no end_date has been found, fallback to start_date
+        if earliest is None:
+            for expectation in batch:
+                dt: datetime | None = extract_start_date(expectation)
+                if dt:
+                    if earliest is None or dt < earliest:
+                        earliest = dt
 
         if earliest is None:
             return None

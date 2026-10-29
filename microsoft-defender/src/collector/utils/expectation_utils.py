@@ -45,7 +45,6 @@ def extract_start_date(expectation: Expectation) -> datetime | None:
     )
     return start_date
 
-
 def time_window_over(expectation: Expectation, time_window: timedelta) -> bool:
     """
     Check whether the expectation's time window is over.
