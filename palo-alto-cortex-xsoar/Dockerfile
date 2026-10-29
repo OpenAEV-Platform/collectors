@@ -1,7 +1,9 @@
 # Common base stage for shared environment configuration.
 FROM python:3.14-alpine AS base
 
-RUN apk --no-cache upgrade
+# brotli-libs: the system Brotli that Pillow's FreeType loads (see the builder stage).
+RUN apk --no-cache upgrade && \
+    apk add --no-cache brotli-libs
 
 # Python runtime and Poetry build configuration.
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -49,6 +51,15 @@ RUN if [ "$PYOAEV_GIT_REF_OVERRIDE" ]; then \
       pip install --no-cache-dir --force-reinstall \
       "git+https://github.com/OpenAEV-Platform/client-python.git@$PYOAEV_GIT_REF_OVERRIDE"; \
     fi
+
+# The Pillow wheels bundle Brotli 1.2.0 (CVE-2026-111497) for FreeType: replace
+# the bundled libbrotlidec with a link to the system one (brotli-libs, fixed) and
+# remove the bundled libbrotlicommon, which only it loads (#643). The link keeps
+# the bundled name (libbrotlidec-<hash>.so.1.2.0), the one FreeType loads, but
+# resolves to the system version.
+RUN cd /collector/.venv/lib/python3*/site-packages/pillow.libs && \
+    rm libbrotlicommon-* && \
+    ln -sf /usr/lib/libbrotlidec.so.1 libbrotlidec-*
 
 # Runtime stage containing only the application environment required for execution.
 FROM base AS runner
