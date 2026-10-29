@@ -5,7 +5,7 @@ from pyoaev.signatures.types import SignatureTypes
 from src.collector.models.source import SourceHandler
 from src.collector.protocols.data_fetcher import FetchParamsHook
 from src.collector.types.collector import AlertData, ExpectationsList, SignatureGroups
-from src.collector.utils.expectation_utils import extract_start_date, extract_end_date
+from src.collector.utils.expectation_utils import extract_end_date, extract_start_date
 
 
 class DefenderSourceHandler(SourceHandler):
