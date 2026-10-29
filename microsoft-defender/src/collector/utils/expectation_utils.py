@@ -6,15 +6,15 @@ from pyoaev.apis.inject_expectation.model.expectation import (  # type: ignore[i
 from pyoaev.signatures.types import SignatureTypes
 
 
-def detect_date(expectation: Expectation):
+def detect_date(expectation: Expectation) -> bool:
     """
     Detect whether either start_date or end_date are available in the expectation
     """
     for sig in expectation.inject_expectation_signatures or []:
-        if sig.type in [
+        if sig.type in (
             SignatureTypes.SIG_TYPE_END_DATE,
             SignatureTypes.SIG_TYPE_START_DATE,
-        ]:
+        ):
             return True
     return False
 
