@@ -40,7 +40,11 @@ def test_a_field_added_to_the_pointer_is_ignored() -> None:
     ("document", "why"),
     [
         ([], "an object"),
-        ({k: v for k, v in _document().items() if k != "release"}, "its five fields"),
+        ({k: v for k, v in _document().items() if k != "release"}, "misses release"),
+        (
+            {**_document(schema_version=2), "published_at": "2026-10-29T09:00:00Z"},
+            "schema_version 1",
+        ),
         (_document(schema_version=2), "schema_version 1"),
         (_document(schema_version=True), "schema_version 1"),
         (_document(repository="someone/else"), "another repository"),

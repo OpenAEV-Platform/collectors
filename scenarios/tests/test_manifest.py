@@ -93,6 +93,9 @@ def _payload(**file: Any) -> list[dict[str, Any]]:
     ("document", "why"),
     [
         ([], "an object"),
+        (_without("schema_version"), "schema_version 1"),
+        (_manifest(schema_version=2), "schema_version 1"),
+        (_manifest(schema_version=True), "schema_version 1"),
         (_manifest(repository="someone/else"), "another repository"),
         (_manifest(channel="stable"), "another channel"),
         (_manifest(release="2026.10.27.2"), "another release"),

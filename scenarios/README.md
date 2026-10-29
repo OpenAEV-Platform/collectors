@@ -11,9 +11,7 @@ pointer names, and checks it against its manifest before anything reaches the pl
 ## What a run does
 
 1. Read `<channel>.json` on the repository's `channels` branch: the release the channel names,
-   and the SHA-256 of its manifest. No pointer yet: nothing to do. A field the pointer or the
-   manifest gains in a later release is ignored; a pointer with another `schema_version` than
-   1 is refused, since only a break changes it.
+   and the SHA-256 of its manifest. No pointer yet: nothing to do.
 2. A pointer already handled, or naming a release older than the newest one handed on since
    the collector started: nothing to do (an older one is logged as an error: the channel went
    back). Releases are compared by their numbers, `YYYY.MM.DD.N`, `N` as an integer.
@@ -45,6 +43,19 @@ goes to the platform's URL alone: the sync follows no redirect, reads its answer
 10 minutes, and takes it only for the release it sent. A platform reached over `http://` gets
 the token and the release in clear: the collector warns at start; use `https://` outside a
 private network.
+
+## When the format changes
+
+The pointer and the manifest each carry a `schema_version`; the collector reads format 1 and
+refuses any other, for either file. Within a format, a later release may add fields, never rename
+or remove one: the collector ignores the fields it does not know, so an installed collector keeps
+syncing.
+
+A field the collector would have to understand to stay safe is not added that way. If ignoring a
+field would let the collector accept what it should refuse (a revocation, an expiry, a minimum
+collector version, a signed provenance), that field is a break: it comes with a new
+`schema_version`, published in a pointer of its own beside the one of format 1, which keeps
+moving while collectors upgrade.
 
 ## Requirements
 

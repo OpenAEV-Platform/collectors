@@ -53,8 +53,9 @@ def pointer_from(document: Any, *, repository: str, channel: str) -> Pointer:
     pointer gains later is ignored: only a break changes its ``schema_version``."""
     if not isinstance(document, dict):
         raise ValueError("the pointer must be an object")
-    if not POINTER_FIELDS <= set(document):
-        raise ValueError("the pointer must hold its five fields")
+    missing = POINTER_FIELDS - set(document)
+    if missing:
+        raise ValueError(f"the pointer misses {', '.join(sorted(missing))}")
     version = document["schema_version"]
     if type(version) is not int or version != 1:
         raise ValueError("the pointer must have schema_version 1")
@@ -140,11 +141,15 @@ def listed_release(
     """What the manifest ``document``, read from ``manifest``, lists, once it is the one
     ``pointer`` names, of ``repository`` and ``channel``; ``ValueError`` with why otherwise.
     ``release_approver`` names the person who started the release workflow: only its form is
-    checked, nothing proves it. Only what the collector uses is checked: the platform checks the
-    rest."""
+    checked, nothing proves it. Only what the collector uses is checked, with the format's
+    ``schema_version``, so that a manifest of another format is not read as this one: the
+    platform checks the rest."""
     check_manifest_hash(manifest, pointer)
     if not isinstance(document, dict):
         raise ValueError("the manifest must be an object")
+    version = document.get("schema_version")
+    if type(version) is not int or version != 1:
+        raise ValueError("the manifest must have schema_version 1")
     if document.get("repository") != repository:
         raise ValueError(f"the manifest is of another repository than {repository}")
     if document.get("channel") != channel:
