@@ -11,7 +11,12 @@ from typing import Any
 POINTER_FIELDS = frozenset(
     {"schema_version", "repository", "channel", "release", "manifest_sha256"}
 )
-_RELEASE = re.compile(r"([0-9]{4})\.([0-9]{2})\.([0-9]{2})\.([1-9][0-9]{0,8})")
+# MAJOR.YYMMDD.N, N from 0, as the other products name their releases; the first releases, up to
+# 2026.10.29.2, keep their YYYY.MM.DD.N names, N from 1, and come before every name of that form.
+_RELEASE = re.compile(
+    r"([1-9][0-9]{0,2})\.([0-9]{2})([0-9]{2})([0-9]{2})\.(0|[1-9][0-9]{0,8})"
+)
+_FIRST_RELEASE = re.compile(r"([0-9]{4})\.([0-9]{2})\.([0-9]{2})\.([1-9][0-9]{0,8})")
 _SHA256 = re.compile(r"[0-9a-f]{64}")
 
 
@@ -24,27 +29,34 @@ class Pointer:
 
 
 def is_release_name(value: object) -> bool:
-    """Whether ``value`` names a release: ``YYYY.MM.DD.N``, a day the calendar has, N from 1."""
-    if not isinstance(value, str):
-        return False
-    found = _RELEASE.fullmatch(value)
-    if found is None:
-        return False
+    """Whether ``value`` names a release: ``MAJOR.YYMMDD.N``, or ``YYYY.MM.DD.N`` for the first
+    releases, a day the calendar has."""
     try:
-        datetime.date(int(found[1]), int(found[2]), int(found[3]))
+        release_order(value)
     except ValueError:
         return False
     return True
 
 
-def release_order(release: str) -> tuple[int, int, int, int]:
-    """The place of the release named ``release`` among the others: its year, month, day and
-    number as integers, since the number has up to nine digits and "10" is before "9" as text;
-    ``ValueError`` when it is not a release name."""
-    found = _RELEASE.fullmatch(release) if is_release_name(release) else None
-    if found is None:
-        raise ValueError(f"{release!r} is not a release name")
-    return int(found[1]), int(found[2]), int(found[3]), int(found[4])
+def release_order(release: object) -> tuple[int, int, int, int, int]:
+    """The place of the release named ``release`` among the others: its major, a name of the
+    first form being of major 0, its year, month, day and number, as integers, since the number
+    has up to nine digits and "10" is before "9" as text; ``ValueError`` when it is not a
+    release name."""
+    found, major, century = None, 0, 0
+    if isinstance(release, str):
+        found = _FIRST_RELEASE.fullmatch(release)
+        if found is None and (found := _RELEASE.fullmatch(release)) is not None:
+            major, century = int(found[1]), 2000
+    if found is not None:
+        year, month, day, number = (int(part) for part in found.groups()[-4:])
+        try:
+            datetime.date(century + year, month, day)
+        except ValueError:  # a day the calendar has not
+            pass
+        else:
+            return major, century + year, month, day, number
+    raise ValueError(f"{release!r} is not a release name")
 
 
 def pointer_from(document: Any, *, repository: str, channel: str) -> Pointer:

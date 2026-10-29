@@ -14,7 +14,8 @@ pointer names, and checks it against its manifest before anything reaches the pl
    and the SHA-256 of its manifest. No pointer yet: nothing to do.
 2. A pointer already handled, or naming a release older than the newest one handed on since
    the collector started: nothing to do (an older one is logged as an error: the channel went
-   back). Releases are compared by their numbers, `YYYY.MM.DD.N`, `N` as an integer.
+   back). Releases are compared by their numbers, `MAJOR.YYMMDD.N`, each as an integer; the first
+   releases, up to `2026.10.29.2`, are named `YYYY.MM.DD.N` and come before every other.
 3. List the release's files, download its `manifest.json`, and check that it is the one the
    pointer names (its SHA-256), of the repository and channel followed, and that it names a
    `release_approver`: the person who started the release workflow. The collector checks that
