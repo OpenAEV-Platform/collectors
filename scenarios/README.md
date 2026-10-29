@@ -11,7 +11,9 @@ pointer names, and checks it against its manifest before anything reaches the pl
 ## What a run does
 
 1. Read `<channel>.json` on the repository's `channels` branch: the release the channel names,
-   and the SHA-256 of its manifest. No pointer yet: nothing to do.
+   and the SHA-256 of its manifest. No pointer yet: nothing to do. A field the pointer or the
+   manifest gains in a later release is ignored; a pointer with another `schema_version` than
+   1 is refused, since only a break changes it.
 2. A pointer already handled, or naming a release older than the newest one handed on since
    the collector started: nothing to do (an older one is logged as an error: the channel went
    back). Releases are compared by their numbers, `YYYY.MM.DD.N`, `N` as an integer.

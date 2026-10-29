@@ -28,11 +28,18 @@ def test_a_pointer_is_read() -> None:
     )
 
 
+def test_a_field_added_to_the_pointer_is_ignored() -> None:
+    """A later pointer may gain fields; only a break changes its schema_version."""
+    document = {**_document(), "published_at": "2026-10-29T09:00:00Z"}
+    assert pointer_from(document, repository=REPOSITORY, channel="edge") == Pointer(
+        release="2026.10.27.1", manifest_sha256=SHA
+    )
+
+
 @pytest.mark.parametrize(
     ("document", "why"),
     [
         ([], "an object"),
-        ({**_document(), "extra": 1}, "its five fields"),
         ({k: v for k, v in _document().items() if k != "release"}, "its five fields"),
         (_document(schema_version=2), "schema_version 1"),
         (_document(schema_version=True), "schema_version 1"),

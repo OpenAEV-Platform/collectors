@@ -49,11 +49,12 @@ def release_order(release: str) -> tuple[int, int, int, int]:
 
 def pointer_from(document: Any, *, repository: str, channel: str) -> Pointer:
     """The pointer ``document`` holds, for ``channel`` of ``repository``; ``ValueError`` with
-    why when it is not shaped as the repository writes it, or is another's."""
+    why when it is not shaped as the repository writes it, or is another's. A field the
+    pointer gains later is ignored: only a break changes its ``schema_version``."""
     if not isinstance(document, dict):
         raise ValueError("the pointer must be an object")
-    if set(document) != POINTER_FIELDS:
-        raise ValueError("the pointer must hold its five fields, and nothing else")
+    if not POINTER_FIELDS <= set(document):
+        raise ValueError("the pointer must hold its five fields")
     version = document["schema_version"]
     if type(version) is not int or version != 1:
         raise ValueError("the pointer must have schema_version 1")
