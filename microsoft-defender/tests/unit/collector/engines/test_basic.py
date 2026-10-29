@@ -310,10 +310,12 @@ class TestBasicCollectorEngine(unittest.TestCase):
     @patch.object(module, "ExpectationProcessingError")
     @patch.object(module, "ExpectationResult")
     @patch.object(module, "time_window_over")
+    @patch.object(module, "detect_date")
     @patch.object(module.BasicCollectorEngine, "_reset_summary")
     def test_process_batch(
         self,
         m_reset_summary,
+        m_detect_date,
         m_time_window_over,
         m_expectation_result,
         m_expectation_processing_error,
@@ -347,6 +349,7 @@ class TestBasicCollectorEngine(unittest.TestCase):
         expectation3 = MagicMock()
         expectation4 = MagicMock()
         batch = [expectation1, expectation2, expectation3, expectation4]
+        m_detect_date.return_value = True
         m_time_window_over.side_effect = [True, False]
         result1 = MagicMock()
         result2 = MagicMock()
