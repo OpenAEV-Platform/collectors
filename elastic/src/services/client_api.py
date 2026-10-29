@@ -15,6 +15,13 @@ from requests.exceptions import (  # type: ignore[import-untyped]
 )
 
 from ..models.configs.config_loader import ConfigLoader
+from ..models.configs.elastic_configs import AuthenticationType
+from .api_authentication import (
+    ApiKeyAuthentication,
+    AuthenticationProvider,
+    PKIAuthentication,
+    UserPasswordAuthentication,
+)
 from .exception import (
     ElasticAPIError,
     ElasticAuthenticationError,
@@ -215,8 +222,58 @@ class ElasticClientAPI:
 
         self.logger.info(f"{LOG_PREFIX} Elastic Security API client initialized")
 
+    def _get_authentication_provider(
+        self, auth_type: AuthenticationType | None
+    ) -> AuthenticationProvider:
+        """Return an authentication provider based on the specified type.
+
+        Args:
+            auth_type: The type of authentication to use, as resolved by the
+                configuration (pinned or inferred), or None when no
+                credentials are set.
+
+        Returns:
+            An instance of the appropriate AuthenticationProvider subclass.
+
+        Raises:
+            ElasticValidationError: If the specified authentication type is unsupported.
+        """
+        if auth_type is None:
+            raise ElasticValidationError(
+                "An API key, a username/password pair or a client "
+                "certificate and key are required"
+            )
+
+        if auth_type == "API_KEY":
+            if not self.api_key:
+                raise ElasticValidationError(
+                    "API key is required for API_KEY authentication"
+                )
+            return ApiKeyAuthentication(self.api_key)
+        elif auth_type == "USER_PASSWORD":
+            if not self.username or not self.password:
+                raise ElasticValidationError(
+                    "Username and password are required for USER_PASSWORD authentication"
+                )
+            return UserPasswordAuthentication(self.username, self.password)
+        elif auth_type == "PKI":
+            client_cert_pem = self.config.elastic.client_cert_pem
+            client_key_pem = self.config.elastic.client_key_pem
+            if not client_cert_pem or not client_key_pem:
+                raise ElasticValidationError(
+                    "Client certificate and key are required for PKI authentication"
+                )
+            return PKIAuthentication(client_cert_pem, client_key_pem)
+        else:
+            raise ElasticValidationError(
+                f"Unsupported authentication type: {auth_type}"
+            )
+
     def _create_session(self) -> requests.Session:
-        """Create an HTTP session with API-key or basic authentication.
+        """Create an HTTP session authenticated by the configured provider.
+
+        The provider only attaches its credentials; the common headers and the
+        TLS verification are applied here.
 
         Returns:
             Configured requests.Session with authentication.
@@ -225,20 +282,15 @@ class ElasticClientAPI:
             ElasticValidationError: If no authentication is configured.
 
         """
-        session = requests.Session()
-        headers = {
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-        }
-        if self.api_key:
-            headers["Authorization"] = f"ApiKey {self.api_key}"
-        elif self.username and self.password:
-            session.auth = (self.username, self.password)
-        else:
-            raise ElasticValidationError(
-                "Either an API key or a username/password pair is required"
-            )
-        session.headers.update(headers)
+        session = self._get_authentication_provider(
+            self.config.elastic.resolve_authentication_type()
+        ).get_session()
+        session.headers.update(
+            {
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+            }
+        )
         # TLS: prefer verifying against a provided CA bundle (ca_cert), else fall
         # back to verify_ssl (bool). Disabling verification is a loud, deliberate
         # downgrade.

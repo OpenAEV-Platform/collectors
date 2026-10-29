@@ -1,10 +1,19 @@
 """Configuration for Elastic Security integration."""
 
+import base64
 from datetime import timedelta
-from typing import Optional
+from enum import Enum
 
 from pydantic import Field, SecretStr, field_validator, model_validator
 from src.models.configs import ConfigBaseSettings
+
+
+class AuthenticationType(str, Enum):
+    """Enum for supported authentication types."""
+
+    API_KEY = "API_KEY"
+    USER_PASSWORD = "USER_PASSWORD"
+    PKI = "PKI"
 
 
 class _ConfigLoaderElastic(ConfigBaseSettings):
@@ -21,27 +30,37 @@ class _ConfigLoaderElastic(ConfigBaseSettings):
         default="https://localhost:9200",
         description="Base URL of the Elasticsearch API (e.g., https://elastic.company.com:9200).",
     )
-    api_key: Optional[SecretStr] = Field(
+    authentication_type: AuthenticationType | None = Field(
+        alias="ELASTIC_AUTHENTICATION_TYPE",
+        default=None,
+        description=(
+            "Authentication method to use for Elasticsearch. One of: "
+            "API_KEY, USER_PASSWORD, PKI. If unset, the collector infers the "
+            "method from the other settings (API key takes precedence over "
+            "username/password, which takes precedence over PKI)."
+        ),
+    )
+    api_key: SecretStr | None = Field(
         alias="ELASTIC_API_KEY",
         default=None,
         description="Elasticsearch API key (preferred). When set, it is used instead of username/password.",
     )
-    username: Optional[str] = Field(
+    username: str | None = Field(
         alias="ELASTIC_USERNAME",
         default=None,
         description="Username for HTTP basic authentication (used when no API key is set).",
     )
-    password: Optional[SecretStr] = Field(
+    password: SecretStr | None = Field(
         alias="ELASTIC_PASSWORD",
         default=None,
         description="Password for HTTP basic authentication.",
     )
-    alerts_index: Optional[str] = Field(
+    alerts_index: str | None = Field(
         alias="ELASTIC_ALERTS_INDEX",
         default=".alerts-security.alerts-*",
         description="Index or index pattern to search for detection alerts.",
     )
-    query_template: Optional[str] = Field(
+    query_template: str | None = Field(
         alias="ELASTIC_QUERY_TEMPLATE",
         default=None,
         description=(
@@ -55,7 +74,7 @@ class _ConfigLoaderElastic(ConfigBaseSettings):
             "separately as an @timestamp filter."
         ),
     )
-    events_index: Optional[str] = Field(
+    events_index: str | None = Field(
         alias="ELASTIC_EVENTS_INDEX",
         default="logs-windows.sysmon_operational-*,logs-endpoint.events.process-*",
         description=(
@@ -68,7 +87,7 @@ class _ConfigLoaderElastic(ConfigBaseSettings):
             "fall back to host/IP + time correlation only."
         ),
     )
-    kibana_url: Optional[str] = Field(
+    kibana_url: str | None = Field(
         alias="ELASTIC_KIBANA_URL",
         default=None,
         description=(
@@ -78,7 +97,7 @@ class _ConfigLoaderElastic(ConfigBaseSettings):
             "reverse proxy or with no port in base_url)."
         ),
     )
-    time_window: Optional[timedelta] = Field(
+    time_window: timedelta | None = Field(
         alias="ELASTIC_TIME_WINDOW",
         default=timedelta(hours=1),
         description="Time window for searches when no dates are provided.",
@@ -113,6 +132,16 @@ class _ConfigLoaderElastic(ConfigBaseSettings):
         "Elasticsearch TLS certificate (recommended for self-signed clusters "
         "instead of disabling verification). Overrides ELASTIC_VERIFY_SSL.",
     )
+    client_cert: str | None = Field(
+        alias="ELASTIC_CLIENT_CERT",
+        default=None,
+        description="Single line base64 encoded PEM client certificate for PKI authentication. ",
+    )
+    client_key: SecretStr | None = Field(
+        alias="ELASTIC_CLIENT_KEY",
+        default=None,
+        description="Single line base64 encoded PEM client key for PKI authentication.",
+    )
 
     @field_validator(
         "api_key",
@@ -142,20 +171,128 @@ class _ConfigLoaderElastic(ConfigBaseSettings):
             return None
         return value
 
+    def resolve_authentication_type(self) -> AuthenticationType | None:
+        """Return the authentication method in effect.
+
+        The configured ``authentication_type`` wins. When it is unset, the
+        method is inferred from the settings: API key, then username/password,
+        then client certificate.
+
+        Returns:
+            The authentication method, or None when no credentials are set.
+
+        """
+        if self.authentication_type is not None:
+            return self.authentication_type
+        if self.api_key:
+            return AuthenticationType.API_KEY
+        if self.username and self.password:
+            return AuthenticationType.USER_PASSWORD
+        if self.client_cert and self.client_key:
+            return AuthenticationType.PKI
+        return None
+
+    @property
+    def client_cert_pem(self) -> str | None:
+        """Return the decoded PEM client certificate, or None when unset."""
+        if self.client_cert is None:
+            return None
+        pem_content = _decode_base64_pem(self.client_cert, "ELASTIC_CLIENT_CERT")
+        _validate_pem_format(pem_content, "CERTIFICATE")
+        return pem_content
+
+    @property
+    def client_key_pem(self) -> str | None:
+        """Return the decoded PEM client key, or None when unset."""
+        if self.client_key is None:
+            return None
+        pem_content = _decode_base64_pem(
+            self.client_key.get_secret_value(), "ELASTIC_CLIENT_KEY"
+        )
+        _validate_pem_format(pem_content, "PRIVATE KEY")
+        return pem_content
+
     @model_validator(mode="after")
     def _validate_auth(self) -> "_ConfigLoaderElastic":
-        """Ensure either an API key or a username/password pair is configured.
+        """Ensure an API key, a username/password pair or a client certificate and key is configured.
+
+        The client certificate and key are only decoded and checked when PKI
+        is the method in effect, so leftover PKI settings do not break a
+        configuration that uses another method.
 
         Returns:
             The validated configuration instance.
 
         Raises:
-            ValueError: If no usable authentication method is configured.
+            ValueError: If no usable authentication method is configured, or
+                if the client certificate or key is not a valid PEM file.
 
         """
-        if not self.api_key and not (self.username and self.password):
+        if (
+            not self.api_key
+            and not (self.username and self.password)
+            and not (self.client_cert and self.client_key)
+        ):
             raise ValueError(
-                "Elastic authentication requires either ELASTIC_API_KEY or both "
-                "ELASTIC_USERNAME and ELASTIC_PASSWORD"
+                "Elastic authentication requires ELASTIC_API_KEY, both "
+                "ELASTIC_USERNAME and ELASTIC_PASSWORD, or both "
+                "ELASTIC_CLIENT_CERT and ELASTIC_CLIENT_KEY"
             )
+        if self.resolve_authentication_type() == AuthenticationType.PKI:
+            # Decoding raises ValueError on an invalid certificate or key.
+            _ = self.client_cert_pem, self.client_key_pem
         return self
+
+
+def _decode_base64_pem(value: str, field_name: str) -> str:
+    """Decode a base64-encoded PEM string.
+
+    Args:
+        value: Base64-encoded PEM content (single-line or wrapped).
+        field_name: Name of the field being validated (for error messages).
+
+    Returns:
+        The decoded PEM content as a string.
+
+    Raises:
+        ValueError: If the base64 decoding fails.
+
+    """
+    value_stripped = value.replace("\n", "").replace(" ", "")
+
+    try:
+        decoded = base64.b64decode(value_stripped, validate=True)
+        return decoded.decode("utf-8")
+    except Exception as e:
+        raise ValueError(f"{field_name} must be the base64-encoded PEM") from e
+
+
+def _validate_pem_format(content: str, expected_type: str) -> None:
+    """Validate that content is a valid PEM file of the expected type.
+
+    Args:
+        content: The PEM content to validate.
+        expected_type: Expected PEM type (e.g., "CERTIFICATE", "PRIVATE KEY").
+
+    Raises:
+        ValueError: If the PEM format is invalid or type doesn't match.
+
+    """
+    content = content.strip()
+
+    if not content.startswith("-----BEGIN "):
+        raise ValueError("the decoded value is not PEM")
+
+    if not content.endswith("-----"):
+        raise ValueError("the decoded value is not PEM")
+
+    first_line = content.split("\n")[0]
+    if expected_type not in first_line:
+        raise ValueError("the decoded value is not PEM")
+
+    # PKCS#8 declares encryption in the BEGIN line ("ENCRYPTED PRIVATE KEY"),
+    # traditional OpenSSL keys in a "Proc-Type: 4,ENCRYPTED" header.
+    if expected_type == "PRIVATE KEY" and (
+        "ENCRYPTED" in first_line or "Proc-Type: 4,ENCRYPTED" in content
+    ):
+        raise ValueError("ELASTIC_CLIENT_KEY must be unencrypted")
