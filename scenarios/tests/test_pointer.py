@@ -63,15 +63,44 @@ def test_a_pointer_out_of_its_shape_is_refused(document: Any, why: str) -> None:
 
 
 def test_releases_are_ordered_by_their_numbers_not_by_their_characters() -> None:
-    assert release_order("2026.10.27.10") == (2026, 10, 27, 10)
-    assert release_order("2026.10.27.123456789") == (2026, 10, 27, 123456789)
+    assert release_order("2026.10.27.10") == (0, 2026, 10, 27, 10)
+    assert release_order("2026.10.27.123456789") == (0, 2026, 10, 27, 123456789)
     ordered = ["2026.10.27.1", "2026.10.27.9", "2026.10.27.10", "2026.10.27.123456789"]
     assert sorted(reversed(ordered), key=release_order) == ordered
     assert sorted(ordered, key=str) != ordered  # as text, 10 comes before 9
     assert release_order("2026.10.28.1") > release_order("2026.10.27.123456789")
 
 
-@pytest.mark.parametrize("name", ["", "latest", "2026.13.01.1", "2026.10.27.0"])
+def test_a_release_is_named_major_yymmdd_n_as_the_other_products() -> None:
+    assert release_order("1.261030.0") == (1, 2026, 10, 30, 0)
+    assert release_order("12.990101.123456789") == (12, 2099, 1, 1, 123456789)
+    ordered = ["1.261030.0", "1.261030.9", "1.261030.10", "1.261031.0", "2.250101.0"]
+    assert sorted(reversed(ordered), key=release_order) == ordered
+
+
+def test_a_name_of_the_first_form_comes_before_every_name_of_the_new_one() -> None:
+    """The first releases, up to 2026.10.29.2, keep their YYYY.MM.DD.N names."""
+    assert release_order("2026.10.29.2") < release_order("1.261030.0")
+    assert release_order("2099.12.31.9") < release_order("1.250101.0")
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "",
+        "latest",
+        "2026.13.01.1",
+        "2026.10.27.0",
+        "1.261030",
+        "1.261030.01",
+        "0.261030.0",
+        "01.261030.0",
+        "1.261330.0",
+        "1.260230.0",
+        "1.2610300.0",
+        "1.261030.1000000000",
+    ],
+)
 def test_a_name_that_is_not_a_release_has_no_order(name: str) -> None:
     with pytest.raises(ValueError, match="not a release name"):
         release_order(name)
