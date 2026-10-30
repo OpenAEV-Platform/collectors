@@ -141,6 +141,52 @@ class TestExpectationUtils(unittest.TestCase):
         )
         self.assertEqual(start_date, m_extract_date.return_value)
 
+    @patch.object(module, "extract_start_date")
+    @patch.object(module, "extract_end_date")
+    def test_extract_date_with_fallback_end(
+        self, m_extract_end_date, m_extract_start_date
+    ):
+        end_date = MagicMock()
+        m_extract_end_date.return_value = end_date
+        expectation = MagicMock()
+
+        date = module.extract_date_with_fallback(expectation)
+
+        m_extract_end_date.assert_called_once_with(expectation)
+        m_extract_start_date.assert_not_called()
+        self.assertEqual(end_date, date)
+
+    @patch.object(module, "extract_start_date")
+    @patch.object(module, "extract_end_date")
+    def test_extract_date_with_fallback_start(
+        self, m_extract_end_date, m_extract_start_date
+    ):
+        m_extract_end_date.return_value = None
+        start_date = MagicMock()
+        m_extract_start_date.return_value = start_date
+        expectation = MagicMock()
+
+        date = module.extract_date_with_fallback(expectation)
+
+        m_extract_end_date.assert_called_once_with(expectation)
+        m_extract_start_date.assert_called_once_with(expectation)
+        self.assertEqual(start_date, date)
+
+    @patch.object(module, "extract_start_date")
+    @patch.object(module, "extract_end_date")
+    def test_extract_date_with_fallback_neither(
+        self, m_extract_end_date, m_extract_start_date
+    ):
+        m_extract_end_date.return_value = None
+        m_extract_start_date.return_value = None
+        expectation = MagicMock()
+
+        date = module.extract_date_with_fallback(expectation)
+
+        m_extract_end_date.assert_called_once_with(expectation)
+        m_extract_start_date.assert_called_once_with(expectation)
+        self.assertIsNone(date)
+
     def test_time_window_over_no_for_end(self):
         end_date_signature = MagicMock()
         end_date_signature.type = SignatureTypes.SIG_TYPE_END_DATE
