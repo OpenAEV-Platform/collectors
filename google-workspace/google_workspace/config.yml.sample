@@ -9,7 +9,13 @@ collector:
   name: 'Google Workspace'
   period: 'PT1H'
   log_level: 'error'
+  google_workspace_auth_type: 'service_account_json'  # 'service_account_json' or 'certificate'
   google_workspace_service_account_json: ''  # JSON string of service account credentials
+  # google_workspace_client_email: ''  # required when auth_type is 'certificate'
+  # google_workspace_client_certificate: ''  # PEM cert, required when auth_type is 'certificate'
+  # google_workspace_client_private_key: ''  # PEM private key, required when auth_type is 'certificate'
+  # google_workspace_client_private_key_id: ''  # optional 'kid' for the registered key
+  # google_workspace_token_uri: 'https://oauth2.googleapis.com/token'
   google_workspace_delegated_admin_email: ''  # Email of admin user for domain-wide delegation
   google_workspace_customer_id: 'my_customer'  # Customer ID or 'my_customer' for your own domain
   include_suspended: false  # Whether to include suspended users
