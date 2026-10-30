@@ -307,13 +307,65 @@ class TestBasicCollectorEngine(unittest.TestCase):
         self.assertEqual(collector_engine.current_summary.received, 1)
         self.assertEqual(collector_engine.current_summary.supported, 1)
 
+    @patch.object(module, "detect_date")
+    @patch.object(module.BasicCollectorEngine, "_reset_summary")
+    def test_process_batch_no_date(self, m_reset_summary, m_detect_date):
+        """ """
+        name = "my name is"
+        collector_id = "1234abcd"
+        signature_type = MagicMock(value="parent process name")
+        data_fetcher_model = MagicMock()
+        source = MagicMock(spec=module.Source)
+        source.signatures = [
+            signature_type,
+        ]
+        source.data_fetcher_model = data_fetcher_model
+        source_handler = MagicMock(spec=SourceHandler)
+        source_handler.config = MagicMock()
+        data_element = MagicMock()
+        source_handler.get_source_data.return_value = [
+            data_element,
+        ]
+        source_handler.match_expectation_and_sourcedata.side_effect = [
+            [True, True],
+            [False, False],
+            [False, False],
+            Exception("Nope"),
+        ]
+        oaev_api = MagicMock(spec_set=module.OpenAEV)
+
+        expectation1 = MagicMock()
+        expectation2 = MagicMock()
+        expectation3 = MagicMock()
+        expectation4 = MagicMock()
+        batch = [expectation1, expectation2, expectation3, expectation4]
+        m_detect_date.return_value = False
+
+        collector_engine = module.BasicCollectorEngine(
+            name=name,
+            collector_id=collector_id,
+            source=source,
+            source_handler=source_handler,
+            oaev_api=oaev_api,
+        )
+
+        config = MagicMock()
+        collector_engine.configure_engine(config)
+        m_reset_summary.assert_called_once()
+
+        batch_results = collector_engine._process_batch(batch)
+
+        self.assertEqual(batch_results, [])
+
     @patch.object(module, "ExpectationProcessingError")
     @patch.object(module, "ExpectationResult")
     @patch.object(module, "time_window_over")
+    @patch.object(module, "detect_date")
     @patch.object(module.BasicCollectorEngine, "_reset_summary")
     def test_process_batch(
         self,
         m_reset_summary,
+        m_detect_date,
         m_time_window_over,
         m_expectation_result,
         m_expectation_processing_error,
@@ -347,6 +399,7 @@ class TestBasicCollectorEngine(unittest.TestCase):
         expectation3 = MagicMock()
         expectation4 = MagicMock()
         batch = [expectation1, expectation2, expectation3, expectation4]
+        m_detect_date.return_value = True
         m_time_window_over.side_effect = [True, False]
         result1 = MagicMock()
         result2 = MagicMock()
