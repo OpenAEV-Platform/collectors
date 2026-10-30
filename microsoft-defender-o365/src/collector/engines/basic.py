@@ -19,7 +19,7 @@ from src.collector.models.source import Source
 from src.collector.protocols.data_fetcher import DataFetcherProtocol
 from src.collector.protocols.source_handler import SourceHandlerProtocol
 from src.collector.types.collector import ExpectationsList, SourceConfig
-from src.collector.utils.expectation_utils import time_window_over
+from src.collector.utils.expectation_utils import detect_date, time_window_over
 
 LOG_PREFIX = "[BasicCollectorEngine]"
 
@@ -170,6 +170,11 @@ class BasicCollectorEngine:
         """
         batch_results = []
 
+        # filter out the expectations with neither start_date nor end_date
+        batch = [expectation for expectation in batch if detect_date(expectation)]
+        if not batch:
+            return batch_results
+
         try:
             # (0) ask source handler to build a fetch params hook from the batch
             fetch_params_hook = self.source_handler.build_fetch_params_hook(batch)
@@ -248,11 +253,12 @@ class BasicCollectorEngine:
                         if breakflag:
                             break
 
-                self.logger.debug(
-                    f"{LOG_PREFIX} Creating expectation result for expectation {expectation.inject_expectation_id} with match at {matched}."
-                )
                 result = None
                 if matched or time_window_over(expectation, self.config.retry_window):
+                    self.logger.debug(
+                        f"{LOG_PREFIX} Creating expectation result for expectation "
+                        f"{expectation.inject_expectation_id} with match at {matched}."
+                    )
                     # (8) create results from step 7 + tracedata (6)
                     result = ExpectationResult(
                         expectation_id=str(expectation.inject_expectation_id),

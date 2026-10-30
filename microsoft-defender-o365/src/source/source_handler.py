@@ -3,7 +3,7 @@ from datetime import datetime
 from src.collector.models.source import SourceHandler
 from src.collector.protocols.data_fetcher import FetchParamsHook
 from src.collector.types.collector import ExpectationsList
-from src.collector.utils.expectation_utils import extract_end_date
+from src.collector.utils.expectation_utils import extract_date_with_fallback
 
 
 class DefenderO365SourceHandler(SourceHandler):
@@ -12,7 +12,7 @@ class DefenderO365SourceHandler(SourceHandler):
     def build_fetch_params_hook(batch: ExpectationsList) -> FetchParamsHook | None:
         earliest: datetime | None = None
         for expectation in batch:
-            dt: datetime | None = extract_end_date(expectation)
+            dt: datetime | None = extract_date_with_fallback(expectation)
             if dt:
                 if earliest is None or dt < earliest:
                     earliest = dt
