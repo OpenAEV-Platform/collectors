@@ -5,7 +5,7 @@ from pyoaev.signatures.types import SignatureTypes
 from src.collector.models.source import SourceHandler
 from src.collector.protocols.data_fetcher import FetchParamsHook
 from src.collector.types.collector import AlertData, ExpectationsList, SignatureGroups
-from src.collector.utils.expectation_utils import extract_end_date, extract_start_date
+from src.collector.utils.expectation_utils import extract_date_with_fallback
 
 
 class DefenderSourceHandler(SourceHandler):
@@ -14,18 +14,10 @@ class DefenderSourceHandler(SourceHandler):
     def build_fetch_params_hook(batch: ExpectationsList) -> FetchParamsHook | None:
         earliest: datetime | None = None
         for expectation in batch:
-            dt: datetime | None = extract_end_date(expectation)
+            dt: datetime | None = extract_date_with_fallback(expectation)
             if dt:
                 if earliest is None or dt < earliest:
                     earliest = dt
-
-        # if no end_date has been found, fallback to start_date
-        if earliest is None:
-            for expectation in batch:
-                dt: datetime | None = extract_start_date(expectation)
-                if dt:
-                    if earliest is None or dt < earliest:
-                        earliest = dt
 
         if earliest is None:
             return None
