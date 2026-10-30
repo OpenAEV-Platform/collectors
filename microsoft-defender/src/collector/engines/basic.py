@@ -255,11 +255,12 @@ class BasicCollectorEngine:
                         if breakflag:
                             break
 
-                self.logger.debug(
-                    f"{LOG_PREFIX} Creating expectation result for expectation {expectation.inject_expectation_id} with match at {matched}."
-                )
                 result = None
                 if matched or time_window_over(expectation, self.config.retry_window):
+                    self.logger.debug(
+                        f"{LOG_PREFIX} Creating expectation result for expectation "
+                        f"{expectation.inject_expectation_id} with match at {matched}."
+                    )
                     # (8) create results from step 7 + tracedata (6)
                     result = ExpectationResult(
                         expectation_id=str(expectation.inject_expectation_id),
