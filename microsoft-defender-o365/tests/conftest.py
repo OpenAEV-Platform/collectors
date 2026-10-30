@@ -433,8 +433,16 @@ def _when_microsoft_defender_o365_engine_cycle_triggered(
         ``None`` on success, or the raised exception on failure.
 
     """
+    from src.collector.engines import basic
+
     try:
-        engine.run_engine()
+        with (
+            patch.object(basic, "time_window_over") as m_time_window_over,
+            patch.object(basic, "detect_date") as m_detect_date,
+        ):
+            m_time_window_over.return_value = True
+            m_detect_date.return_value = True
+            engine.run_engine()
         return None
     except Exception as err:  # pylint: disable=broad-except
         return err
