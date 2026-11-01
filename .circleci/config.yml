@@ -32,7 +32,7 @@ executors:
       - image: alpine/flake8
     working_directory: ~/repo
 
-  # Used by setup, deploy_testing and notifications
+  # Used by setup, the deploy jobs and notifications
   base_runner:
     docker:
       - image: cimg/base:stable
@@ -155,9 +155,9 @@ commands:
               " >> "${GENERATED_CONFIG}"
             done
 
-            # Deploy testing after all collectors have been published.
+            # Deploy every target namespace after all collectors have been published.
             echo "
-                  - deploy_testing:
+                  - deploy_main_oaev:
                       requires:
             " >> "${GENERATED_CONFIG}"
 
@@ -171,10 +171,66 @@ commands:
                         branches:
                           only:
                             - main
+            " >> "${GENERATED_CONFIG}"
 
+            echo "
+                  - deploy_main_ff_oaev:
+                      requires:
+            " >> "${GENERATED_CONFIG}"
+
+            for collector_name in ${published_collectors}; do
+              echo "                      - publish-${collector_name}" \
+                >> "${GENERATED_CONFIG}"
+            done
+
+            echo "
+                      filters:
+                        branches:
+                          only:
+                            - main
+            " >> "${GENERATED_CONFIG}"
+
+            echo "
+                  - deploy_testing_oaev:
+                      requires:
+            " >> "${GENERATED_CONFIG}"
+
+            for collector_name in ${published_collectors}; do
+              echo "                      - publish-${collector_name}" \
+                >> "${GENERATED_CONFIG}"
+            done
+
+            echo "
+                      filters:
+                        branches:
+                          only:
+                            - main
+            " >> "${GENERATED_CONFIG}"
+
+            echo "
+                  - deploy_testing_xtm_one_oaev:
+                      requires:
+            " >> "${GENERATED_CONFIG}"
+
+            for collector_name in ${published_collectors}; do
+              echo "                      - publish-${collector_name}" \
+                >> "${GENERATED_CONFIG}"
+            done
+
+            echo "
+                      filters:
+                        branches:
+                          only:
+                            - main
+            " >> "${GENERATED_CONFIG}"
+
+            echo "
                   - notify_rolling:
                       requires:
-                        - deploy_testing
+                        - deploy_main_oaev
+                        - deploy_main_ff_oaev
+                        - deploy_testing_oaev
+                        - deploy_testing_xtm_one_oaev
 
                   - notify:
                       requires:
@@ -607,16 +663,43 @@ jobs:
           collector_name: << parameters.collector_name >>
       - notify_slack_failure
 
-  # TODO(#530): re-enable the main-oaev / main-ff-oaev / testing-oaev /
-  # testing-xtm-one-oaev targets once a circleci ServiceAccount token is
-  # provisioned for each namespace ($K8S_TOKEN is scoped to
-  # customer-testing-oaev and $K8S_TOKEN_PRE_RELEASE is no longer valid).
-  deploy_testing:
+  # Each deploy job restarts the collectors of one namespace, then waits for the
+  # rollout to complete so the job (and the Slack notification after it) only
+  # succeeds when the new pods are actually up. Prerequisite (#530): the
+  # ServiceAccount behind $K8S_TOKEN needs RoleBindings in main-oaev,
+  # main-ff-oaev and testing-oaev, and $K8S_TOKEN_PRE_RELEASE must be a valid
+  # token authorized in testing-xtm-one-oaev.
+  deploy_main_oaev:
     executor: base_runner
     steps:
       - checkout
       - kubernetes/install-kubectl
-      - run: kubectl --server=https://api.staging.eu-west.filigran.io --token=$K8S_TOKEN -n customer-testing-oaev rollout restart deployment -l app=openaev-colljector
+      - run: kubectl --server=https://api.staging.eu-west.filigran.io --token=$K8S_TOKEN -n main-oaev rollout restart deployment -l app=openaev-colljector
+      - run: kubectl --server=https://api.staging.eu-west.filigran.io --token=$K8S_TOKEN -n main-oaev rollout status deployment -l app=openaev-colljector --timeout=10m
+
+  deploy_main_ff_oaev:
+    executor: base_runner
+    steps:
+      - checkout
+      - kubernetes/install-kubectl
+      - run: kubectl --server=https://api.staging.eu-west.filigran.io --token=$K8S_TOKEN -n main-ff-oaev rollout restart deployment -l app=openaev-colljector
+      - run: kubectl --server=https://api.staging.eu-west.filigran.io --token=$K8S_TOKEN -n main-ff-oaev rollout status deployment -l app=openaev-colljector --timeout=10m
+
+  deploy_testing_oaev:
+    executor: base_runner
+    steps:
+      - checkout
+      - kubernetes/install-kubectl
+      - run: kubectl --server=https://api.staging.eu-west.filigran.io --token=$K8S_TOKEN -n testing-oaev rollout restart deployment -l app=openaev-colljector
+      - run: kubectl --server=https://api.staging.eu-west.filigran.io --token=$K8S_TOKEN -n testing-oaev rollout status deployment -l app=openaev-colljector --timeout=10m
+
+  deploy_testing_xtm_one_oaev:
+    executor: base_runner
+    steps:
+      - checkout
+      - kubernetes/install-kubectl
+      - run: kubectl --server=https://api.staging.eu-west.filigran.io --token=$K8S_TOKEN_PRE_RELEASE -n testing-xtm-one-oaev rollout restart deployment -l app=openaev-colljector
+      - run: kubectl --server=https://api.staging.eu-west.filigran.io --token=$K8S_TOKEN_PRE_RELEASE -n testing-xtm-one-oaev rollout status deployment -l app=openaev-colljector --timeout=10m
 
   notify_rolling:
     executor: base_runner
