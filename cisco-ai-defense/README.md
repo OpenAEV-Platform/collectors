@@ -43,7 +43,7 @@ attack content directly through the vendor API.
   `pyoaev`; platforms without AI red-team support are not compatible)
 - A Cisco AI Defense subscription with inspection API access
 - A Cisco AI Defense API key and the inspection API base URL for your region/tenant
-- For a manual (non-Docker) deployment: Python >= 3.11 and [Poetry](https://python-poetry.org/) >= 2.1
+- For a manual (non-Docker) deployment: Python >= 3.14 and [Poetry](https://python-poetry.org/) >= 2.1
 
 ## Configuration variables
 
@@ -77,7 +77,7 @@ section as `collector.*` keys, mapped to `COLLECTOR_*` environment variables.
 |--------------|------------------------|-----------------------------|-------------------------------|-----------|---------------------------------------------------------------------------------------------|
 | API Base URL | `collector.base_url`   | `COLLECTOR_BASE_URL`        | /                             | Yes       | Cisco AI Defense inspection API base URL (region/tenant specific), scheme + host only (e.g. `https://<region>.api.inspect.aidefense.security.cisco.com`). The collector appends `/api/v1/inspect/prompt`. |
 | API Key      | `collector.api_key`    | `COLLECTOR_API_KEY`         | /                             | Yes       | Cisco AI Defense API key.                                                                    |
-| Auth Header  | `collector.auth_header`| `COLLECTOR_AUTH_HEADER`     | `X-Cisco-AI-Defense-Api-Key`  | No        | HTTP header used to carry the API key.                                                       |
+| Auth Header  | `collector.auth_header`| `COLLECTOR_AUTH_HEADER`     | `x-cisco-ai-defense-tenant-api-key`  | No        | HTTP header used to carry the API key.                                                       |
 
 > Note: set `base_url` to the scheme + host only, with no path, query, or fragment. The collector
 > appends the inspection path itself, so a URL that already includes a path is rejected.
@@ -99,18 +99,48 @@ provided `docker-compose.yml` (which reads those variables):
 docker compose up -d
 ```
 
-### Manual Deployment
+### Manual Deployment with Poetry
 
-Create a `config.yml` file from `cisco_ai_defense/config.yml.sample` and fill in your values, then
-install and run the collector:
+1. **Clone and Install Dependencies**:
+   ```bash
+   git clone <repository-url>
+   cd <your-collector>
+   poetry install
+   ```
 
-```shell
-poetry install --extras prod
-poetry run python -m cisco_ai_defense.openaev_cisco_ai_defense
+2. **Configure the Collector**:
+- Copy `cisco_ai_defense/config.yml.sample` to `cisco_ai_defense/config.yml`
+- Update configuration values or set environment variables
+
+3. **Run the Collector**:
+   ```bash
+   # Using Poetry
+   poetry run python -m cisco_ai_defense
+   
+   # Or 
+   poetry run CiscoAIDefenseCollector
+
+   # Or direct execution after installing the project and activating the virtual environment:
+   CiscoAIDefenseCollector
+   ```
+
+For local development against a checkout of [client-python](https://github.com/OpenAEV-Platform/client-python),
+The client-python repository must be cloned at the same level as the collectors repository, so that `../../client-python`
+resolves correctly from the collector directory.
+
+```
+parent-directory/ 
+├── collectors/
+│   └── <your-collector>/
+└── client-python/
 ```
 
-> For local development against a checkout of [client-python](https://github.com/OpenAEV-Platform/client-python)
-> (cloned next to this repository), use `poetry install --extras dev` instead.
+Then install the local `client-python` version inside the <your-collector> environment:
+```bash
+poetry run pip install -e ../../client-python --force-reinstall
+```
+The `-e` option installs the package in editable mode, allowing local changes in `client-python` to be used immediately
+without reinstalling the package.
 
 ## Usage
 
@@ -161,7 +191,7 @@ On each run, the collector:
   region/tenant.
 - API endpoint used:
   - `POST {base_url}/api/v1/inspect/prompt` (prompt inspection), authenticated with the configurable
-    auth header (default `X-Cisco-AI-Defense-Api-Key`).
+    auth header (default `x-cisco-ai-defense-tenant-api-key`).
 - Reference: [Cisco AI Defense](https://www.cisco.com/site/us/en/products/security/ai-defense/index.html)
   (the public API surface is still consolidating; the endpoint path and auth header are configurable).
 

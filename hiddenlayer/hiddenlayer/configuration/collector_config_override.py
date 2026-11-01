@@ -13,6 +13,19 @@ class CollectorConfigOverride(ConfigLoaderCollector):
         default="LLM_FIREWALL",
         description="Security platform type registered for this collector.",
     )
+    platform_description: str | None = Field(
+        default=(
+            "HiddenLayer AIDR, the AI detection and response platform monitoring "
+            "interactions with AI models. Automatically registered by the "
+            "HiddenLayer collector, which matches AIDR detections to validate AI "
+            "prevention and detection expectations."
+        ),
+        description="Description applied to the security platform auto-created by the collector.",
+    )
+    platform_tags: list[str] | None = Field(
+        default=["llm-firewall", "hiddenlayer"],
+        description="Tag names applied to the security platform auto-created by the collector.",
+    )
     icon_filepath: str | None = Field(
         default="hiddenlayer/img/icon-hiddenlayer.png",
         description="Path to the icon file",

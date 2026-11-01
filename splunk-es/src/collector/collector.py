@@ -78,7 +78,9 @@ class Collector(CollectorDaemon):  # type: ignore[misc]
 
             self.splunkes_service = SplunkESExpectationService(self.config_instance)
 
-            self.trace_service = SplunkESTraceService(self.config_instance)
+            self.trace_service = SplunkESTraceService(
+                self.config_instance, client_api=self.splunkes_service.client_api
+            )
 
             self.expectation_handler = GenericExpectationHandler(self.splunkes_service)
 
@@ -134,7 +136,7 @@ class Collector(CollectorDaemon):  # type: ignore[misc]
                 f"{results.skipped} skipped"
             )
 
-        except (KeyboardInterrupt, SystemExit):
+        except KeyboardInterrupt, SystemExit:
             self.logger.info(f"{LOG_PREFIX} Collector stopping...")
             os._exit(0)
         except Exception as e:

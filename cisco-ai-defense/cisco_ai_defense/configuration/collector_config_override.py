@@ -13,6 +13,19 @@ class CollectorConfigOverride(ConfigLoaderCollector):
         default="LLM_FIREWALL",
         description="Security platform type registered for this collector.",
     )
+    platform_description: str | None = Field(
+        default=(
+            "Cisco AI Defense, the Cisco platform inspecting LLM traffic for "
+            "prompt injections and unsafe content. Automatically registered by the "
+            "Cisco AI Defense collector, which matches inspection verdicts to "
+            "validate AI prevention and detection expectations."
+        ),
+        description="Description applied to the security platform auto-created by the collector.",
+    )
+    platform_tags: list[str] | None = Field(
+        default=["llm-firewall", "cisco"],
+        description="Tag names applied to the security platform auto-created by the collector.",
+    )
     icon_filepath: str | None = Field(
         default="cisco_ai_defense/img/icon-cisco-ai-defense.png",
         description="Path to the icon file",
@@ -27,6 +40,6 @@ class CollectorConfigOverride(ConfigLoaderCollector):
     )
     api_key: str | None = Field(default=None, description="Cisco AI Defense API key.")
     auth_header: str | None = Field(
-        default="X-Cisco-AI-Defense-Api-Key",
+        default="x-cisco-ai-defense-tenant-api-key",
         description="HTTP header used to carry the API key.",
     )

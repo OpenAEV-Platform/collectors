@@ -40,12 +40,12 @@ expectations are not supported.
 - OpenAEV Platform >= 1.19.0
 - A Splunk Enterprise Security instance with the REST API reachable (typically on management port 8089)
 - A Splunk user account with REST API search access and read access to the configured events index
-- For a manual (non-Docker) deployment: Python >= 3.11 and [Poetry](https://python-poetry.org/) >= 2.1
+- For a manual (non-Docker) deployment: Python >= 3.14 and [Poetry](https://python-poetry.org/) >= 2.1
 
 ## Configuration variables
 
-The collector is configured either through environment variables (recommended, read from `docker-compose.yml` / the
-`.env` file for a Docker deployment) or through a `config.yml` file (for a manual deployment). Copy the provided
+The collector is configured either through environment variables (recommended, read from the `.env` file for a
+Docker deployment) or through a `config.yml` file (for a manual deployment). Copy the provided
 `src/.env.sample` / `src/config.yml.sample` and fill in the values flagged with `ChangeMe`.
 
 ### OpenAEV environment variables
@@ -73,10 +73,10 @@ The collector is configured either through environment variables (recommended, r
 | Base URL       | `splunk_es.base_url`       | `SPLUNKES_BASE_URL`         | /            | Yes       | Splunk ES management URL (e.g. `https://splunk.company.com:8089`).                       |
 | Username       | `splunk_es.username`       | `SPLUNKES_USERNAME`         | /            | Yes       | Splunk username with REST API search permissions.                                       |
 | Password       | `splunk_es.password`       | `SPLUNKES_PASSWORD`         | /            | Yes       | Splunk user password.                                                                    |
-| Alerts Index   | `splunk_es.alerts_index`   | `SPLUNKES_ALERTS_INDEX`     | main         | No        | Splunk index to search for security alerts.                                              |
+| Alerts Index   | `splunk_es.alerts_index`   | `SPLUNKES_ALERTS_INDEX`     | notable      | No        | Splunk index to search for security alerts.                                              |
 | Time Window    | `splunk_es.time_window`    | `SPLUNKES_TIME_WINDOW`      | PT1H         | No        | Default search window when no date signatures are provided, as an ISO 8601 duration.     |
-| Offset         | `splunk_es.offset`         | `SPLUNKES_OFFSET`           | PT30S        | No        | Delay between retry attempts to absorb alert ingestion latency, as an ISO 8601 duration. |
-| Max Retry      | `splunk_es.max_retry`      | `SPLUNKES_MAX_RETRY`        | 3            | No        | Maximum number of retry attempts after the initial search returns no results.            |
+| Offset         | `splunk_es.offset`         | `SPLUNKES_OFFSET`           | PT2M         | No        | Delay between retry attempts to absorb alert ingestion latency, as an ISO 8601 duration. |
+| Max Retry      | `splunk_es.max_retry`      | `SPLUNKES_MAX_RETRY`        | 5            | No        | Maximum number of retry attempts after the initial search returns no results.            |
 | Query Template | `splunk_es.query_template` | `SPLUNKES_QUERY_TEMPLATE`   | *(built-in)* | No        | Custom SPL query template with placeholders (leave empty to use the default below).      |
 
 ### Query template
@@ -89,19 +89,17 @@ following placeholders, resolved at runtime:
 | `{alerts_index}`       | The configured Splunk index (`SPLUNKES_ALERTS_INDEX`).                        |
 | `{source_ips}`         | Source IP values quoted for the Splunk `IN` operator (`*` if none).          |
 | `{target_ips}`         | Target IP values quoted for the Splunk `IN` operator (`*` if none).          |
-| `{implant_urls}`       | Implant callback URL paths quoted for the Splunk `IN` operator (`*` if none).|
-| `{implant_names}`      | Implant process names quoted for the Splunk `IN` operator (`*` if none).     |
+| `{hostnames}`          | Hostname values quoted for the Splunk `IN` operator (`*` if none).           |
 | `{start_date}`         | Start date from signatures, or a relative time fallback (e.g. `-3600s`).      |
 | `{end_date}`           | End date from signatures, or `now` fallback.                                  |
-| `{ip_conditions}`      | Legacy: auto-generated source + destination IP filter.                        |
-| `{process_conditions}` | Legacy: auto-generated URL path / process filter.                             |
-| `{time_window}`        | Legacy: computed earliest time in seconds.                                    |
 
 The query must include `| table _time` for proper alert parsing. The default template is:
 
 ```spl
-index={alerts_index} (src_ip IN ({source_ips}) OR src IN ({source_ips}) OR source_ip IN ({source_ips}) OR client_ip IN ({source_ips})) (dst_ip IN ({target_ips}) OR dest IN ({target_ips}) OR dest_ip IN ({target_ips}) OR destination_ip IN ({target_ips}) OR server_ip IN ({target_ips})) (url_path IN ({implant_urls}) OR url IN ({implant_urls}) OR path IN ({implant_urls}) OR query IN ({implant_urls}) OR process_name IN ({implant_names}) OR parent_process_name IN ({implant_names})) earliest={start_date} latest={end_date} | table _time, src_ip, src, source_ip, client_ip, dst_ip, dest, dest_ip, destination_ip, server_ip, signature, rule_name, event_type, severity, url_path, url, path, query, process_name, parent_process_name, _raw | sort -_time
+index={alerts_index} (src_ip IN ({source_ips}) OR src IN ({source_ips}) OR source_ip IN ({source_ips}) OR client_ip IN ({source_ips})) (dst_ip IN ({target_ips}) OR dest IN ({target_ips}) OR dest_ip IN ({target_ips}) OR destination_ip IN ({target_ips}) OR server_ip IN ({target_ips})) (host IN ({hostnames}) OR hostname IN ({hostnames}) OR host_name IN ({hostnames})) earliest={start_date} latest={end_date} | table _time, src_ip, src, source_ip, client_ip, dst_ip, dest, dest_ip, destination_ip, server_ip, host, hostname, signature, rule_name, event_type, severity, url_path, _raw | sort -_time
 ```
+
+Signature values that are not part of the enough-filter (process names, emails, hashes, custom headers, ...) are not query placeholders: they are matched after the fetch with a raw-text regex over each fetched alert's `_raw` field. An implant parent process name additionally matches through its callback URL rebuilt from the embedded UUIDs, because network events never show the `.exe` — which is why the projection carries `url_path` (the converter rebuilds the full implant name from it).
 
 ## Deployment
 
@@ -113,24 +111,63 @@ Build the Docker image (or use the published `openaev/collector-splunk-es` image
 docker build . -t openaev/collector-splunk-es:latest
 ```
 
-Create a `.env` file from `src/.env.sample` and fill in your values, then start the collector with the provided
-`docker-compose.yml` (which reads those variables):
+Create a `.env` file next to `docker-compose.yml` from `src/.env.sample` and fill in your values, then start the
+collector with the provided `docker-compose.yml`, which reads the settings it lists from `.env` or from the shell:
 
 ```shell
+cp src/.env.sample .env
 docker compose up -d
 ```
 
-### Manual Deployment
-
-Create a `config.yml` file from `src/config.yml.sample` and fill in your values, then install and run the collector:
+Settings left out of `.env` keep the collector's defaults. A value written directly in the `environment` section of
+`docker-compose.yml` (`VAR=value`) takes precedence over `.env`. To check what actually reached the collector:
 
 ```shell
-poetry install --extras prod
-poetry run SplunkESCollector
+docker compose exec collector-splunkes env | grep -E '^(OPENAEV|COLLECTOR|SPLUNKES)_'
 ```
 
-> For local development against a checkout of [client-python](https://github.com/OpenAEV-Platform/client-python)
-> (cloned next to this repository as `client-python`), use `poetry install --extras local` instead.
+### Manual Deployment with Poetry
+
+1. **Clone and Install Dependencies**:
+   ```bash
+   git clone <repository-url>
+   cd <your-collector>
+   poetry install
+   ```
+
+2. **Configure the Collector**:
+    - Copy `src/config.yml.sample` to `src/config.yml`
+    - Update configuration values or set environment variables
+
+3. **Run the Collector**:
+   ```bash
+   # Using Poetry
+   poetry run python -m src
+   
+   # Or 
+   poetry run SplunkESCollector
+
+   # Or direct execution after installing the project and activating the virtual environment:
+   SplunkESCollector
+   ```
+
+For local development against a checkout of [client-python](https://github.com/OpenAEV-Platform/client-python),
+The client-python repository must be cloned at the same level as the collectors repository, so that `../../client-python`
+resolves correctly from the collector directory.
+
+```
+parent-directory/ 
+├── collectors/
+│   └── <your-collector>/
+└── client-python/
+```
+
+Then install the local `client-python` version inside the <your-collector> environment:
+```bash
+poetry run pip install -e ../../client-python --force-reinstall
+```
+The `-e` option installs the package in editable mode, allowing local changes in `client-python` to be used immediately
+without reinstalling the package.
 
 ## Usage
 

@@ -21,6 +21,10 @@ class ConfigLoader(SettingsLoader):
                 "collector_name": {"data": self.collector.name},
                 "collector_log_level": {"data": self.collector.log_level},
                 "collector_platform": {"data": self.collector.platform},
+                "collector_platform_description": {
+                    "data": self.collector.platform_description
+                },
+                "collector_platform_tags": {"data": self.collector.platform_tags},
                 "collector_period": {
                     "data": int(self.collector.period.total_seconds()),  # type: ignore[union-attr]
                     "is_number": True,
@@ -33,8 +37,36 @@ class ConfigLoader(SettingsLoader):
                 "microsoft_sentinel_client_id": {
                     "data": self.collector.microsoft_sentinel_client_id
                 },
+                "microsoft_sentinel_use_certificate_auth": {
+                    "data": self.collector.microsoft_sentinel_use_certificate_auth
+                },
                 "microsoft_sentinel_client_secret": {
-                    "data": self.collector.microsoft_sentinel_client_secret.get_secret_value()
+                    "data": (
+                        self.collector.microsoft_sentinel_client_secret.get_secret_value()
+                        if self.collector.microsoft_sentinel_client_secret
+                        else None
+                    )
+                },
+                "microsoft_sentinel_client_cert_data": {
+                    "data": (
+                        self.collector.microsoft_sentinel_client_cert_data.get_secret_value()
+                        if self.collector.microsoft_sentinel_client_cert_data
+                        else None
+                    )
+                },
+                "microsoft_sentinel_client_cert_thumbprint": {
+                    "data": (
+                        self.collector.microsoft_sentinel_client_cert_thumbprint.get_secret_value()
+                        if self.collector.microsoft_sentinel_client_cert_thumbprint
+                        else None
+                    )
+                },
+                "microsoft_sentinel_client_cert_passphrase": {
+                    "data": (
+                        self.collector.microsoft_sentinel_client_cert_passphrase.get_secret_value()
+                        if self.collector.microsoft_sentinel_client_cert_passphrase
+                        else None
+                    )
                 },
                 "microsoft_sentinel_subscription_id": {
                     "data": self.collector.microsoft_sentinel_subscription_id

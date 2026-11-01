@@ -1,11 +1,13 @@
 openaev:
   url: 'http://localhost:3001'
   token: 'ChangeMe'
-# tenant_id: 'ChangeMe'
+  # only required for multi-tenancy (Enterprise Edition), keep commented otherwise
+  # tenant_id: 'ChangeMe'
 
 collector:
   id: 'ChangeMe'
   name: 'MITRE ATT&CK'
   period: 'P7D'
+  batch_size: 100
   log_level: 'error'
 

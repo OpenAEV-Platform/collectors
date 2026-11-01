@@ -6,7 +6,7 @@ and reconstruct them for matching purposes.
 
 import logging
 import re
-from typing import Optional, Tuple
+from typing import Any, Optional, Tuple
 
 LOG_PREFIX = "[ParentProcessParser]"
 
@@ -22,6 +22,9 @@ class ParentProcessParser:
             r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
         )
         self.parent_process_pattern = r"oaev-implant-([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})-agent-([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})"
+        self._compiled_parent_process_re = re.compile(
+            self.parent_process_pattern, re.IGNORECASE
+        )
 
     def extract_uuids_from_parent_process_name(
         self, parent_process_name: str
@@ -150,6 +153,36 @@ class ParentProcessParser:
             self.logger.error(f"{LOG_PREFIX} Error extracting UUIDs from URL path: {e}")
             return None
 
+    def build_url_path(self, inject_uuid: str, agent_uuid: str) -> str:
+        """Build the plain implant callback URL path from UUIDs.
+
+        Args:
+            inject_uuid: The inject UUID.
+            agent_uuid: The agent UUID.
+
+        Returns:
+            The callback URL path string, or an empty string when a UUID
+            is missing.
+
+        Example:
+            Input: inject_uuid='877b423b-ae91-4fc5-86c3-fa8ea3c938ba',
+                   agent_uuid='1402422f-2eaa-4fbd-80b2-b30df1b83b19'
+            Output: '/api/injects/877b423b-ae91-4fc5-86c3-fa8ea3c938ba/1402422f-2eaa-4fbd-80b2-b30df1b83b19/executable-payload'
+
+        """
+        if not inject_uuid or not agent_uuid:
+            self.logger.warning(f"{LOG_PREFIX} Missing UUIDs for URL path construction")
+            return ""
+
+        try:
+            url_path = f"/api/injects/{inject_uuid}/{agent_uuid}/executable-payload"
+            self.logger.debug(f"{LOG_PREFIX} Built URL path: {url_path}")
+            return url_path
+
+        except Exception as e:
+            self.logger.error(f"{LOG_PREFIX} Error building URL path: {e}")
+            return ""
+
     def build_url_path_search_query(self, inject_uuid: str, agent_uuid: str) -> str:
         """Build URL path search query from UUIDs.
 
@@ -171,7 +204,9 @@ class ParentProcessParser:
             return ""
 
         try:
-            url_path = f"/api/injects/{inject_uuid}/{agent_uuid}/executable-payload"
+            url_path = self.build_url_path(inject_uuid, agent_uuid)
+            if not url_path:
+                return ""
 
             url_fields = ["url_path", "url", "path", "query"]
             url_conditions = []
@@ -187,6 +222,36 @@ class ParentProcessParser:
         except Exception as e:
             self.logger.error(f"{LOG_PREFIX} Error building URL path search query: {e}")
             return ""
+
+    def extract_parent_process_names_from_raw(
+        self, raw_data: dict[str, Any]
+    ) -> list[str]:
+        """Extract all parent process names from flattened _raw alert data.
+
+        Flattens the _raw dictionary to a single string and searches for
+        all occurrences of the parent process name pattern.
+
+        Args:
+            raw_data: The _raw dictionary from a SplunkESAlert.
+
+        Returns:
+            List of parent process names found, empty list if none.
+
+        """
+        if not raw_data:
+            return []
+
+        try:
+            raw_string = " ".join(str(v) for v in raw_data.values() if v is not None)
+            return [
+                match.group(0)
+                for match in self._compiled_parent_process_re.finditer(raw_string)
+            ]
+        except Exception as e:
+            self.logger.error(
+                f"{LOG_PREFIX} Error extracting parent process names from _raw: {e}"
+            )
+            return []
 
     def validate_uuid_format(self, uuid_string: str) -> bool:
         """Validate if string matches UUID format.

@@ -17,8 +17,8 @@ class SplunkESSearchCriteria(BaseModel):
     target_ips: Optional[list[str]] = Field(
         default_factory=list, description="Target IP addresses to search for"
     )
-    parent_process_names: Optional[list[str]] = Field(
-        default_factory=list, description="Parent process names to search for"
+    hostnames: Optional[list[str]] = Field(
+        default_factory=list, description="Hostnames to search for"
     )
     start_date: Optional[str] = Field(
         None, description="Start date for the search in ISO format"
@@ -132,8 +132,8 @@ class SplunkESResponse(BaseModel):
                 rule_name=raw_result.get("rule_name"),
                 event_type=raw_result.get("event_type"),
                 severity=raw_result.get("severity"),
-                _raw=raw_result,
             )
+            alert._raw = raw_result
             alerts.append(alert)
 
         return cls(results=alerts)

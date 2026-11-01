@@ -81,7 +81,7 @@ class SignatureExtractor:
                         if end_date.tzinfo is None:
                             end_date = end_date.replace(tzinfo=timezone.utc)
                         return end_date
-                    except (ValueError, AttributeError):
+                    except ValueError, AttributeError:
                         continue
         return None
 

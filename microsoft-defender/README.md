@@ -38,9 +38,9 @@ attaching a trace that links back to the originating Defender alert.
 
 - OpenAEV Platform >= 1.19.0
 - A Microsoft Defender for Endpoint subscription onboarded to the Microsoft 365 Defender portal
-- An Entra ID (Azure AD) application registration with the Microsoft Graph `ThreatHunting.Read.All` application
+- An Entra ID (Azure AD) application registration with the Microsoft Graph `SecurityAlert.Read.All` application
   permission (admin consent granted), and its tenant ID, client ID, and client secret
-- For a manual (non-Docker) deployment: Python >= 3.11 and [Poetry](https://python-poetry.org/) >= 2.1
+- For a manual (non-Docker) deployment: Python >= 3.14 and [Poetry](https://python-poetry.org/) >= 2.1
 
 ## Configuration variables
 
@@ -62,7 +62,7 @@ The collector is configured either through environment variables (recommended, r
 |------------------|-----------------------|-----------------------------|--------------------|-----------|----------------------------------------------------------------------------------------------|
 | Collector ID     | `collector.id`        | `COLLECTOR_ID`              | /                  | Yes       | A unique `UUIDv4` identifier for this collector instance.                                     |
 | Collector Name   | `collector.name`      | `COLLECTOR_NAME`            | Microsoft Defender | No        | The name of the collector as shown in OpenAEV.                                                |
-| Collector Period | `collector.period`    | `COLLECTOR_PERIOD`          | PT1M               | No        | Interval between two runs, as an ISO 8601 duration (e.g. `PT1M` = 1 minute).                  |
+| Collector Period | `collector.period`    | `COLLECTOR_PERIOD`          | PT2M               | No        | Interval between two runs, as an ISO 8601 duration (e.g. `PT2M` = 2 minutes).                  |
 | Log Level        | `collector.log_level` | `COLLECTOR_LOG_LEVEL`       | error              | No        | Verbosity of the logs. One of `debug`, `info`, `warn`, `error`.                               |
 | Platform         | `collector.platform`  | `COLLECTOR_PLATFORM`        | EDR                | No        | The `SecurityPlatform` type registered in OpenAEV. One of `EDR`, `XDR`, `SIEM`, `SOAR`, `NDR`, `ISPM`. |
 
@@ -70,9 +70,17 @@ The collector is configured either through environment variables (recommended, r
 
 | Parameter     | config.yml                                   | Docker environment variable                  | Default | Mandatory | Description                                                          |
 |---------------|----------------------------------------------|----------------------------------------------|---------|-----------|---------------------------------------------------------------------|
-| Tenant ID     | `collector.microsoft_defender_tenant_id`     | `COLLECTOR_MICROSOFT_DEFENDER_TENANT_ID`     | /       | Yes       | The Entra ID (Azure AD) tenant ID of the Defender application.      |
-| Client ID     | `collector.microsoft_defender_client_id`     | `COLLECTOR_MICROSOFT_DEFENDER_CLIENT_ID`     | /       | Yes       | The Entra ID application (client) ID.                               |
-| Client Secret | `collector.microsoft_defender_client_secret` | `COLLECTOR_MICROSOFT_DEFENDER_CLIENT_SECRET` | /       | Yes       | The Entra ID application client secret.                             |
+| Tenant ID     | `source.tenant_id`     | `SOURCE_TENANT_ID`     | /       | Yes       | The Entra ID (Azure AD) tenant ID of the Defender application.      |
+| Client ID     | `source.client_id`     | `SOURCE_CLIENT_ID`     | /       | Yes       | The Entra ID application (client) ID.                               |
+| Client Secret | `source.client_secret` | `SOURCE_CLIENT_SECRET` | /       | Yes       | The Entra ID application client secret.                             |
+| Use certificate auth | `source.use_certificate_auth` | `SOURCE_USE_CERTIFICATE_AUTH` | False       | No       | Whether to authenticate using a client certificate instead of a client secret.        |
+| Client certificate data | `source.client_cert_data` | `SOURCE_CLIENT_CERT_DATA` | / | No | Content of the client certificate (mandatory if certificate auth is used).
+| Client certificate thumbprint | `source.client_cert_thumbprint` | `SOURCE_CLIENT_CERT_THUMBPRINT` | / | No | Thumbprint of the client certificate (mandatory if certificate auth is used).
+| Base url | `source.base_url` | `SOURCE_BASE_URL` | https://graph.microsoft.com/v1.0 | No | Base url for the Microsoft Graph API
+| Filter service source | `source.filter_service_source` | `SOURCE_FILTER_SERVICE_SOURCE` | microsoftDefenderForEndpoint | No | Value used to filter Microsoft Graph security alerts down to Defender for Endpoint alerts
+| Rate limit requests per minute | `source.rate_limit_requests_per_minute` | `SOURCE_RATE_LIMIT_REQUESTS_PER_MINUTE` | 150 | No | Maximum number of Microsoft Graph API requests issued per minute (must be >= 1)
+| Max fetch retries | `source.max_fetch_retries` | `SOURCE_MAX_FETCH_RETRIES` | 5 | No | Maximum number of retries when fetching data from Microsoft Graph fails transiently
+| Retry window | `source.retry_window` | `SOURCE_RETRY_WINDOW` | PT10M | No | Time after the recorded end date before invalidating an expectation (ISO 8601 format) - if the end date is not available, the start date is used with a factor 1.5 on the retry window (until the end date is available)
 
 ## Deployment
 
@@ -91,17 +99,48 @@ Create a `.env` file from `.env.sample` and fill in your values, then start the 
 docker compose up -d
 ```
 
-### Manual Deployment
+### Manual Deployment with Poetry
 
-Create a `config.yml` file from `config.yml.sample` and fill in your values, then install and run the collector:
+1. **Clone and Install Dependencies**:
+   ```bash
+   git clone <repository-url>
+   cd <your-collector>
+   poetry install
+   ```
 
-```shell
-poetry install --extras prod
-poetry run python -m microsoft_defender.openaev_microsoft_defender
+2. **Configure the Collector**:
+- Copy `config.yml.sample` to `config.yml`
+- Update configuration values or set environment variables
+
+3. **Run the Collector**:
+   ```bash
+   # Using Poetry
+   poetry run python -m src
+   
+   # Or 
+   poetry run MicrosoftDefenderCollector
+
+   # Or direct execution after installing the project and activating the virtual environment:
+   MicrosoftDefenderCollector
+   ```
+
+For local development against a checkout of [client-python](https://github.com/OpenAEV-Platform/client-python),
+The client-python repository must be cloned at the same level as the collectors repository, so that `../../client-python`
+resolves correctly from the collector directory.
+
+```
+parent-directory/ 
+├── collectors/
+│   └── <your-collector>/
+└── client-python/
 ```
 
-> For local development against a checkout of [client-python](https://github.com/OpenAEV-Platform/client-python)
-> (cloned next to this repository), use `poetry install --extras dev` instead.
+Then install the local `client-python` version inside the <your-collector> environment:
+```bash
+poetry run pip install -e ../../client-python --force-reinstall
+```
+The `-e` option installs the package in editable mode, allowing local changes in `client-python` to be used immediately
+without reinstalling the package.
 
 > Note (Windows hosts): the Microsoft Graph SDK for Python is a large package and the initial install may take a few
 > minutes. If you hit a `Could not install packages due to an OSError`, enable long paths (see
@@ -151,20 +190,18 @@ Expectations that remain unmatched after the 45-minute window are marked as fail
 
 ## Required permissions and API endpoints
 
-- Required permission: an Entra ID (Azure AD) application with the Microsoft Graph **`ThreatHunting.Read.All`**
+- Required permission: an Entra ID (Azure AD) application with the Microsoft Graph **`SecurityAlert.Read.All`**
   application permission, with admin consent granted.
 - API endpoints used:
   - `POST https://login.microsoftonline.com/<tenant_id>/oauth2/v2.0/token` (OAuth2 client-credentials authentication)
-  - `POST /security/runHuntingQuery` (Microsoft Graph Advanced Hunting)
+  - `GET /security/alerts_v2` (Microsoft Graph Security Alerts v2)
 - Reference: [Microsoft Graph permissions reference](https://learn.microsoft.com/en-us/graph/permissions-reference) and
-  [runHuntingQuery](https://learn.microsoft.com/en-us/graph/api/security-security-runhuntingquery).
+  [alerts v2](https://learn.microsoft.com/en-us/graph/api/resources/security-alert).
 
 ## Debugging
 
 Set `COLLECTOR_LOG_LEVEL=debug` to get verbose logs, including expectation polling, the number of alerts returned by the
-hunting query, and the matching decisions. You can copy/paste the KQL query into the Advanced Hunting sandbox at
-`https://security.microsoft.com/v2/advanced-hunting` to inspect the raw results. A common cause of "nothing detected" is
-a missing admin consent on `ThreatHunting.Read.All` or a wrong tenant ID / client secret.
+graph query, and the matching decisions. A common cause of "nothing detected" is a missing admin consent on `SecurityAlert.Read.All` or a wrong tenant ID / client secret.
 
 ## Additional information
 

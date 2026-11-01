@@ -2,7 +2,7 @@ import asyncio
 import os
 
 import requests
-from azure.identity.aio import ClientSecretCredential
+from azure.identity.aio import CertificateCredential, ClientSecretCredential
 from microsoft_entra.configuration.config_loader import ConfigLoader
 from msgraph import GraphServiceClient
 from pyoaev.configuration import Configuration
@@ -222,19 +222,45 @@ class OpenAEVMicrosoftEntra(CollectorDaemon):
     def _process_message(self) -> None:
         # Auth
         scopes = ["https://graph.microsoft.com/.default"]
-        credential = ClientSecretCredential(
-            tenant_id=self._configuration.get("microsoft_entra_tenant_id"),
-            client_id=self._configuration.get("microsoft_entra_client_id"),
-            client_secret=self._configuration.get("microsoft_entra_client_secret"),
+        use_certificate_auth = bool(
+            self._configuration.get("microsoft_entra_use_certificate_auth")
         )
+
+        if use_certificate_auth:
+            certificate_data = self._configuration.get(
+                "microsoft_entra_client_cert_data"
+            )
+            thumbprint = self._configuration.get(
+                "microsoft_entra_client_cert_thumbprint"
+            )
+            passphrase = self._configuration.get(
+                "microsoft_entra_client_cert_passphrase"
+            )
+
+            credential_kwargs = {
+                "tenant_id": self._configuration.get("microsoft_entra_tenant_id"),
+                "client_id": self._configuration.get("microsoft_entra_client_id"),
+                "certificate_data": certificate_data.encode("utf-8"),
+                "thumbprint": thumbprint,
+            }
+            if passphrase:
+                credential_kwargs["password"] = passphrase.encode("utf-8")
+
+            credential = CertificateCredential(**credential_kwargs)
+        else:
+            credential = ClientSecretCredential(
+                tenant_id=self._configuration.get("microsoft_entra_tenant_id"),
+                client_id=self._configuration.get("microsoft_entra_client_id"),
+                client_secret=self._configuration.get("microsoft_entra_client_secret"),
+            )
+
         graph_client = GraphServiceClient(credential, scopes)  # type: ignore
 
         # Execute
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(self.create_groups(graph_client))
+        asyncio.run(self.create_groups(graph_client))
 
 
-if __name__ == "__main__":
+def main():
     for key in [
         "MICROSOFT_ENTRA_TENANT_ID",
         "MICROSOFT_ENTRA_CLIENT_ID",

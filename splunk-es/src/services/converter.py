@@ -159,15 +159,15 @@ class Converter:
                 }
                 self.logger.debug(f"{LOG_PREFIX} Using target IPs: {target_ips}")
 
-            parent_process_name = self._extract_parent_process_name(alert_data)
-            if parent_process_name:
+            parent_process_names = self._extract_parent_process_name(alert_data)
+            if parent_process_names:
                 oaev_data["parent_process_name"] = {
                     "type": "fuzzy",
-                    "data": [parent_process_name],
+                    "data": parent_process_names,
                     "score": 95,
                 }
                 self.logger.debug(
-                    f"{LOG_PREFIX} Using parent process name: {parent_process_name}"
+                    f"{LOG_PREFIX} Using parent process name(s): {parent_process_names}"
                 )
 
             if alert_data.signature:
@@ -226,47 +226,33 @@ class Converter:
 
         return target_ips
 
-    def _extract_parent_process_name(self, alert_data: SplunkESAlert) -> str:
-        """Extract parent process name from alert data.
+    def _extract_parent_process_name(self, alert_data: SplunkESAlert) -> list[str]:
+        """Extract parent process name(s) from alert data.
 
-        This method reconstructs the parent process name from the URL path
-        found in the alert data.
+        First attempts to extract from url_path by reconstructing from UUIDs.
+        If that fails, falls back to scanning _raw for the parent process name
+        pattern and returns matches directly.
 
         Args:
             alert_data: SplunkESAlert object.
 
         Returns:
-            Reconstructed parent process name if UUIDs found in URL path, empty string otherwise.
+            List of parent process names, empty list if none found.
 
         """
-        if not alert_data.url_path:
-            self.logger.debug(f"{LOG_PREFIX} No URL path found in alert data")
-            return ""
-
-        try:
-            self.logger.debug(
-                f"{LOG_PREFIX} Extracting parent process name from URL path: {alert_data.url_path}"
-            )
-
+        if alert_data.url_path:
             uuids = self.parent_process_parser.extract_uuids_from_url_path(
                 alert_data.url_path
             )
             if uuids:
-                inject_uuid, agent_uuid = uuids
                 parent_process_name = (
                     self.parent_process_parser.construct_parent_process_name(
-                        inject_uuid, agent_uuid
+                        uuids[0], uuids[1]
                     )
                 )
-                self.logger.debug(
-                    f"{LOG_PREFIX} Reconstructed parent process name: {parent_process_name}"
-                )
-                return parent_process_name
-            else:
-                self.logger.debug(
-                    f"{LOG_PREFIX} No UUIDs found in URL path: {alert_data.url_path}"
-                )
-                return ""
-        except Exception as e:
-            self.logger.error(f"{LOG_PREFIX} Error extracting parent process name: {e}")
-            return ""
+                if parent_process_name:
+                    return [parent_process_name]
+
+        return self.parent_process_parser.extract_parent_process_names_from_raw(
+            alert_data._raw
+        )

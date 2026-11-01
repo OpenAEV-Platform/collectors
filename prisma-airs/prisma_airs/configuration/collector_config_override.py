@@ -15,6 +15,19 @@ class CollectorConfigOverride(ConfigLoaderCollector):
         default="LLM_FIREWALL",
         description="Security platform type registered for this collector.",
     )
+    platform_description: str | None = Field(
+        default=(
+            "Palo Alto Networks Prisma AIRS, the AI runtime security platform "
+            "scanning LLM prompts and responses for threats. Automatically "
+            "registered by the Prisma AIRS collector, which matches scan verdicts "
+            "to validate AI prevention and detection expectations."
+        ),
+        description="Description applied to the security platform auto-created by the collector.",
+    )
+    platform_tags: list[str] | None = Field(
+        default=["llm-firewall", "palo-alto"],
+        description="Tag names applied to the security platform auto-created by the collector.",
+    )
     icon_filepath: str | None = Field(
         default="prisma_airs/img/icon-prisma-airs.png",
         description="Path to the icon file",

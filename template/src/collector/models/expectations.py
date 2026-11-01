@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
-from pyoaev.apis.inject_expectation.model import (
+from pyoaev.apis.inject_expectation.model import (  # type: ignore[import-untyped]
     DetectionExpectation,
     PreventionExpectation,
 )
@@ -203,7 +203,7 @@ class ExpectationTrace(BaseModel):
         """
         matching_data = result.matched_alerts[0] or {}
         alert_name = matching_data.get("alert_name", f"{collector_name} Alert")
-        trace_link = matching_data.get("alert_link", "")
+        trace_link = str(matching_data.get("alert_link", ""))
         trace_date = datetime.now(UTC).replace(microsecond=0)
         date_str = trace_date.isoformat().replace("+00:00", "Z")
         return cls(

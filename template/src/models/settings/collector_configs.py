@@ -52,6 +52,19 @@ class _ConfigLoaderCollector(ConfigBaseSettings):
         default="EDR",
         description="Platform type for the collector (e.g., EDR, SIEM, etc.).",
     )
+    platform_description: str | None = Field(
+        alias="COLLECTOR_PLATFORM_DESCRIPTION",
+        default=None,
+        description="Description applied to the security platform auto-created by the "
+        "collector, so its read-only card is not empty in the platform UI. Set it to a "
+        "short description of the security product this collector integrates with.",
+    )
+    platform_tags: list[str] | None = Field(
+        alias="COLLECTOR_PLATFORM_TAGS",
+        default=None,
+        description="Tag names applied to the security platform auto-created by the "
+        "collector (e.g. ['edr', 'vendor-name']).",
+    )
     log_level: LogLevel | None = Field(
         alias="COLLECTOR_LOG_LEVEL",
         default="error",

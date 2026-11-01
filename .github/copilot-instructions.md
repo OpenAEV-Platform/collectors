@@ -5,8 +5,8 @@
 **OpenAEV collectors** - Python integrations for security tools (EDR, XDR, SIEM, etc.) to collect data for OpenAEV platform. Monorepo with 15 collectors.
 
 **Key Facts:**
-- **Language**: Python 3.11+ (CI: Python 3.13)
-- **Package Manager**: Poetry 2.1.3+
+- **Language**: Python 3.14 for all collectors, development environments, builds, and CI
+- **Package Manager**: Poetry 2.3.2+
 - **CI/CD**: CircleCI
 - **Collectors**: 8 in root pyproject.toml (atomic-red-team, crowdstrike, microsoft-defender, microsoft-entra, microsoft-sentinel, mitre-attack, nvd-nist-cve, tanium-threat-response), 7 standalone (aws-resources, google-workspace, microsoft-azure, microsoft-intune, openaev, sentinelone, splunk-es)
 
@@ -14,11 +14,13 @@
 
 ### Poetry and Dependency Management
 
-**IMPORTANT**: Uses **mutually exclusive extra markers** for `pyoaev` dependency. Different sources based on extras.
+The root project uses the released `pyoaev` package by default. For simultaneous
+development, replace it after installation with the local editable checkout:
 
-**Installation modes:**
-- **Production**: `poetry install --extras prod` (PyPI)
-- **Development**: `poetry install --extras dev` (local `../client-python`)
+```bash
+poetry install
+poetry run pip install --editable ../client-python --force-reinstall
+```
 
 **Expected dev structure:**
 ```
@@ -27,9 +29,7 @@
 └── collectors/          # This repo
 ```
 
-**NEVER** use both `dev` and `prod` extras simultaneously.
-
-**Common issue**: `Path for pyoaev does not exist` - clone `client-python` or use `--extras prod`.
+The local override requires `client-python` to be cloned next to `collectors`.
 
 ## Code Quality and Linting
 
@@ -59,7 +59,7 @@ flake8 --ignore=E,W .  # Match CI behavior
 **Run tests (crowdstrike example):**
 ```bash
 cd crowdstrike
-poetry install --extras prod
+poetry install
 poetry run pip install --force-reinstall git+https://github.com/OpenAEV-Platform/client-python.git@main
 poetry run python -m unittest
 ```
@@ -70,7 +70,7 @@ poetry run python -m unittest
 1. **ensure_formatting** - black and isort checks
 2. **linter** - flake8
 3. **test** - crowdstrike collector tests (unittest)
-4. **build_docker_images** - All collectors (python:3.13-alpine, Poetry 2.1.3)
+4. **build_docker_images** - All collectors (python:3.14-alpine, Python 3.14, Poetry 2.3.2)
 5. **publish_images** - Docker Hub (main/release/tags)
 
 **Branch strategy:**
@@ -86,13 +86,13 @@ collector-name/
 ├── collector_name/          # Python package
 │   └── openaev_<name>.py   # Entry point
 ├── test/ or tests/          # Tests (unittest)
-├── Dockerfile              # python:3.13-alpine, Poetry 2.1.3
-├── pyproject.toml         # Dependencies with mutually exclusive extras
+├── Dockerfile              # python:3.14-alpine, Python 3.14, Poetry 2.3.2
+├── pyproject.toml         # Project metadata and dependencies
 └── README.md
 ```
 
 **Run collector:**
-- Poetry: `cd <collector> && poetry install --extras prod && poetry run python -m <collector_name>.openaev_<collector_name>`
+- Poetry: `cd <collector> && poetry install && poetry run python -m <collector_name>.openaev_<collector_name>`
 - Docker: `cd <collector> && docker build -t collector . && docker compose up -d`
 
 **Common env vars:** `OPENAEV_URL`, `OPENAEV_TOKEN`, `COLLECTOR_ID`, `COLLECTOR_NAME`, `COLLECTOR_PERIOD`, `COLLECTOR_LOG_LEVEL`, `COLLECTOR_PLATFORM`
@@ -105,16 +105,16 @@ collector-name/
 3. Run tests if they exist: `poetry run python -m unittest`
 4. Test locally if possible
 
-**Add new collector:** Use `poetry new new_collector` then edit pyproject.toml for pyoaev with mutually exclusive markers (see README.md)
+**Add new collector:** Use `poetry new new_collector` then add the released `pyoaev` version as a direct dependency (see README.md)
 
 **Update dependencies:** Use Renovate bot (automated) or `poetry update <package>`. **NEVER modify pyoaev structure** without team approval.
 
 ## Troubleshooting
 
-- **"Path for pyoaev does not exist"**: Clone `client-python` or use `--extras prod`
-- **Import errors**: Run `poetry install --extras prod`
+- **Local pyoaev development**: Clone `client-python` next to this repository and install it with `poetry run pip install --editable ../client-python --force-reinstall`
+- **Import errors**: Run `poetry install`
 - **Black/isort conflicts**: Use `isort --profile black`
-- **Docker build fails**: Check Poetry 2.1.3 in Dockerfile
+- **Docker build fails**: Check Poetry 2.3.2 and Python 3.14 in the Dockerfile
 - **CI formatting fails**: Run `black .` and `isort --profile black .` locally
 
 ## Key Files
@@ -126,7 +126,7 @@ collector-name/
 ## Best Practices
 
 1. **ALWAYS run linters before committing** - CI will fail otherwise
-2. **Use the correct poetry extras** - dev for local development with client-python, prod otherwise
+2. **Use an editable pyoaev override only for simultaneous local development**
 3. **Test locally when possible** - Run collectors against test instances
 4. **Follow existing patterns** - Look at similar collectors for examples
 5. **Document configuration** - Update READMEs when adding new config options

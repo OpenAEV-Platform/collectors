@@ -23,6 +23,10 @@ class ConfigLoader(SettingsLoader):
                     "is_number": True,
                 },
                 "collector_icon_filepath": {"data": self.collector.icon_filepath},
+                "collector_batch_size": {
+                    "data": self.collector.batch_size,
+                    "is_number": True,
+                },
                 "collector_atlas_stix_url": {"data": self.collector.stix_url},
             },
             config_base_model=self,

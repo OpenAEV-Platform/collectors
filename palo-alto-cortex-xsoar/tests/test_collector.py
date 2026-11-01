@@ -122,12 +122,15 @@ def test_detection_expectation_with_detected_alert(mock_oaev_api) -> None:
         expectation
     ]
 
-    with patch(
-        "src.services.client_api.PaloAltoCortexXSOARClientAPI.search_incidents",
-        return_value=alerts_response,
-    ), patch(
-        "src.services.alert_fetcher.extract_from_custom_fields",
-        return_value=[incident_result],
+    with (
+        patch(
+            "src.services.client_api.PaloAltoCortexXSOARClientAPI.search_incidents",
+            return_value=alerts_response,
+        ),
+        patch(
+            "src.services.alert_fetcher.extract_from_custom_fields",
+            return_value=[incident_result],
+        ),
     ):
         collector._process_callback()
 
@@ -170,12 +173,15 @@ def test_detection_expectation_with_prevented_alert(mock_oaev_api) -> None:
         expectation
     ]
 
-    with patch(
-        "src.services.client_api.PaloAltoCortexXSOARClientAPI.search_incidents",
-        return_value=alerts_response,
-    ), patch(
-        "src.services.alert_fetcher.extract_from_custom_fields",
-        return_value=[incident_result],
+    with (
+        patch(
+            "src.services.client_api.PaloAltoCortexXSOARClientAPI.search_incidents",
+            return_value=alerts_response,
+        ),
+        patch(
+            "src.services.alert_fetcher.extract_from_custom_fields",
+            return_value=[incident_result],
+        ),
     ):
         collector._process_callback()
 
@@ -218,12 +224,15 @@ def test_prevention_expectation_with_prevented_alert(mock_oaev_api) -> None:
         expectation
     ]
 
-    with patch(
-        "src.services.client_api.PaloAltoCortexXSOARClientAPI.search_incidents",
-        return_value=alerts_response,
-    ), patch(
-        "src.services.alert_fetcher.extract_from_custom_fields",
-        return_value=[incident_result],
+    with (
+        patch(
+            "src.services.client_api.PaloAltoCortexXSOARClientAPI.search_incidents",
+            return_value=alerts_response,
+        ),
+        patch(
+            "src.services.alert_fetcher.extract_from_custom_fields",
+            return_value=[incident_result],
+        ),
     ):
         collector._process_callback()
 
@@ -266,12 +275,15 @@ def test_prevention_expectation_with_detected_alert(mock_oaev_api) -> None:
         expectation
     ]
 
-    with patch(
-        "src.services.client_api.PaloAltoCortexXSOARClientAPI.search_incidents",
-        return_value=alerts_response,
-    ), patch(
-        "src.services.alert_fetcher.extract_from_custom_fields",
-        return_value=[incident_result],
+    with (
+        patch(
+            "src.services.client_api.PaloAltoCortexXSOARClientAPI.search_incidents",
+            return_value=alerts_response,
+        ),
+        patch(
+            "src.services.alert_fetcher.extract_from_custom_fields",
+            return_value=[incident_result],
+        ),
     ):
         collector._process_callback()
 
@@ -310,12 +322,15 @@ def test_detection_expectation_with_non_matching_signature(mock_oaev_api) -> Non
         expectation
     ]
 
-    with patch(
-        "src.services.client_api.PaloAltoCortexXSOARClientAPI.search_incidents",
-        return_value=alerts_response,
-    ), patch(
-        "src.services.alert_fetcher.extract_from_custom_fields",
-        return_value=[incident_result],
+    with (
+        patch(
+            "src.services.client_api.PaloAltoCortexXSOARClientAPI.search_incidents",
+            return_value=alerts_response,
+        ),
+        patch(
+            "src.services.alert_fetcher.extract_from_custom_fields",
+            return_value=[incident_result],
+        ),
     ):
         collector._process_callback()
 

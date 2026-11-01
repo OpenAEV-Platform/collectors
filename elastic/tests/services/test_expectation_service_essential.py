@@ -50,6 +50,96 @@ class TestElasticExpectationServiceEssential:
         with pytest.raises(ElasticValidationError):
             ElasticExpectationService(config=None)
 
+    def test_match_network_alert_ip_fallback(self):
+        """Network alerts (no implant marker) are credited via source-IP match.
+
+        Zeek/Suricata alerts carry no implant marker in the data item; the
+        collector must still credit a genuine network detection through
+        source/target IP + time correlation.
+        """
+        service = ElasticExpectationService(config=create_test_config())
+        helper = MockObjectsFactory.create_mock_detection_helper(match_result=True)
+        signatures = [{"type": "source_ipv4_address", "value": "192.0.2.10"}]
+        data_item = {"source_ipv4_address": {"type": "simple", "data": ["192.0.2.10"]}}
+
+        assert service._match_with_detection_helper(  # noqa: S101
+            signatures, data_item, helper
+        )
+
+    def test_implant_endpoint_alert_without_marker_is_rejected(self):
+        """Deterministic: an endpoint alert with no marker is NOT credited on IP.
+
+        For an implant inject, an ENDPOINT alert (process context: host + pid)
+        that yields no matching marker must be rejected even if its source IP
+        matches - it should have carried the marker, so crediting it on IP would
+        misattribute an unrelated same-host alert to this inject.
+        """
+        service = ElasticExpectationService(config=create_test_config())
+        helper = MockObjectsFactory.create_mock_detection_helper(match_result=True)
+        # Endpoint alert: source IP matches but NO parent_process_name (no marker).
+        signatures = [{"type": "source_ipv4_address", "value": "192.0.2.10"}]
+        data_item = {
+            "source_ipv4_address": {"type": "simple", "data": ["192.0.2.10"]},
+            "_endpoint_context": True,
+        }
+
+        assert not service._match_with_detection_helper(  # noqa: S101
+            signatures, data_item, helper, expectation_expects_parent=True
+        )
+
+    def test_implant_network_alert_falls_back_to_ip(self):
+        """An implant inject still credits a genuine NETWORK detection via IP.
+
+        Network telemetry (Suricata/Zeek: no process context, ``_endpoint_context``
+        false) physically cannot carry an implant marker, so an implant
+        expectation falls back to source/target IP + time for it.
+        """
+        service = ElasticExpectationService(config=create_test_config())
+        helper = MockObjectsFactory.create_mock_detection_helper(match_result=True)
+        # Network alert: source IP matches, no marker, no endpoint context.
+        signatures = [{"type": "source_ipv4_address", "value": "192.0.2.10"}]
+        data_item = {
+            "source_ipv4_address": {"type": "simple", "data": ["192.0.2.10"]},
+            "_endpoint_context": False,
+        }
+
+        assert service._match_with_detection_helper(  # noqa: S101
+            signatures, data_item, helper, expectation_expects_parent=True
+        )
+
+    def test_match_marker_is_authoritative_when_present(self):
+        """When the alert yields an implant marker, it decides - IP is no rescue.
+
+        An endpoint alert whose drilled-down marker does not match this
+        expectation must be rejected even though its source IP matches. That is
+        what dissociates two injects run on the same host within the window.
+        """
+        service = ElasticExpectationService(config=create_test_config())
+
+        # Marker check fails, IP check would succeed.
+        def _elements(sigs, _data):
+            return sigs[0]["type"] != "parent_process_name"
+
+        helper = Mock()
+        helper.match_alert_elements.side_effect = _elements
+
+        signatures = [
+            {"type": "parent_process_name", "value": "oaev-implant-a-agent-b"},
+            {"type": "source_ipv4_address", "value": "192.0.2.10"},
+        ]
+        data_item = {
+            "parent_process_name": {
+                "type": "fuzzy",
+                "data": ["oaev-implant-x-agent-y"],
+                "score": 95,
+            },
+            "source_ipv4_address": {"type": "simple", "data": ["192.0.2.10"]},
+        }
+
+        assert not service._match_with_detection_helper(  # noqa: S101
+            signatures, data_item, helper
+        )
+
     def test_get_supported_signatures(self):
         """Test that service returns correct supported signatures.
 

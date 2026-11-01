@@ -25,11 +25,8 @@ This step installs all collectors within the repository inside a single poetry e
 to work with all collectors at once, it is possible to install each collector within its own poetry environment. Refer
 to each collector's individual README for instructions.
 
-In this repository, you need to have `python >= 3.11` and `poetry >= 2.1`. Install the development environment with:
-> [!IMPORTANT]
-> This repository uses "mutually exclusive extra markers" to manage the source of the pyoaev dependency. Make sure to
-> follow the steps to set up poetry correctly to handle this case:
-> https://python-poetry.org/docs/dependency-specification/#exclusive-extras
+The global development environment installs every collector and therefore requires
+`Python >= 3.14` and `Poetry >= 2.3.2`. Install it with:
 
 > [!NOTE]
 > For Windows hosts: as of writing, the [msgraph-python-sdk has the following note](https://github.com/microsoftgraph/msgraph-sdk-python/blob/65d88850202e9ea75477583e76e75dfbf6d75859/README.md#1-installation):
@@ -39,7 +36,7 @@ In this repository, you need to have `python >= 3.11` and `poetry >= 2.1`. Insta
 > Follow these instructions if not already enabled on your system.
 
 ```shell
-poetry install --extras dev
+poetry install
 ```
 
 ### Creating a new collector
@@ -51,9 +48,7 @@ poetry new new_collector
 ```
 
 #### `pyoaev` dependency
-We wish to retain the possibility to develop simultaneously on `pyoaev` and collectors. We rely on PEP 508 environment
-markers to alternatively install a local path `pyoaev` dependency or a released version from PyPI; specifically the `extra`
-marker.
+Collectors declare the released `pyoaev` version directly in their `pyproject.toml`.
 
 Navigate to the new directory and edit `pyproject.toml`.
 ```shell
@@ -61,23 +56,23 @@ vim new_collector/pyproject.toml
 ```
 (or open the file in your favourite editor).
 
-Here's the expression for the pyoaev dependency, including the `extra` definition:
+Add the current released version as a direct dependency:
 ```toml
 [tool.poetry.dependencies]
-pyoaev = [
-    { markers = "extra == 'prod' and extra != 'dev'", version = "<latest pyoaev release on PyPI>", source = "pypi"  },
-    { markers = "extra == 'dev' and extra != 'prod'", path = "../../client-python", develop = true },
-]
-
-[tool.poetry.extras]
-prod = ["pyoaev"]
-dev = ["pyoaev"]
+pyoaev = "<latest pyoaev release on PyPI>"
 ```
 
 ### Simultaneous development on pyoaev and a collector
 The collectors repository is set to assume that in the event of a simultaneous development work on both `pyoaev`
 and collectors, the `pyoaev` repository is cloned in a directory at the same level as the collectors root directory,
 and is named strictly `client-python`.
+
+After installing the collector dependencies, replace the released package with the
+local editable checkout:
+
+```shell
+poetry run pip install --editable ../client-python --force-reinstall
+```
 
 Here's an example layout:
 ```

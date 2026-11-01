@@ -36,6 +36,21 @@ class ConfigLoaderCollector(_ConfigLoaderCollector):
         default="Elastic",
         description="Name of the collector.",
     )
+    platform_description: str | None = Field(
+        alias="COLLECTOR_PLATFORM_DESCRIPTION",
+        default=(
+            "Elastic Security, the Elastic SIEM and endpoint security solution. "
+            "Automatically registered by the Elastic collector, which matches "
+            "Elastic Security alerts to validate prevention and detection "
+            "expectations."
+        ),
+        description="Description applied to the security platform auto-created by the collector.",
+    )
+    platform_tags: list[str] | None = Field(
+        alias="COLLECTOR_PLATFORM_TAGS",
+        default=["siem", "elastic"],
+        description="Tag names applied to the security platform auto-created by the collector.",
+    )
 
 
 class ConfigLoader(ConfigBaseSettings):
@@ -135,6 +150,10 @@ class ConfigLoader(ConfigBaseSettings):
                 "collector_id": {"data": self.collector.id},
                 "collector_name": {"data": self.collector.name},
                 "collector_platform": {"data": self.collector.platform},
+                "collector_platform_description": {
+                    "data": self.collector.platform_description
+                },
+                "collector_platform_tags": {"data": self.collector.platform_tags},
                 "collector_log_level": {"data": self.collector.log_level},
                 "collector_period": {
                     "data": int(self.collector.period.total_seconds()),  # type: ignore[union-attr]
@@ -143,6 +162,9 @@ class ConfigLoader(ConfigBaseSettings):
                 "collector_icon_filepath": {"data": self.collector.icon_filepath},
                 # Elastic configuration (flattened)
                 "elastic_base_url": {"data": str(self.elastic.base_url)},
+                "elastic_authentication_type": {
+                    "data": self.elastic.authentication_type
+                },
                 "elastic_api_key": {
                     "data": (
                         self.elastic.api_key.get_secret_value()
@@ -159,11 +181,22 @@ class ConfigLoader(ConfigBaseSettings):
                     )
                 },
                 "elastic_alerts_index": {"data": self.elastic.alerts_index},
+                "elastic_query_template": {"data": self.elastic.query_template},
+                "elastic_events_index": {"data": self.elastic.events_index},
                 "elastic_kibana_url": {"data": self.elastic.kibana_url},
                 "elastic_time_window": {"data": self.elastic.time_window},
                 "elastic_max_retry": {"data": self.elastic.max_retry},
                 "elastic_offset": {"data": self.elastic.offset},
                 "elastic_verify_ssl": {"data": self.elastic.verify_ssl},
+                "elastic_ca_cert": {"data": self.elastic.ca_cert},
+                "elastic_client_cert": {"data": self.elastic.client_cert},
+                "elastic_client_key": {
+                    "data": (
+                        self.elastic.client_key.get_secret_value()
+                        if self.elastic.client_key
+                        else None
+                    )
+                },
             },
             config_base_model=self,
         )

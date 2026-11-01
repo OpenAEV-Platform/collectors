@@ -1,13 +1,14 @@
+import itertools
 import logging
 import os
 
-from pyoaev.apis.inject_expectation.model import (
+from pyoaev.apis.inject_expectation.model import (  # type: ignore[import-untyped]
     DetectionExpectation,
     PreventionExpectation,
 )
-from pyoaev.client import OpenAEV
-from pyoaev.helpers import OpenAEVDetectionHelper
-from pyoaev.signatures.types import SignatureTypes
+from pyoaev.client import OpenAEV  # type: ignore[import-untyped]
+from pyoaev.helpers import OpenAEVDetectionHelper  # type: ignore[import-untyped]
+from pyoaev.signatures.signature_type import SignatureType
 from src.collector.internals.oaev_uploaders import ExpectationUploader, TraceUploader
 from src.collector.models.exception import (
     CollectorEngineConfigError,
@@ -19,7 +20,6 @@ from src.collector.models.source import Source
 from src.collector.protocols.data_fetcher import DataFetcherProtocol
 from src.collector.protocols.source_handler import SourceHandlerProtocol
 from src.collector.types.collector import ExpectationsList, SourceConfig
-from src.collector.utils.retroport_itertools import batched
 
 LOG_PREFIX = "[BasicCollectorEngine]"
 
@@ -62,7 +62,7 @@ class BasicCollectorEngine:
         self.current_summary = ExpectationSummary()
         self.oaev_detection_helper = OpenAEVDetectionHelper(
             logger=self.logger,
-            relevant_signatures_types=self.source.signatures,
+            relevant_signatures_types=self.source.relevant_signatures_types,
         )
         self.expectation_uploader = ExpectationUploader(
             oaev_api=self.oaev_api,
@@ -81,12 +81,12 @@ class BasicCollectorEngine:
         return self.source.data_fetcher_model
 
     @property
-    def signatures(self) -> list[SignatureTypes]:
+    def signatures(self) -> list[SignatureType]:
         return self.source.signatures
 
     def configure_engine(self, config: SourceConfig, batching: bool = False) -> None:
         self.logger.info(
-            f"{LOG_PREFIX} Supported signatures: {[sig.value for sig in self.signatures]}"
+            f"{LOG_PREFIX} Supported signatures: {[sig.value for sig in self.source.relevant_signatures_types]}"
         )
         self.config = config
         self.batching = batching
@@ -165,10 +165,11 @@ class BasicCollectorEngine:
         1. fetch the data using the data fetcher provided
         2. serialize each data as OAEVData
         3. group the expectation signatures per expectation
-        4. check for a match between the grouped signatures (3.) with the OAEVData (2.)
-        5. serialize each data as TraceData
-        6. check for a match between the expectation (0.) and the data (1.)
-        7. create the ExpectationResult using the previous match (6.) and the TraceData (5.)
+        4. transform the OAEVData into alert data using signature type matching metadata
+        5. check for a match between the grouped signatures (3.) with the alert data (4.)
+        6. serialize each data as TraceData
+        7. check for a match between the expectation (0.) and the data (1.)
+        8. create the ExpectationResult using the previous match (7.) and the TraceData (6.)
         then return a list of all the results produced from the batch
         """
         batch_results = []
@@ -213,18 +214,27 @@ class BasicCollectorEngine:
                         )
                     )
 
-                    # (4) match signature (3) with oaevdata (2)
-                    flag = self.source_handler.match_signature_groups_and_oaevdata(
-                        signature_groups,
+                    # (4) transform the oaev data into alert data
+                    alert_data = self.source_handler.get_alert_data_from_oaev_data(
+                        self.signatures,
                         oaev_data,
+                    )
+
+                    # (5) match expectation signatures (3) with alert data (4)
+                    flag = self.source_handler.match_signature_groups_and_alert_data(
+                        signature_groups,
+                        alert_data,
                         self.oaev_detection_helper,
                     )
                     if flag:
-                        # (5) serialize data as tracedata
+                        self.logger.debug(
+                            f"{LOG_PREFIX} Match for expectation {expectation.inject_expectation_id}"
+                        )
+                        # (6) serialize data as tracedata
                         trace = self.source_handler.serialize_as_tracedata(element)
                         traces.append(trace.model_dump())
 
-                        # (6) match expectation (0) with sourcedata (1)
+                        # (7) match expectation (0) with sourcedata (1)
                         matchflag, breakflag = (
                             self.source_handler.match_expectation_and_sourcedata(
                                 expectation, element
@@ -235,7 +245,7 @@ class BasicCollectorEngine:
                         if breakflag:
                             break
 
-                # (7) create results from step 6 + tracedata (5)
+                # (8) create results from step 7 + tracedata (6)
                 result = ExpectationResult(
                     expectation_id=str(expectation.inject_expectation_id),
                     is_valid=matched,
@@ -291,9 +301,9 @@ class BasicCollectorEngine:
             results = []
 
             if self.batching:
-                # using a retro-compatible batched
-                # instead of itertools.batched due to python 3.11 support
-                batches = batched(expectations, self.config.expectation_batch_size)
+                batches = itertools.batched(
+                    expectations, self.config.expectation_batch_size
+                )
             else:
                 batches = [
                     expectations,
@@ -324,7 +334,7 @@ class BasicCollectorEngine:
             self.logger.debug(f"{LOG_PREFIX} Creating and submitting traces...")
             self.trace_uploader.upload_data(results)
 
-        except (KeyboardInterrupt, SystemExit):  # per batch processing cycle
+        except KeyboardInterrupt, SystemExit:  # per batch processing cycle
             self.logger.info(f"{LOG_PREFIX} Collector stopping...")
             self.logger.info(
                 f"{LOG_PREFIX} Current summary info: {self.current_summary}"
