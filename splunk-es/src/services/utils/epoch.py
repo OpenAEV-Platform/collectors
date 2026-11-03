@@ -37,3 +37,26 @@ def to_epoch(value: str | None) -> int | None:
         return int(datetime.fromisoformat(s).timestamp())
     except ValueError:
         return None
+
+
+def to_epoch_ceil(value: str | None) -> int | None:
+    """Convert a timestamp to epoch seconds, rounding a fraction up.
+
+    ``to_epoch`` drops the fraction of a second. For the end of a window that
+    would cut its last fraction (``10:00:00.9`` would end at ``10:00:00``), so
+    the end is rounded up instead.
+
+    Args:
+        value: ISO-8601 timestamp, an epoch string, or None.
+
+    Returns:
+        Epoch seconds rounded up, or None like ``to_epoch``.
+
+    """
+    epoch = to_epoch(value)
+    if epoch is None:
+        return None
+    fraction = re.search(r"\.(\d+)", str(value))
+    if fraction and int(fraction.group(1)) > 0:
+        return epoch + 1
+    return epoch

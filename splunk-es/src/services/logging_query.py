@@ -6,10 +6,11 @@ builder read these types; ``build_logging_query`` builds them from the
 expectation's signatures.
 """
 
+import re
 from dataclasses import dataclass
 from typing import Iterable, Mapping
 
-from .utils.epoch import to_epoch
+from .utils.epoch import to_epoch, to_epoch_ceil
 from .utils.parent_process_parser import ParentProcessParser
 
 MARKER_SIGNATURE_TYPE = "parent_process_name"
@@ -20,19 +21,22 @@ END_DATE_SIGNATURE_TYPE = "end_date"
 
 # The Logging search, kept apart from the Detection query template. To be
 # validated on a real Splunk ES:
-# - events holding the marker are sorted first, so the row cap never drops
-#   them behind IP-only events of the same host;
+# - events are ranked like the matcher ranks signals (marker, then source IP,
+#   then target IP) and only the best rows are kept, so the row cap never drops
+#   a stronger event behind weaker ones. "sort <max_rows>" keeps only those
+#   rows instead of ordering every matching event;
 # - "_time" is copied to "oaev_event_epoch" before "table", which would
 #   otherwise render it as a formatted date;
 # - TODO: measure whether TERM("<ip>") makes IP terms faster on large indexes.
 LOGGING_QUERY_TEMPLATE = (
     "search index IN ({indexes}) earliest={earliest} latest={latest} ({terms})"
-    " | eval oaev_is_marker=if({marker_condition}, 1, 0)"
-    " | sort 0 -oaev_is_marker, +_time"
-    " | head {max_rows}"
+    " | eval oaev_rank=case({rank_cases})"
+    " | sort {max_rows} -oaev_rank, +_time"
     " | eval oaev_event_epoch=_time"
     " | table oaev_event_epoch, index, host, sourcetype, _raw"
 )
+MARKER_RANK = 2
+SOURCE_IP_RANK = 1
 
 
 @dataclass(frozen=True)
@@ -111,8 +115,10 @@ def build_logging_query(
     start_dates = by_type.get(START_DATE_SIGNATURE_TYPE, [])
     if not start_dates:
         return Unqueryable("no start_date")
+    # Round the window outwards: it can only grow by under a second, never
+    # lose the end of the inject (the matcher compares exact event times).
     earliest = to_epoch(start_dates[0])
-    latest = to_epoch(end_dates[0])
+    latest = to_epoch_ceil(end_dates[0])
     if earliest is None or latest is None:
         return Unqueryable("start_date or end_date is not a valid date")
     if earliest > latest:
@@ -132,20 +138,13 @@ def build_logging_query(
     terms = " OR ".join(
         _quote(value) for value in _unique([*marker_values, *source_ips, *target_ips])
     )
-    marker_condition = (
-        " OR ".join(
-            f"like(lower(_raw), {_quote('%' + value.lower() + '%')})"
-            for value in marker_values
-        )
-        or "1=0"
-    )
     spl = LOGGING_QUERY_TEMPLATE.format(
         indexes=",".join(indexes),
         earliest=earliest,
         # Splunk's latest is exclusive; the window's end is inclusive.
         latest=latest + 1,
         terms=terms,
-        marker_condition=marker_condition,
+        rank_cases=_rank_cases(marker_values, source_ips),
         max_rows=max_rows,
     )
     return LoggingQuery(
@@ -190,6 +189,31 @@ def _unique(values: Iterable[str]) -> list[str]:
         if value and value not in seen:
             seen.append(value)
     return seen
+
+
+def _rank_cases(marker_values: list[str], source_ips: list[str]) -> str:
+    """Write the ``case()`` arguments that rank an event like the matcher.
+
+    An event with the marker ranks first, then one with a source IP, then
+    every other event (target IP only).
+    """
+    cases: list[str] = []
+    if marker_values:
+        cases += [_contains_any(marker_values), str(MARKER_RANK)]
+    if source_ips:
+        cases += [_contains_any(source_ips), str(SOURCE_IP_RANK)]
+    return ", ".join([*cases, "1=1", "0"])
+
+
+def _contains_any(values: list[str]) -> str:
+    """Write an SPL test for "the raw text contains one of these values".
+
+    ``match`` with an escaped regular expression is a literal substring test,
+    like the matcher's, whereas ``like`` would read ``_`` and ``%`` as
+    wildcards. Both sides are lowercased, so the test ignores case.
+    """
+    pattern = "|".join(re.escape(value.lower()) for value in values)
+    return f"match(lower(_raw), {_quote(pattern)})"
 
 
 def _quote(value: str) -> str:

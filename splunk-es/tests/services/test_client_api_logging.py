@@ -410,3 +410,24 @@ def test_index_check_search_error_is_api_error(mock_post, client):
     assert client.check_logging_indexes(["sysmon"]) == LoggingApiError(  # noqa: S101
         message="boom", status_code=200
     )
+
+
+@pytest.mark.parametrize(
+    "rows",
+    [
+        [{"unexpected": "sysmon"}],
+        [{"index": "sysmon"}, {"index": ""}],
+        [{"index": "sysmon"}, "garbage"],
+    ],
+    ids=["no-index-field", "empty-name", "not-a-dict"],
+)
+@patch("requests.Session.post")
+def test_index_check_unexpected_rows_are_malformed(mock_post, client, rows):
+    """A row without an index name is reported as malformed, not as missing."""
+    # Arrange
+    mock_post.return_value = _response(json_data={"results": rows})
+
+    # Act / Assert
+    assert isinstance(  # noqa: S101
+        client.check_logging_indexes(["sysmon"]), LoggingMalformed
+    )

@@ -523,11 +523,16 @@ class SplunkESClientAPI:
         if not isinstance(results, list):
             return results
 
-        readable = {
-            str(row["index"]).lower()
+        # A row without an index name means an unexpected answer: report it
+        # as such, never as missing indexes.
+        if not all(
+            isinstance(row, dict)
+            and isinstance(row.get("index"), str)
+            and row.get("index")
             for row in results
-            if isinstance(row, dict) and row.get("index")
-        }
+        ):
+            return LoggingMalformed(message="eventcount rows without an index name")
+        readable = {row["index"].lower() for row in results}
         found = [
             index
             for index in indexes

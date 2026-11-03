@@ -1,5 +1,7 @@
 """Tests for the Splunk ES Logging query builder."""
 
+import re
+
 import pytest
 from src.services.client_api import DEFAULT_QUERY_TEMPLATE
 from src.services.logging_query import (
@@ -16,6 +18,13 @@ START = "2026-11-03T14:00:00.123456789Z"
 END = "2026-11-03T14:10:00Z"
 START_EPOCH = 1793714400
 END_EPOCH = 1793715000
+
+
+def _regex(*values: str) -> str:
+    """Write the SPL string of a literal, case-insensitive substring regex."""
+    pattern = "|".join(re.escape(value.lower()) for value in values)
+    escaped = pattern.replace("\\", "\\\\").replace('"', '\\"')
+    return f'"{escaped}"'
 
 
 def _signatures(**values: str | list[str]) -> list[dict[str, str]]:
@@ -46,10 +55,9 @@ def test_marker_and_ips_build_one_or_group():
     assert query.spl == (  # noqa: S101
         f"search index IN (sysmon) earliest={START_EPOCH} latest={END_EPOCH + 1} "
         f'("{MARKER}" OR "{MARKER_URL}" OR "192.168.56.10" OR "192.168.56.1")'
-        f' | eval oaev_is_marker=if(like(lower(_raw), "%{MARKER}%")'
-        f' OR like(lower(_raw), "%{MARKER_URL}%"), 1, 0)'
-        " | sort 0 -oaev_is_marker, +_time"
-        " | head 50"
+        f" | eval oaev_rank=case(match(lower(_raw), {_regex(MARKER, MARKER_URL)}), 2,"
+        f" match(lower(_raw), {_regex('192.168.56.10')}), 1, 1=1, 0)"
+        " | sort 50 -oaev_rank, +_time"
         " | eval oaev_event_epoch=_time"
         " | table oaev_event_epoch, index, host, sourcetype, _raw"
     )
@@ -109,20 +117,25 @@ def test_ipv4_and_ipv6_are_both_searched():
     assert (  # noqa: S101
         '("10.0.0.1" OR "2001:db8::1" OR "10.0.0.2" OR "2001:db8::2")' in query.spl
     )
-    assert "if(1=0, 1, 0)" in query.spl  # noqa: S101
+    # No marker: source IPs rank first, target IPs come after.
+    assert (  # noqa: S101
+        f"oaev_rank=case(match(lower(_raw), {_regex('10.0.0.1', '2001:db8::1')}),"
+        " 1, 1=1, 0)"
+    ) in query.spl
 
 
 def test_quotes_and_backslashes_are_escaped():
     """A value cannot close its SPL string: backslashes and quotes are escaped."""
+    # Arrange
+    marker = 'evil" | delete \\'
+
     # Act
-    query = build_logging_query(
-        _signatures(parent_process_name='evil" | delete \\'), ["sysmon"], 50
-    )
+    query = build_logging_query(_signatures(parent_process_name=marker), ["sysmon"], 50)
 
     # Assert
     assert isinstance(query, LoggingQuery)  # noqa: S101
     assert '("evil\\" | delete \\\\")' in query.spl  # noqa: S101
-    assert 'like(lower(_raw), "%evil\\" | delete \\\\%")' in query.spl  # noqa: S101
+    assert f"match(lower(_raw), {_regex(marker)}), 2" in query.spl  # noqa: S101
     # The original value is kept for the matcher.
     assert query.marker_values == ['evil" | delete \\']  # noqa: S101
 
@@ -183,7 +196,60 @@ def test_row_cap_is_in_the_search():
 
     # Assert
     assert isinstance(query, LoggingQuery)  # noqa: S101
-    assert " | head 7 | " in query.spl  # noqa: S101
+    assert " | sort 7 -oaev_rank, +_time | " in query.spl  # noqa: S101
+
+
+def test_fractional_window_end_is_rounded_up():
+    """A fraction of a second at the end widens the window, never cuts it."""
+    # Act
+    query = build_logging_query(
+        _signatures(end_date="2026-11-03T14:10:00.5Z", source_ipv4_address="1.1.1.1"),
+        ["sysmon"],
+        50,
+    )
+
+    # Assert
+    assert isinstance(query, LoggingQuery)  # noqa: S101
+    assert query.earliest == START_EPOCH  # noqa: S101
+    assert query.latest == END_EPOCH + 1  # noqa: S101
+    assert f"latest={END_EPOCH + 2} " in query.spl  # noqa: S101
+
+
+def test_zero_fraction_is_not_rounded_up():
+    """An end at an exact second stays as it is."""
+    # Act
+    query = build_logging_query(
+        _signatures(end_date="2026-11-03T14:10:00.000Z", source_ipv4_address="1.1.1.1"),
+        ["sysmon"],
+        50,
+    )
+
+    # Assert
+    assert isinstance(query, LoggingQuery)  # noqa: S101
+    assert query.latest == END_EPOCH  # noqa: S101
+
+
+def test_like_wildcards_are_literal_in_the_ranking():
+    """The marker is matched literally: "_" and "%" are not wildcards."""
+    # Act
+    query = build_logging_query(_signatures(parent_process_name="a_b%"), ["sysmon"], 50)
+
+    # Assert
+    assert isinstance(query, LoggingQuery)  # noqa: S101
+    assert "like(" not in query.spl  # noqa: S101
+    assert 'match(lower(_raw), "a_b%"), 2' in query.spl  # noqa: S101
+
+
+def test_target_ip_only_gets_the_lowest_rank():
+    """With only target IPs, every event has the same rank."""
+    # Act
+    query = build_logging_query(
+        _signatures(target_ipv4_address="10.0.0.2"), ["sysmon"], 50
+    )
+
+    # Assert
+    assert isinstance(query, LoggingQuery)  # noqa: S101
+    assert "oaev_rank=case(1=1, 0)" in query.spl  # noqa: S101
 
 
 @pytest.mark.parametrize(
