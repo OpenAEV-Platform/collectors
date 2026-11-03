@@ -21,6 +21,11 @@ splunk_es:
   alerts_index: "notable"
   max_retry: 5
   offset: 120
+  # LOGGING expectations: search raw-event indexes (not the notable index).
+  # Off by default; the indexes are required when it is on.
+  # logging_enabled: true
+  # logging_indexes: "sysmon,wineventlog"
+  # logging_max_rows: 50
   # Signature matching happens after the fetch (raw-text regex on _raw); the
   # query only filters on IPs, hostnames, and the time window.
   # Allowed placeholders: {alerts_index}, {source_ips}, {target_ips},

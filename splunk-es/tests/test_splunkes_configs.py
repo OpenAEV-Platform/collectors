@@ -1,8 +1,10 @@
 """Tests for the Splunk ES configuration model."""
 
+import logging
 from datetime import timedelta
 
 import pytest
+from pydantic import ValidationError
 from src.models.configs.splunkes_configs import _ConfigLoaderSplunkES
 
 
@@ -47,3 +49,137 @@ def test_set_optional_env_vars_are_kept(monkeypatch, required_env):  # type: ign
     assert config.query_template == "index={alerts_index} | table _time"  # noqa: S101
     assert config.alerts_index == "custom_index"  # noqa: S101
     assert config.time_window == timedelta(hours=2)  # noqa: S101
+
+
+def test_logging_is_disabled_by_default(monkeypatch, required_env):  # type: ignore
+    """Without the Logging settings, Logging is off and no index is set."""
+    # Act
+    config = _ConfigLoaderSplunkES()
+
+    # Assert
+    assert config.logging_enabled is False  # noqa: S101
+    assert config.logging_indexes == []  # noqa: S101
+    assert config.logging_max_rows == 50  # noqa: S101
+
+
+@pytest.mark.parametrize(
+    "raw, expected",
+    [
+        ("sysmon,wineventlog", ["sysmon", "wineventlog"]),
+        (" sysmon , wineventlog ,, ", ["sysmon", "wineventlog"]),
+        ("sysmon,sysmon,win*", ["sysmon", "win*"]),
+        ('["sysmon", "wineventlog"]', ["sysmon", "wineventlog"]),
+        ("os-linux_01", ["os-linux_01"]),
+    ],
+    ids=["comma", "spaces-and-blanks", "duplicates-and-wildcard", "json", "dash"],
+)
+def test_logging_indexes_are_parsed(
+    monkeypatch, required_env, raw, expected
+):  # type: ignore
+    """The index setting becomes a clean list of names."""
+    # Arrange
+    monkeypatch.setenv("SPLUNKES_LOGGING_ENABLED", "true")
+    monkeypatch.setenv("SPLUNKES_LOGGING_INDEXES", raw)
+
+    # Act
+    config = _ConfigLoaderSplunkES()
+
+    # Assert
+    assert config.logging_enabled is True  # noqa: S101
+    assert config.logging_indexes == expected  # noqa: S101
+
+
+@pytest.mark.parametrize("indexes", [None, "", "  ", ",,"])
+def test_logging_enabled_without_index_fails(
+    monkeypatch, required_env, indexes
+):  # type: ignore
+    """Enabling Logging without any index fails at startup with a clear message."""
+    # Arrange
+    monkeypatch.setenv("SPLUNKES_LOGGING_ENABLED", "true")
+    if indexes is not None:
+        monkeypatch.setenv("SPLUNKES_LOGGING_INDEXES", indexes)
+
+    # Act / Assert
+    with pytest.raises(ValidationError, match="SPLUNKES_LOGGING_INDEXES is empty"):
+        _ConfigLoaderSplunkES()
+
+
+@pytest.mark.parametrize(
+    "bad_name", ["main|delete", 'a"b', "a b", "main)", "idx=1", "a'b", "[main]"]
+)
+def test_logging_index_with_spl_syntax_is_rejected(
+    monkeypatch, required_env, bad_name
+):  # type: ignore
+    """An index name that could change the search is rejected."""
+    # Arrange
+    monkeypatch.setenv("SPLUNKES_LOGGING_ENABLED", "true")
+    monkeypatch.setenv("SPLUNKES_LOGGING_INDEXES", f"sysmon,{bad_name}")
+
+    # Act / Assert
+    with pytest.raises(ValidationError, match="Invalid Splunk index name"):
+        _ConfigLoaderSplunkES()
+
+
+@pytest.mark.parametrize("flag", ["false", ""])
+def test_logging_indexes_ignored_when_disabled(
+    monkeypatch, required_env, flag, caplog
+):  # type: ignore
+    """Indexes set while Logging is off are kept but reported as ignored."""
+    # Arrange
+    monkeypatch.setenv("SPLUNKES_LOGGING_ENABLED", flag)
+    monkeypatch.setenv("SPLUNKES_LOGGING_INDEXES", "sysmon")
+
+    # Act
+    with caplog.at_level(logging.INFO):
+        config = _ConfigLoaderSplunkES()
+
+    # Assert
+    assert config.logging_enabled is False  # noqa: S101
+    assert "the indexes are ignored" in caplog.text  # noqa: S101
+
+
+@pytest.mark.parametrize("value, expected", [("1", 1), ("1000", 1000), ("", 50)])
+def test_logging_max_rows_bounds_accepted(
+    monkeypatch, required_env, value, expected
+):  # type: ignore
+    """The row cap accepts 1 to 1000; blank falls back to 50."""
+    # Arrange
+    monkeypatch.setenv("SPLUNKES_LOGGING_MAX_ROWS", value)
+
+    # Act
+    config = _ConfigLoaderSplunkES()
+
+    # Assert
+    assert config.logging_max_rows == expected  # noqa: S101
+
+
+@pytest.mark.parametrize("value", ["0", "1001", "-5"])
+def test_logging_max_rows_out_of_bounds_rejected(
+    monkeypatch, required_env, value
+):  # type: ignore
+    """A row cap outside 1..1000 is rejected."""
+    # Arrange
+    monkeypatch.setenv("SPLUNKES_LOGGING_MAX_ROWS", value)
+
+    # Act / Assert
+    with pytest.raises(ValidationError):
+        _ConfigLoaderSplunkES()
+
+
+def test_logging_settings_leave_detection_settings_unchanged(
+    monkeypatch, required_env
+):  # type: ignore
+    """Turning Logging on does not change the Detection settings."""
+    # Arrange
+    without_logging = _ConfigLoaderSplunkES()
+    monkeypatch.setenv("SPLUNKES_LOGGING_ENABLED", "true")
+    monkeypatch.setenv("SPLUNKES_LOGGING_INDEXES", "sysmon")
+
+    # Act
+    config = _ConfigLoaderSplunkES()
+
+    # Assert
+    logging_fields = {"logging_enabled", "logging_indexes", "logging_max_rows"}
+    assert config.model_dump(exclude=logging_fields) == (  # noqa: S101
+        without_logging.model_dump(exclude=logging_fields)
+    )

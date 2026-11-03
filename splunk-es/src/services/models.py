@@ -85,6 +85,18 @@ class SplunkESAlert(BaseModel):
         return v
 
 
+class LoggingEvent(BaseModel):
+    """Raw log event returned by the Logging search."""
+
+    event_epoch: float = Field(
+        ..., description="Event time (Splunk _time) as Unix epoch seconds"
+    )
+    index: str = Field(..., description="Splunk index the event was read from")
+    host: Optional[str] = Field(None, description="Host that produced the event")
+    sourcetype: Optional[str] = Field(None, description="Splunk sourcetype")
+    raw: str = Field(..., description="Raw event text (Splunk _raw)")
+
+
 class SplunkESResponse(BaseModel):
     """Response from Splunk ES API."""
 

@@ -1,10 +1,9 @@
 """Splunk ES API client for making HTTP requests with proper error handling."""
 
 import logging
-import re
 import string
 import time
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import Any
 
 import requests  # type: ignore[import-untyped]
@@ -23,7 +22,18 @@ from .exception import (
     SplunkESSessionError,
     SplunkESValidationError,
 )
+from .logging_fetch import (
+    LoggingApiError,
+    LoggingAuthError,
+    LoggingEmpty,
+    LoggingFetchResult,
+    LoggingMalformed,
+    LoggingRows,
+    parse_logging_rows,
+)
+from .logging_query import LoggingQuery
 from .models import SplunkESAlert, SplunkESResponse, SplunkESSearchCriteria
+from .utils.epoch import to_epoch
 
 LOG_PREFIX = "[SplunkESClientAPI]"
 
@@ -393,18 +403,7 @@ class SplunkESClientAPI:
 
             self.logger.debug(f"{LOG_PREFIX} Executing SPL query: {spl_query}")
 
-            endpoint = f"{self.base_url}/services/search/jobs"
-
-            params = {
-                "search": f"search {spl_query}",
-                "exec_mode": "oneshot",
-                "output_mode": "json",
-                "count": "0",
-            }
-
-            response = self.session.post(
-                endpoint, data=params, timeout=REQUEST_TIMEOUT_SECONDS
-            )
+            response = self._post_oneshot_search(f"search {spl_query}", count="0")
 
             if response.status_code == 401:
                 raise SplunkESAuthenticationError(
@@ -436,6 +435,94 @@ class SplunkESClientAPI:
             raise SplunkESAPIError(f"HTTP request failed during query: {e}") from e
         except Exception as e:
             raise SplunkESQueryError(f"Unexpected error executing query: {e}") from e
+
+    def _post_oneshot_search(self, search: str, count: str) -> requests.Response:
+        """Run one blocking (oneshot) Splunk search and return the raw response.
+
+        Args:
+            search: The full search, starting with ``search``.
+            count: Maximum number of results, ``"0"`` for no limit.
+
+        Returns:
+            The HTTP response; the caller checks its status.
+
+        """
+        endpoint = f"{self.base_url}/services/search/jobs"
+        params = {
+            "search": search,
+            "exec_mode": "oneshot",
+            "output_mode": "json",
+            "count": count,
+        }
+        return self.session.post(endpoint, data=params, timeout=REQUEST_TIMEOUT_SECONDS)
+
+    def fetch_logging_events(self, query: LoggingQuery) -> LoggingFetchResult:
+        """Run the Logging search of one expectation, once.
+
+        There is no retry and no sleep: an expectation without events is
+        searched again on a later collector cycle. Expected Splunk errors are
+        returned, not raised, and an error is never reported as "no event".
+
+        Args:
+            query: The Logging search built by ``build_logging_query``.
+
+        Returns:
+            ``LoggingRows`` with the events, ``LoggingEmpty`` when the search
+            found nothing, ``LoggingAuthError`` on HTTP 401 / 403,
+            ``LoggingApiError`` on another HTTP error, a timeout or a network
+            error, ``LoggingMalformed`` when the answer is not the expected
+            JSON.
+
+        """
+        max_rows = self.config.splunk_es.logging_max_rows
+        self.logger.debug(f"{LOG_PREFIX} Executing Logging search: {query.spl}")
+        try:
+            response = self._post_oneshot_search(query.spl, count=str(max_rows))
+        except RequestException as e:
+            # Timeout and ConnectionError are RequestException too.
+            self.logger.warning(f"{LOG_PREFIX} Logging search failed: {e}")
+            return LoggingApiError(message=f"Request failed: {e}")
+
+        if response.status_code in (401, 403):
+            self.logger.warning(
+                f"{LOG_PREFIX} Logging search refused by Splunk "
+                f"(HTTP {response.status_code}): check the credentials and the "
+                "role's access to the Logging indexes"
+            )
+            return LoggingAuthError(
+                status_code=response.status_code,
+                message=_short_text(response.text),
+            )
+        if response.status_code != 200:
+            self.logger.warning(
+                f"{LOG_PREFIX} Logging search failed with HTTP {response.status_code}"
+            )
+            return LoggingApiError(
+                message=_short_text(response.text),
+                status_code=response.status_code,
+            )
+
+        try:
+            data = response.json()
+        except ValueError as e:
+            return LoggingMalformed(message=f"Response is not JSON: {e}")
+        results = data.get("results") if isinstance(data, dict) else None
+        if not isinstance(results, list):
+            return LoggingMalformed(message="Response has no 'results' list")
+        if not results:
+            return LoggingEmpty()
+
+        events, skipped = parse_logging_rows(results)
+        if not events:
+            return LoggingMalformed(
+                message=f"None of the {len(results)} rows could be read"
+            )
+        if skipped:
+            self.logger.debug(
+                f"{LOG_PREFIX} Skipped {skipped} malformed Logging rows "
+                f"out of {len(results)}"
+            )
+        return LoggingRows(events=events, skipped=skipped)
 
     def _execute_splunk_query_with_retry(
         self, search_criteria: SplunkESSearchCriteria
@@ -707,36 +794,17 @@ class SplunkESClientAPI:
     def _to_epoch(value: str | None) -> int | None:
         """Convert an ISO-8601 timestamp to a Unix epoch integer for Splunk.
 
-        Splunk's ``earliest``/``latest`` search modifiers accept epoch or the
-        ``%m/%d/%Y:%H:%M:%S`` format only - they do NOT parse ISO-8601 strings
-        with a ``Z`` suffix or sub-second precision beyond microseconds (as sent
-        in OpenAEV expectation signatures). Passing those verbatim silently
-        breaks the time bounds and the search returns 0 results.
+        See ``src.services.utils.epoch.to_epoch``, shared with the Logging
+        query builder.
 
         Args:
-            value: ISO-8601 timestamp (optionally with ``Z`` / nanoseconds), an
-                epoch string, or None.
+            value: ISO-8601 timestamp, an epoch string, or None.
 
         Returns:
-            Epoch seconds as int, or None if empty / already relative /
-            unparseable (the caller then falls back to a relative window).
+            Epoch seconds as int, or None if empty / relative / unparseable.
 
         """
-        if not value:
-            return None
-        s = str(value).strip()
-        if not s or s.startswith("-") or s.startswith("+"):
-            return None
-        if s.isdigit():
-            return int(s)
-        # Normalise 'Z' to a numeric offset and trim fractional seconds to the
-        # 6 digits datetime.fromisoformat supports (drops nanoseconds).
-        s = s.replace("Z", "+00:00")
-        s = re.sub(r"(\.\d{6})\d+", r"\1", s)
-        try:
-            return int(datetime.fromisoformat(s).timestamp())
-        except ValueError:
-            return None
+        return to_epoch(value)
 
     @staticmethod
     def _build_ip_list(ips: list[str]) -> str:
@@ -757,3 +825,9 @@ class SplunkESClientAPI:
         if not ips:
             return "*"
         return ",".join(f'"{ip.replace(chr(34), chr(92) + chr(34))}"' for ip in ips)
+
+
+def _short_text(text: str, limit: int = 200) -> str:
+    """Shorten a Splunk error body so it can be logged or carried safely."""
+    text = " ".join(str(text or "").split())
+    return text if len(text) <= limit else text[:limit] + "..."
