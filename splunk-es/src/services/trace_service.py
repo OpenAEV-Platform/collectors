@@ -7,7 +7,6 @@ from processing results.
 import logging
 from datetime import datetime
 from typing import Any
-from urllib.parse import quote
 
 from pyoaev.apis.inject_expectation.model import (  # type: ignore[import-untyped]
     DetectionExpectation,
@@ -18,6 +17,7 @@ from ..collector.models import ExpectationResult, ExpectationTrace
 from ..models.configs.config_loader import ConfigLoader
 from .client_api import SplunkESClientAPI
 from .exception import SplunkESDataConversionError, SplunkESValidationError
+from .utils.search_url import build_search_url
 
 LOG_PREFIX = "[SplunkESTraceService]"
 
@@ -259,10 +259,6 @@ class SplunkESTraceService:
                 )
                 return ""
 
-            base_url = str(self.config.splunk_es.base_url).rstrip("/")
-            web_base_url = base_url.replace(":8089", ":8000")
-            self.logger.debug(f"{LOG_PREFIX} Using base URL: {web_base_url}")
-
             search_signatures = []
             for sig in expectation.inject_expectation_signatures:
                 search_signatures.append({"type": sig.type.value, "value": sig.value})
@@ -270,8 +266,7 @@ class SplunkESTraceService:
             search_criteria = self.client_api._build_search_criteria(search_signatures)
             spl_query = self.client_api._build_spl_query(search_criteria, 0)
 
-            encoded_query = quote(spl_query)
-            url = f"{web_base_url}/en-US/app/search/search?q={encoded_query}"
+            url = build_search_url(str(self.config.splunk_es.base_url), spl_query)
 
             self.logger.debug(f"{LOG_PREFIX} Built trace URL with query: {spl_query}")
             return url
