@@ -9,6 +9,7 @@ from src.services.logging_fetch import (
     LoggingApiError,
     LoggingAuthError,
     LoggingEmpty,
+    LoggingIndexCheck,
     LoggingMalformed,
     LoggingRows,
 )
@@ -259,3 +260,79 @@ def test_detection_query_request_is_unchanged(mock_post, client):
     assert params["output_mode"] == "json"  # noqa: S101
     assert params["count"] == "0"  # noqa: S101
     assert mock_post.call_args.kwargs["timeout"] == 30  # noqa: S101
+
+
+@patch("requests.Session.post")
+def test_index_check_finds_existing_and_missing_indexes(mock_post, client):
+    """Indexes absent from eventcount are reported missing, empty ones are found."""
+    # Arrange
+    mock_post.return_value = _response(
+        json_data={"results": [{"index": "sysmon"}, {"index": "main"}]}
+    )
+
+    # Act
+    result = client.check_logging_indexes(["sysmon", "main", "sysmom"])
+
+    # Assert
+    assert result == LoggingIndexCheck(  # noqa: S101
+        found=["sysmon", "main"], missing=["sysmom"]
+    )
+    params = mock_post.call_args.kwargs["data"]
+    assert params["search"] == (  # noqa: S101
+        "| eventcount summarize=false index=sysmon index=main index=sysmom"
+        " | dedup index | table index"
+    )
+    assert params["count"] == "0"  # noqa: S101
+
+
+@patch("requests.Session.post")
+def test_index_check_matches_wildcards_case_insensitively(mock_post, client):
+    """A wildcard is found when it matches an index; names ignore case."""
+    # Arrange
+    mock_post.return_value = _response(
+        json_data={"results": [{"index": "wineventlog"}]}
+    )
+
+    # Act
+    result = client.check_logging_indexes(["win*", "Wineventlog", "zz*"])
+
+    # Assert
+    assert result == LoggingIndexCheck(  # noqa: S101
+        found=["win*", "Wineventlog"], missing=["zz*"]
+    )
+
+
+@patch("requests.Session.post")
+def test_index_check_with_no_readable_index(mock_post, client):
+    """When nothing is readable, every index is missing and an error is logged."""
+    # Arrange
+    mock_post.return_value = _response(json_data={"results": []})
+
+    # Act
+    with patch.object(client.logger, "error") as mock_error:
+        result = client.check_logging_indexes(["sysmon"])
+
+    # Assert
+    assert result == LoggingIndexCheck(found=[], missing=["sysmon"])  # noqa: S101
+    assert "not found or not readable" in mock_error.call_args.args[0]  # noqa: S101
+
+
+@pytest.mark.parametrize(
+    "response, expected_type",
+    [
+        (_response(401, text="Unauthorized"), LoggingAuthError),
+        (_response(500, text="boom"), LoggingApiError),
+        (_response(json_data=ValueError("bad json")), LoggingMalformed),
+    ],
+    ids=["auth", "api", "malformed"],
+)
+@patch("requests.Session.post")
+def test_index_check_errors(mock_post, client, response, expected_type):
+    """A failed check returns the error state, never a list of missing indexes."""
+    # Arrange
+    mock_post.return_value = response
+
+    # Act / Assert
+    assert isinstance(  # noqa: S101
+        client.check_logging_indexes(["sysmon"]), expected_type
+    )

@@ -1,5 +1,6 @@
 """Splunk ES API client for making HTTP requests with proper error handling."""
 
+import fnmatch
 import logging
 import string
 import time
@@ -27,6 +28,8 @@ from .logging_fetch import (
     LoggingAuthError,
     LoggingEmpty,
     LoggingFetchResult,
+    LoggingIndexCheck,
+    LoggingIndexCheckResult,
     LoggingMalformed,
     LoggingRows,
     parse_logging_rows,
@@ -476,8 +479,87 @@ class SplunkESClientAPI:
         """
         max_rows = self.config.splunk_es.logging_max_rows
         self.logger.debug(f"{LOG_PREFIX} Executing Logging search: {query.spl}")
+        results = self._run_logging_search(query.spl, count=str(max_rows))
+        if not isinstance(results, list):
+            return results
+        if not results:
+            return LoggingEmpty()
+
+        events, skipped = parse_logging_rows(results)
+        if not events:
+            return LoggingMalformed(
+                message=f"None of the {len(results)} rows could be read"
+            )
+        if skipped:
+            self.logger.debug(
+                f"{LOG_PREFIX} Skipped {skipped} malformed Logging rows "
+                f"out of {len(results)}"
+            )
+        return LoggingRows(events=events, skipped=skipped)
+
+    def check_logging_indexes(self, indexes: list[str]) -> LoggingIndexCheckResult:
+        """Check that the Logging indexes exist and can be read.
+
+        Splunk silently returns no event for an index that does not exist or
+        that the role cannot read. A typo in ``SPLUNKES_LOGGING_INDEXES``
+        would then look like "nothing was logged" and every LOGGING
+        expectation would expire as "Not Logged". ``eventcount`` lists only
+        the indexes the role can read, empty ones included, so an index
+        missing from its answer is a typo or a missing permission.
+
+        Args:
+            indexes: Validated index names, ``*`` wildcards allowed.
+
+        Returns:
+            ``LoggingIndexCheck`` with the found and missing indexes (a
+            wildcard is found when it matches at least one index), or the
+            error state of the search.
+
+        """
+        search = "| eventcount summarize=false {} | dedup index | table index".format(
+            " ".join(f"index={index}" for index in indexes)
+        )
+        results = self._run_logging_search(search, count="0")
+        if not isinstance(results, list):
+            return results
+
+        readable = {
+            str(row["index"]).lower()
+            for row in results
+            if isinstance(row, dict) and row.get("index")
+        }
+        found = [
+            index
+            for index in indexes
+            if any(fnmatch.fnmatchcase(name, index.lower()) for name in readable)
+        ]
+        missing = [index for index in indexes if index not in found]
+        if missing:
+            self.logger.error(
+                f"{LOG_PREFIX} Logging indexes not found or not readable by the "
+                f"Splunk role: {', '.join(missing)}. Searches on them return no "
+                "event, so LOGGING expectations would expire as Not Logged"
+            )
+        return LoggingIndexCheck(found=found, missing=missing)
+
+    def _run_logging_search(
+        self, search: str, count: str
+    ) -> list[Any] | LoggingAuthError | LoggingApiError | LoggingMalformed:
+        """Run one Logging oneshot search and return its rows or its error.
+
+        Args:
+            search: The full search.
+            count: Maximum number of results, ``"0"`` for no limit.
+
+        Returns:
+            The ``results`` rows, or ``LoggingAuthError`` on HTTP 401 / 403,
+            ``LoggingApiError`` on another HTTP error, a timeout or a network
+            error, ``LoggingMalformed`` when the answer is not the expected
+            JSON.
+
+        """
         try:
-            response = self._post_oneshot_search(query.spl, count=str(max_rows))
+            response = self._post_oneshot_search(search, count=count)
         except RequestException as e:
             # Timeout and ConnectionError are RequestException too.
             self.logger.warning(f"{LOG_PREFIX} Logging search failed: {e}")
@@ -509,20 +591,7 @@ class SplunkESClientAPI:
         results = data.get("results") if isinstance(data, dict) else None
         if not isinstance(results, list):
             return LoggingMalformed(message="Response has no 'results' list")
-        if not results:
-            return LoggingEmpty()
-
-        events, skipped = parse_logging_rows(results)
-        if not events:
-            return LoggingMalformed(
-                message=f"None of the {len(results)} rows could be read"
-            )
-        if skipped:
-            self.logger.debug(
-                f"{LOG_PREFIX} Skipped {skipped} malformed Logging rows "
-                f"out of {len(results)}"
-            )
-        return LoggingRows(events=events, skipped=skipped)
+        return results
 
     def _execute_splunk_query_with_retry(
         self, search_criteria: SplunkESSearchCriteria

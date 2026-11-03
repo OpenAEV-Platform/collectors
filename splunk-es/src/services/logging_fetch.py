@@ -62,6 +62,27 @@ class LoggingMalformed:
     message: str
 
 
+@dataclass(frozen=True)
+class LoggingIndexCheck:
+    """Which configured Logging indexes Splunk can search.
+
+    Attributes:
+        found: Indexes that exist and the role can read (a wildcard is found
+            when it matches at least one index).
+        missing: Indexes that do not exist or that the role cannot read.
+            Searches on them silently return no event.
+
+    """
+
+    found: list[str]
+    missing: list[str]
+
+
+LoggingIndexCheckResult = (
+    LoggingIndexCheck | LoggingAuthError | LoggingApiError | LoggingMalformed
+)
+
+
 LoggingFetchResult = (
     LoggingRows | LoggingEmpty | LoggingAuthError | LoggingApiError | LoggingMalformed
 )
