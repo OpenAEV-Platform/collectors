@@ -9,7 +9,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /collector
 
 RUN apk --no-cache upgrade
-RUN pip install -U pip certifi
+RUN pip install --no-cache-dir -U pip certifi
 
 # Builder stage for installing dependencies and creating the application environment.
 FROM base AS builder
