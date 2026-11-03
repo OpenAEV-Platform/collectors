@@ -553,9 +553,9 @@ class SplunkESClientAPI:
 
         Returns:
             The ``results`` rows, or ``LoggingAuthError`` on HTTP 401 / 403,
-            ``LoggingApiError`` on another HTTP error, a timeout or a network
-            error, ``LoggingMalformed`` when the answer is not the expected
-            JSON.
+            ``LoggingApiError`` on another HTTP error, a timeout, a network
+            error or a search error reported in ``messages``,
+            ``LoggingMalformed`` when the answer is not the expected JSON.
 
         """
         try:
@@ -588,7 +588,20 @@ class SplunkESClientAPI:
             data = response.json()
         except ValueError as e:
             return LoggingMalformed(message=f"Response is not JSON: {e}")
-        results = data.get("results") if isinstance(data, dict) else None
+        if not isinstance(data, dict):
+            return LoggingMalformed(message="Response is not a JSON object")
+
+        # A broken search (bad SPL, bad time bound) still answers HTTP 200 with
+        # no rows: the error is only in "messages". Without this check it
+        # would look like "no event found" and expire as Not Logged.
+        search_error = _search_error_text(data.get("messages"))
+        if search_error:
+            self.logger.error(
+                f"{LOG_PREFIX} Splunk rejected the Logging search: {search_error}"
+            )
+            return LoggingApiError(message=search_error, status_code=200)
+
+        results = data.get("results")
         if not isinstance(results, list):
             return LoggingMalformed(message="Response has no 'results' list")
         return results
@@ -900,3 +913,26 @@ def _short_text(text: str, limit: int = 200) -> str:
     """Shorten a Splunk error body so it can be logged or carried safely."""
     text = " ".join(str(text or "").split())
     return text if len(text) <= limit else text[:limit] + "..."
+
+
+def _search_error_text(messages: Any) -> str | None:
+    """Return the text of the first FATAL or ERROR message of a search answer.
+
+    INFO and WARN messages (e.g. "Your timerange was substituted") are normal
+    and ignored.
+
+    Args:
+        messages: The ``messages`` list of the Splunk JSON answer.
+
+    Returns:
+        The shortened error text, or None when there is no error message.
+
+    """
+    if not isinstance(messages, list):
+        return None
+    for message in messages:
+        if not isinstance(message, dict):
+            continue
+        if str(message.get("type", "")).upper() in ("FATAL", "ERROR"):
+            return _short_text(message.get("text") or "Unknown Splunk search error")
+    return None

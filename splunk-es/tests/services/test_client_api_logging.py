@@ -336,3 +336,77 @@ def test_index_check_errors(mock_post, client, response, expected_type):
     assert isinstance(  # noqa: S101
         client.check_logging_indexes(["sysmon"]), expected_type
     )
+
+
+@pytest.mark.parametrize(
+    "message_type, text",
+    [
+        ("FATAL", "Invalid value \"2026-11-03T10:00:00Z\" for time term 'earliest'"),
+        ("ERROR", "Error in 'EvalCommand': The expression is malformed."),
+        ("fatal", "lowercase type"),
+    ],
+    ids=["fatal-bad-time", "error-bad-spl", "lowercase-type"],
+)
+@patch("requests.Session.post")
+def test_search_error_in_messages_is_api_error(mock_post, client, message_type, text):
+    """A 200 answer with an error message is an ApiError, never Empty."""
+    # Arrange
+    mock_post.return_value = _response(
+        json_data={"messages": [{"type": message_type, "text": text}], "results": []}
+    )
+
+    # Act
+    with patch.object(client.logger, "error") as mock_error:
+        result = client.fetch_logging_events(QUERY)
+
+    # Assert
+    assert result == LoggingApiError(message=text, status_code=200)  # noqa: S101
+    mock_error.assert_called_once()
+
+
+@patch("requests.Session.post")
+def test_search_error_without_results_is_api_error(mock_post, client):
+    """An error message wins over a missing results list."""
+    # Arrange
+    mock_post.return_value = _response(
+        json_data={"messages": [{"type": "FATAL", "text": "Unknown search command"}]}
+    )
+
+    # Act / Assert
+    assert client.fetch_logging_events(QUERY) == LoggingApiError(  # noqa: S101
+        message="Unknown search command", status_code=200
+    )
+
+
+@patch("requests.Session.post")
+def test_info_and_warn_messages_are_ignored(mock_post, client):
+    """INFO and WARN messages do not hide the rows."""
+    # Arrange
+    messages = [
+        {"type": "INFO", "text": "Your timerange was substituted"},
+        {"type": "WARN", "text": "Search results may be incomplete"},
+    ]
+    mock_post.return_value = _response(
+        json_data={"messages": messages, "results": [SYSMON_ROW]}
+    )
+
+    # Act
+    result = client.fetch_logging_events(QUERY)
+
+    # Assert
+    assert isinstance(result, LoggingRows)  # noqa: S101
+    assert len(result.events) == 1  # noqa: S101
+
+
+@patch("requests.Session.post")
+def test_index_check_search_error_is_api_error(mock_post, client):
+    """The index check reports a search error, not every index as missing."""
+    # Arrange
+    mock_post.return_value = _response(
+        json_data={"messages": [{"type": "ERROR", "text": "boom"}], "results": []}
+    )
+
+    # Act / Assert
+    assert client.check_logging_indexes(["sysmon"]) == LoggingApiError(  # noqa: S101
+        message="boom", status_code=200
+    )
