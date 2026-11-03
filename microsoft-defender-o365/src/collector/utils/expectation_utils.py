@@ -16,7 +16,7 @@ def detect_date(expectation: Expectation) -> bool:
             SignatureTypes.SIG_TYPE_START_DATE,
         ):
             return True
-        return False
+    return False
 
 
 def extract_date(
