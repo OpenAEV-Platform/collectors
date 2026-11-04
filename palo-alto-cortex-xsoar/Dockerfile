@@ -1,16 +1,17 @@
 # Common base stage for shared environment configuration.
 FROM python:3.14-alpine AS base
 
-# brotli-libs: the system Brotli that Pillow's FreeType loads (see the builder stage).
-RUN apk --no-cache upgrade && \
-    apk add --no-cache brotli-libs
-
 # Python runtime and Poetry build configuration.
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PATH="/collector/.venv/bin:$PATH"
 
 WORKDIR /collector
+
+# brotli-libs: the system Brotli that Pillow's FreeType loads (see the builder stage).
+RUN apk --no-cache upgrade && \
+    apk add --no-cache brotli-libs
+RUN pip install --no-cache-dir -U pip certifi
 
 # Builder stage for installing dependencies and creating the application environment.
 FROM base AS builder
