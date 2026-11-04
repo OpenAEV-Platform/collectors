@@ -19,7 +19,7 @@ from src.collector.models.source import Source
 from src.collector.protocols.data_fetcher import DataFetcherProtocol
 from src.collector.protocols.source_handler import SourceHandlerProtocol
 from src.collector.types.collector import ExpectationsList, SourceConfig
-from src.collector.utils.expectation_utils import detect_date, time_window_over
+from src.collector.utils.expectation_utils import detect_correct_date, time_window_over
 
 LOG_PREFIX = "[BasicCollectorEngine]"
 
@@ -171,7 +171,9 @@ class BasicCollectorEngine:
         batch_results = []
 
         # filter out the expectations with neither start_date nor end_date
-        batch = [expectation for expectation in batch if detect_date(expectation)]
+        batch = [
+            expectation for expectation in batch if detect_correct_date(expectation)
+        ]
         if not batch:
             return batch_results
 

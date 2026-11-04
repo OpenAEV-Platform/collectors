@@ -7,75 +7,21 @@ from pyoaev.signatures.types import SignatureTypes
 
 
 class TestExpectationUtils(unittest.TestCase):
-    def test_detect_date_both(self):
-        end_date_signature = MagicMock()
-        end_date_signature.type = SignatureTypes.SIG_TYPE_END_DATE
-        start_date_signature = MagicMock()
-        start_date_signature.type = SignatureTypes.SIG_TYPE_START_DATE
-        not_date_signature = MagicMock()
-        not_date_signature.type = SignatureTypes.SIG_TYPE_PARENT_PROCESS_NAME
-
-        inject_expectation_signatures = [
-            end_date_signature,
-            start_date_signature,
-            not_date_signature,
-        ]
-
+    @patch.object(module, "extract_date_with_fallback")
+    def test_detect_correct_date_true(self, m_extract_date_with_fallback):
+        m_extract_date_with_fallback.return_value = MagicMock()
         expectation = MagicMock()
-        expectation.inject_expectation_signatures = inject_expectation_signatures
 
-        flag = module.detect_date(expectation)
+        flag = module.detect_correct_date(expectation)
 
         self.assertTrue(flag)
 
-    def test_detect_date_end(self):
-        end_date_signature = MagicMock()
-        end_date_signature.type = SignatureTypes.SIG_TYPE_END_DATE
-        not_date_signature = MagicMock()
-        not_date_signature.type = SignatureTypes.SIG_TYPE_PARENT_PROCESS_NAME
-
-        inject_expectation_signatures = [
-            end_date_signature,
-            not_date_signature,
-        ]
-
+    @patch.object(module, "extract_date_with_fallback")
+    def test_detect_correct_date_false(self, m_extract_date_with_fallback):
+        m_extract_date_with_fallback.return_value = None
         expectation = MagicMock()
-        expectation.inject_expectation_signatures = inject_expectation_signatures
 
-        flag = module.detect_date(expectation)
-
-        self.assertTrue(flag)
-
-    def test_detect_date_start(self):
-        start_date_signature = MagicMock()
-        start_date_signature.type = SignatureTypes.SIG_TYPE_START_DATE
-        not_date_signature = MagicMock()
-        not_date_signature.type = SignatureTypes.SIG_TYPE_PARENT_PROCESS_NAME
-
-        inject_expectation_signatures = [
-            start_date_signature,
-            not_date_signature,
-        ]
-
-        expectation = MagicMock()
-        expectation.inject_expectation_signatures = inject_expectation_signatures
-
-        flag = module.detect_date(expectation)
-
-        self.assertTrue(flag)
-
-    def test_detect_date_neither(self):
-        not_date_signature = MagicMock()
-        not_date_signature.type = SignatureTypes.SIG_TYPE_PARENT_PROCESS_NAME
-
-        inject_expectation_signatures = [
-            not_date_signature,
-        ]
-
-        expectation = MagicMock()
-        expectation.inject_expectation_signatures = inject_expectation_signatures
-
-        flag = module.detect_date(expectation)
+        flag = module.detect_correct_date(expectation)
 
         self.assertFalse(flag)
 
