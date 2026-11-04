@@ -1,9 +1,10 @@
 # OpenAEV Splunk Enterprise Security Collector
 
-The Splunk Enterprise Security collector validates OpenAEV detection expectations against
+The Splunk Enterprise Security collector validates OpenAEV detection and logging expectations against
 [Splunk Enterprise Security](https://www.splunk.com/en_us/products/enterprise-security.html), Splunk's SIEM. After
-OpenAEV agents execute attacks, the collector runs REST search jobs against Splunk ES and correlates the returned events
-with the related injects to confirm whether the activity was detected.
+OpenAEV agents execute attacks, the collector runs REST search jobs against Splunk and correlates the returned events
+with the related injects to confirm whether the activity was detected (an alert was raised) or logged (the raw events
+reached Splunk).
 
 ## Table of Contents
 
@@ -21,6 +22,8 @@ with the related injects to confirm whether the activity was detected.
     - [Manual Deployment](#manual-deployment)
   - [Usage](#usage)
   - [Behavior](#behavior)
+    - [Detection expectations](#detection-expectations)
+    - [Logging expectations](#logging-expectations)
   - [Required permissions and API endpoints](#required-permissions-and-api-endpoints)
   - [Debugging](#debugging)
   - [Additional information](#additional-information)
@@ -28,18 +31,22 @@ with the related injects to confirm whether the activity was detected.
 ## Introduction
 
 OpenAEV (Breach and Attack Simulation) raises "expectations" each time it executes an inject (a simulated attack) on an
-endpoint: a DETECTION expectation (the security product should raise an alert) and/or a PREVENTION expectation (the
-security product should block the action). This collector connects to Splunk Enterprise Security, registers a
+endpoint: a DETECTION expectation (the security product should raise an alert), a PREVENTION expectation (the
+security product should block the action) and/or a LOGGING expectation (the action should at least appear in the
+logs). This collector connects to Splunk Enterprise Security, registers a
 `SecurityPlatform` of type `SIEM`, and periodically reconciles those expectations with the events returned by the Splunk
 REST search API, marking each expectation as detected/not detected and attaching a trace that links back to the Splunk ES
-search results. Splunk ES is a detection source, so this collector validates DETECTION expectations only; PREVENTION
-expectations are not supported.
+search results. Splunk ES is a detection and log source, so this collector validates DETECTION expectations and, when
+enabled, LOGGING expectations; PREVENTION expectations are not supported.
 
 ## Requirements
 
 - OpenAEV Platform >= 1.19.0
 - A Splunk Enterprise Security instance with the REST API reachable (typically on management port 8089)
 - A Splunk user account with REST API search access and read access to the configured events index
+- For LOGGING expectations (optional): the Splunk indexes that receive the raw endpoint logs (for example Sysmon or
+  Windows event logs), readable by the same Splunk user. The Enterprise Security app is not needed for Logging: a plain
+  Splunk Enterprise instance works.
 - For a manual (non-Docker) deployment: Python >= 3.14 and [Poetry](https://python-poetry.org/) >= 2.1
 
 ## Configuration variables
@@ -78,6 +85,14 @@ Docker deployment) or through a `config.yml` file (for a manual deployment). Cop
 | Offset         | `splunk_es.offset`         | `SPLUNKES_OFFSET`           | PT2M         | No        | Delay between retry attempts to absorb alert ingestion latency, as an ISO 8601 duration. |
 | Max Retry      | `splunk_es.max_retry`      | `SPLUNKES_MAX_RETRY`        | 5            | No        | Maximum number of retry attempts after the initial search returns no results.            |
 | Query Template | `splunk_es.query_template` | `SPLUNKES_QUERY_TEMPLATE`   | *(built-in)* | No        | Custom SPL query template with placeholders (leave empty to use the default below).      |
+| Logging Enabled | `splunk_es.logging_enabled` | `SPLUNKES_LOGGING_ENABLED` | false | No | Validate LOGGING expectations by searching the raw-event indexes. Requires `SPLUNKES_LOGGING_INDEXES`. |
+| Logging Indexes | `splunk_es.logging_indexes` | `SPLUNKES_LOGGING_INDEXES` | / | When Logging is enabled | Comma-separated raw-event indexes (e.g. `sysmon,wineventlog`). Letters, digits, `_`, `-` and `*` only. No default on purpose. |
+| Logging Max Rows | `splunk_es.logging_max_rows` | `SPLUNKES_LOGGING_MAX_ROWS` | 50 | No | Maximum number of events read per Logging search, from 1 to 1000. |
+| Logging Max Interval | `splunk_es.logging_max_interval` | `SPLUNKES_LOGGING_MAX_INTERVAL` | PT15M | No | Longest wait between two searches of the same LOGGING expectation, as an ISO 8601 duration of at most `PT1H`. |
+
+With `SPLUNKES_LOGGING_ENABLED=true`, a missing index list or an invalid Logging setting stops the collector at startup,
+so the mistake is seen at once. With Logging off, invalid Logging settings are ignored with a warning and never block
+Detection.
 
 ### Query template
 
@@ -193,6 +208,8 @@ flowchart LR
     C -->|match on IPs + parent process| R
 ```
 
+### Detection expectations
+
 On each run, the collector:
 
 1. Fetches the unfilled DETECTION expectations assigned to this collector from OpenAEV. PREVENTION expectations are
@@ -210,12 +227,89 @@ On each run, the collector:
 Expectations that remain unmatched after all retries are left for OpenAEV to mark as failed (`Not Detected`) once they
 expire.
 
+### Logging expectations
+
+A LOGGING expectation asks one question: did the action of the inject reach the logs? The collector answers it from the
+raw events (Sysmon, Windows event logs, firewall logs, ...), not from the notable events. Logging is off by default:
+set `SPLUNKES_LOGGING_ENABLED=true` and `SPLUNKES_LOGGING_INDEXES` to turn it on. The collector then declares LOGGING
+to OpenAEV next to DETECTION and PREVENTION.
+
+```mermaid
+flowchart LR
+    E[Pending LOGGING expectations] -->|marker, IPs, start and end dates| Q[Build the Logging search]
+    Q -->|oneshot search| S[(Raw-event indexes)]
+    S -->|events of the inject window| M{Marker or IP found?}
+    M -->|yes| L[Logged + trace]
+    M -->|no| B[Search again later, wait doubles]
+```
+
+On each run, before the Detection pass, the collector:
+
+1. Fetches the pending LOGGING expectations assigned to this collector.
+2. Skips the ones without an end date yet (the inject is still running). They are searched on a later run.
+3. Builds one search per expectation from its signatures:
+   - the implant marker (`parent_process_name`, e.g. `oaev-implant-<inject>-agent-<agent>`) and its callback URL path
+     (`/api/injects/<inject>/<agent>/executable-payload`), since network events only show the URL;
+   - the source and target IPs;
+   - the window from `start_date` to `end_date`, rounded outwards to the second.
+
+   The host name is not used: in Splunk, `host` is often the log forwarder, not the machine that ran the inject.
+4. Runs the search on `SPLUNKES_LOGGING_INDEXES`. Events are ranked marker first, then source IP, then target IP, and
+   only the best `SPLUNKES_LOGGING_MAX_ROWS` events are read.
+5. Marks the expectation `Logged` when one event of the window contains the marker or one of the IPs, and adds a trace
+   with the event time, the match type (`marker`, `source_ip` or `target_ip`) and a link to the search in Splunk.
+6. Otherwise searches it again later: the first wait is `COLLECTOR_PERIOD`, then the wait doubles after each search
+   without a match, up to `SPLUNKES_LOGGING_MAX_INTERVAL`.
+
+Example: an inject that ran from `2026-11-04T10:00:00Z` to `2026-11-04T10:00:42.300Z` from `192.168.2.4`, with
+`SPLUNKES_LOGGING_INDEXES=sysmon,wineventlog`, gives this search (UUIDs shortened):
+
+```spl
+search index IN (sysmon,wineventlog) earliest=1793786400 latest=1793786444
+    ("oaev-implant-<inject>-agent-<agent>" OR "/api/injects/<inject>/<agent>/executable-payload" OR "192.168.2.4")
+| eval oaev_rank=case(match(lower(_raw), "<marker or URL>"), 2, match(lower(_raw), "192\.168\.2\.4"), 1, 1=1, 0)
+| sort 50 -oaev_rank, +_time
+| eval oaev_event_epoch=_time
+| table oaev_event_epoch, index, host, sourcetype, _raw
+```
+
+Good to know:
+
+- **The collector never writes `Not Logged`.** OpenAEV does, when the expectation expires. A Splunk error or an empty
+  search only means "search again later".
+- **A marker match is stronger than an IP match.** The marker identifies the inject itself. An IP only shows that the
+  host logged something during the window, which may be unrelated activity. The trace match type tells them apart.
+- **Event times must be right.** The window is compared with the event `_time` in Splunk. If a source sends its events
+  with a wrong time zone, they fall outside the window and are not found: check the `TZ` setting of the source type.
+- **Detection is never blocked.** The Logging pass starts no new search after one `COLLECTOR_PERIOD`; the remaining
+  expectations go first on the next run. An error in the Logging pass never stops the Detection pass.
+- **A run can last longer than `COLLECTOR_PERIOD`.** The Logging pass runs once per run, and the Detection pass of the
+  same run can wait up to 5 minutes for its own expectations. Logging searches can then be further apart than the
+  configured waits.
+
+At startup and while running, Logging reacts to errors as follows:
+
+| Situation                                                                       | What happens                                                                   |
+|---------------------------------------------------------------------------------|--------------------------------------------------------------------------------|
+| Logging enabled without index, or with an invalid Logging setting               | The collector does not start (configuration error).                            |
+| None of the Logging indexes exists or is readable (checked once at startup)     | LOGGING is withdrawn from the collector; Detection goes on.                    |
+| Some Logging indexes are missing                                                | An error log lists them; Logging goes on with the others.                      |
+| Splunk answers 401 or 403 to a Logging search or to the startup check           | Logging stops until the collector restarts and LOGGING is withdrawn.           |
+| Splunk error, timeout or unreadable answer                                      | A warning is logged and the expectation is searched again later.               |
+| OpenAEV cannot return the LOGGING expectations                                  | The Logging pass is skipped for this run.                                      |
+
+When LOGGING is withdrawn, OpenAEV stops waiting for this collector on LOGGING expectations. Fix the cause, then
+restart the collector to declare LOGGING again.
+
 ## Required permissions and API endpoints
 
 - Required permission: a Splunk user with REST API search access and read access to the configured events index
   (e.g. `main`).
+- For LOGGING expectations: read access to every index of `SPLUNKES_LOGGING_INDEXES` (the role's allowed indexes).
+  An index the role cannot read is reported as missing at startup, since Splunk silently returns no event for it.
 - API endpoints used:
-  - `POST /services/search/jobs` (oneshot search via the Splunk REST API, authenticated with HTTP basic authentication)
+  - `POST /services/search/jobs` (oneshot search via the Splunk REST API, authenticated with HTTP basic authentication),
+    used for the Detection searches, the Logging searches and the startup Logging index check (`| eventcount`)
 - Reference: [Splunk roles and capabilities](https://docs.splunk.com/Documentation/Splunk/latest/Security/Aboutusersandroles)
   and the [Splunk REST API reference](https://docs.splunk.com/Documentation/Splunk/latest/RESTREF/RESTsearch)
 
@@ -226,9 +320,17 @@ matching decisions. Common causes of "nothing detected" are the wrong `SPLUNKES_
 shorter than your ingestion latency, or a custom `SPLUNKES_QUERY_TEMPLATE` that omits `| table _time` (which breaks field
 extraction). Make sure `SPLUNKES_BASE_URL` targets the Splunk management port (typically 8089), not the web UI port.
 
+For Logging, `COLLECTOR_LOG_LEVEL=info` prints the startup index check and one summary per run
+(`Logging pass completed: ... fetched, ... logged, ... no match, ... errors`); `debug` adds why each expectation was not
+logged yet. Common causes of "nothing logged" are an index list that does not hold the endpoint logs, events whose
+`_time` is shifted by a wrong time zone, or an endpoint that does not log process creation or network connections
+(for example Sysmon not installed).
+
 ## Additional information
 
-- This collector validates detection only; it does not support prevention expectations.
+- This collector validates detection and, when enabled, logging; it does not support prevention expectations.
+- The Logging search is built by the collector and is not customizable; `SPLUNKES_QUERY_TEMPLATE` only applies to
+  Detection.
 - The SPL query is fully customizable via `SPLUNKES_QUERY_TEMPLATE`; a custom template must keep the `| table _time`
   pipe so that the resulting events can be parsed.
 - TLS certificate verification is disabled for requests to Splunk; deploy the collector on a trusted network segment.
