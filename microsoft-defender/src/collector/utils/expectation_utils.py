@@ -46,6 +46,22 @@ def extract_start_date(expectation: Expectation) -> datetime | None:
     return start_date
 
 
+def extract_date_with_fallback(expectation: Expectation) -> datetime | None:
+    date: datetime | None = extract_end_date(expectation)
+
+    if not date:
+        date: date | None = extract_start_date(expectation)
+
+    return date
+
+
+def detect_correct_date(expectation: Expectation) -> bool:
+    """
+    Detect whether either correct start_date or end_date is available in the expectation
+    """
+    return extract_date_with_fallback(expectation) is not None
+
+
 def time_window_over(expectation: Expectation, time_window: timedelta) -> bool:
     """
     Check whether the expectation's time window is over.
