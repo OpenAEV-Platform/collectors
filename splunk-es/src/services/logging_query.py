@@ -33,7 +33,7 @@ LOGGING_QUERY_TEMPLATE = (
     " | eval oaev_rank=case({rank_cases})"
     " | sort {max_rows} -oaev_rank, +_time"
     " | eval oaev_event_epoch=_time"
-    " | table oaev_event_epoch, index, host, sourcetype, _raw"
+    " | table oaev_event_epoch, src, index, host, sourcetype, _raw"
 )
 MARKER_RANK = 2
 SOURCE_IP_RANK = 1
