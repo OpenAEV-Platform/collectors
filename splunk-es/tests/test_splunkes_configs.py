@@ -216,7 +216,7 @@ def test_valid_logging_query_template_is_kept(
             VALID_LOGGING_TEMPLATE.replace("{terms}", "{terms.__class__}"),
             "Unknown placeholders",
         ),
-        (VALID_LOGGING_TEMPLATE + " | eval x={", "expected '}'"),
+        (VALID_LOGGING_TEMPLATE + " | eval x={", "Single '{'"),
     ],
     ids=[
         "unknown-placeholder",

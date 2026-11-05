@@ -175,8 +175,9 @@ class _ConfigLoaderSplunkES(ConfigBaseSettings):
         """
         if value is None:
             return value
-        used = {name for _, name, _, _ in string.Formatter().parse(value)}
-        unknown = used - LOGGING_TEMPLATE_PLACEHOLDERS - {None}
+        parsed = string.Formatter().parse(value)
+        used = {name for _, name, _, _ in parsed if name is not None}
+        unknown = used - LOGGING_TEMPLATE_PLACEHOLDERS
         if unknown:
             raise ValueError(
                 f"Unknown placeholders in SPLUNKES_LOGGING_QUERY_TEMPLATE: "
