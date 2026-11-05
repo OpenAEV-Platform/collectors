@@ -72,7 +72,7 @@ class DefenderSourceHandler(SourceHandler):
                     intersection = False
                     for alert_value in alert_values:
                         for signature_value in signature_values:
-                            if signature_value in alert_value:
+                            if str(signature_value).lower() in str(alert_value).lower():
                                 intersection = True
                                 break
                         # if the match has been found for current signature_value,
