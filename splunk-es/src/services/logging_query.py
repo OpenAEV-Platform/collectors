@@ -73,7 +73,7 @@ class Unqueryable:
 
 def build_logging_query(
     signatures: Iterable[Mapping[str, str]],
-    indexes: list[str],
+    indexes: str | None,
     max_rows: int,
     template: str | None = None,
 ) -> LoggingQuery | Unqueryable:
@@ -87,8 +87,8 @@ def build_logging_query(
     Args:
         signatures: The expectation's signatures, as ``{"type", "value"}``
             mappings.
-        indexes: Raw-event index names, ``*`` wildcards allowed. Each name
-            is quoted in the search, so it cannot change its meaning.
+        indexes: ``SPLUNKES_LOGGING_INDEXES`` as configured, written as is in
+            ``index IN (...)``, like ``SPLUNKES_ALERTS_INDEX`` for Detection.
         max_rows: Maximum number of events the search returns.
         template: A custom search (``SPLUNKES_LOGGING_QUERY_TEMPLATE``),
             already checked by the config, or None for the built-in one.
@@ -134,12 +134,11 @@ def build_logging_query(
         return Unqueryable("no marker and no IP")
 
     terms = " OR ".join(
-        spl_string(value)
-        for value in _unique([*marker_values, *source_ips, *target_ips])
+        _quote(value) for value in _unique([*marker_values, *source_ips, *target_ips])
     )
     spl = (template or LOGGING_QUERY_TEMPLATE).format_map(
         {
-            "indexes": ",".join(spl_string(index) for index in indexes),
+            "indexes": indexes,
             "earliest": earliest,
             # Splunk's latest is exclusive; the window's end is inclusive.
             "latest": latest + 1,
@@ -197,7 +196,7 @@ def _quoted_list(values: list[str]) -> str:
     """
     if not values:
         return '""'
-    return ",".join(spl_string(value) for value in values)
+    return ",".join(_quote(value) for value in values)
 
 
 def _unique(values: Iterable[str]) -> list[str]:
@@ -222,10 +221,10 @@ def _rank_cases(marker_values: list[str], source_ips: list[str]) -> str:
 def _contains_any(values: list[str]) -> str:
     """Write a case-insensitive SPL test: "the raw text contains one of these"."""
     pattern = "|".join(re.escape(value.lower()) for value in values)
-    return f"match(lower(_raw), {spl_string(pattern)})"
+    return f"match(lower(_raw), {_quote(pattern)})"
 
 
-def spl_string(value: str) -> str:
+def _quote(value: str) -> str:
     r"""Write a value as a double-quoted SPL string.
 
     Backslashes are escaped first, then double quotes, so a value cannot

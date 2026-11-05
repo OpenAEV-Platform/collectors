@@ -34,7 +34,7 @@ from .logging_fetch import (
     LoggingRows,
     parse_logging_rows,
 )
-from .logging_query import LoggingQuery, spl_string
+from .logging_query import LoggingQuery
 from .models import SplunkESAlert, SplunkESResponse, SplunkESSearchCriteria
 from .utils.epoch import to_epoch
 
@@ -497,7 +497,7 @@ class SplunkESClientAPI:
             )
         return LoggingRows(events=events, skipped=skipped)
 
-    def check_logging_indexes(self, indexes: list[str]) -> LoggingIndexCheckResult:
+    def check_logging_indexes(self, logging_indexes: str) -> LoggingIndexCheckResult:
         """Check that the Logging indexes exist and can be read.
 
         Splunk silently returns no event for an index that does not exist or
@@ -508,7 +508,8 @@ class SplunkESClientAPI:
         missing from its answer is a typo or a missing permission.
 
         Args:
-            indexes: Validated index names, ``*`` wildcards allowed.
+            logging_indexes: ``SPLUNKES_LOGGING_INDEXES``, comma-separated
+                index names, ``*`` wildcards allowed.
 
         Returns:
             ``LoggingIndexCheck`` with the found and missing indexes (a
@@ -516,9 +517,9 @@ class SplunkESClientAPI:
             error state of the search.
 
         """
-        # Quoted names keep their "*" wildcards and cannot change the search.
+        indexes = [name.strip() for name in logging_indexes.split(",") if name.strip()]
         search = "| eventcount summarize=false {} | dedup index | table index".format(
-            " ".join(f"index={spl_string(index)}" for index in indexes)
+            " ".join(f"index={index}" for index in indexes)
         )
         results = self._run_logging_search(search, count="0")
         if not isinstance(results, list):

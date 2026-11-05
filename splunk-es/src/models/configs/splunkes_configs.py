@@ -3,39 +3,13 @@
 import logging
 import string
 from datetime import timedelta
-from typing import Annotated, Optional
+from typing import Optional
 
-from pydantic import (
-    BeforeValidator,
-    Field,
-    SecretStr,
-    field_validator,
-    model_validator,
-)
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_core import PydanticUseDefault
-from pydantic_settings import NoDecode
 from src.models.configs import ConfigBaseSettings
 
 LOG_PREFIX = "[SplunkESConfig]"
-
-
-def _split_comma_list(value: object) -> object:
-    """Turn "a, b,,a" into ["a", "b"]: trimmed, without blanks or duplicates.
-
-    A YAML list is cleaned the same way. Any other value is left to pydantic,
-    which rejects it.
-    """
-    if isinstance(value, str):
-        value = value.split(",")
-    if isinstance(value, list):
-        items = (str(item).strip() for item in value)
-        return list(dict.fromkeys(item for item in items if item))
-    return value
-
-
-# A list written as a comma-separated string. NoDecode stops pydantic-settings
-# from reading the environment value as JSON.
-CommaList = Annotated[list[str], NoDecode, BeforeValidator(_split_comma_list)]
 
 # Placeholders a custom Logging query template can use. The query builder
 # fills every one of them (see services/logging_query.py).
@@ -113,12 +87,12 @@ class _ConfigLoaderSplunkES(ConfigBaseSettings):
         description="Search raw-event indexes to answer LOGGING expectations. "
         "Requires SPLUNKES_LOGGING_INDEXES.",
     )
-    logging_indexes: CommaList = Field(
+    logging_indexes: Optional[str] = Field(
         alias="SPLUNKES_LOGGING_INDEXES",
-        default_factory=list,
-        description="Comma-separated raw-event indexes searched for LOGGING "
-        "expectations (e.g. sysmon,wineventlog). No default: required when "
-        "SPLUNKES_LOGGING_ENABLED is true.",
+        default=None,
+        description="Comma-separated raw-event indexes or patterns searched for "
+        "LOGGING expectations (e.g. sysmon,wineventlog). No default: required "
+        "when SPLUNKES_LOGGING_ENABLED is true.",
     )
     logging_query_template: Optional[str] = Field(
         alias="SPLUNKES_LOGGING_QUERY_TEMPLATE",
@@ -143,6 +117,7 @@ class _ConfigLoaderSplunkES(ConfigBaseSettings):
         "time_window",
         "query_template",
         "logging_enabled",
+        "logging_indexes",
         "logging_query_template",
         "logging_max_rows",
         mode="before",

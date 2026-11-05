@@ -59,37 +59,25 @@ def test_logging_is_disabled_by_default(monkeypatch, required_env):  # type: ign
 
     # Assert
     assert config.logging_enabled is False  # noqa: S101
-    assert config.logging_indexes == []  # noqa: S101
+    assert config.logging_indexes is None  # noqa: S101
     assert config.logging_max_rows == 50  # noqa: S101
 
 
-@pytest.mark.parametrize(
-    "raw, expected",
-    [
-        ("sysmon,wineventlog", ["sysmon", "wineventlog"]),
-        (" sysmon , wineventlog ,, ", ["sysmon", "wineventlog"]),
-        ("sysmon,sysmon,win*", ["sysmon", "win*"]),
-        ("os-linux_01", ["os-linux_01"]),
-    ],
-    ids=["comma", "spaces-and-blanks", "duplicates-and-wildcard", "dash"],
-)
-def test_logging_indexes_are_parsed(
-    monkeypatch, required_env, raw, expected
-):  # type: ignore
-    """The index setting becomes a clean list of names."""
+def test_logging_indexes_are_kept_as_written(monkeypatch, required_env):  # type: ignore
+    """The index setting is kept as written, like SPLUNKES_ALERTS_INDEX."""
     # Arrange
     monkeypatch.setenv("SPLUNKES_LOGGING_ENABLED", "true")
-    monkeypatch.setenv("SPLUNKES_LOGGING_INDEXES", raw)
+    monkeypatch.setenv("SPLUNKES_LOGGING_INDEXES", "sysmon, win*")
 
     # Act
     config = _ConfigLoaderSplunkES()
 
     # Assert
     assert config.logging_enabled is True  # noqa: S101
-    assert config.logging_indexes == expected  # noqa: S101
+    assert config.logging_indexes == "sysmon, win*"  # noqa: S101
 
 
-@pytest.mark.parametrize("indexes", [None, "", "  ", ",,"])
+@pytest.mark.parametrize("indexes", [None, "", "  "])
 def test_logging_enabled_without_index_fails(
     monkeypatch, required_env, indexes
 ):  # type: ignore

@@ -271,7 +271,7 @@ def test_index_check_finds_existing_and_missing_indexes(mock_post, client):
     )
 
     # Act
-    result = client.check_logging_indexes(["sysmon", "main", "sysmom"])
+    result = client.check_logging_indexes("sysmon, main,sysmom")
 
     # Assert
     assert result == LoggingIndexCheck(  # noqa: S101
@@ -279,7 +279,7 @@ def test_index_check_finds_existing_and_missing_indexes(mock_post, client):
     )
     params = mock_post.call_args.kwargs["data"]
     assert params["search"] == (  # noqa: S101
-        '| eventcount summarize=false index="sysmon" index="main" index="sysmom"'
+        "| eventcount summarize=false index=sysmon index=main index=sysmom"
         " | dedup index | table index"
     )
     assert params["count"] == "0"  # noqa: S101
@@ -294,7 +294,7 @@ def test_index_check_matches_wildcards_case_insensitively(mock_post, client):
     )
 
     # Act
-    result = client.check_logging_indexes(["win*", "Wineventlog", "zz*"])
+    result = client.check_logging_indexes("win*,Wineventlog,zz*")
 
     # Assert
     assert result == LoggingIndexCheck(  # noqa: S101
@@ -310,7 +310,7 @@ def test_index_check_with_no_readable_index(mock_post, client):
 
     # Act
     with patch.object(client.logger, "error") as mock_error:
-        result = client.check_logging_indexes(["sysmon"])
+        result = client.check_logging_indexes("sysmon")
 
     # Assert
     assert result == LoggingIndexCheck(found=[], missing=["sysmon"])  # noqa: S101
@@ -334,7 +334,7 @@ def test_index_check_errors(mock_post, client, response, expected_type):
 
     # Act / Assert
     assert isinstance(  # noqa: S101
-        client.check_logging_indexes(["sysmon"]), expected_type
+        client.check_logging_indexes("sysmon"), expected_type
     )
 
 
@@ -407,7 +407,7 @@ def test_index_check_search_error_is_api_error(mock_post, client):
     )
 
     # Act / Assert
-    assert client.check_logging_indexes(["sysmon"]) == LoggingApiError(  # noqa: S101
+    assert client.check_logging_indexes("sysmon") == LoggingApiError(  # noqa: S101
         message="boom", status_code=200
     )
 
@@ -429,5 +429,5 @@ def test_index_check_unexpected_rows_are_malformed(mock_post, client, rows):
 
     # Act / Assert
     assert isinstance(  # noqa: S101
-        client.check_logging_indexes(["sysmon"]), LoggingMalformed
+        client.check_logging_indexes("sysmon"), LoggingMalformed
     )
