@@ -1,0 +1,79 @@
+{
+  "inject_expectation_id": "5a69a618-e461-44df-9973-3ae9f0527ba1",
+  "inject_expectation_signatures": [
+    {
+      "type": "parent_process_name",
+      "value": "oaev-implant-4f46361a-a90e-46fe-96ba-a453bca9a68d-agent-294c2457-64d0-485a-b9ea-f25e2bb6005c"
+    },
+    {
+      "type": "source_ipv6_address",
+      "value": "fe80::a0fa:5200:81f:a8e0"
+    },
+    {
+      "type": "source_ipv6_address",
+      "value": "fe80::89af:c7a4:9c42:8858"
+    },
+    {
+      "type": "source_ipv4_address",
+      "value": "10.6.12.2"
+    },
+    {
+      "type": "source_ipv6_address",
+      "value": "fe80::d45b:5096:3aa2:5aa1"
+    },
+    {
+      "type": "source_ipv4_address",
+      "value": "192.168.56.1"
+    },
+    {
+      "type": "source_ipv6_address",
+      "value": "fe80::bb3a:3d87:3f28:9bc"
+    },
+    {
+      "type": "source_ipv6_address",
+      "value": "fe80::ea67:245a:b354:5d70"
+    },
+    {
+      "type": "source_ipv6_address",
+      "value": "2a01:e34:ec67:25b0:4417:e4c7:6366:d880"
+    },
+    {
+      "type": "source_ipv6_address",
+      "value": "2a01:e34:ec67:25b0:54f1:a85a:b9c9:92ad"
+    },
+    {
+      "type": "source_ipv6_address",
+      "value": "fe80::fc08:dc02:d9a4:d025"
+    },
+    {
+      "type": "source_ipv4_address",
+      "value": "192.168.1.77"
+    },
+    {
+      "type": "source_ipv6_address",
+      "value": "fe80::433d:1b42:1d8:b31e"
+    },
+    {
+      "type": "source_ipv6_address",
+      "value": "fe80::c49b:15d8:dce7:673f"
+    },
+    {
+      "type": "source_ipv4_address",
+      "value": "172.26.192.1"
+    },
+    {
+      "type": "source_ipv4_address",
+      "value": "149.88.28.168"
+    },
+    {
+      "type": "start_date",
+      "value": "2026-11-05T12:13:43.275838267Z"
+    },
+    {
+      "type": "end_date",
+      "value": "2026-11-05T12:15:23.912111Z"
+    }
+  ],
+  "success_label": "Prevented",
+  "failure_label": "Not Prevented"
+}
