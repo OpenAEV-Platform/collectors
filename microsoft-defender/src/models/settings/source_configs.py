@@ -76,7 +76,7 @@ class _ConfigLoaderSource(ConfigBaseSettings):
         "fails transiently.",
     )
     retry_window: timedelta = Field(
-        default=timedelta(minutes=10),
+        default=timedelta(minutes=20),
         description="How long after the recorded end date an unresolved expectation is re-attempted on every collector cycle, before one final attempt emits the verdict (ISO 8601 format) - if the end date is not available, the start date is used with a factor 1.5 on the retry window (until the end date is available)",
     )
 
