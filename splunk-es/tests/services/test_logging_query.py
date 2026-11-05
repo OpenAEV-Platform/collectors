@@ -57,9 +57,7 @@ def test_marker_and_ips_build_one_or_group():
 def test_window_is_epoch_and_inclusive():
     """The window is in epoch seconds, the end shifted by one in the SPL only."""
     # Act
-    query = build_logging_query(
-        _signatures(source_ipv4_address="10.0.0.1"), "sysmon"
-    )
+    query = build_logging_query(_signatures(source_ipv4_address="10.0.0.1"), "sysmon")
 
     # Assert
     assert isinstance(query, LoggingQuery)  # noqa: S101
@@ -123,9 +121,7 @@ def test_quotes_and_backslashes_are_escaped():
 def test_marker_without_uuids_has_no_url_alternate():
     """A marker that is not an implant name is searched alone."""
     # Act
-    query = build_logging_query(
-        _signatures(parent_process_name="custom.exe"), "sysmon"
-    )
+    query = build_logging_query(_signatures(parent_process_name="custom.exe"), "sysmon")
 
     # Assert
     assert isinstance(query, LoggingQuery)  # noqa: S101
