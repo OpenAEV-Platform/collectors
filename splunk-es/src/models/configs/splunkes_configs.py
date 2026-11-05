@@ -21,8 +21,6 @@ LOGGING_TEMPLATE_PLACEHOLDERS = frozenset(
         "terms",
         "source_ips",
         "target_ips",
-        "rank_cases",
-        "max_rows",
     }
 )
 
@@ -99,17 +97,9 @@ class _ConfigLoaderSplunkES(ConfigBaseSettings):
         default=None,
         description="SPL template of the Logging search, to adapt it to your "
         "data (sourcetypes, data models, field names). Placeholders: {indexes}, "
-        "{earliest}, {latest}, {terms}, {source_ips}, {target_ips}, "
-        "{rank_cases}, {max_rows}. Must return oaev_event_epoch, index and "
-        "_raw. Leave empty to use the built-in search.",
-    )
-    logging_max_rows: int = Field(
-        alias="SPLUNKES_LOGGING_MAX_ROWS",
-        default=50,
-        ge=1,
-        le=1000,
-        description="Maximum number of raw events read per LOGGING search "
-        "(1 to 1000, default 50).",
+        "{earliest}, {latest}, {terms}, {source_ips}, {target_ips}. Must "
+        "include '| table _time, index, _raw'. Leave empty to use the built-in "
+        "search.",
     )
 
     @field_validator(
@@ -119,7 +109,6 @@ class _ConfigLoaderSplunkES(ConfigBaseSettings):
         "logging_enabled",
         "logging_indexes",
         "logging_query_template",
-        "logging_max_rows",
         mode="before",
     )
     @classmethod

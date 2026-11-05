@@ -60,7 +60,6 @@ def test_logging_is_disabled_by_default(monkeypatch, required_env):  # type: ign
     # Assert
     assert config.logging_enabled is False  # noqa: S101
     assert config.logging_indexes is None  # noqa: S101
-    assert config.logging_max_rows == 50  # noqa: S101
 
 
 def test_logging_indexes_are_kept_as_written(monkeypatch, required_env):  # type: ignore
@@ -110,34 +109,6 @@ def test_logging_indexes_ignored_when_disabled(
     assert "the indexes are ignored" in caplog.text  # noqa: S101
 
 
-@pytest.mark.parametrize("value, expected", [("1", 1), ("1000", 1000), ("", 50)])
-def test_logging_max_rows_bounds_accepted(
-    monkeypatch, required_env, value, expected
-):  # type: ignore
-    """The row cap accepts 1 to 1000; blank falls back to 50."""
-    # Arrange
-    monkeypatch.setenv("SPLUNKES_LOGGING_MAX_ROWS", value)
-
-    # Act
-    config = _ConfigLoaderSplunkES()
-
-    # Assert
-    assert config.logging_max_rows == expected  # noqa: S101
-
-
-@pytest.mark.parametrize("value", ["0", "1001", "-5"])
-def test_logging_max_rows_out_of_bounds_rejected(
-    monkeypatch, required_env, value
-):  # type: ignore
-    """A row cap outside 1..1000 is rejected."""
-    # Arrange
-    monkeypatch.setenv("SPLUNKES_LOGGING_MAX_ROWS", value)
-
-    # Act / Assert
-    with pytest.raises(ValidationError):
-        _ConfigLoaderSplunkES()
-
-
 def test_logging_settings_leave_detection_settings_unchanged(
     monkeypatch, required_env
 ):  # type: ignore
@@ -151,7 +122,7 @@ def test_logging_settings_leave_detection_settings_unchanged(
     config = _ConfigLoaderSplunkES()
 
     # Assert
-    logging_fields = {"logging_enabled", "logging_indexes", "logging_max_rows"}
+    logging_fields = {"logging_enabled", "logging_indexes"}
     assert config.model_dump(exclude=logging_fields) == (  # noqa: S101
         without_logging.model_dump(exclude=logging_fields)
     )
@@ -159,8 +130,7 @@ def test_logging_settings_leave_detection_settings_unchanged(
 
 VALID_LOGGING_TEMPLATE = (
     "index IN ({indexes}) sourcetype=XmlWinEventLog* earliest={earliest} "
-    "latest={latest} ({terms}) | eval oaev_event_epoch=_time "
-    "| table oaev_event_epoch, index, _raw"
+    "latest={latest} ({terms}) | table _time, index, _raw"
 )
 
 

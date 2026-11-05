@@ -477,9 +477,8 @@ class SplunkESClientAPI:
             JSON.
 
         """
-        max_rows = self.config.splunk_es.logging_max_rows
         self.logger.debug(f"{LOG_PREFIX} Executing Logging search: {query.spl}")
-        results = self._run_logging_search(query.spl, count=str(max_rows))
+        results = self._run_logging_search(query.spl, count="0")
         if not isinstance(results, list):
             return results
         if not results:

@@ -69,7 +69,6 @@ class ConfigLoaderSplunkESFactory(ModelFactory[_ConfigLoaderSplunkES]):
         kwargs.setdefault("logging_enabled", False)
         kwargs.setdefault("logging_indexes", None)
         kwargs.setdefault("logging_query_template", None)
-        kwargs.setdefault("logging_max_rows", 50)
         return super().build(**kwargs)
 
 

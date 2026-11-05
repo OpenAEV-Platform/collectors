@@ -27,7 +27,7 @@ QUERY = LoggingQuery(
 )
 
 SYSMON_ROW = {
-    "oaev_event_epoch": "1793714702.000",
+    "_time": "2026-11-03T14:05:02.000+00:00",
     "index": "sysmon",
     "host": "WIN-LAB01",
     "sourcetype": "XmlWinEventLog:Microsoft-Windows-Sysmon/Operational",
@@ -49,10 +49,8 @@ def _response(status_code: int = 200, json_data=None, text: str = "") -> Mock:
 
 @pytest.fixture
 def client() -> SplunkESClientAPI:
-    """Build a client with a row cap of 25."""
-    config = create_test_config()
-    config.splunk_es.logging_max_rows = 25
-    return SplunkESClientAPI(config=config)
+    """Build a client."""
+    return SplunkESClientAPI(config=create_test_config())
 
 
 @patch("time.sleep")
@@ -82,8 +80,8 @@ def test_rows_become_events(mock_post, mock_sleep, client):
 
 
 @patch("requests.Session.post")
-def test_request_uses_the_query_and_the_row_cap(mock_post, client):
-    """The search is sent as is, oneshot, in JSON, capped at the row limit."""
+def test_request_uses_the_query_and_no_row_cap(mock_post, client):
+    """The search is sent as is, oneshot, in JSON, for every row."""
     # Arrange
     mock_post.return_value = _response(json_data={"results": []})
 
@@ -98,7 +96,7 @@ def test_request_uses_the_query_and_the_row_cap(mock_post, client):
         "search": QUERY.spl,
         "exec_mode": "oneshot",
         "output_mode": "json",
-        "count": "25",
+        "count": "0",
     }
 
 
@@ -191,8 +189,8 @@ def test_malformed_rows_are_skipped_and_counted(mock_post, client):
     # Arrange
     rows = [
         SYSMON_ROW,
-        {**SYSMON_ROW, "oaev_event_epoch": "not a number"},
-        {**SYSMON_ROW, "oaev_event_epoch": "nan"},
+        {**SYSMON_ROW, "_time": "not a date"},
+        {**SYSMON_ROW, "_time": None},
         {**SYSMON_ROW, "_raw": ""},
         {**SYSMON_ROW, "index": None},
         "garbage",
@@ -213,7 +211,7 @@ def test_optional_fields_and_multivalue_host(mock_post, client):
     """Keep host and sourcetype optional; a multivalue host keeps its first value."""
     # Arrange
     row = {
-        "oaev_event_epoch": "12.5",
+        "_time": "1970-01-01T00:00:12.500+00:00",
         "index": "network",
         "host": ["fw01", "fw02"],
         "_raw": "Built outbound TCP connection",

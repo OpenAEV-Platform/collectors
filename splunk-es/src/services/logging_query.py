@@ -6,7 +6,6 @@ builder read these types; ``build_logging_query`` builds them from the
 expectation's signatures.
 """
 
-import re
 from dataclasses import dataclass
 from typing import Iterable, Mapping
 
@@ -20,18 +19,12 @@ START_DATE_SIGNATURE_TYPE = "start_date"
 END_DATE_SIGNATURE_TYPE = "end_date"
 
 # The built-in Logging search: a full-text search, so it needs no extracted
-# field. SPLUNKES_LOGGING_QUERY_TEMPLATE can replace it. Events are ranked like
-# the matcher ranks signals (marker, then source IP), so the row cap never drops
-# a stronger event behind weaker ones.
+# field. Every event of the window is returned; the matcher picks the best one.
+# SPLUNKES_LOGGING_QUERY_TEMPLATE can replace it.
 LOGGING_QUERY_TEMPLATE = (
     "search index IN ({indexes}) earliest={earliest} latest={latest} ({terms})"
-    " | eval oaev_rank=case({rank_cases})"
-    " | sort {max_rows} -oaev_rank, +_time"
-    " | eval oaev_event_epoch=_time"
-    " | table oaev_event_epoch, index, host, sourcetype, _raw"
+    " | table _time, index, host, sourcetype, _raw"
 )
-MARKER_RANK = 2
-SOURCE_IP_RANK = 1
 
 
 @dataclass(frozen=True)
@@ -74,7 +67,6 @@ class Unqueryable:
 def build_logging_query(
     signatures: Iterable[Mapping[str, str]],
     indexes: str | None,
-    max_rows: int,
     template: str | None = None,
 ) -> LoggingQuery | Unqueryable:
     """Build the Logging search of one LOGGING expectation.
@@ -89,7 +81,6 @@ def build_logging_query(
             mappings.
         indexes: ``SPLUNKES_LOGGING_INDEXES`` as configured, written as is in
             ``index IN (...)``, like ``SPLUNKES_ALERTS_INDEX`` for Detection.
-        max_rows: Maximum number of events the search returns.
         template: A custom search (``SPLUNKES_LOGGING_QUERY_TEMPLATE``),
             already checked by the config, or None for the built-in one.
 
@@ -145,8 +136,6 @@ def build_logging_query(
             "terms": terms,
             "source_ips": _quoted_list(source_ips),
             "target_ips": _quoted_list(target_ips),
-            "rank_cases": _rank_cases(marker_values, source_ips),
-            "max_rows": max_rows,
         }
     )
     # The search API needs a generating command first; a custom template may
@@ -202,26 +191,6 @@ def _quoted_list(values: list[str]) -> str:
 def _unique(values: Iterable[str]) -> list[str]:
     """Drop blank values and duplicates, keeping the first occurrence order."""
     return list(dict.fromkeys(value for value in values if value))
-
-
-def _rank_cases(marker_values: list[str], source_ips: list[str]) -> str:
-    """Write the ``case()`` arguments that rank an event like the matcher.
-
-    An event with the marker ranks first, then one with a source IP, then
-    every other event (target IP only).
-    """
-    cases: list[str] = []
-    if marker_values:
-        cases += [_contains_any(marker_values), str(MARKER_RANK)]
-    if source_ips:
-        cases += [_contains_any(source_ips), str(SOURCE_IP_RANK)]
-    return ", ".join([*cases, "1=1", "0"])
-
-
-def _contains_any(values: list[str]) -> str:
-    """Write a case-insensitive SPL test: "the raw text contains one of these"."""
-    pattern = "|".join(re.escape(value.lower()) for value in values)
-    return f"match(lower(_raw), {_quote(pattern)})"
 
 
 def _quote(value: str) -> str:

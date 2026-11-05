@@ -1,7 +1,5 @@
 """Tests for the Splunk ES Logging query builder."""
 
-import re
-
 import pytest
 from src.models.configs.splunkes_configs import LOGGING_TEMPLATE_PLACEHOLDERS
 from src.services.client_api import DEFAULT_QUERY_TEMPLATE
@@ -19,13 +17,6 @@ START = "2026-11-03T14:00:00.123456789Z"
 END = "2026-11-03T14:10:00Z"
 START_EPOCH = 1793714400
 END_EPOCH = 1793715000
-
-
-def _regex(*values: str) -> str:
-    """Write the SPL string of a literal, case-insensitive substring regex."""
-    pattern = "|".join(re.escape(value.lower()) for value in values)
-    escaped = pattern.replace("\\", "\\\\").replace('"', '\\"')
-    return f'"{escaped}"'
 
 
 def _signatures(**values: str | list[str]) -> list[dict[str, str]]:
@@ -49,18 +40,14 @@ def test_marker_and_ips_build_one_or_group():
     )
 
     # Act
-    query = build_logging_query(signatures, "sysmon", 50)
+    query = build_logging_query(signatures, "sysmon")
 
     # Assert
     assert isinstance(query, LoggingQuery)  # noqa: S101
     assert query.spl == (  # noqa: S101
         f"search index IN (sysmon) earliest={START_EPOCH} latest={END_EPOCH + 1} "
         f'("{MARKER}" OR "{MARKER_URL}" OR "192.168.56.10" OR "192.168.56.1")'
-        f" | eval oaev_rank=case(match(lower(_raw), {_regex(MARKER, MARKER_URL)}), 2,"
-        f" match(lower(_raw), {_regex('192.168.56.10')}), 1, 1=1, 0)"
-        " | sort 50 -oaev_rank, +_time"
-        " | eval oaev_event_epoch=_time"
-        " | table oaev_event_epoch, index, host, sourcetype, _raw"
+        " | table _time, index, host, sourcetype, _raw"
     )
     assert query.marker_values == [MARKER, MARKER_URL]  # noqa: S101
     assert query.source_ips == ["192.168.56.10"]  # noqa: S101
@@ -71,7 +58,7 @@ def test_window_is_epoch_and_inclusive():
     """The window is in epoch seconds, the end shifted by one in the SPL only."""
     # Act
     query = build_logging_query(
-        _signatures(source_ipv4_address="10.0.0.1"), "sysmon", 50
+        _signatures(source_ipv4_address="10.0.0.1"), "sysmon"
     )
 
     # Assert
@@ -87,7 +74,6 @@ def test_several_indexes_are_listed():
     query = build_logging_query(
         _signatures(source_ipv4_address="10.0.0.1"),
         "sysmon,wineventlog,net*",
-        50,
     )
 
     # Assert
@@ -108,7 +94,6 @@ def test_ipv4_and_ipv6_are_both_searched():
             target_ipv6_address="2001:db8::2",
         ),
         "sysmon",
-        50,
     )
 
     # Assert
@@ -118,11 +103,6 @@ def test_ipv4_and_ipv6_are_both_searched():
     assert (  # noqa: S101
         '("10.0.0.1" OR "2001:db8::1" OR "10.0.0.2" OR "2001:db8::2")' in query.spl
     )
-    # No marker: source IPs rank first, target IPs come after.
-    assert (  # noqa: S101
-        f"oaev_rank=case(match(lower(_raw), {_regex('10.0.0.1', '2001:db8::1')}),"
-        " 1, 1=1, 0)"
-    ) in query.spl
 
 
 def test_quotes_and_backslashes_are_escaped():
@@ -131,12 +111,11 @@ def test_quotes_and_backslashes_are_escaped():
     marker = 'evil" | delete \\'
 
     # Act
-    query = build_logging_query(_signatures(parent_process_name=marker), "sysmon", 50)
+    query = build_logging_query(_signatures(parent_process_name=marker), "sysmon")
 
     # Assert
     assert isinstance(query, LoggingQuery)  # noqa: S101
     assert '("evil\\" | delete \\\\")' in query.spl  # noqa: S101
-    assert f"match(lower(_raw), {_regex(marker)}), 2" in query.spl  # noqa: S101
     # The original value is kept for the matcher.
     assert query.marker_values == ['evil" | delete \\']  # noqa: S101
 
@@ -145,7 +124,7 @@ def test_marker_without_uuids_has_no_url_alternate():
     """A marker that is not an implant name is searched alone."""
     # Act
     query = build_logging_query(
-        _signatures(parent_process_name="custom.exe"), "sysmon", 50
+        _signatures(parent_process_name="custom.exe"), "sysmon"
     )
 
     # Assert
@@ -162,7 +141,6 @@ def test_duplicate_and_blank_values_are_dropped():
             target_ipv4_address="10.0.0.1",
         ),
         "sysmon",
-        50,
     )
 
     # Assert
@@ -180,24 +158,11 @@ def test_hostname_is_not_a_signal():
             source_ipv4_address="10.0.0.1", target_hostname_address="WIN-LAB01"
         ),
         "sysmon",
-        50,
     )
 
     # Assert
     assert isinstance(query, LoggingQuery)  # noqa: S101
     assert "WIN-LAB01" not in query.spl  # noqa: S101
-
-
-def test_row_cap_is_in_the_search():
-    """The row cap limits the search output."""
-    # Act
-    query = build_logging_query(
-        _signatures(source_ipv4_address="10.0.0.1"), "sysmon", 7
-    )
-
-    # Assert
-    assert isinstance(query, LoggingQuery)  # noqa: S101
-    assert " | sort 7 -oaev_rank, +_time | " in query.spl  # noqa: S101
 
 
 def test_fractional_window_end_is_rounded_up():
@@ -206,7 +171,6 @@ def test_fractional_window_end_is_rounded_up():
     query = build_logging_query(
         _signatures(end_date="2026-11-03T14:10:00.5Z", source_ipv4_address="1.1.1.1"),
         "sysmon",
-        50,
     )
 
     # Assert
@@ -222,35 +186,11 @@ def test_zero_fraction_is_not_rounded_up():
     query = build_logging_query(
         _signatures(end_date="2026-11-03T14:10:00.000Z", source_ipv4_address="1.1.1.1"),
         "sysmon",
-        50,
     )
 
     # Assert
     assert isinstance(query, LoggingQuery)  # noqa: S101
     assert query.latest == END_EPOCH  # noqa: S101
-
-
-def test_like_wildcards_are_literal_in_the_ranking():
-    """The marker is matched literally: "_" and "%" are not wildcards."""
-    # Act
-    query = build_logging_query(_signatures(parent_process_name="a_b%"), "sysmon", 50)
-
-    # Assert
-    assert isinstance(query, LoggingQuery)  # noqa: S101
-    assert "like(" not in query.spl  # noqa: S101
-    assert 'match(lower(_raw), "a_b%"), 2' in query.spl  # noqa: S101
-
-
-def test_target_ip_only_gets_the_lowest_rank():
-    """With only target IPs, every event has the same rank."""
-    # Act
-    query = build_logging_query(
-        _signatures(target_ipv4_address="10.0.0.2"), "sysmon", 50
-    )
-
-    # Assert
-    assert isinstance(query, LoggingQuery)  # noqa: S101
-    assert "oaev_rank=case(1=1, 0)" in query.spl  # noqa: S101
 
 
 @pytest.mark.parametrize(
@@ -300,7 +240,7 @@ def test_target_ip_only_gets_the_lowest_rank():
 def test_unqueryable_expectations(signatures, reason):
     """No search is built without a window or without any signal."""
     # Act
-    query = build_logging_query(signatures, "sysmon", 50)
+    query = build_logging_query(signatures, "sysmon")
 
     # Assert
     assert query == Unqueryable(reason)  # noqa: S101
@@ -309,7 +249,7 @@ def test_unqueryable_expectations(signatures, reason):
 def test_no_index_is_unqueryable():
     """Without an index there is nothing to search."""
     # Act
-    query = build_logging_query(_signatures(source_ipv4_address="10.0.0.1"), None, 50)
+    query = build_logging_query(_signatures(source_ipv4_address="10.0.0.1"), None)
 
     # Assert
     assert query == Unqueryable("no Logging index configured")  # noqa: S101
@@ -325,13 +265,12 @@ def test_detection_template_is_unchanged():
 
 
 def test_custom_template_receives_every_value():
-    """A custom template gets the window, the signals and the row cap."""
+    """A custom template gets the window and the signals."""
     # Arrange
     template = (
         "search index IN ({indexes}) earliest={earliest} latest={latest} "
         "(src_ip IN ({source_ips}) OR dest_ip IN ({target_ips})) "
-        "| head {max_rows} "
-        "| eval oaev_event_epoch=_time | table oaev_event_epoch, index, _raw"
+        "| table _time, index, _raw"
     )
     signatures = _signatures(
         parent_process_name=MARKER,
@@ -340,7 +279,7 @@ def test_custom_template_receives_every_value():
     )
 
     # Act
-    query = build_logging_query(signatures, "sysmon,net*", 20, template)
+    query = build_logging_query(signatures, "sysmon,net*", template)
 
     # Assert
     assert isinstance(query, LoggingQuery)  # noqa: S101
@@ -348,7 +287,7 @@ def test_custom_template_receives_every_value():
         f"search index IN (sysmon,net*) earliest={START_EPOCH} "
         f"latest={END_EPOCH + 1} "
         '(src_ip IN ("192.168.56.10") OR dest_ip IN ("192.168.56.1")) '
-        "| head 20 | eval oaev_event_epoch=_time | table oaev_event_epoch, index, _raw"
+        "| table _time, index, _raw"
     )
     # The window and signals the matcher uses do not depend on the template.
     assert query.earliest == START_EPOCH  # noqa: S101
@@ -361,9 +300,8 @@ def test_custom_template_empty_list_matches_nothing():
     query = build_logging_query(
         _signatures(source_ipv4_address="10.0.0.1"),
         "sysmon",
-        50,
         "earliest={earliest} latest={latest} dest_ip IN ({target_ips}) "
-        "| eval oaev_event_epoch=_time",
+        "| table _time, index, _raw",
     )
 
     # Assert
@@ -384,7 +322,7 @@ def test_custom_template_starts_with_a_command(template, expected_start):
     """A template without a leading command gets "search" in front of it."""
     # Act
     query = build_logging_query(
-        _signatures(source_ipv4_address="10.0.0.1"), "sysmon", 50, template
+        _signatures(source_ipv4_address="10.0.0.1"), "sysmon", template
     )
 
     # Assert
@@ -399,7 +337,7 @@ def test_builder_fills_exactly_the_allowed_placeholders():
 
     # Act: an unfilled placeholder would raise KeyError here.
     query = build_logging_query(
-        _signatures(parent_process_name=MARKER), "sysmon", 50, template
+        _signatures(parent_process_name=MARKER), "sysmon", template
     )
 
     # Assert

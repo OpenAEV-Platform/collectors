@@ -7,8 +7,8 @@ that an error can never be mistaken for "no event found".
 """
 
 import logging
-import math
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Any
 
 from .models import LoggingEvent
@@ -91,8 +91,8 @@ LoggingFetchResult = (
 def parse_logging_rows(results: list[Any]) -> tuple[list[LoggingEvent], int]:
     """Turn the rows of a Logging search into events.
 
-    A row needs a numeric ``oaev_event_epoch``, an ``index`` and a ``_raw``
-    text. A row without them is skipped and counted, so one bad row does not
+    A row needs a ``_time`` (ISO date, as Splunk returns it), an ``index``
+    and a ``_raw`` text. A row without them is skipped and counted, so one bad row does not
     hide the others.
 
     Args:
@@ -120,12 +120,12 @@ def _parse_row(row: Any) -> LoggingEvent | None:
     if not isinstance(row, dict):
         return None
     try:
-        event_epoch = float(row.get("oaev_event_epoch"))  # type: ignore[arg-type]
+        event_epoch = datetime.fromisoformat(row.get("_time")).timestamp()  # type: ignore[arg-type]
     except TypeError, ValueError:
         return None
     index = row.get("index")
     raw = row.get("_raw")
-    if not math.isfinite(event_epoch) or not isinstance(index, str) or not index:
+    if not isinstance(index, str) or not index:
         return None
     if not isinstance(raw, str) or not raw:
         return None
