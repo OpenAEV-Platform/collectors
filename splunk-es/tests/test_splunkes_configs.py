@@ -1,6 +1,7 @@
 """Tests for the Splunk ES configuration model."""
 
 import logging
+import re
 from datetime import timedelta
 
 import pytest
@@ -183,3 +184,80 @@ def test_logging_settings_leave_detection_settings_unchanged(
     assert config.model_dump(exclude=logging_fields) == (  # noqa: S101
         without_logging.model_dump(exclude=logging_fields)
     )
+
+
+VALID_LOGGING_TEMPLATE = (
+    "index IN ({indexes}) sourcetype=XmlWinEventLog* earliest={earliest} "
+    "latest={latest} ({terms}) | eval oaev_event_epoch=_time "
+    "| table oaev_event_epoch, index, _raw"
+)
+
+
+@pytest.mark.parametrize("blank", ["", "   "], ids=["empty", "spaces"])
+def test_blank_logging_query_template_uses_the_built_in_search(
+    monkeypatch, required_env, blank
+):  # type: ignore
+    """An empty Logging template means "use the built-in search"."""
+    # Arrange
+    monkeypatch.setenv("SPLUNKES_LOGGING_QUERY_TEMPLATE", blank)
+
+    # Act
+    config = _ConfigLoaderSplunkES()
+
+    # Assert
+    assert config.logging_query_template is None  # noqa: S101
+
+
+def test_valid_logging_query_template_is_kept(
+    monkeypatch, required_env
+):  # type: ignore
+    """A Logging template with known placeholders and the event time loads."""
+    # Arrange
+    monkeypatch.setenv("SPLUNKES_LOGGING_QUERY_TEMPLATE", VALID_LOGGING_TEMPLATE)
+
+    # Act
+    config = _ConfigLoaderSplunkES()
+
+    # Assert
+    assert config.logging_query_template == VALID_LOGGING_TEMPLATE  # noqa: S101
+
+
+@pytest.mark.parametrize(
+    "template, message",
+    [
+        (
+            VALID_LOGGING_TEMPLATE.replace("{terms}", "{hostnames}"),
+            "Unknown placeholders",
+        ),
+        (
+            VALID_LOGGING_TEMPLATE.replace("{terms}", "{terms.__class__}"),
+            "Unknown placeholders",
+        ),
+        (
+            VALID_LOGGING_TEMPLATE.replace("latest={latest} ", ""),
+            "must use ['latest']",
+        ),
+        (
+            VALID_LOGGING_TEMPLATE.replace("oaev_event_epoch", "_time"),
+            "must return the event time",
+        ),
+        (VALID_LOGGING_TEMPLATE + " | eval x={", "not a valid template"),
+    ],
+    ids=[
+        "unknown-placeholder",
+        "attribute-access",
+        "no-window",
+        "no-event-time",
+        "broken-brace",
+    ],
+)
+def test_invalid_logging_query_template_is_rejected(
+    monkeypatch, required_env, template, message
+):  # type: ignore
+    """A Logging template the collector cannot run or read stops startup."""
+    # Arrange
+    monkeypatch.setenv("SPLUNKES_LOGGING_QUERY_TEMPLATE", template)
+
+    # Act / Assert
+    with pytest.raises(ValidationError, match=re.escape(message)):
+        _ConfigLoaderSplunkES()

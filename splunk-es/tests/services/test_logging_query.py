@@ -3,6 +3,7 @@
 import re
 
 import pytest
+from src.models.configs.splunkes_configs import LOGGING_TEMPLATE_PLACEHOLDERS
 from src.services.client_api import DEFAULT_QUERY_TEMPLATE
 from src.services.logging_query import (
     LoggingQuery,
@@ -321,3 +322,87 @@ def test_detection_template_is_unchanged():
     assert "earliest={start_date} latest={end_date}" in (  # noqa: S101
         DEFAULT_QUERY_TEMPLATE
     )
+
+
+def test_custom_template_receives_every_value():
+    """A custom template gets the window, the signals and the row cap."""
+    # Arrange
+    template = (
+        "search index IN ({indexes}) earliest={earliest} latest={latest} "
+        "(ParentImage IN ({markers}) OR src_ip IN ({source_ips}) "
+        "OR dest_ip IN ({target_ips})) | head {max_rows} "
+        "| eval oaev_event_epoch=_time | table oaev_event_epoch, index, _raw"
+    )
+    signatures = _signatures(
+        parent_process_name=MARKER,
+        source_ipv4_address="192.168.56.10",
+        target_ipv4_address="192.168.56.1",
+    )
+
+    # Act
+    query = build_logging_query(signatures, ["sysmon", "net*"], 20, template)
+
+    # Assert
+    assert isinstance(query, LoggingQuery)  # noqa: S101
+    assert query.spl == (  # noqa: S101
+        f"search index IN (sysmon,net*) earliest={START_EPOCH} "
+        f"latest={END_EPOCH + 1} "
+        f'(ParentImage IN ("{MARKER}","{MARKER_URL}") '
+        'OR src_ip IN ("192.168.56.10") OR dest_ip IN ("192.168.56.1")) '
+        "| head 20 | eval oaev_event_epoch=_time | table oaev_event_epoch, index, _raw"
+    )
+    # The window and signals the matcher uses do not depend on the template.
+    assert query.earliest == START_EPOCH  # noqa: S101
+    assert query.marker_values == [MARKER, MARKER_URL]  # noqa: S101
+
+
+def test_custom_template_empty_list_matches_nothing():
+    """An empty signal list is written as "", never as a wildcard."""
+    # Act
+    query = build_logging_query(
+        _signatures(source_ipv4_address="10.0.0.1"),
+        ["sysmon"],
+        50,
+        "earliest={earliest} latest={latest} dest_ip IN ({target_ips}) "
+        "| eval oaev_event_epoch=_time",
+    )
+
+    # Assert
+    assert isinstance(query, LoggingQuery)  # noqa: S101
+    assert 'dest_ip IN ("")' in query.spl  # noqa: S101
+
+
+@pytest.mark.parametrize(
+    "template, expected_start",
+    [
+        ("index=sysmon earliest={earliest} latest={latest}", "search index=sysmon "),
+        ("search index=sysmon earliest={earliest} latest={latest}", "search index="),
+        ("| tstats count where earliest={earliest} latest={latest}", "| tstats "),
+    ],
+    ids=["no-command", "search", "generating-command"],
+)
+def test_custom_template_starts_with_a_command(template, expected_start):
+    """A template without a leading command gets "search" in front of it."""
+    # Act
+    query = build_logging_query(
+        _signatures(source_ipv4_address="10.0.0.1"), ["sysmon"], 50, template
+    )
+
+    # Assert
+    assert isinstance(query, LoggingQuery)  # noqa: S101
+    assert query.spl.startswith(expected_start)  # noqa: S101
+
+
+def test_builder_fills_exactly_the_allowed_placeholders():
+    """The config allows exactly the placeholders the builder fills."""
+    # Arrange
+    template = " ".join(f"{{{name}}}" for name in sorted(LOGGING_TEMPLATE_PLACEHOLDERS))
+
+    # Act: an unfilled placeholder would raise KeyError here.
+    query = build_logging_query(
+        _signatures(parent_process_name=MARKER), ["sysmon"], 50, template
+    )
+
+    # Assert
+    assert isinstance(query, LoggingQuery)  # noqa: S101
+    assert "{" not in query.spl.replace("{{", "")  # noqa: S101

@@ -19,8 +19,11 @@ TARGET_IP_SIGNATURE_TYPES = ("target_ipv4_address", "target_ipv6_address")
 START_DATE_SIGNATURE_TYPE = "start_date"
 END_DATE_SIGNATURE_TYPE = "end_date"
 
-# The Logging search, kept apart from the Detection query template. To be
-# validated on a real Splunk ES:
+# The built-in Logging search, kept apart from the Detection query template.
+# SPLUNKES_LOGGING_QUERY_TEMPLATE can replace it, with the same placeholders
+# (see LOGGING_TEMPLATE_PLACEHOLDERS in the Splunk ES config). It is a
+# full-text search: it needs no extracted field, so it works on any index. To
+# be validated on a real Splunk ES:
 # - events are ranked like the matcher ranks signals (marker, then source IP,
 #   then target IP) and only the best rows are kept, so the row cap never drops
 #   a stronger event behind weaker ones. "sort <max_rows>" keeps only those
@@ -80,13 +83,14 @@ def build_logging_query(
     signatures: Iterable[Mapping[str, str]],
     indexes: list[str],
     max_rows: int,
+    template: str | None = None,
 ) -> LoggingQuery | Unqueryable:
     """Build the Logging search of one LOGGING expectation.
 
-    The search looks in the raw-event indexes, inside the inject window, for
-    events that contain the marker (or its callback URL) OR one of the source
-    or target IPs. The host name is not a signal: Splunk's ``host`` is often
-    the log forwarder, not the machine that ran the inject.
+    The built-in search looks in the raw-event indexes, inside the inject
+    window, for events that contain the marker (or its callback URL) OR one of
+    the source or target IPs. The host name is not a signal: Splunk's ``host``
+    is often the log forwarder, not the machine that ran the inject.
 
     Args:
         signatures: The expectation's signatures, as ``{"type", "value"}``
@@ -94,6 +98,8 @@ def build_logging_query(
         indexes: Validated raw-event index names (letters, digits, ``_``,
             ``-`` and ``*`` only; see the Splunk ES config).
         max_rows: Maximum number of events the search returns.
+        template: A custom search (``SPLUNKES_LOGGING_QUERY_TEMPLATE``),
+            already checked by the config, or None for the built-in one.
 
     Returns:
         The search, or ``Unqueryable`` when the expectation has no end date,
@@ -138,15 +144,24 @@ def build_logging_query(
     terms = " OR ".join(
         _quote(value) for value in _unique([*marker_values, *source_ips, *target_ips])
     )
-    spl = LOGGING_QUERY_TEMPLATE.format(
-        indexes=",".join(indexes),
-        earliest=earliest,
-        # Splunk's latest is exclusive; the window's end is inclusive.
-        latest=latest + 1,
-        terms=terms,
-        rank_cases=_rank_cases(marker_values, source_ips),
-        max_rows=max_rows,
+    spl = (template or LOGGING_QUERY_TEMPLATE).format_map(
+        {
+            "indexes": ",".join(indexes),
+            "earliest": earliest,
+            # Splunk's latest is exclusive; the window's end is inclusive.
+            "latest": latest + 1,
+            "terms": terms,
+            "markers": _quoted_list(marker_values),
+            "source_ips": _quoted_list(source_ips),
+            "target_ips": _quoted_list(target_ips),
+            "rank_cases": _rank_cases(marker_values, source_ips),
+            "max_rows": max_rows,
+        }
     )
+    # The search API needs a generating command first; a custom template may
+    # be written like the Detection one, without it.
+    if not spl.lstrip().startswith(("search ", "|")):
+        spl = f"search {spl}"
     return LoggingQuery(
         spl=spl,
         marker_values=marker_values,
@@ -180,6 +195,17 @@ def _marker_values(markers: list[str]) -> list[str]:
         if uuids:
             values.append(parser.build_url_path(*uuids))
     return _unique(values)
+
+
+def _quoted_list(values: list[str]) -> str:
+    """Write values as a quoted, comma-separated list for SPL ``IN (...)``.
+
+    An empty list gives ``""``, which matches nothing, so a template such as
+    ``src_ip IN ({source_ips})`` never turns into "any source IP".
+    """
+    if not values:
+        return '""'
+    return ",".join(_quote(value) for value in values)
 
 
 def _unique(values: Iterable[str]) -> list[str]:

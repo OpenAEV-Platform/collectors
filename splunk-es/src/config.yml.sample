@@ -26,6 +26,11 @@ splunk_es:
   # logging_enabled: true
   # logging_indexes: "sysmon,wineventlog"
   # logging_max_rows: 50
+  # Optional: replace the built-in Logging search. Placeholders: {indexes},
+  # {earliest}, {latest}, {terms}, {markers}, {source_ips}, {target_ips},
+  # {rank_cases}, {max_rows}. Must use {earliest} and {latest} and return
+  # oaev_event_epoch, index and _raw.
+  # logging_query_template: "search index IN ({indexes}) sourcetype=XmlWinEventLog* earliest={earliest} latest={latest} ({terms}) | eval oaev_rank=case({rank_cases}) | sort {max_rows} -oaev_rank, +_time | eval oaev_event_epoch=_time | table oaev_event_epoch, index, host, sourcetype, _raw"
   # Signature matching happens after the fetch (raw-text regex on _raw); the
   # query only filters on IPs, hostnames, and the time window.
   # Allowed placeholders: {alerts_index}, {source_ips}, {target_ips},

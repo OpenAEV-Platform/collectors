@@ -3,6 +3,7 @@
 import json
 import logging
 import re
+import string
 from datetime import timedelta
 from typing import Annotated, Optional
 
@@ -16,6 +17,26 @@ LOG_PREFIX = "[SplunkESConfig]"
 # A Splunk index name, optionally with "*" wildcards. Anything else (spaces,
 # quotes, pipes, brackets, "=") could change the meaning of the Logging search.
 _INDEX_NAME_RE = re.compile(r"^[A-Za-z0-9_*-]+$")
+
+# Placeholders a custom Logging query template can use. The query builder
+# fills every one of them (see services/logging_query.py).
+LOGGING_TEMPLATE_PLACEHOLDERS = frozenset(
+    {
+        "indexes",
+        "earliest",
+        "latest",
+        "terms",
+        "markers",
+        "source_ips",
+        "target_ips",
+        "rank_cases",
+        "max_rows",
+    }
+)
+# The window keeps a custom search from reading every event ever indexed.
+LOGGING_TEMPLATE_REQUIRED_PLACEHOLDERS = frozenset({"earliest", "latest"})
+# The collector reads the event time from this field (see logging_fetch.py).
+LOGGING_TEMPLATE_EVENT_TIME_FIELD = "oaev_event_epoch"
 
 
 class _ConfigLoaderSplunkES(ConfigBaseSettings):
@@ -86,6 +107,16 @@ class _ConfigLoaderSplunkES(ConfigBaseSettings):
         "expectations (e.g. sysmon,wineventlog). No default: required when "
         "SPLUNKES_LOGGING_ENABLED is true.",
     )
+    logging_query_template: Optional[str] = Field(
+        alias="SPLUNKES_LOGGING_QUERY_TEMPLATE",
+        default=None,
+        description="SPL template of the Logging search, to adapt it to your "
+        "data (sourcetypes, data models, field names). Placeholders: {indexes}, "
+        "{earliest}, {latest}, {terms}, {markers}, {source_ips}, {target_ips}, "
+        "{rank_cases}, {max_rows}. Must use {earliest} and {latest} and return "
+        "oaev_event_epoch, index and _raw. Leave empty to use the built-in "
+        "search.",
+    )
     logging_max_rows: int = Field(
         alias="SPLUNKES_LOGGING_MAX_ROWS",
         default=50,
@@ -101,6 +132,7 @@ class _ConfigLoaderSplunkES(ConfigBaseSettings):
         "query_template",
         "logging_enabled",
         "logging_indexes",
+        "logging_query_template",
         "logging_max_rows",
         mode="before",
     )
@@ -164,6 +196,60 @@ class _ConfigLoaderSplunkES(ConfigBaseSettings):
             if name not in indexes:
                 indexes.append(name)
         return indexes
+
+    @field_validator("logging_query_template", mode="after")
+    @classmethod
+    def _check_logging_query_template(cls, value: Optional[str]) -> Optional[str]:
+        """Reject a Logging template the collector could not run or read.
+
+        The check runs at startup, so a typo stops the collector with a clear
+        message instead of failing every search later.
+
+        Args:
+            value: The template, or None for the built-in search.
+
+        Returns:
+            The template unchanged.
+
+        Raises:
+            ValueError: If the template uses an unknown placeholder, lacks
+                {earliest} or {latest}, or never sets oaev_event_epoch.
+
+        """
+        if value is None:
+            return value
+        try:
+            used = {
+                name
+                for _, name, _, _ in string.Formatter().parse(value)
+                if name is not None
+            }
+        except ValueError as e:
+            raise ValueError(
+                f"SPLUNKES_LOGGING_QUERY_TEMPLATE is not a valid template: {e}. "
+                "Write a literal brace as {{ or }}."
+            ) from e
+        unknown = used - LOGGING_TEMPLATE_PLACEHOLDERS
+        if unknown:
+            raise ValueError(
+                f"Unknown placeholders in SPLUNKES_LOGGING_QUERY_TEMPLATE: "
+                f"{sorted(unknown)}. Allowed: "
+                f"{sorted(LOGGING_TEMPLATE_PLACEHOLDERS)}"
+            )
+        missing = LOGGING_TEMPLATE_REQUIRED_PLACEHOLDERS - used
+        if missing:
+            raise ValueError(
+                f"SPLUNKES_LOGGING_QUERY_TEMPLATE must use {sorted(missing)}: "
+                "without the inject window the search reads every event."
+            )
+        if LOGGING_TEMPLATE_EVENT_TIME_FIELD not in value:
+            raise ValueError(
+                "SPLUNKES_LOGGING_QUERY_TEMPLATE must return the event time as "
+                f"{LOGGING_TEMPLATE_EVENT_TIME_FIELD}, e.g. "
+                f"'| eval {LOGGING_TEMPLATE_EVENT_TIME_FIELD}=_time | table "
+                f"{LOGGING_TEMPLATE_EVENT_TIME_FIELD}, index, host, sourcetype, _raw'"
+            )
+        return value
 
     @model_validator(mode="after")
     def _check_logging_indexes(self) -> "_ConfigLoaderSplunkES":
