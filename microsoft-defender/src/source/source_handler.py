@@ -44,6 +44,11 @@ class DefenderSourceHandler(SourceHandler):
         the size of the intersection does not influence the scoring
         (a.k.a. two match on SIG_TYPE_TARGET_IPV4_ADDRESS is the same value as a single match)
         """
+        relax_matching_keys = [
+            SignatureTypes.SIG_TYPE_PARENT_PROCESS_NAME,
+            SignatureTypes.SIG_TYPE_PROCESS_NAME,
+        ]
+
         weights = {
             SignatureTypes.SIG_TYPE_PARENT_PROCESS_NAME: 1,
             SignatureTypes.SIG_TYPE_PROCESS_NAME: 2 / 3,
@@ -61,7 +66,22 @@ class DefenderSourceHandler(SourceHandler):
                     if sig.get("value")
                 ]
                 alert_values = alert_data[key].get("data", [])
-                intersection = set(signature_values) & set(alert_values)
+
+                # case where a "a in b" is allowed for this signature types
+                if key in relax_matching_keys:
+                    intersection = False
+                    for alert_value in alert_values:
+                        for signature_value in signature_values:
+                            if signature_value in alert_value:
+                                intersection = True
+                                break
+                        # if the match has been found for current signature_value,
+                        # get out of the alert_value loop too
+                        if intersection:
+                            break
+                # case where a "a == b" is required for this signature types
+                else:
+                    intersection = set(signature_values) & set(alert_values)
 
                 if intersection:
                     score += weights.get(key, 1 / 3)

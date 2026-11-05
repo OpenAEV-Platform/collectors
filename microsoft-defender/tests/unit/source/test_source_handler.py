@@ -118,12 +118,14 @@ class TestDefenderSourceHandler(unittest.TestCase):
         self,
     ):
         """
-        Test case where the parent process match is enough to validate the match
+        Test case where the parent process match is enough to validate the match.
+        Also testing the relax matching case at the same type.
         """
-        value = "deadbeef"
+        signature_value = "deadbeef"
+        alert_value = "deadbeef.exe"
         sigtype = module.SignatureTypes.SIG_TYPE_PARENT_PROCESS_NAME
-        signature_groups = {sigtype: [{"type": sigtype, "value": value}]}
-        alert_data = {sigtype: {"data": [value]}}
+        signature_groups = {sigtype: [{"type": sigtype, "value": signature_value}]}
+        alert_data = {sigtype: {"data": [alert_value]}}
         oaev_detection_helper = MagicMock()
 
         match = module.DefenderSourceHandler.match_signature_groups_and_alert_data(
