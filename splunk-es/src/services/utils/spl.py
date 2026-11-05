@@ -11,7 +11,7 @@ def spl_string(value: str) -> str:
     return f'"{escaped}"'
 
 
-def spl_list(values: list[str], empty: str) -> str:
+def spl_list(values: list[str] | None, empty: str) -> str:
     """Write values as a quoted, comma-separated list for SPL ``IN (...)``.
 
     ``empty`` is written instead when there is no value: ``"*"`` matches

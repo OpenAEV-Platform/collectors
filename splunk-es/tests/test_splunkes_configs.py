@@ -1,7 +1,5 @@
 """Tests for the Splunk ES configuration model."""
 
-import logging
-import re
 from datetime import timedelta
 
 import pytest

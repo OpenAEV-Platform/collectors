@@ -847,7 +847,7 @@ class SplunkESClientAPI:
             # "*" when empty: a missing criterion must not filter anything out.
             source_ips_str = spl_list(search_criteria.source_ips, empty="*")
             target_ips_str = spl_list(search_criteria.target_ips, empty="*")
-            hostnames_str = spl_list(search_criteria.hostnames or [], empty="*")
+            hostnames_str = spl_list(search_criteria.hostnames, empty="*")
             time_window_seconds = int(self.time_window.total_seconds())
             earliest_seconds = time_window_seconds + extend_end_seconds
 
