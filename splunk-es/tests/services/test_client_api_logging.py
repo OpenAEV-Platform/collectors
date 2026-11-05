@@ -4,7 +4,11 @@ from unittest.mock import Mock, patch
 
 import pytest
 from requests.exceptions import ConnectionError, Timeout
-from src.services.client_api import SplunkESClientAPI
+from src.services.client_api import (
+    LOGGING_SEARCH_TIMEOUT_SECONDS,
+    SplunkESClientAPI,
+)
+from src.services.exception import SplunkESValidationError
 from src.services.logging_fetch import (
     LoggingApiError,
     LoggingAuthError,
@@ -429,3 +433,36 @@ def test_index_check_unexpected_rows_are_malformed(mock_post, client, rows):
     assert isinstance(  # noqa: S101
         client.check_logging_indexes("sysmon"), LoggingMalformed
     )
+
+
+@patch("requests.Session.post")
+def test_logging_search_waits_longer_than_detection(mock_post, client):
+    """Raw-event searches get their own, longer timeout."""
+    # Arrange
+    mock_post.return_value = _response(json_data={"results": []})
+
+    # Act
+    client.fetch_logging_events(QUERY)
+
+    # Assert
+    timeout = mock_post.call_args.kwargs["timeout"]
+    assert timeout == LOGGING_SEARCH_TIMEOUT_SECONDS > 30  # noqa: S101
+
+
+@pytest.mark.parametrize(
+    "template",
+    [
+        "index IN ({indexes}) ({hostnames}) | table _time, index, _raw",
+        "index IN ({indexes}) ({terms.__class__}) | table _time, index, _raw",
+    ],
+    ids=["unknown-placeholder", "attribute-access"],
+)
+def test_logging_template_with_unknown_placeholder_stops_the_client(template):
+    """An unknown placeholder in the Logging template fails at startup."""
+    # Arrange
+    config = create_test_config()
+    config.splunk_es.logging_query_template = template
+
+    # Act / Assert
+    with pytest.raises(SplunkESValidationError, match="Unknown placeholders"):
+        SplunkESClientAPI(config=config)

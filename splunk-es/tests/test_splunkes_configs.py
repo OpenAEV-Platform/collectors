@@ -76,7 +76,7 @@ def test_logging_indexes_are_kept_as_written(monkeypatch, required_env):  # type
     assert config.logging_indexes == "sysmon, win*"  # noqa: S101
 
 
-@pytest.mark.parametrize("indexes", [None, "", "  "])
+@pytest.mark.parametrize("indexes", [None, "", "  ", ",, "])
 def test_logging_enabled_without_index_fails(
     monkeypatch, required_env, indexes
 ):  # type: ignore
@@ -89,24 +89,6 @@ def test_logging_enabled_without_index_fails(
     # Act / Assert
     with pytest.raises(ValidationError, match="SPLUNKES_LOGGING_INDEXES is empty"):
         _ConfigLoaderSplunkES()
-
-
-@pytest.mark.parametrize("flag", ["false", ""])
-def test_logging_indexes_ignored_when_disabled(
-    monkeypatch, required_env, flag, caplog
-):  # type: ignore
-    """Indexes set while Logging is off are kept but reported as ignored."""
-    # Arrange
-    monkeypatch.setenv("SPLUNKES_LOGGING_ENABLED", flag)
-    monkeypatch.setenv("SPLUNKES_LOGGING_INDEXES", "sysmon")
-
-    # Act
-    with caplog.at_level(logging.INFO):
-        config = _ConfigLoaderSplunkES()
-
-    # Assert
-    assert config.logging_enabled is False  # noqa: S101
-    assert "the indexes are ignored" in caplog.text  # noqa: S101
 
 
 def test_logging_settings_leave_detection_settings_unchanged(
@@ -152,7 +134,7 @@ def test_blank_logging_query_template_uses_the_built_in_search(
 def test_valid_logging_query_template_is_kept(
     monkeypatch, required_env
 ):  # type: ignore
-    """A Logging template with known placeholders loads."""
+    """A Logging template is kept as written (the client checks it)."""
     # Arrange
     monkeypatch.setenv("SPLUNKES_LOGGING_QUERY_TEMPLATE", VALID_LOGGING_TEMPLATE)
 
@@ -161,34 +143,3 @@ def test_valid_logging_query_template_is_kept(
 
     # Assert
     assert config.logging_query_template == VALID_LOGGING_TEMPLATE  # noqa: S101
-
-
-@pytest.mark.parametrize(
-    "template, message",
-    [
-        (
-            VALID_LOGGING_TEMPLATE.replace("{terms}", "{hostnames}"),
-            "Unknown placeholders",
-        ),
-        (
-            VALID_LOGGING_TEMPLATE.replace("{terms}", "{terms.__class__}"),
-            "Unknown placeholders",
-        ),
-        (VALID_LOGGING_TEMPLATE + " | eval x={", "Single '{'"),
-    ],
-    ids=[
-        "unknown-placeholder",
-        "attribute-access",
-        "broken-brace",
-    ],
-)
-def test_invalid_logging_query_template_is_rejected(
-    monkeypatch, required_env, template, message
-):  # type: ignore
-    """A Logging template with a placeholder the builder does not fill stops startup."""
-    # Arrange
-    monkeypatch.setenv("SPLUNKES_LOGGING_QUERY_TEMPLATE", template)
-
-    # Act / Assert
-    with pytest.raises(ValidationError, match=re.escape(message)):
-        _ConfigLoaderSplunkES()

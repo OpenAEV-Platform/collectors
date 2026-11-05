@@ -1,9 +1,9 @@
 """Tests for the Splunk ES Logging query builder."""
 
 import pytest
-from src.models.configs.splunkes_configs import LOGGING_TEMPLATE_PLACEHOLDERS
 from src.services.client_api import DEFAULT_QUERY_TEMPLATE
 from src.services.logging_query import (
+    LOGGING_TEMPLATE_PLACEHOLDERS,
     LoggingQuery,
     Unqueryable,
     build_logging_query,
@@ -311,8 +311,10 @@ def test_custom_template_empty_list_matches_nothing():
         ("index=sysmon earliest={earliest} latest={latest}", "search index=sysmon "),
         ("search index=sysmon earliest={earliest} latest={latest}", "search index="),
         ("| tstats count where earliest={earliest} latest={latest}", "| tstats "),
+        ("Search index=sysmon earliest={earliest} latest={latest}", "Search index="),
+        ("\nsearch index=sysmon earliest={earliest} latest={latest}", "\nsearch "),
     ],
-    ids=["no-command", "search", "generating-command"],
+    ids=["no-command", "search", "generating-command", "capital", "newline"],
 )
 def test_custom_template_starts_with_a_command(template, expected_start):
     """A template without a leading command gets "search" in front of it."""
@@ -327,7 +329,7 @@ def test_custom_template_starts_with_a_command(template, expected_start):
 
 
 def test_builder_fills_exactly_the_allowed_placeholders():
-    """The config allows exactly the placeholders the builder fills."""
+    """The client allows exactly the placeholders the builder fills."""
     # Arrange
     template = " ".join(f"{{{name}}}" for name in sorted(LOGGING_TEMPLATE_PLACEHOLDERS))
 

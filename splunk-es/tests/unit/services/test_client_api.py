@@ -23,6 +23,7 @@ class TestSplunkESClientAPI(unittest.TestCase):
         config_splunk_es.max_retry = sentinel.max_retry
         config_splunk_es.time_window = None
         config_splunk_es.query_template = None
+        config_splunk_es.logging_query_template = None
         config.splunk_es = config_splunk_es
 
         client_api = module.SplunkESClientAPI(config)
@@ -58,6 +59,7 @@ class TestSplunkESClientAPI(unittest.TestCase):
         config_splunk_es.max_retry = sentinel.max_retry
         config_splunk_es.time_window = sentinel.time_window
         config_splunk_es.query_template = "index={alerts_index} | table _time"
+        config_splunk_es.logging_query_template = None
         config.splunk_es = config_splunk_es
 
         client_api = module.SplunkESClientAPI(config)

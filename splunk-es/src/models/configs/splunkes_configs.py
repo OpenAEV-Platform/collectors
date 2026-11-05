@@ -1,28 +1,11 @@
 """Configuration for SplunkES integration."""
 
-import logging
-import string
 from datetime import timedelta
 from typing import Optional
 
 from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_core import PydanticUseDefault
 from src.models.configs import ConfigBaseSettings
-
-LOG_PREFIX = "[SplunkESConfig]"
-
-# Placeholders a custom Logging query template can use. The query builder
-# fills every one of them (see services/logging_query.py).
-LOGGING_TEMPLATE_PLACEHOLDERS = frozenset(
-    {
-        "indexes",
-        "earliest",
-        "latest",
-        "terms",
-        "source_ips",
-        "target_ips",
-    }
-)
 
 
 class _ConfigLoaderSplunkES(ConfigBaseSettings):
@@ -127,30 +110,8 @@ class _ConfigLoaderSplunkES(ConfigBaseSettings):
             raise PydanticUseDefault()
         return value
 
-    @field_validator("logging_query_template", mode="after")
-    @classmethod
-    def _check_logging_query_template(cls, value: Optional[str]) -> Optional[str]:
-        """Reject a Logging template with an unknown placeholder, at startup.
-
-        Raises:
-            ValueError: If the template uses a placeholder the builder does
-                not fill, or has an unpaired brace.
-
-        """
-        if value is None:
-            return value
-        parsed = string.Formatter().parse(value)
-        used = {name for _, name, _, _ in parsed if name is not None}
-        unknown = used - LOGGING_TEMPLATE_PLACEHOLDERS
-        if unknown:
-            raise ValueError(
-                f"Unknown placeholders in SPLUNKES_LOGGING_QUERY_TEMPLATE: "
-                f"{sorted(unknown)}. Allowed: {sorted(LOGGING_TEMPLATE_PLACEHOLDERS)}"
-            )
-        return value
-
     @model_validator(mode="after")
-    def _check_logging_indexes(self) -> "_ConfigLoaderSplunkES":
+    def _require_logging_indexes(self) -> "_ConfigLoaderSplunkES":
         """Require at least one index when Logging is enabled.
 
         There is no default index on purpose: searching the wrong one would
@@ -160,15 +121,10 @@ class _ConfigLoaderSplunkES(ConfigBaseSettings):
             ValueError: If Logging is enabled without any index.
 
         """
-        if self.logging_enabled and not self.logging_indexes:
+        if self.logging_enabled and not (self.logging_indexes or "").strip(", "):
             raise ValueError(
                 "SPLUNKES_LOGGING_ENABLED is true but SPLUNKES_LOGGING_INDEXES "
                 "is empty: set the raw-event indexes to search, e.g. "
                 "SPLUNKES_LOGGING_INDEXES=sysmon,wineventlog"
-            )
-        if not self.logging_enabled and self.logging_indexes:
-            logging.getLogger(__name__).info(
-                f"{LOG_PREFIX} SPLUNKES_LOGGING_INDEXES is set but "
-                "SPLUNKES_LOGGING_ENABLED is not true: the indexes are ignored"
             )
         return self

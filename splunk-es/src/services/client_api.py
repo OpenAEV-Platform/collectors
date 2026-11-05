@@ -34,15 +34,19 @@ from .logging_fetch import (
     LoggingRows,
     parse_logging_rows,
 )
-from .logging_query import LoggingQuery
+from .logging_query import LOGGING_TEMPLATE_PLACEHOLDERS, LoggingQuery
 from .models import SplunkESAlert, SplunkESResponse, SplunkESSearchCriteria
 from .utils.epoch import to_epoch
+from .utils.spl import spl_list
 
 LOG_PREFIX = "[SplunkESClientAPI]"
 
 
 DEFAULT_TIME_WINDOW_HOURS = 1
 REQUEST_TIMEOUT_SECONDS = 30
+# Raw-event indexes are much bigger than the notable index: a Logging search
+# can take longer than a Detection one before Splunk sends its answer.
+LOGGING_SEARCH_TIMEOUT_SECONDS = 120
 MAX_RETRIES = 3
 
 DEFAULT_QUERY_TEMPLATE = (
@@ -184,6 +188,12 @@ class SplunkESClientAPI:
                 "default query template"
             )
 
+        logging_template = self.config.splunk_es.logging_query_template
+        if logging_template:
+            self._validate_template_placeholders(
+                logging_template, LOGGING_TEMPLATE_PLACEHOLDERS
+            )
+
         try:
             self.session = self._create_session()
         except Exception as e:
@@ -191,11 +201,15 @@ class SplunkESClientAPI:
 
         self.logger.info(f"{LOG_PREFIX} Splunk ES API client initialized successfully")
 
-    def _validate_template_placeholders(self, template: str) -> None:
+    def _validate_template_placeholders(
+        self, template: str, allowed: frozenset[str] | set[str] = ALLOWED_PLACEHOLDERS
+    ) -> None:
         """Validate that a custom query template only uses allowed placeholders.
 
         Args:
             template: The query template string to validate.
+            allowed: The placeholders the template may use (Detection ones by
+                default).
 
         Raises:
             SplunkESValidationError: If unknown placeholders are found.
@@ -207,11 +221,11 @@ class SplunkESClientAPI:
             for _, field_name, _, _ in formatter.parse(template)
             if field_name is not None
         }
-        unknown = used_placeholders - ALLOWED_PLACEHOLDERS
+        unknown = used_placeholders - allowed
         if unknown:
             raise SplunkESValidationError(
                 f"Unknown placeholders in query template: {unknown}. "
-                f"Allowed: {sorted(ALLOWED_PLACEHOLDERS)}"
+                f"Allowed: {sorted(allowed)}"
             )
 
     def _create_session(self) -> requests.Session:
@@ -439,12 +453,15 @@ class SplunkESClientAPI:
         except Exception as e:
             raise SplunkESQueryError(f"Unexpected error executing query: {e}") from e
 
-    def _post_oneshot_search(self, search: str, count: str) -> requests.Response:
+    def _post_oneshot_search(
+        self, search: str, count: str, timeout: int = REQUEST_TIMEOUT_SECONDS
+    ) -> requests.Response:
         """Run one blocking (oneshot) Splunk search and return the raw response.
 
         Args:
             search: The full search, starting with ``search``.
             count: Maximum number of results, ``"0"`` for no limit.
+            timeout: Seconds to wait for Splunk to answer.
 
         Returns:
             The HTTP response; the caller checks its status.
@@ -457,7 +474,7 @@ class SplunkESClientAPI:
             "output_mode": "json",
             "count": count,
         }
-        return self.session.post(endpoint, data=params, timeout=REQUEST_TIMEOUT_SECONDS)
+        return self.session.post(endpoint, data=params, timeout=timeout)
 
     def fetch_logging_events(self, query: LoggingQuery) -> LoggingFetchResult:
         """Run the Logging search of one expectation, once.
@@ -565,7 +582,9 @@ class SplunkESClientAPI:
 
         """
         try:
-            response = self._post_oneshot_search(search, count=count)
+            response = self._post_oneshot_search(
+                search, count=count, timeout=LOGGING_SEARCH_TIMEOUT_SECONDS
+            )
         except RequestException as e:
             # Timeout and ConnectionError are RequestException too.
             self.logger.warning(f"{LOG_PREFIX} Logging search failed: {e}")
@@ -825,9 +844,10 @@ class SplunkESClientAPI:
 
         """
         try:
-            source_ips_str = self._build_ip_list(search_criteria.source_ips)
-            target_ips_str = self._build_ip_list(search_criteria.target_ips)
-            hostnames_str = self._build_ip_list(search_criteria.hostnames or [])
+            # "*" when empty: a missing criterion must not filter anything out.
+            source_ips_str = spl_list(search_criteria.source_ips, empty="*")
+            target_ips_str = spl_list(search_criteria.target_ips, empty="*")
+            hostnames_str = spl_list(search_criteria.hostnames or [], empty="*")
             time_window_seconds = int(self.time_window.total_seconds())
             earliest_seconds = time_window_seconds + extend_end_seconds
 
@@ -877,26 +897,6 @@ class SplunkESClientAPI:
             raise SplunkESValidationError(f"Invalid query template: {e}") from e
         except Exception as e:
             raise SplunkESValidationError(f"Failed to build SPL query: {e}") from e
-
-    @staticmethod
-    def _build_ip_list(ips: list[str]) -> str:
-        """Build a quoted comma-separated value list for Splunk IN operator.
-
-        Values (IP addresses or hostnames) are wrapped in double quotes for
-        SPL; embedded double quotes are backslash-escaped so freer-form
-        values such as attacker-influenced hostnames cannot break out of
-        the string literal (SPL quote injection).
-
-        Args:
-            ips: List of values to quote.
-
-        Returns:
-            Quoted CSV string for Splunk IN(), or "*" if empty.
-
-        """
-        if not ips:
-            return "*"
-        return ",".join(f'"{ip.replace(chr(34), chr(92) + chr(34))}"' for ip in ips)
 
 
 def _short_text(text: str, limit: int = 200) -> str:

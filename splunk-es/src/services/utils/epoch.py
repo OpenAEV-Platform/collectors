@@ -1,11 +1,12 @@
 """Convert OpenAEV timestamps to the epoch values Splunk expects."""
 
+import math
 import re
 from datetime import datetime
 
 
-def to_epoch(value: str | None) -> int | None:
-    """Convert an ISO-8601 timestamp to a Unix epoch integer for Splunk.
+def _epoch_seconds(value: str | None) -> float | None:
+    """Parse an ISO-8601 timestamp or an epoch string to epoch seconds.
 
     Splunk's ``earliest``/``latest`` search modifiers accept epoch or the
     ``%m/%d/%Y:%H:%M:%S`` format only - they do NOT parse ISO-8601 strings
@@ -13,50 +14,35 @@ def to_epoch(value: str | None) -> int | None:
     in OpenAEV expectation signatures). Passing those verbatim silently
     breaks the time bounds and the search returns 0 results.
 
-    Args:
-        value: ISO-8601 timestamp (optionally with ``Z`` / nanoseconds), an
-            epoch string, or None.
-
     Returns:
-        Epoch seconds as int, or None if empty / already relative /
-        unparseable (the caller then falls back to a relative window).
+        Epoch seconds, or None if empty / already relative / unparseable
+        (the caller then falls back to a relative window).
 
     """
-    if not value:
+    text = str(value or "").strip()
+    if not text or text[0] in "+-":
         return None
-    s = str(value).strip()
-    if not s or s.startswith("-") or s.startswith("+"):
-        return None
-    if s.isdigit():
-        return int(s)
-    # Normalise 'Z' to a numeric offset and trim fractional seconds to the
-    # 6 digits datetime.fromisoformat supports (drops nanoseconds).
-    s = s.replace("Z", "+00:00")
-    s = re.sub(r"(\.\d{6})\d+", r"\1", s)
+    if text.isdigit():
+        return float(text)
+    # datetime.fromisoformat reads at most 6 fraction digits (no nanoseconds).
+    text = re.sub(r"(\.\d{6})\d+", r"\1", text.replace("Z", "+00:00"))
     try:
-        return int(datetime.fromisoformat(s).timestamp())
+        return datetime.fromisoformat(text).timestamp()
     except ValueError:
         return None
 
 
+def to_epoch(value: str | None) -> int | None:
+    """Convert a timestamp to epoch seconds for Splunk, rounding down."""
+    seconds = _epoch_seconds(value)
+    return None if seconds is None else math.floor(seconds)
+
+
 def to_epoch_ceil(value: str | None) -> int | None:
-    """Convert a timestamp to epoch seconds, rounding a fraction up.
+    """Convert a timestamp to epoch seconds, rounding up.
 
-    ``to_epoch`` drops the fraction of a second. For the end of a window that
-    would cut its last fraction (``10:00:00.9`` would end at ``10:00:00``), so
-    the end is rounded up instead.
-
-    Args:
-        value: ISO-8601 timestamp, an epoch string, or None.
-
-    Returns:
-        Epoch seconds rounded up, or None like ``to_epoch``.
-
+    For the end of a window: ``10:00:00.9`` ends at ``10:00:01``, never cutting
+    the last fraction of a second.
     """
-    epoch = to_epoch(value)
-    if epoch is None:
-        return None
-    fraction = re.search(r"\.(\d+)", str(value))
-    if fraction and int(fraction.group(1)) > 0:
-        return epoch + 1
-    return epoch
+    seconds = _epoch_seconds(value)
+    return None if seconds is None else math.ceil(seconds)

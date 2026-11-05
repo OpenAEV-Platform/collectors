@@ -11,6 +11,7 @@ from typing import Iterable, Mapping
 
 from .utils.epoch import to_epoch, to_epoch_ceil
 from .utils.parent_process_parser import ParentProcessParser
+from .utils.spl import spl_list, spl_string
 
 MARKER_SIGNATURE_TYPE = "parent_process_name"
 SOURCE_IP_SIGNATURE_TYPES = ("source_ipv4_address", "source_ipv6_address")
@@ -20,10 +21,13 @@ END_DATE_SIGNATURE_TYPE = "end_date"
 
 # The built-in Logging search: a full-text search, so it needs no extracted
 # field. Every event of the window is returned; the matcher picks the best one.
-# SPLUNKES_LOGGING_QUERY_TEMPLATE can replace it.
+# SPLUNKES_LOGGING_QUERY_TEMPLATE can replace it, with these placeholders.
 LOGGING_QUERY_TEMPLATE = (
     "search index IN ({indexes}) earliest={earliest} latest={latest} ({terms})"
     " | table _time, index, host, sourcetype, _raw"
+)
+LOGGING_TEMPLATE_PLACEHOLDERS = frozenset(
+    {"indexes", "earliest", "latest", "terms", "source_ips", "target_ips"}
 )
 
 
@@ -82,7 +86,7 @@ def build_logging_query(
         indexes: ``SPLUNKES_LOGGING_INDEXES`` as configured, written as is in
             ``index IN (...)``, like ``SPLUNKES_ALERTS_INDEX`` for Detection.
         template: A custom search (``SPLUNKES_LOGGING_QUERY_TEMPLATE``),
-            already checked by the config, or None for the built-in one.
+            already checked by the client, or None for the built-in one.
 
     Returns:
         The search, or ``Unqueryable`` when the expectation has no end date,
@@ -125,7 +129,8 @@ def build_logging_query(
         return Unqueryable("no marker and no IP")
 
     terms = " OR ".join(
-        _quote(value) for value in _unique([*marker_values, *source_ips, *target_ips])
+        spl_string(value)
+        for value in _unique([*marker_values, *source_ips, *target_ips])
     )
     spl = (template or LOGGING_QUERY_TEMPLATE).format_map(
         {
@@ -134,13 +139,14 @@ def build_logging_query(
             # Splunk's latest is exclusive; the window's end is inclusive.
             "latest": latest + 1,
             "terms": terms,
-            "source_ips": _quoted_list(source_ips),
-            "target_ips": _quoted_list(target_ips),
+            # '""' when empty: a template's "src_ip IN (...)" then matches nothing.
+            "source_ips": spl_list(source_ips, empty='""'),
+            "target_ips": spl_list(target_ips, empty='""'),
         }
     )
     # The search API needs a generating command first; a custom template may
     # be written like the Detection one, without it.
-    if not spl.lstrip().startswith(("search ", "|")):
+    if not spl.lstrip().lower().startswith(("search", "|")):
         spl = f"search {spl}"
     return LoggingQuery(
         spl=spl,
@@ -177,27 +183,6 @@ def _marker_values(markers: list[str]) -> list[str]:
     return _unique(values)
 
 
-def _quoted_list(values: list[str]) -> str:
-    """Write values as a quoted, comma-separated list for SPL ``IN (...)``.
-
-    An empty list gives ``""``, which matches nothing, so a template such as
-    ``src_ip IN ({source_ips})`` never turns into "any source IP".
-    """
-    if not values:
-        return '""'
-    return ",".join(_quote(value) for value in values)
-
-
 def _unique(values: Iterable[str]) -> list[str]:
     """Drop blank values and duplicates, keeping the first occurrence order."""
     return list(dict.fromkeys(value for value in values if value))
-
-
-def _quote(value: str) -> str:
-    r"""Write a value as a double-quoted SPL string.
-
-    Backslashes are escaped first, then double quotes, so a value cannot
-    close the string and inject SPL (``a"b\c`` becomes ``"a\"b\\c"``).
-    """
-    escaped = value.replace("\\", "\\\\").replace('"', '\\"')
-    return f'"{escaped}"'
