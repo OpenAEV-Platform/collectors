@@ -54,7 +54,7 @@ def test_marker_and_ips_build_one_or_group():
     # Assert
     assert isinstance(query, LoggingQuery)  # noqa: S101
     assert query.spl == (  # noqa: S101
-        f"search index IN (sysmon) earliest={START_EPOCH} latest={END_EPOCH + 1} "
+        f'search index IN ("sysmon") earliest={START_EPOCH} latest={END_EPOCH + 1} '
         f'("{MARKER}" OR "{MARKER_URL}" OR "192.168.56.10" OR "192.168.56.1")'
         f" | eval oaev_rank=case(match(lower(_raw), {_regex(MARKER, MARKER_URL)}), 2,"
         f" match(lower(_raw), {_regex('192.168.56.10')}), 1, 1=1, 0)"
@@ -93,7 +93,7 @@ def test_several_indexes_are_listed():
     # Assert
     assert isinstance(query, LoggingQuery)  # noqa: S101
     assert query.spl.startswith(  # noqa: S101
-        "search index IN (sysmon,wineventlog,net*) "
+        'search index IN ("sysmon","wineventlog","net*") '
     )
 
 
@@ -324,6 +324,20 @@ def test_detection_template_is_unchanged():
     )
 
 
+def test_index_names_are_quoted_so_they_cannot_change_the_search():
+    """An odd index name stays one quoted value, not SPL syntax."""
+    # Act
+    query = build_logging_query(
+        _signatures(source_ipv4_address="10.0.0.1"), ["main) OR (index=*", 'a"b'], 50
+    )
+
+    # Assert
+    assert isinstance(query, LoggingQuery)  # noqa: S101
+    assert query.spl.startswith(  # noqa: S101
+        'search index IN ("main) OR (index=*","a\\"b") '
+    )
+
+
 def test_custom_template_receives_every_value():
     """A custom template gets the window, the signals and the row cap."""
     # Arrange
@@ -345,7 +359,7 @@ def test_custom_template_receives_every_value():
     # Assert
     assert isinstance(query, LoggingQuery)  # noqa: S101
     assert query.spl == (  # noqa: S101
-        f"search index IN (sysmon,net*) earliest={START_EPOCH} "
+        f'search index IN ("sysmon","net*") earliest={START_EPOCH} '
         f"latest={END_EPOCH + 1} "
         f'(ParentImage IN ("{MARKER}","{MARKER_URL}") '
         'OR src_ip IN ("192.168.56.10") OR dest_ip IN ("192.168.56.1")) '

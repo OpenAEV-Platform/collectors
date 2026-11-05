@@ -1,22 +1,41 @@
 """Configuration for SplunkES integration."""
 
-import json
 import logging
-import re
 import string
 from datetime import timedelta
 from typing import Annotated, Optional
 
-from pydantic import Field, SecretStr, field_validator, model_validator
+from pydantic import (
+    BeforeValidator,
+    Field,
+    SecretStr,
+    field_validator,
+    model_validator,
+)
 from pydantic_core import PydanticUseDefault
 from pydantic_settings import NoDecode
 from src.models.configs import ConfigBaseSettings
 
 LOG_PREFIX = "[SplunkESConfig]"
 
-# A Splunk index name, optionally with "*" wildcards. Anything else (spaces,
-# quotes, pipes, brackets, "=") could change the meaning of the Logging search.
-_INDEX_NAME_RE = re.compile(r"^[A-Za-z0-9_*-]+$")
+
+def _split_comma_list(value: object) -> object:
+    """Turn "a, b,,a" into ["a", "b"]: trimmed, without blanks or duplicates.
+
+    A YAML list is cleaned the same way. Any other value is left to pydantic,
+    which rejects it.
+    """
+    if isinstance(value, str):
+        value = value.split(",")
+    if isinstance(value, list):
+        items = (str(item).strip() for item in value)
+        return list(dict.fromkeys(item for item in items if item))
+    return value
+
+
+# A list written as a comma-separated string. NoDecode stops pydantic-settings
+# from reading the environment value as JSON.
+CommaList = Annotated[list[str], NoDecode, BeforeValidator(_split_comma_list)]
 
 # Placeholders a custom Logging query template can use. The query builder
 # fills every one of them (see services/logging_query.py).
@@ -99,8 +118,7 @@ class _ConfigLoaderSplunkES(ConfigBaseSettings):
         description="Search raw-event indexes to answer LOGGING expectations. "
         "Requires SPLUNKES_LOGGING_INDEXES.",
     )
-    # NoDecode: the env value is a comma-separated string, not JSON.
-    logging_indexes: Annotated[list[str], NoDecode] = Field(
+    logging_indexes: CommaList = Field(
         alias="SPLUNKES_LOGGING_INDEXES",
         default_factory=list,
         description="Comma-separated raw-event indexes searched for LOGGING "
@@ -151,51 +169,6 @@ class _ConfigLoaderSplunkES(ConfigBaseSettings):
         if isinstance(value, str) and not value.strip():
             raise PydanticUseDefault()
         return value
-
-    @field_validator("logging_indexes", mode="before")
-    @classmethod
-    def _parse_logging_indexes(cls, value: object) -> object:
-        """Turn the index setting into a clean list of index names.
-
-        The setting is usually a comma-separated string
-        (``sysmon,wineventlog``). A JSON list (``["sysmon"]``) and a YAML list
-        are accepted too. Blank entries are dropped.
-
-        Raises:
-            ValueError: If an index name contains anything other than
-                letters, digits, ``_``, ``-`` or ``*``.
-
-        """
-        if isinstance(value, str):
-            text = value.strip()
-            if text.startswith("["):
-                try:
-                    value = json.loads(text)
-                except json.JSONDecodeError as e:
-                    raise ValueError(
-                        f"SPLUNKES_LOGGING_INDEXES is not a valid JSON list: {e}"
-                    ) from e
-            else:
-                value = text.split(",")
-        if not isinstance(value, list):
-            raise ValueError(
-                "SPLUNKES_LOGGING_INDEXES must be a comma-separated list of "
-                "index names, e.g. sysmon,wineventlog"
-            )
-
-        indexes: list[str] = []
-        for item in value:
-            name = str(item).strip()
-            if not name:
-                continue
-            if not _INDEX_NAME_RE.match(name):
-                raise ValueError(
-                    f"Invalid Splunk index name in SPLUNKES_LOGGING_INDEXES: "
-                    f"{name!r}. Use only letters, digits, '_', '-' or '*'."
-                )
-            if name not in indexes:
-                indexes.append(name)
-        return indexes
 
     @field_validator("logging_query_template", mode="after")
     @classmethod

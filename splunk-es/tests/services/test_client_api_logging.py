@@ -279,7 +279,7 @@ def test_index_check_finds_existing_and_missing_indexes(mock_post, client):
     )
     params = mock_post.call_args.kwargs["data"]
     assert params["search"] == (  # noqa: S101
-        "| eventcount summarize=false index=sysmon index=main index=sysmom"
+        '| eventcount summarize=false index="sysmon" index="main" index="sysmom"'
         " | dedup index | table index"
     )
     assert params["count"] == "0"  # noqa: S101

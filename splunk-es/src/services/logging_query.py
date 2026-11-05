@@ -95,8 +95,8 @@ def build_logging_query(
     Args:
         signatures: The expectation's signatures, as ``{"type", "value"}``
             mappings.
-        indexes: Validated raw-event index names (letters, digits, ``_``,
-            ``-`` and ``*`` only; see the Splunk ES config).
+        indexes: Raw-event index names, ``*`` wildcards allowed. Each name
+            is quoted in the search, so it cannot change its meaning.
         max_rows: Maximum number of events the search returns.
         template: A custom search (``SPLUNKES_LOGGING_QUERY_TEMPLATE``),
             already checked by the config, or None for the built-in one.
@@ -142,11 +142,12 @@ def build_logging_query(
         return Unqueryable("no marker and no IP")
 
     terms = " OR ".join(
-        _quote(value) for value in _unique([*marker_values, *source_ips, *target_ips])
+        spl_string(value)
+        for value in _unique([*marker_values, *source_ips, *target_ips])
     )
     spl = (template or LOGGING_QUERY_TEMPLATE).format_map(
         {
-            "indexes": ",".join(indexes),
+            "indexes": ",".join(spl_string(index) for index in indexes),
             "earliest": earliest,
             # Splunk's latest is exclusive; the window's end is inclusive.
             "latest": latest + 1,
@@ -205,7 +206,7 @@ def _quoted_list(values: list[str]) -> str:
     """
     if not values:
         return '""'
-    return ",".join(_quote(value) for value in values)
+    return ",".join(spl_string(value) for value in values)
 
 
 def _unique(values: Iterable[str]) -> list[str]:
@@ -239,10 +240,10 @@ def _contains_any(values: list[str]) -> str:
     wildcards. Both sides are lowercased, so the test ignores case.
     """
     pattern = "|".join(re.escape(value.lower()) for value in values)
-    return f"match(lower(_raw), {_quote(pattern)})"
+    return f"match(lower(_raw), {spl_string(pattern)})"
 
 
-def _quote(value: str) -> str:
+def spl_string(value: str) -> str:
     r"""Write a value as a double-quoted SPL string.
 
     Backslashes are escaped first, then double quotes, so a value cannot

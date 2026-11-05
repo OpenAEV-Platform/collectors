@@ -34,7 +34,7 @@ from .logging_fetch import (
     LoggingRows,
     parse_logging_rows,
 )
-from .logging_query import LoggingQuery
+from .logging_query import LoggingQuery, spl_string
 from .models import SplunkESAlert, SplunkESResponse, SplunkESSearchCriteria
 from .utils.epoch import to_epoch
 
@@ -516,8 +516,9 @@ class SplunkESClientAPI:
             error state of the search.
 
         """
+        # Quoted names keep their "*" wildcards and cannot change the search.
         search = "| eventcount summarize=false {} | dedup index | table index".format(
-            " ".join(f"index={index}" for index in indexes)
+            " ".join(f"index={spl_string(index)}" for index in indexes)
         )
         results = self._run_logging_search(search, count="0")
         if not isinstance(results, list):
@@ -835,11 +836,11 @@ class SplunkESClientAPI:
             # expectation signatures, e.g. 2026-09-11T08:02:10.806778868Z), which
             # silently breaks the time bounds and returns 0 results. Convert them
             # to epoch. Extend the latest bound on retries to widen the window.
-            start_epoch = self._to_epoch(search_criteria.start_date)
+            start_epoch = to_epoch(search_criteria.start_date)
             start_date_str = (
                 str(start_epoch) if start_epoch is not None else f"-{earliest_seconds}s"
             )
-            end_epoch = self._to_epoch(search_criteria.end_date)
+            end_epoch = to_epoch(search_criteria.end_date)
             end_date_str = (
                 str(end_epoch + extend_end_seconds) if end_epoch is not None else "now"
             )
@@ -876,22 +877,6 @@ class SplunkESClientAPI:
             raise SplunkESValidationError(f"Invalid query template: {e}") from e
         except Exception as e:
             raise SplunkESValidationError(f"Failed to build SPL query: {e}") from e
-
-    @staticmethod
-    def _to_epoch(value: str | None) -> int | None:
-        """Convert an ISO-8601 timestamp to a Unix epoch integer for Splunk.
-
-        See ``src.services.utils.epoch.to_epoch``, shared with the Logging
-        query builder.
-
-        Args:
-            value: ISO-8601 timestamp, an epoch string, or None.
-
-        Returns:
-            Epoch seconds as int, or None if empty / relative / unparseable.
-
-        """
-        return to_epoch(value)
 
     @staticmethod
     def _build_ip_list(ips: list[str]) -> str:

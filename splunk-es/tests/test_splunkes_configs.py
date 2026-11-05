@@ -69,10 +69,9 @@ def test_logging_is_disabled_by_default(monkeypatch, required_env):  # type: ign
         ("sysmon,wineventlog", ["sysmon", "wineventlog"]),
         (" sysmon , wineventlog ,, ", ["sysmon", "wineventlog"]),
         ("sysmon,sysmon,win*", ["sysmon", "win*"]),
-        ('["sysmon", "wineventlog"]', ["sysmon", "wineventlog"]),
         ("os-linux_01", ["os-linux_01"]),
     ],
-    ids=["comma", "spaces-and-blanks", "duplicates-and-wildcard", "json", "dash"],
+    ids=["comma", "spaces-and-blanks", "duplicates-and-wildcard", "dash"],
 )
 def test_logging_indexes_are_parsed(
     monkeypatch, required_env, raw, expected
@@ -102,22 +101,6 @@ def test_logging_enabled_without_index_fails(
 
     # Act / Assert
     with pytest.raises(ValidationError, match="SPLUNKES_LOGGING_INDEXES is empty"):
-        _ConfigLoaderSplunkES()
-
-
-@pytest.mark.parametrize(
-    "bad_name", ["main|delete", 'a"b', "a b", "main)", "idx=1", "a'b", "[main]"]
-)
-def test_logging_index_with_spl_syntax_is_rejected(
-    monkeypatch, required_env, bad_name
-):  # type: ignore
-    """An index name that could change the search is rejected."""
-    # Arrange
-    monkeypatch.setenv("SPLUNKES_LOGGING_ENABLED", "true")
-    monkeypatch.setenv("SPLUNKES_LOGGING_INDEXES", f"sysmon,{bad_name}")
-
-    # Act / Assert
-    with pytest.raises(ValidationError, match="Invalid Splunk index name"):
         _ConfigLoaderSplunkES()
 
 
