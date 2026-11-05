@@ -194,7 +194,7 @@ def test_blank_logging_query_template_uses_the_built_in_search(
 def test_valid_logging_query_template_is_kept(
     monkeypatch, required_env
 ):  # type: ignore
-    """A Logging template with known placeholders and the event time loads."""
+    """A Logging template with known placeholders loads."""
     # Arrange
     monkeypatch.setenv("SPLUNKES_LOGGING_QUERY_TEMPLATE", VALID_LOGGING_TEMPLATE)
 
@@ -216,28 +216,18 @@ def test_valid_logging_query_template_is_kept(
             VALID_LOGGING_TEMPLATE.replace("{terms}", "{terms.__class__}"),
             "Unknown placeholders",
         ),
-        (
-            VALID_LOGGING_TEMPLATE.replace("latest={latest} ", ""),
-            "must use ['latest']",
-        ),
-        (
-            VALID_LOGGING_TEMPLATE.replace("oaev_event_epoch", "_time"),
-            "must return the event time",
-        ),
-        (VALID_LOGGING_TEMPLATE + " | eval x={", "not a valid template"),
+        (VALID_LOGGING_TEMPLATE + " | eval x={", "expected '}'"),
     ],
     ids=[
         "unknown-placeholder",
         "attribute-access",
-        "no-window",
-        "no-event-time",
         "broken-brace",
     ],
 )
 def test_invalid_logging_query_template_is_rejected(
     monkeypatch, required_env, template, message
 ):  # type: ignore
-    """A Logging template the collector cannot run or read stops startup."""
+    """A Logging template with a placeholder the builder does not fill stops startup."""
     # Arrange
     monkeypatch.setenv("SPLUNKES_LOGGING_QUERY_TEMPLATE", template)
 

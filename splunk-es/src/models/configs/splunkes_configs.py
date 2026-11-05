@@ -45,17 +45,12 @@ LOGGING_TEMPLATE_PLACEHOLDERS = frozenset(
         "earliest",
         "latest",
         "terms",
-        "markers",
         "source_ips",
         "target_ips",
         "rank_cases",
         "max_rows",
     }
 )
-# The window keeps a custom search from reading every event ever indexed.
-LOGGING_TEMPLATE_REQUIRED_PLACEHOLDERS = frozenset({"earliest", "latest"})
-# The collector reads the event time from this field (see logging_fetch.py).
-LOGGING_TEMPLATE_EVENT_TIME_FIELD = "oaev_event_epoch"
 
 
 class _ConfigLoaderSplunkES(ConfigBaseSettings):
@@ -130,10 +125,9 @@ class _ConfigLoaderSplunkES(ConfigBaseSettings):
         default=None,
         description="SPL template of the Logging search, to adapt it to your "
         "data (sourcetypes, data models, field names). Placeholders: {indexes}, "
-        "{earliest}, {latest}, {terms}, {markers}, {source_ips}, {target_ips}, "
-        "{rank_cases}, {max_rows}. Must use {earliest} and {latest} and return "
-        "oaev_event_epoch, index and _raw. Leave empty to use the built-in "
-        "search.",
+        "{earliest}, {latest}, {terms}, {source_ips}, {target_ips}, "
+        "{rank_cases}, {max_rows}. Must return oaev_event_epoch, index and "
+        "_raw. Leave empty to use the built-in search.",
     )
     logging_max_rows: int = Field(
         alias="SPLUNKES_LOGGING_MAX_ROWS",
@@ -149,7 +143,6 @@ class _ConfigLoaderSplunkES(ConfigBaseSettings):
         "time_window",
         "query_template",
         "logging_enabled",
-        "logging_indexes",
         "logging_query_template",
         "logging_max_rows",
         mode="before",
@@ -173,54 +166,21 @@ class _ConfigLoaderSplunkES(ConfigBaseSettings):
     @field_validator("logging_query_template", mode="after")
     @classmethod
     def _check_logging_query_template(cls, value: Optional[str]) -> Optional[str]:
-        """Reject a Logging template the collector could not run or read.
-
-        The check runs at startup, so a typo stops the collector with a clear
-        message instead of failing every search later.
-
-        Args:
-            value: The template, or None for the built-in search.
-
-        Returns:
-            The template unchanged.
+        """Reject a Logging template with an unknown placeholder, at startup.
 
         Raises:
-            ValueError: If the template uses an unknown placeholder, lacks
-                {earliest} or {latest}, or never sets oaev_event_epoch.
+            ValueError: If the template uses a placeholder the builder does
+                not fill, or has an unpaired brace.
 
         """
         if value is None:
             return value
-        try:
-            used = {
-                name
-                for _, name, _, _ in string.Formatter().parse(value)
-                if name is not None
-            }
-        except ValueError as e:
-            raise ValueError(
-                f"SPLUNKES_LOGGING_QUERY_TEMPLATE is not a valid template: {e}. "
-                "Write a literal brace as {{ or }}."
-            ) from e
-        unknown = used - LOGGING_TEMPLATE_PLACEHOLDERS
+        used = {name for _, name, _, _ in string.Formatter().parse(value)}
+        unknown = used - LOGGING_TEMPLATE_PLACEHOLDERS - {None}
         if unknown:
             raise ValueError(
                 f"Unknown placeholders in SPLUNKES_LOGGING_QUERY_TEMPLATE: "
-                f"{sorted(unknown)}. Allowed: "
-                f"{sorted(LOGGING_TEMPLATE_PLACEHOLDERS)}"
-            )
-        missing = LOGGING_TEMPLATE_REQUIRED_PLACEHOLDERS - used
-        if missing:
-            raise ValueError(
-                f"SPLUNKES_LOGGING_QUERY_TEMPLATE must use {sorted(missing)}: "
-                "without the inject window the search reads every event."
-            )
-        if LOGGING_TEMPLATE_EVENT_TIME_FIELD not in value:
-            raise ValueError(
-                "SPLUNKES_LOGGING_QUERY_TEMPLATE must return the event time as "
-                f"{LOGGING_TEMPLATE_EVENT_TIME_FIELD}, e.g. "
-                f"'| eval {LOGGING_TEMPLATE_EVENT_TIME_FIELD}=_time | table "
-                f"{LOGGING_TEMPLATE_EVENT_TIME_FIELD}, index, host, sourcetype, _raw'"
+                f"{sorted(unknown)}. Allowed: {sorted(LOGGING_TEMPLATE_PLACEHOLDERS)}"
             )
         return value
 

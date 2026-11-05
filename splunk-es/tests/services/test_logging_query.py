@@ -343,8 +343,8 @@ def test_custom_template_receives_every_value():
     # Arrange
     template = (
         "search index IN ({indexes}) earliest={earliest} latest={latest} "
-        "(ParentImage IN ({markers}) OR src_ip IN ({source_ips}) "
-        "OR dest_ip IN ({target_ips})) | head {max_rows} "
+        "(src_ip IN ({source_ips}) OR dest_ip IN ({target_ips})) "
+        "| head {max_rows} "
         "| eval oaev_event_epoch=_time | table oaev_event_epoch, index, _raw"
     )
     signatures = _signatures(
@@ -361,8 +361,7 @@ def test_custom_template_receives_every_value():
     assert query.spl == (  # noqa: S101
         f'search index IN ("sysmon","net*") earliest={START_EPOCH} '
         f"latest={END_EPOCH + 1} "
-        f'(ParentImage IN ("{MARKER}","{MARKER_URL}") '
-        'OR src_ip IN ("192.168.56.10") OR dest_ip IN ("192.168.56.1")) '
+        '(src_ip IN ("192.168.56.10") OR dest_ip IN ("192.168.56.1")) '
         "| head 20 | eval oaev_event_epoch=_time | table oaev_event_epoch, index, _raw"
     )
     # The window and signals the matcher uses do not depend on the template.

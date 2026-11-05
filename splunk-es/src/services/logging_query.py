@@ -19,18 +19,10 @@ TARGET_IP_SIGNATURE_TYPES = ("target_ipv4_address", "target_ipv6_address")
 START_DATE_SIGNATURE_TYPE = "start_date"
 END_DATE_SIGNATURE_TYPE = "end_date"
 
-# The built-in Logging search, kept apart from the Detection query template.
-# SPLUNKES_LOGGING_QUERY_TEMPLATE can replace it, with the same placeholders
-# (see LOGGING_TEMPLATE_PLACEHOLDERS in the Splunk ES config). It is a
-# full-text search: it needs no extracted field, so it works on any index. To
-# be validated on a real Splunk ES:
-# - events are ranked like the matcher ranks signals (marker, then source IP,
-#   then target IP) and only the best rows are kept, so the row cap never drops
-#   a stronger event behind weaker ones. "sort <max_rows>" keeps only those
-#   rows instead of ordering every matching event;
-# - "_time" is copied to "oaev_event_epoch" before "table", which would
-#   otherwise render it as a formatted date;
-# - TODO: measure whether TERM("<ip>") makes IP terms faster on large indexes.
+# The built-in Logging search: a full-text search, so it needs no extracted
+# field. SPLUNKES_LOGGING_QUERY_TEMPLATE can replace it. Events are ranked like
+# the matcher ranks signals (marker, then source IP), so the row cap never drops
+# a stronger event behind weaker ones.
 LOGGING_QUERY_TEMPLATE = (
     "search index IN ({indexes}) earliest={earliest} latest={latest} ({terms})"
     " | eval oaev_rank=case({rank_cases})"
@@ -152,7 +144,6 @@ def build_logging_query(
             # Splunk's latest is exclusive; the window's end is inclusive.
             "latest": latest + 1,
             "terms": terms,
-            "markers": _quoted_list(marker_values),
             "source_ips": _quoted_list(source_ips),
             "target_ips": _quoted_list(target_ips),
             "rank_cases": _rank_cases(marker_values, source_ips),
@@ -211,11 +202,7 @@ def _quoted_list(values: list[str]) -> str:
 
 def _unique(values: Iterable[str]) -> list[str]:
     """Drop blank values and duplicates, keeping the first occurrence order."""
-    seen: list[str] = []
-    for value in values:
-        if value and value not in seen:
-            seen.append(value)
-    return seen
+    return list(dict.fromkeys(value for value in values if value))
 
 
 def _rank_cases(marker_values: list[str], source_ips: list[str]) -> str:
@@ -233,12 +220,7 @@ def _rank_cases(marker_values: list[str], source_ips: list[str]) -> str:
 
 
 def _contains_any(values: list[str]) -> str:
-    """Write an SPL test for "the raw text contains one of these values".
-
-    ``match`` with an escaped regular expression is a literal substring test,
-    like the matcher's, whereas ``like`` would read ``_`` and ``%`` as
-    wildcards. Both sides are lowercased, so the test ignores case.
-    """
+    """Write a case-insensitive SPL test: "the raw text contains one of these"."""
     pattern = "|".join(re.escape(value.lower()) for value in values)
     return f"match(lower(_raw), {spl_string(pattern)})"
 
