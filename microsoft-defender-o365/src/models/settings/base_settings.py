@@ -20,4 +20,6 @@ class ConfigBaseSettings(BaseSettings):
         # Allow both alias and field name for input
         validate_by_name=True,
         validate_by_alias=True,
+        # Hide input in errors to protect secrets
+        hide_input_in_errors=True,
     )

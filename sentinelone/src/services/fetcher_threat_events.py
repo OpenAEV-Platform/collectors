@@ -87,7 +87,7 @@ class FetcherThreatEvents:
             )
             return all_events
 
-        except (SentinelOneValidationError, SentinelOneAPIError):
+        except SentinelOneValidationError, SentinelOneAPIError:
             raise
         except Exception as e:
             raise SentinelOneAPIError(

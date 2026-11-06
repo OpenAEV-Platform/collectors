@@ -1,0 +1,18 @@
+{
+  "title": "OpenAEV Scenarios",
+  "slug": "openaev_scenarios",
+  "description": "Follow the releases of the OpenAEV scenarios repository: each new release of the chosen channel is downloaded and checked against its manifest before it reaches the platform.",
+  "short_description": "Follow the OpenAEV scenarios releases",
+  "use_cases": ["Scenario collection"],
+  "verified": false,
+  "last_verified_date": "",
+  "playbook_supported": false,
+  "max_confidence_level": 80,
+  "support_version": "",
+  "subscription_link": "",
+  "source_code": "https://github.com/OpenAEV-Platform/collectors/tree/main/scenarios",
+  "manager_supported": false,
+  "container_version": "rolling",
+  "container_image": "openaev/collector-scenarios",
+  "container_type": "COLLECTOR"
+}

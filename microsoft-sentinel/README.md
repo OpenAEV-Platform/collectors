@@ -46,7 +46,7 @@ activity.
   client ID, client secret, the target workspace ID, subscription ID, and resource group
 - At least one OpenAEV EDR collector (for example Microsoft Defender) deployed and reconciling expectations; Sentinel
   matching uses the `alertId` metadata those collectors attach
-- For a manual (non-Docker) deployment: Python >= 3.11 and [Poetry](https://python-poetry.org/) >= 2.1
+- For a manual (non-Docker) deployment: Python >= 3.14 and [Poetry](https://python-poetry.org/) >= 2.1
 
 ## Configuration variables
 
@@ -101,17 +101,48 @@ Create a `.env` file from `.env.sample` and fill in your values, then start the 
 docker compose up -d
 ```
 
-### Manual Deployment
+### Manual Deployment with Poetry
 
-Create a `config.yml` file from `config.yml.sample` and fill in your values, then install and run the collector:
+1. **Clone and Install Dependencies**:
+   ```bash
+   git clone <repository-url>
+   cd <your-collector>
+   poetry install
+   ```
 
-```shell
-poetry install --extras prod
-poetry run python -m microsoft_sentinel.openaev_microsoft_sentinel
+2. **Configure the Collector**:
+- Copy `microsoft_sentinel/config.yml.sample` to `microsoft_sentinel/config.yml`
+- Update configuration values or set environment variables
+
+3. **Run the Collector**:
+   ```bash
+   # Using Poetry
+   poetry run python -m microsoft_sentinel
+   
+   # Or 
+   poetry run MicrosoftSentinelCollector
+
+   # Or direct execution after installing the project and activating the virtual environment:
+   MicrosoftSentinelCollector
+   ```
+
+For local development against a checkout of [client-python](https://github.com/OpenAEV-Platform/client-python),
+The client-python repository must be cloned at the same level as the collectors repository, so that `../../client-python`
+resolves correctly from the collector directory.
+
+```
+parent-directory/ 
+├── collectors/
+│   └── <your-collector>/
+└── client-python/
 ```
 
-> For local development against a checkout of [client-python](https://github.com/OpenAEV-Platform/client-python)
-> (cloned next to this repository), use `poetry install --extras dev` instead.
+Then install the local `client-python` version inside the <your-collector> environment:
+```bash
+poetry run pip install -e ../../client-python --force-reinstall
+```
+The `-e` option installs the package in editable mode, allowing local changes in `client-python` to be used immediately
+without reinstalling the package.
 
 ## Usage
 

@@ -1,16 +1,18 @@
 FROM registry.access.redhat.com/ubi9/ubi-minimal AS base
 
 RUN set -eux; \
-    microdnf -y --setopt=install_weak_deps=0 install python3.12; \
+    microdnf -y upgrade --refresh; \
+    microdnf -y --setopt=install_weak_deps=0 install python3.14 libbrotli; \
     microdnf clean all;
 
 
 FROM base AS builder
 
 RUN set -eux; \
-    microdnf -y --setopt=install_weak_deps=0 install python3.12-pip; \
-    pip3.12 install poetry==2.1.3; \
-    microdnf -y remove python3.12-pip; \
+    microdnf -y --setopt=install_weak_deps=0 install python3.14-pip; \
+    pip3.14 install --no-cache-dir -U certifi; \
+    pip3.14 install --no-cache-dir poetry==2.3.2; \
+    microdnf -y remove python3.14-pip; \
     microdnf clean all;
 
 WORKDIR /collector
@@ -21,23 +23,32 @@ RUN set -eux; \
 
 FROM base AS runner
 
-ARG PYOAEV_GIT_BRANCH_OVERRIDE=""
+ARG PYOAEV_GIT_REF_OVERRIDE=""
 
 WORKDIR /collector
 COPY --from=builder /collector/ ./
 
+# The Pillow wheels bundle Brotli 1.2.0 (CVE-2026-111497) for FreeType: replace
+# the bundled libbrotlidec with a link to the system one (libbrotli, fixed) and
+# remove the bundled libbrotlicommon, which only it loads (#643). The link keeps
+# the bundled name (libbrotlidec-<hash>.so.1.2.0), the one FreeType loads, but
+# resolves to the system version.
 RUN set -eux; \
-    microdnf -y --setopt=install_weak_deps=0 install python3.12-pip; \
-    (cd dist && pip3.12 install --no-cache-dir "$(ls *.whl)[prod]"); \
-    if [ -n "${PYOAEV_GIT_BRANCH_OVERRIDE}" ] ; then \
+    microdnf -y --setopt=install_weak_deps=0 install python3.14-pip; \
+    pip3.14 install --no-cache-dir -U certifi; \
+    (cd dist && pip3.14 install --no-cache-dir "$(ls *.whl)"); \
+    if [ -n "${PYOAEV_GIT_REF_OVERRIDE}" ] ; then \
         echo "Forcing specific version of client-python"; \
         microdnf -y --setopt=install_weak_deps=0 install git-core; \
-        pip3.12 uninstall -y pyoaev; \
-        pip3.12 install git+https://github.com/OpenAEV-Platform/client-python@${PYOAEV_GIT_BRANCH_OVERRIDE}; \
+        pip3.14 uninstall -y pyoaev; \
+        pip3.14 install --no-cache-dir git+https://github.com/OpenAEV-Platform/client-python@${PYOAEV_GIT_REF_OVERRIDE}; \
         microdnf -y remove git-core; \
     fi; \
-    microdnf -y remove python3.12-pip; \
+    cd /usr/local/lib64/python3*/site-packages/pillow.libs; \
+    rm libbrotlicommon-*; \
+    ln -sf /usr/lib64/libbrotlidec.so.1 libbrotlidec-*; \
+    microdnf -y remove python3.14-pip; \
     microdnf clean all;
 
-CMD ["python3.12", "-m", "src"]
+CMD ["python3.14", "-m", "src"]
 

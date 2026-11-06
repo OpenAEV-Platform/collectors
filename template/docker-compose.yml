@@ -1,12 +1,20 @@
-version: "3"
 services:
   collector-template:
     image: openaev/collector-template:rolling
+    # Variables listed without a value are read from .env (copy .env.sample) or
+    # from the shell. Those set in neither stay unset, so the collector applies
+    # its own defaults. To set one here instead, write VAR=value; it takes
+    # precedence over .env.
     environment:
-      - OPENAEV_URL=http://localhost
-      - OPENAEV_TOKEN=ChangeMe
-      # only required for multi-tenancy (Enterprise Edition), keep commented otherwise
-      # - OPENAEV_TENANT_ID=ChangeMe
-      - COLLECTOR_ID=ChangeMe
-      - SOURCE_KEY=ChangeMe
+      - OPENAEV_URL
+      - OPENAEV_TOKEN
+      - OPENAEV_TENANT_ID
+      - COLLECTOR_ID
+      - COLLECTOR_NAME
+      - COLLECTOR_PLATFORM
+      - COLLECTOR_PERIOD
+      - COLLECTOR_LOG_LEVEL
+      - SOURCE_KEY
+      - SOURCE_TIME_WINDOW
+      - SOURCE_EXPECTATION_BATCH_SIZE
     restart: always

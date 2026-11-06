@@ -8,5 +8,6 @@ collector:
   id: 'ChangeMe'
   name: 'MITRE ATT&CK'
   period: 'P7D'
+  batch_size: 100
   log_level: 'error'
 

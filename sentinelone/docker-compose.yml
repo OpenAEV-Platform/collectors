@@ -1,13 +1,23 @@
-version: "3"
 services:
   collector-sentinelone:
     image: openaev/collector-sentinelone:rolling
+    # Variables listed without a value are read from .env (copy src/.env.sample
+    # next to this file) or from the shell. Those set in neither stay unset, so
+    # the collector applies its own defaults. To set one here instead, write
+    # VAR=value; it takes precedence over .env.
     environment:
-      - OPENAEV_URL=http://localhost
-      - OPENAEV_TOKEN=ChangeMe
-      # only required for multi-tenancy (Enterprise Edition), keep commented otherwise
-      # - OPENAEV_TENANT_ID=ChangeMe
-      - COLLECTOR_ID=ChangeMe
-      - SENTINELONE_BASE_URL=https://change.me
-      - SENTINELONE_API_KEY=ChangeMe
+      - OPENAEV_URL
+      - OPENAEV_TOKEN
+      - OPENAEV_TENANT_ID
+      - COLLECTOR_ID
+      - COLLECTOR_NAME
+      - COLLECTOR_PLATFORM
+      - COLLECTOR_PERIOD
+      - COLLECTOR_LOG_LEVEL
+      - SENTINELONE_BASE_URL
+      - SENTINELONE_API_KEY
+      - SENTINELONE_TIME_WINDOW
+      - SENTINELONE_EXPECTATION_BATCH_SIZE
+      - SENTINELONE_ENABLE_DEEP_VISIBILITY_SEARCH
+      - SENTINELONE_DISABLE_STRICT_END_DATE
     restart: always

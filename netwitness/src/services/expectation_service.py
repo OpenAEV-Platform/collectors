@@ -84,7 +84,7 @@ class NetWitnessExpectationService:
             self.logger.info(
                 f"{LOG_PREFIX} NetWitness expectation service initialized successfully"
             )
-        except (NetWitnessValidationError, NetWitnessConfigurationError):
+        except NetWitnessValidationError, NetWitnessConfigurationError:
             raise
         except Exception as e:
             raise NetWitnessConfigurationError(

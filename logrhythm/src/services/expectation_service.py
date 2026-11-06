@@ -82,7 +82,7 @@ class LogRhythmExpectationService:
             self.logger.info(
                 f"{LOG_PREFIX} LogRhythm expectation service initialized successfully"
             )
-        except (LogRhythmValidationError, LogRhythmConfigurationError):
+        except LogRhythmValidationError, LogRhythmConfigurationError:
             raise
         except Exception as e:
             raise LogRhythmConfigurationError(

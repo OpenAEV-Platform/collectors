@@ -21,9 +21,9 @@ from tests.conftest import (
 # Scenario Outline: Certificate auth mode enabled without certificate required fields raises
 # ValidationError
 @pytest.mark.parametrize(
-    "mode_flag_value, error_field_a, error_field_b",
+    "mode_flag_value, error_field_a, error_field_b, error_field_c",
     [
-        ("true", "client_cert_data", "client_cert_thumbprint"),
+        ("true", "client_cert_data", "client_cert_thumbprint", "source"),
     ],
     ids=[
         "certificate_auth_enabled_missing_cert_fields",
@@ -35,6 +35,7 @@ def test_certificate_auth_mode_enabled_without_certificate_required_fields_raise
     mode_flag_value,
     error_field_a,
     error_field_b,
+    error_field_c,
 ):
     """Scenario Outline: Certificate auth mode enabled without certificate required fields raises ValidationError"""
     # Given: SOURCE_USE_CERTIFICATE_AUTH is "<mode_flag_value>", and
@@ -57,7 +58,7 @@ def test_certificate_auth_mode_enabled_without_certificate_required_fields_raise
     # "<error_field_b>"
     _then_microsoft_defender_o365_validation_error_is_raised(error)
     _then_microsoft_defender_o365_error_references_one_of_fields(
-        error, [error_field_a, error_field_b]
+        error, [error_field_a, error_field_b, error_field_c]
     )
 
 

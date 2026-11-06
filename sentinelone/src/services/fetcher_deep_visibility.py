@@ -348,7 +348,7 @@ class FetcherDeepVisibility:
                         f"Query status check failed with status {response.status_code}: {error_detail}"
                     )
 
-            except (SentinelOneValidationError, SentinelOneAPIError):
+            except SentinelOneValidationError, SentinelOneAPIError:
                 raise
             except (ConnectionError, Timeout) as e:
                 raise SentinelOneNetworkError(
@@ -438,7 +438,7 @@ class FetcherDeepVisibility:
                     f"DV events query failed with status {response.status_code}: {error_detail}"
                 )
 
-        except (SentinelOneValidationError, SentinelOneAPIError):
+        except SentinelOneValidationError, SentinelOneAPIError:
             raise
         except (ConnectionError, Timeout) as e:
             raise SentinelOneNetworkError(

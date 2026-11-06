@@ -41,14 +41,14 @@ links back to the originating SentinelOne threat.
 - A SentinelOne API token with the `Threats` and `Threat Events` permissions (Deep Visibility and a Complete license are
   additionally required to validate static-engine detections)
 - An allowlisting SentinelOne-side of the OpenAEV agent (not the OpenAEV implant) and of the powershell used to start the implant/the executor*
-- For a manual (non-Docker) deployment: Python >= 3.11 and [Poetry](https://python-poetry.org/) >= 2.1
+- For a manual (non-Docker) deployment: Python >= 3.14 and [Poetry](https://python-poetry.org/) >= 2.1
 
 * practical tip: a first run of an atomic testing can be used to flag the OpenAEV agent and the powershell process in SentinelOne, and then use the web interface of SentinelOne to flag them as false positive and to indicate they should run
 
 ## Configuration variables
 
-The collector is configured either through environment variables (recommended, read from `docker-compose.yml` for a
-Docker deployment) or through a `config.yml` file (for a manual deployment). Copy the provided `src/.env.sample` /
+The collector is configured either through environment variables (recommended, read from the `.env` file for a Docker
+deployment) or through a `config.yml` file (for a manual deployment). Copy the provided `src/.env.sample` /
 `src/config.yml.sample` and fill in the values flagged with `ChangeMe`.
 
 ### OpenAEV environment variables
@@ -86,23 +86,63 @@ Build the Docker image (or use the published `openaev/collector-sentinelone` ima
 docker build . -t openaev/collector-sentinelone:latest
 ```
 
-Set your values in the `environment` section of the provided `docker-compose.yml`, then start the collector:
+Create a `.env` file next to `docker-compose.yml` from `src/.env.sample` and fill in your values, then start the
+collector with the provided `docker-compose.yml`, which reads the settings it lists from `.env` or from the shell:
 
 ```shell
+cp src/.env.sample .env
 docker compose up -d
 ```
 
-### Manual Deployment
-
-Create a `src/config.yml` file from `src/config.yml.sample` and fill in your values, then install and run the collector:
+Settings left out of `.env` keep the collector's defaults. A value written directly in the `environment` section of
+`docker-compose.yml` (`VAR=value`) takes precedence over `.env`. To check what actually reached the collector:
 
 ```shell
-poetry install --extras prod
-poetry run python -m src
+docker compose exec collector-sentinelone env | grep -E '^(OPENAEV|COLLECTOR|SENTINELONE)_'
 ```
 
-> For local development against a checkout of [client-python](https://github.com/OpenAEV-Platform/client-python)
-> (cloned next to this repository), use `poetry install --extras local` instead.
+### Manual Deployment with Poetry
+
+1. **Clone and Install Dependencies**:
+   ```bash
+   git clone <repository-url>
+   cd <your-collector>
+   poetry install
+   ```
+
+2. **Configure the Collector**:
+    - Copy `src/config.yml.sample` to `src/config.yml`
+    - Update configuration values or set environment variables
+
+3. **Run the Collector**:
+   ```bash
+   # Using Poetry
+   poetry run python -m src
+   
+   # Or 
+   poetry run SentinelOneCollector
+
+   # Or direct execution after installing the project and activating the virtual environment:
+   SentinelOneCollector
+   ```
+
+For local development against a checkout of [client-python](https://github.com/OpenAEV-Platform/client-python),
+The client-python repository must be cloned at the same level as the collectors repository, so that `../../client-python`
+resolves correctly from the collector directory.
+
+```
+parent-directory/ 
+├── collectors/
+│   └── <your-collector>/
+└── client-python/
+```
+
+Then install the local `client-python` version inside the <your-collector> environment:
+```bash
+poetry run pip install -e ../../client-python --force-reinstall
+```
+The `-e` option installs the package in editable mode, allowing local changes in `client-python` to be used immediately
+without reinstalling the package.
 
 ## Usage
 

@@ -162,6 +162,9 @@ class ConfigLoader(ConfigBaseSettings):
                 "collector_icon_filepath": {"data": self.collector.icon_filepath},
                 # Elastic configuration (flattened)
                 "elastic_base_url": {"data": str(self.elastic.base_url)},
+                "elastic_authentication_type": {
+                    "data": self.elastic.authentication_type
+                },
                 "elastic_api_key": {
                     "data": (
                         self.elastic.api_key.get_secret_value()
@@ -178,11 +181,22 @@ class ConfigLoader(ConfigBaseSettings):
                     )
                 },
                 "elastic_alerts_index": {"data": self.elastic.alerts_index},
+                "elastic_query_template": {"data": self.elastic.query_template},
+                "elastic_events_index": {"data": self.elastic.events_index},
                 "elastic_kibana_url": {"data": self.elastic.kibana_url},
                 "elastic_time_window": {"data": self.elastic.time_window},
                 "elastic_max_retry": {"data": self.elastic.max_retry},
                 "elastic_offset": {"data": self.elastic.offset},
                 "elastic_verify_ssl": {"data": self.elastic.verify_ssl},
+                "elastic_ca_cert": {"data": self.elastic.ca_cert},
+                "elastic_client_cert": {"data": self.elastic.client_cert},
+                "elastic_client_key": {
+                    "data": (
+                        self.elastic.client_key.get_secret_value()
+                        if self.elastic.client_key
+                        else None
+                    )
+                },
             },
             config_base_model=self,
         )

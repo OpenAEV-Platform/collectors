@@ -38,12 +38,12 @@ a detection source, so this collector validates DETECTION expectations only; PRE
 - OpenAEV Platform >= 1.19.0
 - A NetWitness Core service (Broker on port 50103 or Concentrator on port 50105) with the RESTful API reachable
 - A Core service username/password (Core SDK) or a NetWitness Platform API bearer token allowed to run Core SDK queries
-- For a manual (non-Docker) deployment: Python >= 3.11 and [Poetry](https://python-poetry.org/) >= 2.1
+- For a manual (non-Docker) deployment: Python >= 3.14 and [Poetry](https://python-poetry.org/) >= 2.1
 
 ## Configuration variables
 
-The collector is configured either through environment variables (recommended, read from `docker-compose.yml` / the
-`.env` file for a Docker deployment) or through a `config.yml` file (for a manual deployment). Copy the provided
+The collector is configured either through environment variables (recommended, read from the `.env` file for a
+Docker deployment) or through a `config.yml` file (for a manual deployment). Copy the provided
 `src/.env.sample` / `src/config.yml.sample` and fill in the values flagged with `ChangeMe`.
 
 ### OpenAEV environment variables
@@ -92,24 +92,63 @@ Build the Docker image (or use the published `openaev/collector-netwitness` imag
 docker build . -t openaev/collector-netwitness:latest
 ```
 
-Create a `.env` file from `src/.env.sample` and fill in your values, then start the collector with the provided
-`docker-compose.yml` (which reads those variables):
+Create a `.env` file next to `docker-compose.yml` from `src/.env.sample` and fill in your values, then start the
+collector with the provided `docker-compose.yml`, which reads the settings it lists from `.env` or from the shell:
 
 ```shell
+cp src/.env.sample .env
 docker compose up -d
 ```
 
-### Manual Deployment
-
-Create a `config.yml` file from `src/config.yml.sample` and fill in your values, then install and run the collector:
+Settings left out of `.env` keep the collector's defaults. A value written directly in the `environment` section of
+`docker-compose.yml` (`VAR=value`) takes precedence over `.env`. To check what actually reached the collector:
 
 ```shell
-poetry install --extras prod
-poetry run NetWitnessCollector
+docker compose exec collector-netwitness env | grep -E '^(OPENAEV|COLLECTOR|NETWITNESS)_'
 ```
 
-> For local development against a checkout of [client-python](https://github.com/OpenAEV-Platform/client-python)
-> (cloned next to this repository as `client-python`), use `poetry install --extras local` instead.
+### Manual Deployment with Poetry
+
+1. **Clone and Install Dependencies**:
+   ```bash
+   git clone <repository-url>
+   cd <your-collector>
+   poetry install
+   ```
+
+2. **Configure the Collector**:
+    - Copy `src/config.yml.sample` to `src/config.yml`
+    - Update configuration values or set environment variables
+
+3. **Run the Collector**:
+   ```bash
+   # Using Poetry
+   poetry run python -m src
+   
+   # Or 
+   poetry run NetWitnessCollector
+
+   # Or direct execution after installing the project and activating the virtual environment:
+   NetWitnessCollector
+   ```
+
+For local development against a checkout of [client-python](https://github.com/OpenAEV-Platform/client-python),
+The client-python repository must be cloned at the same level as the collectors repository, so that `../../client-python`
+resolves correctly from the collector directory.
+
+```
+parent-directory/ 
+├── collectors/
+│   └── <your-collector>/
+└── client-python/
+```
+
+Then install the local `client-python` version inside the <your-collector> environment:
+```bash
+poetry run pip install -e ../../client-python --force-reinstall
+```
+The `-e` option installs the package in editable mode, allowing local changes in `client-python` to be used immediately
+without reinstalling the package.
 
 ## Usage
 

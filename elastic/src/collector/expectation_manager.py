@@ -134,11 +134,16 @@ class GenericExpectationManager:
                 supported_expectations, detection_helper
             )
 
-            self.logger.debug(f"{LOG_PREFIX} Updating expectations in OpenAEV...")
-            self._bulk_update_expectations(results)
-
+            # Submit traces (the matched-alert evidence shown in OpenAEV) BEFORE
+            # the verdict updates. There are only a few valid results, so this is
+            # fast and reliable; the verdict-update phase can be large and slow
+            # (one call per expectation) and must not be able to starve or drop
+            # the evidence, which would leave a "Detected" with 0 alerts.
             self.logger.debug(f"{LOG_PREFIX} Creating and submitting traces...")
             self.trace_manager.create_and_submit_traces(results)
+
+            self.logger.debug(f"{LOG_PREFIX} Updating expectations in OpenAEV...")
+            self._bulk_update_expectations(results)
 
             valid_count = sum(1 for r in results if r.is_valid)
             invalid_count = len(results) - valid_count

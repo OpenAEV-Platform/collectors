@@ -51,9 +51,12 @@ class ConfigLoaderElasticFactory(ModelFactory[_ConfigLoaderElastic]):
 
     __check_model__ = False
 
+    authentication_type = Use(lambda: None)
     api_key = Use(lambda: None)
     username = Use(lambda: "test-user")
     password = Use(lambda: "test-password")  # noqa: S106
+    client_cert = Use(lambda: None)
+    client_key = Use(lambda: None)
 
     @classmethod
     def build(cls, **kwargs):
@@ -77,7 +80,10 @@ class ConfigLoaderElasticFactory(ModelFactory[_ConfigLoaderElastic]):
         os.environ["ELASTIC_ALERTS_INDEX"] = ".alerts-security.alerts-*"
         os.environ["ELASTIC_MAX_RETRY"] = "1"
         os.environ["ELASTIC_OFFSET"] = "PT0S"
+        os.environ.pop("ELASTIC_AUTHENTICATION_TYPE", None)
         os.environ.pop("ELASTIC_API_KEY", None)
+        os.environ.pop("ELASTIC_CLIENT_CERT", None)
+        os.environ.pop("ELASTIC_CLIENT_KEY", None)
         os.environ.pop("ELASTIC_KIBANA_URL", None)
         return super().build(**kwargs)
 
@@ -143,6 +149,10 @@ class ElasticAlertFactory(ModelFactory[ElasticAlert]):
 
     time = Use(lambda: datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"))
     src_ip = Use(lambda: f"192.168.1.{uuid.uuid4().int % 255}")
+    host_ips: list[str] = []
+    host_name = None
+    pid = None
+    implant_marker = None
     dst_ip = Use(lambda: f"10.0.0.{uuid.uuid4().int % 255}")
     signature = Use(lambda: f"Test Malicious Activity {uuid.uuid4().hex[:8]}")
     rule_name = Use(lambda: f"Test Security Rule {uuid.uuid4().hex[:8]}")

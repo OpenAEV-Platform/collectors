@@ -1,0 +1,21 @@
+services:
+  collector-scenarios:
+    image: openaev/collector-scenarios:latest
+    environment:
+      - OPENAEV_URL=${OPENAEV_URL}
+      - OPENAEV_TOKEN=${OPENAEV_TOKEN}
+      # only required for multi-tenancy (Enterprise Edition), keep commented otherwise
+      # - OPENAEV_TENANT_ID=${OPENAEV_TENANT_ID}
+      - COLLECTOR_ID=${COLLECTOR_ID}
+      - COLLECTOR_NAME=${COLLECTOR_NAME:-"OpenAEV Scenarios"}
+      # info shows what each run checked and, out of dry run, what the platform took
+      - COLLECTOR_LOG_LEVEL=${COLLECTOR_LOG_LEVEL:-info}
+      - COLLECTOR_PERIOD=${COLLECTOR_PERIOD:-PT1H}
+      - SCENARIOS_REPOSITORY=${SCENARIOS_REPOSITORY:-OpenAEV-Platform/scenarios}
+      - SCENARIOS_CHANNEL=${SCENARIOS_CHANNEL:-edge}
+      - SCENARIOS_GITHUB_API_URL=${SCENARIOS_GITHUB_API_URL:-https://api.github.com}
+      # fine-grained PAT, this repository only, Contents: read; required while the repository is private
+      # - SCENARIOS_GITHUB_TOKEN=${SCENARIOS_GITHUB_TOKEN}
+      # false sends each release to the platform's catalogue; true only checks it
+      - SCENARIOS_DRY_RUN=${SCENARIOS_DRY_RUN:-true}
+    restart: unless-stopped

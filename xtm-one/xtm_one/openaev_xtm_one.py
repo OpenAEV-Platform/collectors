@@ -351,7 +351,7 @@ class OpenAEVXtmOne(CollectorDaemon):
             if raw:
                 try:
                     created.append(_parse_iso(raw))
-                except (ValueError, TypeError):
+                except ValueError, TypeError:
                     continue
         if created:
             start = min(created) - _EVENT_WINDOW_BUFFER
@@ -366,7 +366,7 @@ class OpenAEVXtmOne(CollectorDaemon):
             return False
         try:
             deadline = _parse_iso(raw_created) + timedelta(seconds=int(expiration))
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             return False
         return deadline < now
 
@@ -518,5 +518,5 @@ class OpenAEVXtmOne(CollectorDaemon):
             self._validate_expectations()
 
 
-if __name__ == "__main__":
+def main():
     OpenAEVXtmOne(configuration=ConfigLoader().to_daemon_config()).start()

@@ -35,13 +35,13 @@ Do not hesitate to check the `CONTRIBUTING.md` for more details regarding the co
 ## Requirements
 
 - OpenAEV Platform
-- Python 3.11+
+- Python 3.14+
 
 ## Configuration
 
 ## Configuration variables
 
-There are a number of configuration options, which are set either in `docker-compose.yml` (for Docker) or
+There are a number of configuration options, which are set either in a `.env` file (for Docker Compose) or
 in `config.yml` (for manual deployment).
 
 The collector supports multiple configuration sources in order of precedence:
@@ -82,7 +82,7 @@ Below are the parameters you'll need to set for the collector:
 | Client ID                           | `source.client_id`                              | `SOURCE_CLIENT_ID`                        | -                                     | Yes       | Azure AD application (client) identifier used to authenticate against Microsoft Graph.             |
 | Use Certificate Auth                | `source.use_certificate_auth`                   | `SOURCE_USE_CERTIFICATE_AUTH`             | false                                 | No        | Whether to authenticate using a client certificate instead of a client secret.                     |
 | Client Secret                       | `source.client_secret`                          | `SOURCE_CLIENT_SECRET`                    | -                                     | Yes, unless certificate auth is used | Azure AD application client secret.                                       |
-| Client Certificate Path             | `source.client_cert_data`                       | `SOURCE_CLIENT_CERT_DATA`                 | -                                     | Yes, if certificate auth is used | Data of the client certificate.                                     |
+| Client Certificate Data             | `source.client_cert_data`                       | `SOURCE_CLIENT_CERT_DATA`                 | -                                     | Yes, if certificate auth is used | Data of the client certificate.                                     |
 | Client Certificate Thumbprint       | `source.client_cert_thumbprint`                 | `SOURCE_CLIENT_CERT_THUMBPRINT`           | -                                     | Yes, if certificate auth is used | Thumbprint of the client certificate.                                          |
 | Base URL                            | `source.base_url`                               | `SOURCE_BASE_URL`                         | https://graph.microsoft.com/v1.0     | No        | Base URL for the Microsoft Graph API.                                                              |
 | Filter Service Source               | `source.filter_service_source`                  | `SOURCE_FILTER_SERVICE_SOURCE`            | microsoftDefenderForOffice365        | No        | Value used to filter Microsoft Graph security alerts down to those produced by Microsoft Defender for Office 365. |
@@ -132,22 +132,43 @@ export SOURCE_CLIENT_SECRET="your-client-secret"
 1. **Clone and Install Dependencies**:
    ```bash
    git clone <repository-url>
-   cd microsoft-defender-o365
-   poetry install --extras local
+   cd <your-collector>
+   poetry install
    ```
 
 2. **Configure the Collector**:
-   - Copy `src/config.yml.sample` to `src/config.yml`
-   - Update configuration values or set environment variables
+- Copy `src/config.yml.sample` to `src/config.yml`
+- Update configuration values or set environment variables
 
 3. **Run the Collector**:
    ```bash
    # Using Poetry
    poetry run python -m src
+   
+   # Or 
+   poetry run MicrosoftDefenderO365Collector
 
-   # Or direct execution after installation
+   # Or direct execution after installing the project and activating the virtual environment:
    MicrosoftDefenderO365Collector
    ```
+
+For local development against a checkout of [client-python](https://github.com/OpenAEV-Platform/client-python),
+The client-python repository must be cloned at the same level as the collectors repository, so that `../../client-python`
+resolves correctly from the collector directory.
+
+```
+parent-directory/ 
+├── collectors/
+│   └── <your-collector>/
+└── client-python/
+```
+
+Then install the local `client-python` version inside the <your-collector> environment:
+```bash
+poetry run pip install -e ../../client-python --force-reinstall
+```
+The `-e` option installs the package in editable mode, allowing local changes in `client-python` to be used immediately
+without reinstalling the package.
 
 ### Docker Deployment
 
@@ -169,6 +190,21 @@ docker run -d \
 docker run -d \
   -v /path/to/config.yml:/app/src/config.yml:ro \
   openaev-microsoft-defender-o365-collector
+```
+
+Or create a `.env` file from `.env.sample` and fill in your values, then start the collector with the provided
+`docker-compose.yml`, which reads the settings it lists from `.env` or from the shell:
+
+```shell
+cp .env.sample .env
+docker compose up -d
+```
+
+Settings left out of `.env` keep the collector's defaults. A value written directly in the `environment` section of
+`docker-compose.yml` (`VAR=value`) takes precedence over `.env`. To check what actually reached the collector:
+
+```shell
+docker compose exec collector-microsoft-defender-o365 env | grep -E '^(OPENAEV|COLLECTOR|SOURCE)_'
 ```
 
 ## Behavior

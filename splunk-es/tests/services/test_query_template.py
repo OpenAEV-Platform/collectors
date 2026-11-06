@@ -6,6 +6,7 @@ import pytest
 from src.services.client_api import (
     ALLOWED_PLACEHOLDERS,
     DEFAULT_QUERY_TEMPLATE,
+    LEGACY_DEFAULT_QUERY_TEMPLATES,
     SplunkESClientAPI,
 )
 from src.services.exception import SplunkESValidationError
@@ -37,6 +38,70 @@ class TestQueryTemplateResolution:
             config.splunk_es.query_template = None
         return SplunkESClientAPI(config=config)
 
+    @pytest.mark.parametrize(
+        ("template", "expected"),
+        [
+            (None, "No query template configured, using the built-in default"),
+            ("DEFAULT", "Using the built-in default query template"),
+            ("DEFAULT_REFLOWED", "Using the built-in default query template"),
+            (
+                "index={alerts_index} | table _time",
+                "Using a custom query template",
+            ),
+        ],
+        ids=["unset", "default", "default-reflowed", "custom"],
+    )
+    def test_query_template_choice_is_logged(self, template, expected):
+        """The log says whether the built-in default or a custom query runs.
+
+        The catalog prefills the built-in query, so a configured template equal
+        to it (whitespace aside) must not be reported as custom.
+        """
+        # Arrange
+        if template == "DEFAULT":
+            template = DEFAULT_QUERY_TEMPLATE
+        elif template == "DEFAULT_REFLOWED":
+            template = DEFAULT_QUERY_TEMPLATE.replace(" | ", "\n  | ")
+
+        # Act
+        client = self._create_client(query_template=template)
+
+        # Assert
+        messages = [str(c.args[0]) for c in client.logger.info.call_args_list]
+        assert any(expected in m for m in messages)  # noqa: S101
+
+    @pytest.mark.parametrize(
+        "legacy_template",
+        [
+            LEGACY_DEFAULT_QUERY_TEMPLATES[0],
+            LEGACY_DEFAULT_QUERY_TEMPLATES[1],
+            "  " + LEGACY_DEFAULT_QUERY_TEMPLATES[1].replace(" | ", "\n  | ") + "\n",
+        ],
+        ids=["process-conditions", "implant-placeholders", "implant-reflowed"],
+    )
+    def test_legacy_default_template_runs_builtin_default(self, legacy_template):
+        """A former catalog default stored on an instance runs the built-in query.
+
+        Instances created from the catalog kept a copy of its default, whose
+        placeholders this version rejects: they must start, not crash-loop.
+        """
+        # Act
+        client = self._create_client(query_template=legacy_template)
+
+        # Assert
+        assert client.query_template == DEFAULT_QUERY_TEMPLATE  # noqa: S101
+        warnings = [str(c.args[0]) for c in client.logger.warning.call_args_list]
+        assert any(  # noqa: S101
+            "former built-in default" in message for message in warnings
+        )
+
+    def test_custom_template_with_legacy_placeholder_raises(self):
+        """Only the exact former defaults are mapped: a custom query still fails."""
+        with pytest.raises(SplunkESValidationError, match="implant_names"):
+            self._create_client(
+                query_template=LEGACY_DEFAULT_QUERY_TEMPLATES[1] + " | head 10"
+            )
+
     def test_default_template_produces_valid_query(self):
         """Test that the default template resolves to a valid SPL query.
 
@@ -47,7 +112,6 @@ class TestQueryTemplateResolution:
         criteria = SplunkESSearchCriteria(
             source_ips=["192.168.1.100"],
             target_ips=["10.0.0.50"],
-            parent_process_names=[],
             start_date=None,
             end_date=None,
         )
@@ -71,7 +135,6 @@ class TestQueryTemplateResolution:
         criteria = SplunkESSearchCriteria(
             source_ips=[],
             target_ips=[],
-            parent_process_names=[],
             start_date=None,
             end_date=None,
         )
@@ -85,25 +148,30 @@ class TestQueryTemplateResolution:
         assert "  " not in result
 
     def test_custom_template_resolves_placeholders(self):
-        """Test that a custom template correctly resolves all placeholders."""
+        """Test that a custom template correctly resolves core placeholders."""
         custom_template = (
-            "index={alerts_index} sourcetype=notable {ip_conditions} "
-            "{process_conditions} earliest=-{time_window}s "
+            "index={alerts_index} sourcetype=notable "
+            "src_ip IN ({source_ips}) dst_ip IN ({target_ips}) "
+            "earliest={start_date} latest={end_date} "
             "| table _time, src_ip, dst_ip | sort -_time"
         )
         client = self._create_client(query_template=custom_template)
         criteria = SplunkESSearchCriteria(
             source_ips=["10.0.0.1"],
-            target_ips=[],
-            parent_process_names=[],
-            start_date=None,
-            end_date=None,
+            target_ips=["10.0.0.9"],
+            start_date="2024-01-01T00:00:00Z",
+            end_date="2024-01-01T23:59:59Z",
         )
 
         result = client._build_spl_query(criteria)
 
         assert "sourcetype=notable" in result
-        assert "src_ip=10.0.0.1" in result
+        assert 'src_ip IN ("10.0.0.1")' in result
+        assert 'dst_ip IN ("10.0.0.9")' in result
+        # earliest/latest are converted to epoch seconds so Splunk time-range
+        # matching works (2024-01-01T00:00:00Z -> 1704067200, ...23:59:59Z -> 1704153599).
+        assert "earliest=1704067200" in result
+        assert "latest=1704153599" in result
         assert "| table _time, src_ip, dst_ip" in result
 
     def test_empty_template_falls_back_to_default(self):
@@ -112,7 +180,6 @@ class TestQueryTemplateResolution:
         criteria = SplunkESSearchCriteria(
             source_ips=["192.168.1.1"],
             target_ips=[],
-            parent_process_names=[],
             start_date=None,
             end_date=None,
         )
@@ -130,7 +197,6 @@ class TestQueryTemplateResolution:
         criteria = SplunkESSearchCriteria(
             source_ips=[],
             target_ips=[],
-            parent_process_names=[],
             start_date=None,
             end_date=None,
         )
@@ -146,12 +212,11 @@ class TestQueryTemplateResolution:
         mock_logger = Mock()
         mock_get_logger.return_value = mock_logger
 
-        custom_template = "index={alerts_index} {ip_conditions} {process_conditions} earliest=-{time_window}s"
+        custom_template = "index={alerts_index} earliest={start_date}"
         client = self._create_client(query_template=custom_template)
         criteria = SplunkESSearchCriteria(
             source_ips=[],
             target_ips=[],
-            parent_process_names=[],
             start_date=None,
             end_date=None,
         )
@@ -168,7 +233,6 @@ class TestQueryTemplateResolution:
         criteria = SplunkESSearchCriteria(
             source_ips=[],
             target_ips=[],
-            parent_process_names=[],
             start_date=None,
             end_date=None,
         )
@@ -184,7 +248,6 @@ class TestQueryTemplateResolution:
         criteria = SplunkESSearchCriteria(
             source_ips=["10.0.0.1", "10.0.0.2"],
             target_ips=[],
-            parent_process_names=[],
             start_date=None,
             end_date=None,
         )
@@ -201,7 +264,6 @@ class TestQueryTemplateResolution:
         criteria = SplunkESSearchCriteria(
             source_ips=["192.168.1.1"],
             target_ips=["10.0.0.5"],
-            parent_process_names=[],
             start_date=None,
             end_date=None,
         )
@@ -212,21 +274,26 @@ class TestQueryTemplateResolution:
         assert 'dst_ip IN ("10.0.0.5")' in result
 
     def test_start_end_date_from_signatures(self):
-        """Test that start_date/end_date from signatures replace relative time."""
+        """Test that start_date/end_date from signatures replace relative time.
+
+        Splunk's earliest/latest modifiers do not parse ISO-8601 'Z' timestamps,
+        so the signature dates must be emitted as Unix epoch seconds.
+        """
         client = self._create_client()
         criteria = SplunkESSearchCriteria(
             source_ips=["10.0.0.1"],
             target_ips=[],
-            parent_process_names=[],
             start_date="2026-06-12T08:00:00Z",
             end_date="2026-06-12T09:00:00Z",
         )
 
         result = client._build_spl_query(criteria)
 
-        assert "earliest=2026-06-12T08:00:00Z" in result
-        assert "latest=2026-06-12T09:00:00Z" in result
+        # 2026-06-12T08:00:00Z == 1781251200, 2026-06-12T09:00:00Z == 1781254800
+        assert "earliest=1781251200" in result
+        assert "latest=1781254800" in result
         assert "earliest=-" not in result
+        assert "2026-06-12T" not in result
 
     def test_start_date_only_fallback_end_to_now(self):
         """Test that missing end_date falls back to 'now'."""
@@ -234,14 +301,13 @@ class TestQueryTemplateResolution:
         criteria = SplunkESSearchCriteria(
             source_ips=["10.0.0.1"],
             target_ips=[],
-            parent_process_names=[],
             start_date="2026-06-12T08:00:00Z",
             end_date=None,
         )
 
         result = client._build_spl_query(criteria)
 
-        assert "earliest=2026-06-12T08:00:00Z" in result
+        assert "earliest=1781251200" in result
         assert "latest=now" in result
 
     def test_no_dates_fallback_to_time_window(self):
@@ -250,7 +316,6 @@ class TestQueryTemplateResolution:
         criteria = SplunkESSearchCriteria(
             source_ips=["10.0.0.1"],
             target_ips=[],
-            parent_process_names=[],
             start_date=None,
             end_date=None,
         )
@@ -261,163 +326,56 @@ class TestQueryTemplateResolution:
         assert "latest=now" in result
 
     def test_default_query_template_constant_format(self):
-        """Test that DEFAULT_QUERY_TEMPLATE has the expected placeholders."""
+        """Test that the minimal default template only carries enough-filter placeholders.
+
+        The default template no longer embeds implant URL/name conditions
+        or process-name conditions; those placeholders are rejected by the
+        template validator, and signature matching happens after the fetch
+        on the raw event text. The projection does carry ``url_path`` (and
+        never any other URL field), because the converter rebuilds implant
+        parent process names from the callback URL in network events.
+        """
         assert "{alerts_index}" in DEFAULT_QUERY_TEMPLATE
         assert "{source_ips}" in DEFAULT_QUERY_TEMPLATE
         assert "{target_ips}" in DEFAULT_QUERY_TEMPLATE
-        assert "{implant_urls}" in DEFAULT_QUERY_TEMPLATE
-        assert "{implant_names}" in DEFAULT_QUERY_TEMPLATE
+        assert "{hostnames}" in DEFAULT_QUERY_TEMPLATE
         assert "{start_date}" in DEFAULT_QUERY_TEMPLATE
         assert "{end_date}" in DEFAULT_QUERY_TEMPLATE
-        assert "| table _time" in DEFAULT_QUERY_TEMPLATE
+        assert "| table" in DEFAULT_QUERY_TEMPLATE
         assert "| sort -_time" in DEFAULT_QUERY_TEMPLATE
-        assert "IN" in DEFAULT_QUERY_TEMPLATE
-        assert "process_name" in DEFAULT_QUERY_TEMPLATE
-        assert "parent_process_name" in DEFAULT_QUERY_TEMPLATE
+        assert "{implant_urls}" not in DEFAULT_QUERY_TEMPLATE
+        assert "{implant_names}" not in DEFAULT_QUERY_TEMPLATE
+        assert "process_name" not in DEFAULT_QUERY_TEMPLATE
+        assert "parent_process_name" not in DEFAULT_QUERY_TEMPLATE
+
+        filter_part = DEFAULT_QUERY_TEMPLATE.split("| table")[0]
+        projection_part = DEFAULT_QUERY_TEMPLATE.split("| table")[1]
+        assert "url_path" not in filter_part
+        assert "url_path" in projection_part
+        assert "path" not in filter_part
+        assert "query" not in DEFAULT_QUERY_TEMPLATE
 
     def test_custom_template_with_subset_of_placeholders(self):
         """Test a template that only uses some placeholders."""
         custom_template = (
-            "index={alerts_index} earliest=-{time_window}s "
+            "index={alerts_index} earliest={start_date} "
             "| table _time, src_ip, dst_ip | sort -_time"
         )
         client = self._create_client(query_template=custom_template)
         criteria = SplunkESSearchCriteria(
             source_ips=["10.0.0.1"],
             target_ips=[],
-            parent_process_names=[],
             start_date=None,
             end_date=None,
         )
 
-        # Should not raise even though {ip_conditions} and {process_conditions} are absent
+        # Should not raise even though the IP/hostname placeholders are absent
         result = client._build_spl_query(criteria)
 
         assert "index=_notable" in result
         assert "earliest=-3600s" in result
-        # ip_conditions placeholder not in template, so IPs won't appear
-        assert "src_ip=10.0.0.1" not in result
-
-
-class TestImplantPlaceholders:
-    """Tests for {implant_urls} and {implant_names} placeholder resolution."""
-
-    def _create_client(self, query_template=None):
-        config = create_test_config()
-        config.splunk_es.query_template = query_template
-        return SplunkESClientAPI(config=config)
-
-    def test_default_template_includes_implant_conditions_when_present(self):
-        """Test that implant process names resolve to url and name conditions."""
-        client = self._create_client()
-        criteria = SplunkESSearchCriteria(
-            source_ips=[],
-            target_ips=[],
-            parent_process_names=["oaev-implant-a1b2c3d4-agent-e5f6a7b8"],
-            start_date=None,
-            end_date=None,
-        )
-
-        result = client._build_spl_query(criteria)
-
-        assert '"/oaev-implant-a1b2c3d4-agent-e5f6a7b8/callback"' in result
-        assert '"oaev-implant-a1b2c3d4-agent-e5f6a7b8"' in result
-        assert "url_path IN" in result
-        assert "process_name IN" in result
-        assert "parent_process_name IN" in result
-
-    def test_default_template_uses_wildcard_when_no_implants(self):
-        """Test that no implant names produces wildcard (*) for IN operator.
-
-        Same behavior as source_ips/target_ips: when empty, the placeholder
-        resolves to * (unquoted) so the IN clause matches everything.
-        """
-        client = self._create_client()
-        criteria = SplunkESSearchCriteria(
-            source_ips=[],
-            target_ips=[],
-            parent_process_names=[],
-            start_date=None,
-            end_date=None,
-        )
-
-        result = client._build_spl_query(criteria)
-
-        assert "url_path IN (*)" in result
-        assert "process_name IN (*)" in result
-        assert 'IN ("*")' not in result
-
-    def test_multiple_implants_quoted_for_in_operator(self):
-        """Test that multiple implant names produce comma-separated quoted values."""
-        client = self._create_client()
-        criteria = SplunkESSearchCriteria(
-            source_ips=[],
-            target_ips=[],
-            parent_process_names=[
-                "oaev-implant-aaaaaaaa-agent-bbbbbbbb",
-                "oaev-implant-cccccccc-agent-dddddddd",
-            ],
-            start_date=None,
-            end_date=None,
-        )
-
-        result = client._build_spl_query(criteria)
-
-        assert '"/oaev-implant-aaaaaaaa-agent-bbbbbbbb/callback"' in result
-        assert '"/oaev-implant-cccccccc-agent-dddddddd/callback"' in result
-        assert '"oaev-implant-aaaaaaaa-agent-bbbbbbbb"' in result
-        assert '"oaev-implant-cccccccc-agent-dddddddd"' in result
-
-    def test_custom_template_with_implant_placeholders(self):
-        """Test a custom template that explicitly uses {implant_urls} and {implant_names}."""
-        custom_template = (
-            "index={alerts_index} (url_path IN ({implant_urls}) OR process_name IN ({implant_names})) "
-            "earliest={start_date} latest={end_date} | table _time | sort -_time"
-        )
-        client = self._create_client(query_template=custom_template)
-        criteria = SplunkESSearchCriteria(
-            source_ips=[],
-            target_ips=[],
-            parent_process_names=["oaev-implant-a1b2c3d4-agent-e5f6a7b8"],
-            start_date=None,
-            end_date=None,
-        )
-
-        result = client._build_spl_query(criteria)
-
-        assert '"/oaev-implant-a1b2c3d4-agent-e5f6a7b8/callback"' in result
-        assert '"oaev-implant-a1b2c3d4-agent-e5f6a7b8"' in result
-
-    def test_implant_url_format_includes_callback_suffix(self):
-        """Test that implant URL has the /{name}/callback format."""
-        client = self._create_client()
-        criteria = SplunkESSearchCriteria(
-            source_ips=[],
-            target_ips=[],
-            parent_process_names=["oaev-implant-12345678-agent-87654321"],
-            start_date=None,
-            end_date=None,
-        )
-
-        result = client._build_spl_query(criteria)
-
-        assert "/oaev-implant-12345678-agent-87654321/callback" in result
-
-    def test_implant_name_with_double_quote_is_escaped(self):
-        """Test that double quotes in implant names are escaped to prevent SPL injection."""
-        client = self._create_client()
-        criteria = SplunkESSearchCriteria(
-            source_ips=[],
-            target_ips=[],
-            parent_process_names=['malicious"name'],
-            start_date=None,
-            end_date=None,
-        )
-
-        result = client._build_spl_query(criteria)
-
-        assert '"malicious\\"name"' in result
-        assert 'malicious"name"' not in result
+        # source_ips placeholder not in template, so IPs won't appear
+        assert '"10.0.0.1"' not in result
 
 
 class TestQueryTemplateSecurity:
@@ -438,7 +396,6 @@ class TestQueryTemplateSecurity:
         return SplunkESSearchCriteria(
             source_ips=[],
             target_ips=[],
-            parent_process_names=[],
             start_date=None,
             end_date=None,
         )
