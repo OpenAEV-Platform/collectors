@@ -176,6 +176,9 @@ class ConfigLoader(ConfigBaseSettings):
                 "splunk_es_logging_query_template": {
                     "data": self.splunk_es.logging_query_template
                 },
+                "splunk_es_logging_max_interval": {
+                    "data": self.splunk_es.logging_max_interval
+                },
             },
             config_base_model=self,
         )
