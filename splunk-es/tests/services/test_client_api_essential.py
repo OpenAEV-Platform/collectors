@@ -6,6 +6,7 @@ import pytest
 from requests import Session
 from src.services.client_api import SplunkESClientAPI
 from src.services.exception import SplunkESAPIError, SplunkESAuthenticationError
+from src.services.utils.epoch import to_epoch
 from tests.services.fixtures.factories import TestDataFactory, create_test_config
 
 
@@ -422,18 +423,15 @@ class TestSplunkESTimeConversion:
     def test_to_epoch_iso_with_z_and_nanoseconds(self):
         """ISO-8601 with 'Z' and nanosecond precision converts to epoch."""
         # 2026-09-11T08:02:10Z == 1789113730
-        assert (
-            SplunkESClientAPI._to_epoch("2026-09-11T08:02:10.806778868Z")  # noqa: S101
-            == 1789113730
-        )
+        assert to_epoch("2026-09-11T08:02:10.806778868Z") == 1789113730  # noqa: S101
 
     def test_to_epoch_passthrough_and_fallbacks(self):
         """Epoch passes through; relative/empty/None fall back to None."""
-        assert SplunkESClientAPI._to_epoch("1789012345") == 1789012345  # noqa: S101
-        assert SplunkESClientAPI._to_epoch("-3600s") is None  # noqa: S101
-        assert SplunkESClientAPI._to_epoch("now") is None  # noqa: S101
-        assert SplunkESClientAPI._to_epoch("") is None  # noqa: S101
-        assert SplunkESClientAPI._to_epoch(None) is None  # noqa: S101
+        assert to_epoch("1789012345") == 1789012345  # noqa: S101
+        assert to_epoch("-3600s") is None  # noqa: S101
+        assert to_epoch("now") is None  # noqa: S101
+        assert to_epoch("") is None  # noqa: S101
+        assert to_epoch(None) is None  # noqa: S101
 
     def test_build_spl_query_uses_epoch_not_iso(self):
         """The built SPL must use epoch earliest/latest, never a raw ISO 'Z'."""

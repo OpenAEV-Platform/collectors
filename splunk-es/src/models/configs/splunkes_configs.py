@@ -3,7 +3,7 @@
 from datetime import timedelta
 from typing import Optional
 
-from pydantic import Field, SecretStr, field_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_core import PydanticUseDefault
 from src.models.configs import ConfigBaseSettings
 
@@ -62,8 +62,38 @@ class _ConfigLoaderSplunkES(ConfigBaseSettings):
         "Must include '| table _time' for proper alert parsing. "
         "Leave empty to use the default query.",
     )
+    logging_enabled: bool = Field(
+        alias="SPLUNKES_LOGGING_ENABLED",
+        default=False,
+        description="Search raw-event indexes to answer LOGGING expectations. "
+        "Requires SPLUNKES_LOGGING_INDEXES.",
+    )
+    logging_indexes: Optional[str] = Field(
+        alias="SPLUNKES_LOGGING_INDEXES",
+        default=None,
+        description="Comma-separated raw-event indexes or patterns searched for "
+        "LOGGING expectations (e.g. sysmon,wineventlog). No default: required "
+        "when SPLUNKES_LOGGING_ENABLED is true.",
+    )
+    logging_query_template: Optional[str] = Field(
+        alias="SPLUNKES_LOGGING_QUERY_TEMPLATE",
+        default=None,
+        description="SPL template of the Logging search, to adapt it to your "
+        "data (sourcetypes, data models, field names). Placeholders: {indexes}, "
+        "{earliest}, {latest}, {terms}, {source_ips}, {target_ips}. Must "
+        "include '| table _time, index, _raw'. Leave empty to use the built-in "
+        "search.",
+    )
 
-    @field_validator("alerts_index", "time_window", "query_template", mode="before")
+    @field_validator(
+        "alerts_index",
+        "time_window",
+        "query_template",
+        "logging_enabled",
+        "logging_indexes",
+        "logging_query_template",
+        mode="before",
+    )
     @classmethod
     def _empty_str_to_default(cls, value: object) -> object:
         """Treat an explicitly empty/whitespace value as unset (field default).
@@ -79,3 +109,22 @@ class _ConfigLoaderSplunkES(ConfigBaseSettings):
         if isinstance(value, str) and not value.strip():
             raise PydanticUseDefault()
         return value
+
+    @model_validator(mode="after")
+    def _require_logging_indexes(self) -> "_ConfigLoaderSplunkES":
+        """Require at least one index when Logging is enabled.
+
+        There is no default index on purpose: searching the wrong one would
+        turn every LOGGING expectation into "Not Logged".
+
+        Raises:
+            ValueError: If Logging is enabled without any index.
+
+        """
+        if self.logging_enabled and not (self.logging_indexes or "").strip(", "):
+            raise ValueError(
+                "SPLUNKES_LOGGING_ENABLED is true but SPLUNKES_LOGGING_INDEXES "
+                "is empty: set the raw-event indexes to search, e.g. "
+                "SPLUNKES_LOGGING_INDEXES=sysmon,wineventlog"
+            )
+        return self
