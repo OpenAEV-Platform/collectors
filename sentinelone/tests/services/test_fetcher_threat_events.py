@@ -106,12 +106,18 @@ def test_fetch_events_follows_next_cursor_until_null_and_returns_later_marker():
         f"{fetcher.client_api.base_url}/web/api/v2.1/threats/"
         f"{threat.threat_id}/explore/events"
     )
-    expected_calls = [call(endpoint, params={"limit": 100}, timeout=30)]
+    expected_calls = [
+        call(
+            endpoint,
+            params={"limit": 100},
+            timeout=fetcher_threat_events_module.REQUEST_TIMEOUT_SECONDS,
+        )
+    ]
     expected_calls.extend(
         call(
             endpoint,
             params={"limit": 100, "cursor": f"cursor-{page_number}"},
-            timeout=30,
+            timeout=fetcher_threat_events_module.REQUEST_TIMEOUT_SECONDS,
         )
         for page_number in range(1, 7)
     )

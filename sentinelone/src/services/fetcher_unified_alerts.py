@@ -25,7 +25,7 @@ from typing import Any
 
 from requests import ConnectionError, RequestException, Timeout
 
-from .client_api import SentinelOneClientAPI
+from .client_api import REQUEST_TIMEOUT_SECONDS, SentinelOneClientAPI
 from .exception import (
     SentinelOneAPIError,
     SentinelOneNetworkError,
@@ -34,7 +34,6 @@ from .exception import (
 from .model_threat import SentinelOneThreat
 
 LOG_PREFIX = "[FetcherUnifiedAlerts]"
-REQUEST_TIMEOUT_SECONDS = 30
 PAGE_SIZE = 100
 MAX_PAGES = 50
 
@@ -250,7 +249,8 @@ class FetcherUnifiedAlerts:
         if response.status_code != 200:
             raise SentinelOneAPIError(
                 f"Unified Alerts query failed with status "
-                f"{response.status_code}: {response.text[:200]}"
+                f"{response.status_code}: {response.text[:200]}",
+                status_code=response.status_code,
             )
 
         body = response.json()

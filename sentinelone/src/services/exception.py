@@ -20,9 +20,17 @@ class SentinelOneDataConversionError(SentinelOneServiceError):
 
 
 class SentinelOneAPIError(SentinelOneServiceError):
-    """Raised when there's an error with SentinelOne API operations."""
+    """Raised when there's an error with SentinelOne API operations.
 
-    pass
+    ``status_code`` carries the HTTP status when the error comes from an
+    HTTP response, so callers can react to it (e.g. 401/403) without
+    parsing the message.
+    """
+
+    def __init__(self, message: str = "", status_code: int | None = None):
+        """Initialize the error with an optional HTTP status code."""
+        super().__init__(message)
+        self.status_code = status_code
 
 
 class SentinelOneNetworkError(SentinelOneServiceError):

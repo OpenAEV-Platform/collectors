@@ -6,6 +6,7 @@ from uuid import uuid4
 
 import pytest
 from pyoaev.signatures.types import SignatureTypes
+from src.services.exception import SentinelOneAPIError
 from src.services.expectation_service import (
     ExpectationResult,
     SentinelOneExpectationService,
@@ -276,6 +277,58 @@ def test_fetch_windows_fall_back_to_time_window_when_start_unparsable():
 
     # Then: The window spans now - SENTINELONE_TIME_WINDOW to now
     _then_fetch_window_falls_back_to_time_window(service, start_time, end_time)
+
+
+# Scenario: A token without Unified Alerts access disables the correlation once
+@pytest.mark.parametrize("status_code", [401, 403])
+def test_unified_alerts_forbidden_disables_correlation(status_code):
+    """Scenario: a 401/403 from Unified Alerts (token scoped to Threats only)
+    disables the alerts correlation for the rest of the run instead of logging
+    an error on every batch, and the Threats verdict is still produced."""
+    # Given: An initialized service whose alerts fetcher is refused access
+    service = _given_initialized_expectation_service()
+    service.threat_fetcher.fetch_threats_for_time_window = Mock(return_value=[])
+    alerts_fetcher = Mock()
+    alerts_fetcher.fetch_alert_threats.side_effect = SentinelOneAPIError(
+        "forbidden", status_code=status_code
+    )
+    service.alerts_fetcher = alerts_fetcher
+    expectation = _given_detection_expectation()
+
+    # When: Two batches are processed
+    service._process_expectation_batch([expectation], Mock(), 1)
+    service._process_expectation_batch([expectation], Mock(), 2)
+
+    # Then: Unified Alerts were queried once, then the correlation was disabled
+    assert alerts_fetcher.fetch_alert_threats.call_count == 1  # noqa: S101
+    assert service.alerts_fetcher is None  # noqa: S101
+    # Then: The Threats correlation kept running on both batches
+    assert (  # noqa: S101
+        service.threat_fetcher.fetch_threats_for_time_window.call_count == 2
+    )
+
+
+# Scenario: Any other Unified Alerts failure keeps the correlation enabled
+def test_unified_alerts_server_error_keeps_correlation():
+    """Scenario: a non-auth Unified Alerts failure (e.g. HTTP 500) is logged
+    and the correlation stays enabled for the next batch."""
+    # Given: An initialized service whose alerts fetcher fails with a 500
+    service = _given_initialized_expectation_service()
+    service.threat_fetcher.fetch_threats_for_time_window = Mock(return_value=[])
+    alerts_fetcher = Mock()
+    alerts_fetcher.fetch_alert_threats.side_effect = SentinelOneAPIError(
+        "boom", status_code=500
+    )
+    service.alerts_fetcher = alerts_fetcher
+    expectation = _given_detection_expectation()
+
+    # When: Two batches are processed
+    service._process_expectation_batch([expectation], Mock(), 1)
+    service._process_expectation_batch([expectation], Mock(), 2)
+
+    # Then: Unified Alerts were queried on both batches
+    assert alerts_fetcher.fetch_alert_threats.call_count == 2  # noqa: S101
+    assert service.alerts_fetcher is alerts_fetcher  # noqa: S101
 
 
 # --------

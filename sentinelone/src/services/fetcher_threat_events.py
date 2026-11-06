@@ -9,6 +9,7 @@ from requests.exceptions import (  # type: ignore[import-untyped]
     Timeout,
 )
 
+from .client_api import REQUEST_TIMEOUT_SECONDS
 from .exception import (
     SentinelOneAPIError,
     SentinelOneNetworkError,
@@ -123,7 +124,7 @@ class FetcherThreatEvents:
                 )
 
                 response = self.client_api.session.get(
-                    endpoint, params=params, timeout=30
+                    endpoint, params=params, timeout=REQUEST_TIMEOUT_SECONDS
                 )
                 response.raise_for_status()
 

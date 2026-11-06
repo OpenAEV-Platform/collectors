@@ -5,7 +5,6 @@ from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from pydantic import BaseModel, Field
 from pyoaev.apis.inject_expectation.model.expectation import (
     DetectionExpectation,
     PreventionExpectation,
@@ -26,32 +25,11 @@ from .fetcher_sdl import FetcherSDL
 from .fetcher_threat import FetcherThreat
 from .fetcher_threat_events import FetcherThreatEvents
 from .fetcher_unified_alerts import FetcherUnifiedAlerts
+from .model_expectation_result import ExpectationResult
 from .model_threat import SentinelOneThreat
 from .utils import SignatureExtractor, TraceBuilder
 
 LOG_PREFIX = "[SentinelOneExpectationService]"
-
-
-class ExpectationResult(BaseModel):
-    """Model for expectation processing results."""
-
-    expectation_id: str = Field(..., description="ID of the processed expectation")
-    is_valid: bool = Field(..., description="Whether the expectation was validated")
-    is_pending: bool = Field(
-        False,
-        description="Whether this result is held pending a transient fetch failure "
-        "(no verdict emitted this cycle; retried before degrading)",
-    )
-    expectation: Any | None = Field(None, description="The original expectation object")
-    matched_alerts: list[dict[str, Any]] | None = Field(
-        None, description="List of alerts that matched this expectation"
-    )
-    error_message: str | None = Field(
-        None, description="Error message if processing failed"
-    )
-    processing_time: float | None = Field(
-        None, description="Time taken to process this expectation in seconds"
-    )
 
 
 class SentinelOneExpectationService:
@@ -301,7 +279,7 @@ class SentinelOneExpectationService:
                 else:
                     self.first_attempt_at.pop(result.expectation_id, None)
 
-        results = [result for result in results if not result in retry_results]
+        results = [result for result in results if result not in retry_results]
         return results
 
     def _now(self) -> datetime:
@@ -450,6 +428,23 @@ class SentinelOneExpectationService:
                             f"{LOG_PREFIX} Batch {batch_idx}: added "
                             f"{len(alert_threats)} unified alerts to the "
                             f"{len(threats) - len(alert_threats)} threats"
+                        )
+                except SentinelOneAPIError as e:
+                    if e.status_code in (401, 403):
+                        # The token lacks Unified Alerts access (e.g. a token
+                        # scoped to Threats only). Disable the correlation for
+                        # the rest of the run with one warning instead of an
+                        # error on every batch; Threats keep working as before.
+                        self.alerts_fetcher = None
+                        self.logger.warning(
+                            f"{LOG_PREFIX} Unified Alerts correlation disabled: "
+                            f"the API token is not allowed to query Unified Alerts "
+                            f"(HTTP {e.status_code}). Grant the alerts view "
+                            f"permission or set SENTINELONE_ENABLE_ALERTS=false."
+                        )
+                    else:
+                        self.logger.error(
+                            f"{LOG_PREFIX} Batch {batch_idx}: Error fetching unified alerts: {e}"
                         )
                 except Exception as e:
                     self.logger.error(

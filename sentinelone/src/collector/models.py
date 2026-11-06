@@ -1,8 +1,11 @@
 """Pydantic models for collector data structures."""
 
-from typing import Any
-
 from pydantic import BaseModel, Field, field_validator
+
+# ExpectationResult lives in the services layer (shared with the expectation
+# service, which cannot import src.collector without a circular import); it is
+# re-exported here so the collector modules keep importing it from .models.
+from src.services.model_expectation_result import ExpectationResult
 
 
 class ExpectationTrace(BaseModel):
@@ -139,27 +142,6 @@ class ExpectationTrace(BaseModel):
         }
 
 
-class ExpectationResult(BaseModel):
-    """Model for expectation processing results."""
-
-    expectation_id: str = Field(..., description="ID of the processed expectation")
-    is_valid: bool = Field(..., description="Whether the expectation was validated")
-    is_pending: bool = Field(
-        False,
-        description="Whether this result is held pending a transient fetch failure.",
-    )
-    expectation: Any | None = Field(None, description="The original expectation object")
-    matched_alerts: list[dict[str, Any]] | None = Field(
-        None, description="List of alerts that matched this expectation"
-    )
-    error_message: str | None = Field(
-        None, description="Error message if processing failed"
-    )
-    processing_time: float | None = Field(
-        None, description="Time taken to process this expectation in seconds"
-    )
-
-
 class ProcessingSummary(BaseModel):
     """Model for expectation processing summary."""
 
@@ -170,3 +152,6 @@ class ProcessingSummary(BaseModel):
     total_processing_time: float | None = Field(
         None, description="Total processing time in seconds"
     )
+
+
+__all__ = ["ExpectationResult", "ExpectationTrace", "ProcessingSummary"]

@@ -201,3 +201,16 @@ def test_graphql_errors_raise_api_error():
 
     with pytest.raises(SentinelOneAPIError):
         fetcher.fetch_alert_threats(*_window())
+
+
+# Scenario: an HTTP error carries its status code
+def test_http_error_carries_status_code():
+    """Scenario: a 403 surfaces as SentinelOneAPIError with status_code=403,
+    so the service can tell a missing permission from a transient failure."""
+    fetcher, session = _given_fetcher()
+    session.post.return_value = _response(403, {"errors": "forbidden"})
+
+    with pytest.raises(SentinelOneAPIError) as excinfo:
+        fetcher.fetch_alert_threats(*_window())
+
+    assert excinfo.value.status_code == 403  # noqa: S101

@@ -8,7 +8,7 @@ from typing import Any
 
 from requests import ConnectionError, RequestException, Timeout
 
-from .client_api import SentinelOneClientAPI
+from .client_api import REQUEST_TIMEOUT_SECONDS, SentinelOneClientAPI
 from .exception import (
     SentinelOneAPIError,
     SentinelOneNetworkError,
@@ -16,7 +16,6 @@ from .exception import (
 )
 
 LOG_PREFIX = "[FetcherSDL]"
-REQUEST_TIMEOUT_SECONDS = 30
 PAGE_LIMIT = 100
 MAX_PAGES = 200
 MAX_POLL_ATTEMPTS = 30
@@ -674,8 +673,6 @@ class FetcherSDL:
         """
         status = response.status_code
         detail = self._parse_error_response(response)
-        if status == 404:
-            raise SentinelOneAPIError(f"{context} failed with status 404: {detail}")
         raise SentinelOneAPIError(f"{context} failed with status {status}: {detail}")
 
     def _parse_error_response(self, response: Any) -> str:
