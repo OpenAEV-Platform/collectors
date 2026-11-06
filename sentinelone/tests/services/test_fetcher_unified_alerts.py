@@ -290,3 +290,44 @@ def test_detail_cap_resumes_on_next_call(monkeypatch):
         e["parentProcessName"] for e in events_second["alert-2"]
     ]
     assert session.post.call_count == 4
+
+
+# Scenario: a Unified Alert is tagged as such and gets a non-Threat trace link
+def test_unified_alert_trace_does_not_use_threat_overview_link():
+    """Scenario: a Unified Alert is not a Threat, so its trace must not link to
+    /incidents/threats/{id}/overview; it carries the alert name and id."""
+    from src.services.model_threat import UNIFIED_ALERT_SOURCE
+    from src.services.utils.trace_builder import TraceBuilder
+
+    fetcher, session = _given_fetcher()
+    node = _bare_node("alert-9", parent=f"{IMPLANT}.exe")
+    node["name"] = "Potential Mimikatz Execution"
+    session.post.side_effect = [_response(200, _list_page([node]))]
+
+    threats, events = fetcher.fetch_alert_threats(*_window())
+    trace = TraceBuilder.create_threat_trace(
+        threats[0], "https://s1.example.com/", events["alert-9"]
+    )
+
+    assert threats[0].source == UNIFIED_ALERT_SOURCE
+    assert "/incidents/threats/" not in trace["alert_link"]
+    assert trace["alert_link"] == "https://s1.example.com"
+    assert "Potential Mimikatz Execution" in trace["alert_name"]
+    assert "alert-9" in trace["alert_name"]
+    assert trace["additional_data"]["source"] == UNIFIED_ALERT_SOURCE
+
+
+# Scenario: a Threat keeps its threat overview link
+def test_threat_trace_keeps_threat_overview_link():
+    """Scenario: Threats API detections keep the existing overview link."""
+    from src.services.model_threat import SentinelOneThreat
+    from src.services.utils.trace_builder import TraceBuilder
+
+    threat = SentinelOneThreat(threat_id="123", hostname="debian12")
+    trace = TraceBuilder.create_threat_trace(threat, "https://s1.example.com", [])
+
+    assert trace["alert_link"] == (
+        "https://s1.example.com/incidents/threats/123/overview"
+    )
+    assert trace["alert_name"] == "SentinelOne Alert - debian12"
+    assert trace["additional_data"]["source"] == "threat"

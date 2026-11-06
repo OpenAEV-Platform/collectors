@@ -32,7 +32,7 @@ from .exception import (
     SentinelOneNetworkError,
     SentinelOneValidationError,
 )
-from .model_threat import SentinelOneThreat
+from .model_threat import UNIFIED_ALERT_SOURCE, SentinelOneThreat
 
 LOG_PREFIX = "[FetcherUnifiedAlerts]"
 PAGE_SIZE = 100
@@ -335,6 +335,8 @@ class FetcherUnifiedAlerts:
             is_mitigated=is_mitigated,
             is_static=False,
             sha1=None,
+            source=UNIFIED_ALERT_SOURCE,
+            name=node.get("name"),
         )
         threat._raw = node
 
