@@ -2,43 +2,34 @@
 
 import logging
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from pydantic import BaseModel, Field
 from pyoaev.apis.inject_expectation.model.expectation import (
     DetectionExpectation,
     PreventionExpectation,
 )
 from pyoaev.signatures.types import SignatureTypes
+from requests import exceptions as requests_exceptions
 
 from .client_api import SentinelOneClientAPI
 from .converter import SentinelOneConverter
-from .exception import SentinelOneAPIError, SentinelOneExpectationError
+from .exception import (
+    SentinelOneAPIError,
+    SentinelOneExpectationError,
+    SentinelOneNetworkError,
+    SentinelOneValidationError,
+)
 from .fetcher_deep_visibility import FetcherDeepVisibility
+from .fetcher_sdl import FetcherSDL
 from .fetcher_threat import FetcherThreat
 from .fetcher_threat_events import FetcherThreatEvents
+from .fetcher_unified_alerts import FetcherUnifiedAlerts
+from .model_expectation_result import ExpectationResult
 from .model_threat import SentinelOneThreat
 from .utils import SignatureExtractor, TraceBuilder
 
 LOG_PREFIX = "[SentinelOneExpectationService]"
-
-
-class ExpectationResult(BaseModel):
-    """Model for expectation processing results."""
-
-    expectation_id: str = Field(..., description="ID of the processed expectation")
-    is_valid: bool = Field(..., description="Whether the expectation was validated")
-    expectation: Any | None = Field(None, description="The original expectation object")
-    matched_alerts: list[dict[str, Any]] | None = Field(
-        None, description="List of alerts that matched this expectation"
-    )
-    error_message: str | None = Field(
-        None, description="Error message if processing failed"
-    )
-    processing_time: float | None = Field(
-        None, description="Time taken to process this expectation in seconds"
-    )
 
 
 class SentinelOneExpectationService:
@@ -66,20 +57,50 @@ class SentinelOneExpectationService:
             config.sentinelone.enable_deep_visibility_search
         )
         self.disable_strict_end_date = config.sentinelone.disable_strict_end_date
+        self.enable_alerts = config.sentinelone.enable_alerts
+        self.retry_window: timedelta = config.sentinelone.retry_window
 
         self.threat_fetcher: FetcherThreat = FetcherThreat(self.client_api)
         self.threat_events_fetcher: FetcherThreatEvents = FetcherThreatEvents(
             self.client_api
         )
-        self.deep_visibility_fetcher: FetcherDeepVisibility = FetcherDeepVisibility(
-            self.client_api
-        )
+        if self.client_api.is_self_hosted:
+            self.deep_visibility_fetcher: FetcherDeepVisibility | FetcherSDL = (
+                FetcherDeepVisibility(self.client_api)
+            )
+            self.logger.debug(f"{LOG_PREFIX} Deep-search backend: DV 1.0 (self-hosted)")
+        else:
+            self.deep_visibility_fetcher = FetcherSDL(self.client_api)
+            self.logger.debug(f"{LOG_PREFIX} Deep-search backend: SDL v2 (SaaS)")
 
-        self.failure_tracker: defaultdict = defaultdict(int)
-        self.max_failure = 5
+        # Unified Alerts (Singularity alerts GraphQL) carry the behavioral / STAR
+        # / AI detections that never become Threats. SaaS only; on self-hosted the
+        # endpoint is absent, so the correlation is skipped.
+        self.alerts_fetcher: FetcherUnifiedAlerts | None = None
+        if self.enable_alerts and not self.client_api.is_self_hosted:
+            self.alerts_fetcher = FetcherUnifiedAlerts(self.client_api)
+            self.logger.debug(
+                f"{LOG_PREFIX} Unified Alerts correlation: enabled (SaaS)"
+            )
+        else:
+            self.logger.debug(
+                f"{LOG_PREFIX} Unified Alerts correlation: disabled "
+                f"(enable_alerts={self.enable_alerts}, "
+                f"self_hosted={self.client_api.is_self_hosted})"
+            )
+
+        self.first_attempt_at: dict[str, datetime] = {}
+
+        # Unified Alerts are fetched once per collection cycle and shared by
+        # every batch (see _start_alert_cycle / _get_cycle_alerts).
+        self._cycle_alerts: (
+            tuple[list[SentinelOneThreat], dict[str, list[dict[str, Any]]]] | None
+        ) = None
+        self._cycle_alert_window: tuple[datetime, datetime] | None = None
 
         self.logger.info(
-            f"{LOG_PREFIX} Service initialized with batch size: {self.batch_size}"
+            f"{LOG_PREFIX} Service initialized with batch size: {self.batch_size}, "
+            f"retry window: {self.retry_window}"
         )
 
     def get_supported_signatures(self) -> list[SignatureTypes]:
@@ -125,6 +146,7 @@ class SentinelOneExpectationService:
             )
 
             batches, skipped_count = self._create_expectation_batches(expectations)
+            self._start_alert_cycle([e for batch in batches for e in batch])
             self.logger.info(
                 f"{LOG_PREFIX} Created {len(batches)} batches of size {self.batch_size} (skipped {skipped_count} expectations without end_date)"
             )
@@ -149,14 +171,27 @@ class SentinelOneExpectationService:
                     self.logger.error(
                         f"{LOG_PREFIX} Error processing batch {batch_idx}: {e}"
                     )
-                    error_results = [
-                        self._create_error_result_object(
-                            SentinelOneExpectationError(f"Batch processing error: {e}"),
-                            expectation,
+                    if self._classify_error(e) == "transient":
+                        self.logger.warning(
+                            f"{LOG_PREFIX} Batch {batch_idx}: transient transport failure; "
+                            f"holding {len(batch)} expectations pending (no verdict emitted)"
                         )
-                        for expectation in batch
-                    ]
-                    all_results.extend(error_results)
+                        pending_results = [
+                            self._make_pending_result(e, expectation)
+                            for expectation in batch
+                        ]
+                        batch_results = self._update_failures(pending_results)
+                    else:
+                        batch_results = [
+                            self._create_error_result_object(
+                                SentinelOneExpectationError(
+                                    f"Batch processing error: {e}"
+                                ),
+                                expectation,
+                            )
+                            for expectation in batch
+                        ]
+                    all_results.extend(batch_results)
 
             valid_count = sum(1 for r in all_results if r.is_valid)
             invalid_count = len(all_results) - valid_count
@@ -223,26 +258,47 @@ class SentinelOneExpectationService:
     def _update_failures(
         self, results: list[ExpectationResult]
     ) -> list[ExpectationResult]:
-        """Update the failure tracker and return the relevant results for further process"""
+        """Apply the retry-window rule and return the results to emit or keep.
+
+        Every expectation that has not been validated yet follows a single
+        time-based lifecycle, independent of the collector period:
+
+        - the first failed attempt opens a retry window anchored at that
+          moment and is held pending (no verdict emitted);
+        - while the elapsed time since the first attempt stays within
+          ``retry_window`` every failed attempt is held pending (no verdict,
+          the expectation is re-fetched on the next collector cycle);
+        - the first attempt after the window has elapsed is the final
+          attempt: its result survives so the verdict is emitted, and the
+          lifecycle closes.
+
+        A valid result closes the lifecycle as well.
+        """
+        now = self._now()
         retry_results = []
         for result in results:
-            if (
-                not result.is_valid
-                and self.failure_tracker[result.expectation_id] < self.max_failure
-            ):
-                self.failure_tracker[result.expectation_id] += 1
-                retry_results.append(result)
-            elif result.expectation_id in self.failure_tracker:
-                self.failure_tracker.pop(result.expectation_id, None)
+            if result.is_valid:
+                self.first_attempt_at.pop(result.expectation_id, None)
+            else:
+                first_attempt = self.first_attempt_at.get(result.expectation_id)
+                if first_attempt is None or now - first_attempt <= self.retry_window:
+                    self.first_attempt_at.setdefault(result.expectation_id, now)
+                    retry_results.append(result)
+                else:
+                    self.first_attempt_at.pop(result.expectation_id, None)
 
-        results = [result for result in results if not result in retry_results]
+        results = [result for result in results if result not in retry_results]
         return results
 
+    def _now(self) -> datetime:
+        """Current UTC time; single clock seam for the retry-window rule."""
+        return datetime.now(timezone.utc)
+
     def _update_date_in_case_of_failures(self, batch):
-        """Update the dates of a batch if a tracked failed expectation is found in it"""
-        now = datetime.now(timezone.utc)
+        """Update the dates of a batch if a pending expectation is found in it"""
+        now = self._now()
         if any(
-            str(expectation.inject_expectation_id) in self.failure_tracker
+            str(expectation.inject_expectation_id) in self.first_attempt_at
             for expectation in batch
         ):
             for expectation in batch:
@@ -324,10 +380,7 @@ class SentinelOneExpectationService:
                             )
 
                     if unique_sha1s:
-                        end_time = self._extract_end_date_from_batch(batch)
-                        if end_time is None:
-                            end_time = datetime.now(timezone.utc)
-                        start_time = end_time - self.client_api.time_window
+                        start_time, end_time = self._get_deep_visibility_fetch_window()
 
                         self.logger.debug(
                             f"{LOG_PREFIX} Batch {batch_idx}: Fetching DV events for {len(unique_sha1s)} unique SHA1s (from {len(threats)} threats) in single query for time window: {start_time} to {end_time}"
@@ -365,6 +418,21 @@ class SentinelOneExpectationService:
                         f"{LOG_PREFIX} Batch {batch_idx}: Error fetching DV events for threats batch: {e}"
                     )
 
+            # Correlate SentinelOne Unified Alerts (behavioral / STAR / AI
+            # detections that never become Threats). Additive and isolated:
+            # an alerts failure must never break the Threats verdict, so it is
+            # caught here rather than propagated to the batch retry logic.
+            alert_threats, alert_events = self._get_cycle_alerts(batch, batch_idx)
+            if alert_threats:
+                threats = threats + alert_threats
+                for alert_id, events in alert_events.items():
+                    threat_events[alert_id].extend(events)
+                self.logger.info(
+                    f"{LOG_PREFIX} Batch {batch_idx}: added "
+                    f"{len(alert_threats)} unified alerts to the "
+                    f"{len(threats) - len(alert_threats)} threats"
+                )
+
             results = self._match_threats_to_expectations(
                 batch, threats, threat_events, detection_helper
             )
@@ -372,6 +440,12 @@ class SentinelOneExpectationService:
 
             return results
 
+        except (
+            SentinelOneAPIError,
+            SentinelOneNetworkError,
+            SentinelOneValidationError,
+        ):
+            raise
         except Exception as e:
             raise SentinelOneExpectationError(
                 f"Error processing batch {batch_idx}: {e}"
@@ -420,9 +494,159 @@ class SentinelOneExpectationService:
         end_date = SignatureExtractor.extract_end_date(batch)
         if end_date:
             self.logger.debug(
-                f"{LOG_PREFIX} Extracted end_date from signatures: {end_date}, start_date will be calculated from time_window"
+                f"{LOG_PREFIX} Extracted end_date from signatures: {end_date}"
             )
         return end_date
+
+    def _extract_start_date_from_batch(
+        self, batch: list[DetectionExpectation | PreventionExpectation] | None = None
+    ) -> datetime | None:
+        """Extract start_date from batch signatures.
+
+        Args:
+            batch: Batch of expectations to extract start_date from.
+
+        Returns:
+            start_date as datetime or None if no valid start_date signature found.
+
+        """
+        return SignatureExtractor.extract_start_date(batch)
+
+    def _start_alert_cycle(
+        self, expectations: list[DetectionExpectation | PreventionExpectation]
+    ) -> None:
+        """Reset the per-cycle Unified Alerts cache for a new collection cycle.
+
+        Unified Alerts are tenant-wide: the listing does not depend on the
+        batch, only on the window. They are therefore fetched once per cycle,
+        over a window that covers every expectation of the cycle, and shared
+        by all batches. Matching still runs per expectation (on the implant
+        name), so the wider window cannot create a false positive.
+
+        Args:
+            expectations: Every expectation processed in this cycle.
+
+        """
+        self._cycle_alerts = None
+        self._cycle_alert_window = (
+            self._get_fetch_time_window(expectations) if expectations else None
+        )
+
+    def _get_cycle_alerts(
+        self,
+        batch: list[DetectionExpectation | PreventionExpectation],
+        batch_idx: int,
+    ) -> tuple[list[SentinelOneThreat], dict[str, list[dict[str, Any]]]]:
+        """Return the Unified Alerts of the current cycle, fetching them once.
+
+        Additive and isolated: an alerts failure never breaks the Threats
+        verdict. A 401/403 (token without alerts access) disables the
+        correlation for the rest of the run with one warning; any other
+        failure is logged once and the cycle continues without alerts.
+
+        Args:
+            batch: Current batch (used for the window when no cycle was started).
+            batch_idx: Batch index for logging.
+
+        Returns:
+            Tuple of (alert threats, events by alert id); empty when disabled.
+
+        """
+        if self.alerts_fetcher is None:
+            return [], {}
+        if self._cycle_alerts is not None:
+            return self._cycle_alerts
+
+        alert_start, alert_end = (
+            self._cycle_alert_window or self._get_fetch_time_window(batch)
+        )
+        try:
+            self._cycle_alerts = self.alerts_fetcher.fetch_alert_threats(
+                alert_start, alert_end
+            )
+        except SentinelOneAPIError as e:
+            self._cycle_alerts = ([], {})
+            if e.status_code in (401, 403):
+                self.alerts_fetcher = None
+                self.logger.warning(
+                    f"{LOG_PREFIX} Unified Alerts correlation disabled: "
+                    f"the API token is not allowed to query Unified Alerts "
+                    f"(HTTP {e.status_code}). Grant the alerts view "
+                    f"permission or set SENTINELONE_ENABLE_ALERTS=false."
+                )
+            else:
+                self.logger.error(
+                    f"{LOG_PREFIX} Batch {batch_idx}: Error fetching unified alerts "
+                    f"(skipped for this cycle): {e}"
+                )
+        except Exception as e:
+            self._cycle_alerts = ([], {})
+            self.logger.error(
+                f"{LOG_PREFIX} Batch {batch_idx}: Error fetching unified alerts "
+                f"(skipped for this cycle): {e}"
+            )
+        return self._cycle_alerts
+
+    def _get_fetch_time_window(
+        self,
+        batch: list[DetectionExpectation | PreventionExpectation] | None,
+    ) -> tuple[datetime, datetime]:
+        """Compute the fetch time window for the alert (threat) query.
+
+        The window ends at the current time. It starts at the start_date
+        signature when present and not in the future; otherwise it falls back
+        to now minus SENTINELONE_TIME_WINDOW. The signature end date does not
+        anchor this window: the DV event window is decoupled and uses its own
+        fixed lookback (see ``_get_deep_visibility_fetch_window``).
+
+        Args:
+            batch: Optional batch of expectations to extract date filters from.
+
+        Returns:
+            Tuple of (start_time, end_time).
+
+        """
+        end_time = datetime.now(timezone.utc)
+
+        # Resolve each expectation's start (or the fallback) on its own, then
+        # take the earliest, so one expectation without a start date never
+        # narrows the window of another one in the same batch.
+        fallback = end_time - self.client_api.time_window
+        start_time = fallback
+        for expectation in batch or []:
+            start = self._extract_start_date_from_batch([expectation])
+            if start is None or start > end_time:
+                start = fallback
+            start_time = min(start_time, start)
+
+        return start_time, end_time
+
+    def _get_deep_visibility_fetch_window(
+        self,
+        now: datetime | None = None,
+    ) -> tuple[datetime, datetime]:
+        """Compute the fetch window for the Deep Visibility / SDL file-event
+        pivot query.
+
+        Unlike the threat window (which is anchored to the expectation
+        start_date / alert time), this window ignores the signature dates
+        entirely. The event query pivots on the file SHA1 — a strong
+        selector — so the window only needs to be wide enough to reach a
+        file that may have been dropped or executed long before the alert
+        that references it. It therefore spans
+        ``[now - deep_visibility_lookback, now]``.
+
+        Args:
+            now: Reference end time (defaults to the current UTC time).
+
+        Returns:
+            Tuple of (start_time, end_time).
+
+        """
+        end_time = now or datetime.now(timezone.utc)
+        start_time = end_time - self.client_api.deep_visibility_lookback
+
+        return start_time, end_time
 
     def _fetch_threats_for_time_window(
         self, batch: list[DetectionExpectation | PreventionExpectation] | None = None
@@ -437,15 +661,12 @@ class SentinelOneExpectationService:
 
         Raises:
             SentinelOneAPIError: If API call fails.
+            SentinelOneNetworkError: If a network/transport failure occurs.
+            SentinelOneValidationError: If request parameters are invalid.
 
         """
         try:
-            end_time = self._extract_end_date_from_batch(batch)
-
-            if end_time is None:
-                end_time = datetime.now(timezone.utc)
-
-            start_time = end_time - self.client_api.time_window
+            start_time, end_time = self._get_fetch_time_window(batch)
 
             self.logger.debug(
                 f"{LOG_PREFIX} Delegating threat fetching to FetcherThreat for time window: {start_time} to {end_time}"
@@ -457,6 +678,12 @@ class SentinelOneExpectationService:
                 limit=1000,
             )
 
+        except (
+            SentinelOneAPIError,
+            SentinelOneNetworkError,
+            SentinelOneValidationError,
+        ):
+            raise
         except Exception as e:
             raise SentinelOneAPIError(
                 f"Error fetching threats for time window: {e}"
@@ -653,6 +880,13 @@ class SentinelOneExpectationService:
             )
 
             for sig_type, signatures in signature_groups.items():
+                if sig_type not in filtered_oaev_data:
+                    self.logger.debug(
+                        f"{LOG_PREFIX} Required signature data '{sig_type}' is absent "
+                        f"for threat {threat.threat_id}; expectation does not match"
+                    )
+                    return False
+
                 filtered_data = {sig_type: filtered_oaev_data[sig_type]}
                 self.logger.debug(
                     f"{LOG_PREFIX} Detection helper input - sig_type: {sig_type}"
@@ -688,6 +922,80 @@ class SentinelOneExpectationService:
                 f"{LOG_PREFIX} Error in expectation matching: {type(e)} - {e}"
             )
             return False
+
+    def _classify_error(self, error: Exception) -> str:
+        """Classify a batch-processing failure as "transient" or "permanent".
+
+        Transient failures (network drops, timeouts, 5xx, 408/429) are retryable:
+        the expectation is held pending and re-fetched on the next cycle instead
+        of emitting a verdict. Permanent failures (input validation, other 4xx)
+        and unrecognised errors keep the previous behaviour: a negative error
+        result.
+
+        Args:
+            error: The exception raised while processing the batch.
+
+        Returns:
+            "transient" or "permanent".
+
+        """
+        if isinstance(error, SentinelOneNetworkError):
+            return "transient"
+        if isinstance(error, SentinelOneValidationError):
+            return "permanent"
+
+        cause = error.__cause__
+        if isinstance(cause, requests_exceptions.HTTPError):
+            status = getattr(getattr(cause, "response", None), "status_code", None)
+            if status in (408, 429) or (status is not None and 500 <= status < 600):
+                return "transient"
+            if status is not None and 400 <= status < 500:
+                return "permanent"
+            return "transient"
+        if isinstance(
+            cause,
+            (
+                requests_exceptions.ConnectionError,
+                requests_exceptions.Timeout,
+                requests_exceptions.RetryError,
+            ),
+        ):
+            return "transient"
+
+        return "permanent"
+
+    def _make_pending_result(
+        self,
+        error: Exception,
+        expectation: DetectionExpectation | PreventionExpectation,
+    ) -> ExpectationResult:
+        """Create a pending result for a transient fetch failure.
+
+        The result is marked ``is_valid=False`` and ``is_pending=True`` and is
+        passed through ``_update_failures``: while the time since the first
+        attempt is within ``retry_window`` the result is removed (no verdict
+        emitted this cycle, the expectation is re-fetched next cycle); once
+        the window has elapsed the result survives on the final attempt and
+        degrades to a negative verdict instead of hanging forever.
+
+        Args:
+            error: The transient error that occurred.
+            expectation: The expectation to hold pending.
+
+        Returns:
+            ExpectationResult object with ``is_valid=False`` and
+            ``is_pending=True``.
+
+        """
+        return ExpectationResult(
+            expectation_id=str(expectation.inject_expectation_id),
+            is_valid=False,
+            is_pending=True,
+            expectation=expectation,
+            matched_alerts=None,
+            error_message=f"Transient fetch failure (pending, will retry): {error}",
+            processing_time=None,
+        )
 
     def _create_error_result_object(
         self,

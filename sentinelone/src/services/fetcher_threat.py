@@ -10,6 +10,7 @@ from requests.exceptions import (  # type: ignore[import-untyped]
     Timeout,
 )
 
+from .client_api import REQUEST_TIMEOUT_SECONDS
 from .exception import (
     SentinelOneAPIError,
     SentinelOneNetworkError,
@@ -91,7 +92,9 @@ class FetcherThreat:
                 f"{LOG_PREFIX} Fetching threats for time window: {start_time_str} to {end_time_str}"
             )
 
-            response = self.client_api.session.get(endpoint, params=params)
+            response = self.client_api.session.get(
+                endpoint, params=params, timeout=REQUEST_TIMEOUT_SECONDS
+            )
             response.raise_for_status()
 
             json_data = response.json()

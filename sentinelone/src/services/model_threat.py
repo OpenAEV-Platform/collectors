@@ -4,6 +4,9 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field, PrivateAttr
 
+THREAT_SOURCE = "threat"
+UNIFIED_ALERT_SOURCE = "unified_alert"
+
 
 class SentinelOneThreat(BaseModel):
     """SentinelOne threat model."""
@@ -13,6 +16,14 @@ class SentinelOneThreat(BaseModel):
     is_mitigated: bool = Field(False, description="Whether threat has been mitigated")
     is_static: bool = Field(False, description="Whether threat is static")
     sha1: Optional[str] = Field(None, description="SHA1 hash of the threat file")
+    source: str = Field(
+        THREAT_SOURCE,
+        description=(
+            f"Where the detection comes from: '{THREAT_SOURCE}' (Threats API) "
+            f"or '{UNIFIED_ALERT_SOURCE}' (Unified Alerts GraphQL API)"
+        ),
+    )
+    name: Optional[str] = Field(None, description="Detection name, when known")
     _raw: Optional[dict[str, Any]] = PrivateAttr(default=None)
 
     def __str__(self) -> str:
