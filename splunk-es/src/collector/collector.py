@@ -287,7 +287,8 @@ class Collector(CollectorDaemon):  # type: ignore[misc]
         # Read now, not in each search: a wrong setting name fails the setup,
         # which withdraws LOGGING, instead of failing every search.
         indexes = splunk_es.logging_indexes
-        template = splunk_es.logging_query_template
+        # Resolved by the client at startup: the configured one or the built-in.
+        template = self.splunkes_service.client_api.logging_template
         return LoggingManager(
             oaev_api=self.api,
             collector_id=self.get_id(),
