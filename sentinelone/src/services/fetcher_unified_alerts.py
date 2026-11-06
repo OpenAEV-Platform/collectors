@@ -20,6 +20,7 @@ matcher fuzzy-matches on) is recovered from the alert's OCSF ``rawData``.
 import json
 import logging
 import re
+from collections import OrderedDict
 from datetime import datetime, timezone
 from typing import Any
 
@@ -73,8 +74,11 @@ query($id: ID!) {
 }
 """
 
-# Defensive cap on per-alert detail fetches in a single cycle.
+# Defensive cap on *new* per-alert detail fetches in a single call. Cached
+# details do not count, so alerts beyond the cap are examined on later cycles.
 MAX_DETAIL_FETCHES = 200
+# Bound on the cross-cycle rawData cache (oldest entries evicted first).
+RAW_DATA_CACHE_SIZE = 5000
 
 
 class FetcherUnifiedAlerts:
@@ -89,6 +93,8 @@ class FetcherUnifiedAlerts:
         """
         self.client_api = client_api
         self.logger = logging.getLogger(__name__)
+        # Alert details do not change once raised; cache them across cycles.
+        self._raw_data_cache: OrderedDict[str, Any] = OrderedDict()
 
     def fetch_alert_threats(
         self, start_time: datetime, end_time: datetime
@@ -134,9 +140,24 @@ class FetcherUnifiedAlerts:
 
         threats: list[SentinelOneThreat] = []
         events_by_id: dict[str, list[dict[str, Any]]] = {}
-        for index, node in enumerate(nodes):
-            if index < MAX_DETAIL_FETCHES:
-                node["rawData"] = self._fetch_raw_data(node.get("id"))
+        new_detail_fetches = 0
+        skipped_details = 0
+        for node in nodes:
+            alert_id = node.get("id")
+            if alert_id and not self._extract_implant_names(node):
+                # rawData is only needed when the list fields do not already
+                # carry the implant name. Details are cached by alert id, so
+                # the per-call cap only bounds *new* fetches: alerts left out
+                # this cycle are picked up on the next one.
+                key = str(alert_id)
+                if key in self._raw_data_cache:
+                    node["rawData"] = self._raw_data_cache[key]
+                elif new_detail_fetches < MAX_DETAIL_FETCHES:
+                    node["rawData"] = self._fetch_raw_data(alert_id)
+                    self._cache_raw_data(key, node["rawData"])
+                    new_detail_fetches += 1
+                else:
+                    skipped_details += 1
             threat, events = self._map_alert_to_threat(node)
             if threat is None:
                 continue
@@ -144,11 +165,30 @@ class FetcherUnifiedAlerts:
             if events:
                 events_by_id.setdefault(threat.threat_id, []).extend(events)
 
+        if skipped_details:
+            self.logger.warning(
+                f"{LOG_PREFIX} Reached {MAX_DETAIL_FETCHES} new alert detail "
+                f"fetches; {skipped_details} alerts will be examined on the "
+                f"next cycle"
+            )
         self.logger.info(
             f"{LOG_PREFIX} Fetched {len(threats)} unified alerts for the window "
-            f"[{start_time.isoformat()} .. {end_time.isoformat()}]"
+            f"[{start_time.isoformat()} .. {end_time.isoformat()}] "
+            f"({new_detail_fetches} new detail fetches)"
         )
         return threats, events_by_id
+
+    def _cache_raw_data(self, alert_id: str, raw: Any) -> None:
+        """Remember an alert's rawData, evicting the oldest entries when full.
+
+        Args:
+            alert_id: The alert id.
+            raw: The rawData value (may be None).
+
+        """
+        self._raw_data_cache[alert_id] = raw
+        while len(self._raw_data_cache) > RAW_DATA_CACHE_SIZE:
+            self._raw_data_cache.popitem(last=False)
 
     def _fetch_all_alert_nodes(self, filters: list[dict]) -> list[dict]:
         """Page through the alerts connection and collect the raw nodes.

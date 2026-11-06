@@ -91,6 +91,13 @@ class SentinelOneExpectationService:
 
         self.first_attempt_at: dict[str, datetime] = {}
 
+        # Unified Alerts are fetched once per collection cycle and shared by
+        # every batch (see _start_alert_cycle / _get_cycle_alerts).
+        self._cycle_alerts: (
+            tuple[list[SentinelOneThreat], dict[str, list[dict[str, Any]]]] | None
+        ) = None
+        self._cycle_alert_window: tuple[datetime, datetime] | None = None
+
         self.logger.info(
             f"{LOG_PREFIX} Service initialized with batch size: {self.batch_size}, "
             f"retry window: {self.retry_window}"
@@ -139,6 +146,7 @@ class SentinelOneExpectationService:
             )
 
             batches, skipped_count = self._create_expectation_batches(expectations)
+            self._start_alert_cycle([e for batch in batches for e in batch])
             self.logger.info(
                 f"{LOG_PREFIX} Created {len(batches)} batches of size {self.batch_size} (skipped {skipped_count} expectations without end_date)"
             )
@@ -414,42 +422,16 @@ class SentinelOneExpectationService:
             # detections that never become Threats). Additive and isolated:
             # an alerts failure must never break the Threats verdict, so it is
             # caught here rather than propagated to the batch retry logic.
-            if self.alerts_fetcher is not None:
-                try:
-                    alert_start, alert_end = self._get_fetch_time_window(batch)
-                    alert_threats, alert_events = (
-                        self.alerts_fetcher.fetch_alert_threats(alert_start, alert_end)
-                    )
-                    if alert_threats:
-                        threats = threats + alert_threats
-                        for alert_id, events in alert_events.items():
-                            threat_events[alert_id].extend(events)
-                        self.logger.info(
-                            f"{LOG_PREFIX} Batch {batch_idx}: added "
-                            f"{len(alert_threats)} unified alerts to the "
-                            f"{len(threats) - len(alert_threats)} threats"
-                        )
-                except SentinelOneAPIError as e:
-                    if e.status_code in (401, 403):
-                        # The token lacks Unified Alerts access (e.g. a token
-                        # scoped to Threats only). Disable the correlation for
-                        # the rest of the run with one warning instead of an
-                        # error on every batch; Threats keep working as before.
-                        self.alerts_fetcher = None
-                        self.logger.warning(
-                            f"{LOG_PREFIX} Unified Alerts correlation disabled: "
-                            f"the API token is not allowed to query Unified Alerts "
-                            f"(HTTP {e.status_code}). Grant the alerts view "
-                            f"permission or set SENTINELONE_ENABLE_ALERTS=false."
-                        )
-                    else:
-                        self.logger.error(
-                            f"{LOG_PREFIX} Batch {batch_idx}: Error fetching unified alerts: {e}"
-                        )
-                except Exception as e:
-                    self.logger.error(
-                        f"{LOG_PREFIX} Batch {batch_idx}: Error fetching unified alerts: {e}"
-                    )
+            alert_threats, alert_events = self._get_cycle_alerts(batch, batch_idx)
+            if alert_threats:
+                threats = threats + alert_threats
+                for alert_id, events in alert_events.items():
+                    threat_events[alert_id].extend(events)
+                self.logger.info(
+                    f"{LOG_PREFIX} Batch {batch_idx}: added "
+                    f"{len(alert_threats)} unified alerts to the "
+                    f"{len(threats) - len(alert_threats)} threats"
+                )
 
             results = self._match_threats_to_expectations(
                 batch, threats, threat_events, detection_helper
@@ -529,6 +511,81 @@ class SentinelOneExpectationService:
 
         """
         return SignatureExtractor.extract_start_date(batch)
+
+    def _start_alert_cycle(
+        self, expectations: list[DetectionExpectation | PreventionExpectation]
+    ) -> None:
+        """Reset the per-cycle Unified Alerts cache for a new collection cycle.
+
+        Unified Alerts are tenant-wide: the listing does not depend on the
+        batch, only on the window. They are therefore fetched once per cycle,
+        over a window that covers every expectation of the cycle, and shared
+        by all batches. Matching still runs per expectation (on the implant
+        name), so the wider window cannot create a false positive.
+
+        Args:
+            expectations: Every expectation processed in this cycle.
+
+        """
+        self._cycle_alerts = None
+        self._cycle_alert_window = (
+            self._get_fetch_time_window(expectations) if expectations else None
+        )
+
+    def _get_cycle_alerts(
+        self,
+        batch: list[DetectionExpectation | PreventionExpectation],
+        batch_idx: int,
+    ) -> tuple[list[SentinelOneThreat], dict[str, list[dict[str, Any]]]]:
+        """Return the Unified Alerts of the current cycle, fetching them once.
+
+        Additive and isolated: an alerts failure never breaks the Threats
+        verdict. A 401/403 (token without alerts access) disables the
+        correlation for the rest of the run with one warning; any other
+        failure is logged once and the cycle continues without alerts.
+
+        Args:
+            batch: Current batch (used for the window when no cycle was started).
+            batch_idx: Batch index for logging.
+
+        Returns:
+            Tuple of (alert threats, events by alert id); empty when disabled.
+
+        """
+        if self.alerts_fetcher is None:
+            return [], {}
+        if self._cycle_alerts is not None:
+            return self._cycle_alerts
+
+        alert_start, alert_end = (
+            self._cycle_alert_window or self._get_fetch_time_window(batch)
+        )
+        try:
+            self._cycle_alerts = self.alerts_fetcher.fetch_alert_threats(
+                alert_start, alert_end
+            )
+        except SentinelOneAPIError as e:
+            self._cycle_alerts = ([], {})
+            if e.status_code in (401, 403):
+                self.alerts_fetcher = None
+                self.logger.warning(
+                    f"{LOG_PREFIX} Unified Alerts correlation disabled: "
+                    f"the API token is not allowed to query Unified Alerts "
+                    f"(HTTP {e.status_code}). Grant the alerts view "
+                    f"permission or set SENTINELONE_ENABLE_ALERTS=false."
+                )
+            else:
+                self.logger.error(
+                    f"{LOG_PREFIX} Batch {batch_idx}: Error fetching unified alerts "
+                    f"(skipped for this cycle): {e}"
+                )
+        except Exception as e:
+            self._cycle_alerts = ([], {})
+            self.logger.error(
+                f"{LOG_PREFIX} Batch {batch_idx}: Error fetching unified alerts "
+                f"(skipped for this cycle): {e}"
+            )
+        return self._cycle_alerts
 
     def _get_fetch_time_window(
         self,

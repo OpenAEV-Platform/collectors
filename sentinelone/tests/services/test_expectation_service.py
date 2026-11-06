@@ -310,8 +310,8 @@ def test_unified_alerts_forbidden_disables_correlation(status_code):
 
 # Scenario: Any other Unified Alerts failure keeps the correlation enabled
 def test_unified_alerts_server_error_keeps_correlation():
-    """Scenario: a non-auth Unified Alerts failure (e.g. HTTP 500) is logged
-    and the correlation stays enabled for the next batch."""
+    """Scenario: a non-auth Unified Alerts failure (e.g. HTTP 500) is logged,
+    skipped for the rest of the cycle, and retried on the next cycle."""
     # Given: An initialized service whose alerts fetcher fails with a 500
     service = _given_initialized_expectation_service()
     service.threat_fetcher.fetch_threats_for_time_window = Mock(return_value=[])
@@ -322,13 +322,73 @@ def test_unified_alerts_server_error_keeps_correlation():
     service.alerts_fetcher = alerts_fetcher
     expectation = _given_detection_expectation()
 
-    # When: Two batches are processed
-    service._process_expectation_batch([expectation], Mock(), 1)
-    service._process_expectation_batch([expectation], Mock(), 2)
+    # When: Two cycles of two batches each are processed
+    for _cycle in range(2):
+        service._start_alert_cycle([expectation])
+        service._process_expectation_batch([expectation], Mock(), 1)
+        service._process_expectation_batch([expectation], Mock(), 2)
 
-    # Then: Unified Alerts were queried on both batches
+    # Then: Unified Alerts were queried once per cycle, not once per batch
     assert alerts_fetcher.fetch_alert_threats.call_count == 2  # noqa: S101
     assert service.alerts_fetcher is alerts_fetcher  # noqa: S101
+
+
+# Scenario: Unified Alerts are fetched once per cycle and shared by batches
+def test_unified_alerts_fetched_once_per_cycle():
+    """Scenario: the tenant-wide alert listing is fetched once per cycle over
+    a window covering every expectation, and reused by every batch."""
+    # Given: A service with 3 expectations split into batches of 1
+    service = _given_initialized_expectation_service()
+    service.batch_size = 1
+    service.threat_fetcher.fetch_threats_for_time_window = Mock(return_value=[])
+    alerts_fetcher = Mock()
+    alerts_fetcher.fetch_alert_threats.return_value = ([], {})
+    service.alerts_fetcher = alerts_fetcher
+    expectations = [
+        _given_expectation_with_date_signatures(
+            start_date=start, end_date="2999-01-01T12:00:00Z"
+        )
+        for start in (None, "2024-01-01T10:00:00Z", "2024-01-01T11:00:00Z")
+    ]
+
+    # When: The cycle is handled
+    service.handle_batch_expectations(expectations, Mock())
+
+    # Then: Three batches ran but Unified Alerts were listed once
+    assert (  # noqa: S101
+        service.threat_fetcher.fetch_threats_for_time_window.call_count == 3
+    )
+    assert alerts_fetcher.fetch_alert_threats.call_count == 1  # noqa: S101
+    # Then: The shared window starts at the earliest start date of the cycle
+    start, _end = alerts_fetcher.fetch_alert_threats.call_args.args
+    assert start == datetime(2024, 1, 1, 10, 0, tzinfo=timezone.utc)  # noqa: S101
+
+
+# Scenario: An expectation without start date does not narrow the others
+def test_fetch_window_resolves_start_per_expectation():
+    """Scenario: in a batch mixing an expectation without start date and one
+    whose start date is recent, the window starts at the earliest of
+    now - SENTINELONE_TIME_WINDOW and that start date."""
+    # Given: A service and a start date 5 minutes ago (inside the 1h window)
+    service = _given_initialized_expectation_service()
+    recent = datetime.now(timezone.utc) - timedelta(minutes=5)
+    expectations = [
+        _given_expectation_with_date_signatures(
+            start_date=None, end_date="2999-01-01T12:00:00Z"
+        ),
+        _given_expectation_with_date_signatures(
+            start_date=recent.isoformat(), end_date="2999-01-01T12:00:00Z"
+        ),
+    ]
+
+    # When: I compute the fetch time window for the batch
+    start_time, end_time = _when_compute_fetch_time_window(service, expectations)
+
+    # Then: The fallback (now - time window) wins, being the earliest
+    assert start_time <= recent  # noqa: S101
+    assert abs(  # noqa: S101
+        (end_time - start_time) - service.client_api.time_window
+    ) < timedelta(seconds=5)
 
 
 # --------

@@ -214,3 +214,79 @@ def test_http_error_carries_status_code():
         fetcher.fetch_alert_threats(*_window())
 
     assert excinfo.value.status_code == 403  # noqa: S101
+
+
+def _bare_node(alert_id: str, parent: str | None = None) -> dict:
+    """Build a minimal alert node.
+
+    Args:
+        alert_id: The alert id.
+        parent: Optional process parentName.
+
+    Returns:
+        Alert node dict.
+
+    """
+    return {
+        "id": alert_id,
+        "detectedAt": "2026-09-11T13:44:48Z",
+        "assets": [{"name": "meereen"}],
+        "process": {"parentName": parent, "cmdLine": "powershell ..."},
+    }
+
+
+# Scenario: no detail fetch when the list node already names the implant
+def test_detail_not_fetched_when_implant_in_list_node():
+    """Scenario: rawData is only fetched when the list fields lack the implant."""
+    fetcher, session = _given_fetcher()
+    node = _bare_node("alert-1", parent=f"{IMPLANT}.exe")
+    session.post.side_effect = [_response(200, _list_page([node]))]
+
+    _threats, events = fetcher.fetch_alert_threats(*_window())
+
+    assert session.post.call_count == 1  # only the list query
+    assert f"{IMPLANT}.exe" in [e["parentProcessName"] for e in events["alert-1"]]
+
+
+# Scenario: alert details are cached across calls
+def test_detail_cached_across_calls():
+    """Scenario: a second cycle over the same alert reuses its cached rawData."""
+    fetcher, session = _given_fetcher()
+    node = _bare_node("alert-1")
+    session.post.side_effect = [
+        _response(200, _list_page([dict(node)])),
+        _response(200, _detail({"cmd": f"{IMPLANT}.exe"})),
+        _response(200, _list_page([dict(node)])),
+    ]
+
+    fetcher.fetch_alert_threats(*_window())
+    _threats, events = fetcher.fetch_alert_threats(*_window())
+
+    assert session.post.call_count == 3  # list, detail, list (no 2nd detail)
+    assert f"{IMPLANT}.exe" in [e["parentProcessName"] for e in events["alert-1"]]
+
+
+# Scenario: alerts beyond the detail cap are examined on the next call
+def test_detail_cap_resumes_on_next_call(monkeypatch):
+    """Scenario: the cap bounds new fetches only, so the next cycle picks up
+    the alerts left out, and the late alert's implant is eventually found."""
+    import src.services.fetcher_unified_alerts as module
+
+    monkeypatch.setattr(module, "MAX_DETAIL_FETCHES", 1)
+    fetcher, session = _given_fetcher()
+    nodes = [_bare_node("alert-1"), _bare_node("alert-2")]
+    session.post.side_effect = [
+        _response(200, _list_page([dict(n) for n in nodes])),
+        _response(200, _detail({"cmd": "nothing here"})),
+        _response(200, _list_page([dict(n) for n in nodes])),
+        _response(200, _detail({"cmd": f"{IMPLANT}.exe"})),
+    ]
+
+    _t1, events_first = fetcher.fetch_alert_threats(*_window())
+    _t2, events_second = fetcher.fetch_alert_threats(*_window())
+
+    assert "alert-2" not in events_first
+    assert f"{IMPLANT}.exe" in [
+        e["parentProcessName"] for e in events_second["alert-2"]
+    ]
+    assert session.post.call_count == 4
