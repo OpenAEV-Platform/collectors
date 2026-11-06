@@ -71,7 +71,7 @@ class Unqueryable:
 def build_logging_query(
     signatures: Iterable[Mapping[str, str]],
     indexes: str | None,
-    template: str | None = None,
+    template: str = LOGGING_QUERY_TEMPLATE,
 ) -> LoggingQuery | Unqueryable:
     """Build the Logging search of one LOGGING expectation.
 
@@ -85,8 +85,8 @@ def build_logging_query(
             mappings.
         indexes: ``SPLUNKES_LOGGING_INDEXES`` as configured, written as is in
             ``index IN (...)``, like ``SPLUNKES_ALERTS_INDEX`` for Detection.
-        template: A custom search (``SPLUNKES_LOGGING_QUERY_TEMPLATE``),
-            already checked by the client, or None for the built-in one.
+        template: The Logging search template the client resolved at startup
+            (``SPLUNKES_LOGGING_QUERY_TEMPLATE`` or the built-in one).
 
     Returns:
         The search, or ``Unqueryable`` when the expectation has no end date,
@@ -132,7 +132,7 @@ def build_logging_query(
         spl_string(value)
         for value in _unique([*marker_values, *source_ips, *target_ips])
     )
-    spl = (template or LOGGING_QUERY_TEMPLATE).format_map(
+    spl = template.format_map(
         {
             "indexes": indexes,
             "earliest": earliest,

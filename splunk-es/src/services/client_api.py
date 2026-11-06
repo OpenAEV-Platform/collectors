@@ -34,7 +34,11 @@ from .logging_fetch import (
     LoggingRows,
     parse_logging_rows,
 )
-from .logging_query import LOGGING_TEMPLATE_PLACEHOLDERS, LoggingQuery
+from .logging_query import (
+    LOGGING_QUERY_TEMPLATE,
+    LOGGING_TEMPLATE_PLACEHOLDERS,
+    LoggingQuery,
+)
 from .models import SplunkESAlert, SplunkESResponse, SplunkESSearchCriteria
 from .utils.epoch import to_epoch
 from .utils.spl import spl_list
@@ -158,6 +162,8 @@ class SplunkESClientAPI:
                 f"{LOG_PREFIX} No time_window configured, using default {DEFAULT_TIME_WINDOW_HOURS} hour"
             )
 
+        # Detection query template (SPLUNKES_QUERY_TEMPLATE): searches the
+        # notable index for alerts.
         self.query_template = self.config.splunk_es.query_template
         if self.query_template and _normalize_whitespace(self.query_template) in {
             _normalize_whitespace(legacy) for legacy in LEGACY_DEFAULT_QUERY_TEMPLATES
@@ -188,10 +194,22 @@ class SplunkESClientAPI:
                 "default query template"
             )
 
-        logging_template = self.config.splunk_es.logging_query_template
-        if logging_template:
+        # Logging search template (SPLUNKES_LOGGING_QUERY_TEMPLATE): searches
+        # the raw-event indexes for logs.
+        self.logging_template = self.config.splunk_es.logging_query_template
+        if self.logging_template:
             self._validate_template_placeholders(
-                logging_template, LOGGING_TEMPLATE_PLACEHOLDERS
+                self.logging_template, LOGGING_TEMPLATE_PLACEHOLDERS
+            )
+            self.logger.info(
+                f"{LOG_PREFIX} Using a custom Logging search template from "
+                "configuration"
+            )
+        else:
+            self.logging_template = LOGGING_QUERY_TEMPLATE
+            self.logger.info(
+                f"{LOG_PREFIX} No Logging search template configured, using the "
+                "built-in Logging search template"
             )
 
         try:

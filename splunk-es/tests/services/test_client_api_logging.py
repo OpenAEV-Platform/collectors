@@ -17,7 +17,7 @@ from src.services.logging_fetch import (
     LoggingMalformed,
     LoggingRows,
 )
-from src.services.logging_query import LoggingQuery
+from src.services.logging_query import LOGGING_QUERY_TEMPLATE, LoggingQuery
 from src.services.models import LoggingEvent
 from tests.services.fixtures.factories import create_test_config
 
@@ -466,3 +466,23 @@ def test_logging_template_with_unknown_placeholder_stops_the_client(template):
     # Act / Assert
     with pytest.raises(SplunkESValidationError, match="Unknown placeholders"):
         SplunkESClientAPI(config=config)
+
+
+def test_logging_template_defaults_to_the_built_in_search(client):
+    """Without SPLUNKES_LOGGING_QUERY_TEMPLATE, the built-in search is used."""
+    # Assert
+    assert client.logging_template == LOGGING_QUERY_TEMPLATE  # noqa: S101
+
+
+def test_custom_logging_template_is_kept():
+    """A valid custom Logging template is used as configured."""
+    # Arrange
+    config = create_test_config()
+    template = "index IN ({indexes}) earliest={earliest} latest={latest} ({terms})"
+    config.splunk_es.logging_query_template = template
+
+    # Act
+    client = SplunkESClientAPI(config=config)
+
+    # Assert
+    assert client.logging_template == template  # noqa: S101
