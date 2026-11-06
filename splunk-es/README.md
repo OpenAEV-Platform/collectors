@@ -17,6 +17,7 @@ reached Splunk).
     - [Base collector environment variables](#base-collector-environment-variables)
     - [Splunk ES collector environment variables](#splunk-es-collector-environment-variables)
     - [Query template](#query-template)
+    - [Logging search template](#logging-search-template)
   - [Deployment](#deployment)
     - [Docker Deployment](#docker-deployment)
     - [Manual Deployment](#manual-deployment)
@@ -86,8 +87,8 @@ Docker deployment) or through a `config.yml` file (for a manual deployment). Cop
 | Max Retry      | `splunk_es.max_retry`      | `SPLUNKES_MAX_RETRY`        | 5            | No        | Maximum number of retry attempts after the initial search returns no results.            |
 | Query Template | `splunk_es.query_template` | `SPLUNKES_QUERY_TEMPLATE`   | *(built-in)* | No        | Custom SPL query template with placeholders (leave empty to use the default below).      |
 | Logging Enabled | `splunk_es.logging_enabled` | `SPLUNKES_LOGGING_ENABLED` | false | No | Validate LOGGING expectations by searching the raw-event indexes. Requires `SPLUNKES_LOGGING_INDEXES`. |
-| Logging Indexes | `splunk_es.logging_indexes` | `SPLUNKES_LOGGING_INDEXES` | / | When Logging is enabled | Comma-separated raw-event indexes (e.g. `sysmon,wineventlog`). Letters, digits, `_`, `-` and `*` only. No default on purpose. |
-| Logging Max Rows | `splunk_es.logging_max_rows` | `SPLUNKES_LOGGING_MAX_ROWS` | 50 | No | Maximum number of events read per Logging search, from 1 to 1000. |
+| Logging Indexes | `splunk_es.logging_indexes` | `SPLUNKES_LOGGING_INDEXES` | / | When Logging is enabled | Comma-separated raw-event indexes or patterns (e.g. `sysmon,wineventlog,net*`), written as is in `index IN (...)`. No default on purpose. |
+| Logging Query Template | `splunk_es.logging_query_template` | `SPLUNKES_LOGGING_QUERY_TEMPLATE` | *(built-in)* | No | Custom SPL template of the Logging search (leave empty to use the built-in search, see [Logging search template](#logging-search-template)). |
 | Logging Max Interval | `splunk_es.logging_max_interval` | `SPLUNKES_LOGGING_MAX_INTERVAL` | PT15M | No | Longest wait between two searches of the same LOGGING expectation, as an ISO 8601 duration of at most `PT1H`. |
 
 With `SPLUNKES_LOGGING_ENABLED=true`, a missing index list or an invalid Logging setting stops the collector at startup,
@@ -115,6 +116,34 @@ index={alerts_index} (src_ip IN ({source_ips}) OR src IN ({source_ips}) OR sourc
 ```
 
 Signature values that are not part of the enough-filter (process names, emails, hashes, custom headers, ...) are not query placeholders: they are matched after the fetch with a raw-text regex over each fetched alert's `_raw` field. An implant parent process name additionally matches through its callback URL rebuilt from the embedded UUIDs, because network events never show the `.exe` — which is why the projection carries `url_path` (the converter rebuilds the full implant name from it).
+
+### Logging search template
+
+`SPLUNKES_LOGGING_QUERY_TEMPLATE` lets you replace the built-in Logging search, for example to keep only some source
+types. Leave it empty to use the built-in search. The template supports the following placeholders:
+
+| Placeholder    | Description                                                                                    |
+|----------------|------------------------------------------------------------------------------------------------|
+| `{indexes}`    | The configured indexes (`SPLUNKES_LOGGING_INDEXES`), as written.                               |
+| `{earliest}`   | Start of the inject window, in epoch seconds, rounded down.                                    |
+| `{latest}`     | End of the inject window plus one second, in epoch seconds (Splunk's `latest` is exclusive).   |
+| `{terms}`      | The marker, its callback URL path and the IPs, quoted and joined with `OR` (full-text search). |
+| `{source_ips}` | Source IP values quoted for the Splunk `IN` operator (`""` if none, so it matches nothing).    |
+| `{target_ips}` | Target IP values quoted for the Splunk `IN` operator (`""` if none, so it matches nothing).    |
+
+The search must return the `_time`, `index` and `_raw` fields (for example with `| table _time, index, _raw`): rows
+without them are skipped. A template that does not start with `search` or `|` gets `search ` added in front. An unknown
+placeholder stops the collector at startup; write a literal brace as `{{` or `}}`. The built-in template is:
+
+```spl
+search index IN ({indexes}) earliest={earliest} latest={latest} ({terms}) | table _time, index, host, sourcetype, _raw
+```
+
+For example, to search only the Windows event logs:
+
+```spl
+search index IN ({indexes}) sourcetype=XmlWinEventLog* earliest={earliest} latest={latest} ({terms}) | table _time, index, host, sourcetype, _raw
+```
 
 ## Deployment
 
@@ -254,10 +283,11 @@ On each run, before the Detection pass, the collector:
    - the window from `start_date` to `end_date`, rounded outwards to the second.
 
    The host name is not used: in Splunk, `host` is often the log forwarder, not the machine that ran the inject.
-4. Runs the search on `SPLUNKES_LOGGING_INDEXES`. Events are ranked marker first, then source IP, then target IP, and
-   only the best `SPLUNKES_LOGGING_MAX_ROWS` events are read.
+4. Runs the search on `SPLUNKES_LOGGING_INDEXES`, with the built-in search or `SPLUNKES_LOGGING_QUERY_TEMPLATE`. Every
+   event of the window is read, and Splunk has up to 120 seconds to answer.
 5. Marks the expectation `Logged` when one event of the window contains the marker or one of the IPs, and adds a trace
-   with the event time, the match type (`marker`, `source_ip` or `target_ip`) and a link to the search in Splunk.
+   with the event time, the match type (`marker`, `source_ip` or `target_ip`) and a link to the search in Splunk. When
+   several events match, the marker wins over a source IP, a source IP over a target IP, then the earliest event wins.
 6. Otherwise searches it again later: the first wait is `COLLECTOR_PERIOD`, then the wait doubles after each search
    without a match, up to `SPLUNKES_LOGGING_MAX_INTERVAL`.
 
@@ -267,10 +297,7 @@ Example: an inject that ran from `2026-11-04T10:00:00Z` to `2026-11-04T10:00:42.
 ```spl
 search index IN (sysmon,wineventlog) earliest=1793786400 latest=1793786444
     ("oaev-implant-<inject>-agent-<agent>" OR "/api/injects/<inject>/<agent>/executable-payload" OR "192.168.2.4")
-| eval oaev_rank=case(match(lower(_raw), "<marker or URL>"), 2, match(lower(_raw), "192\.168\.2\.4"), 1, 1=1, 0)
-| sort 50 -oaev_rank, +_time
-| eval oaev_event_epoch=_time
-| table oaev_event_epoch, index, host, sourcetype, _raw
+| table _time, index, host, sourcetype, _raw
 ```
 
 Good to know:
@@ -279,6 +306,8 @@ Good to know:
   search only means "search again later".
 - **A marker match is stronger than an IP match.** The marker identifies the inject itself. An IP only shows that the
   host logged something during the window, which may be unrelated activity. The trace match type tells them apart.
+- **Splunk returns at most 50,000 events per search** (`maxresultrows` in `limits.conf`). On very busy indexes, narrow
+  the search with `SPLUNKES_LOGGING_QUERY_TEMPLATE` (source types, fields) so the inject's events are not cut off.
 - **Event times must be right.** The window is compared with the event `_time` in Splunk. If a source sends its events
   with a wrong time zone, they fall outside the window and are not found: check the `TZ` setting of the source type.
 - **Detection is never blocked.** The Logging pass starts no new search after one `COLLECTOR_PERIOD`; the remaining
@@ -323,13 +352,13 @@ extraction). Make sure `SPLUNKES_BASE_URL` targets the Splunk management port (t
 For Logging, `COLLECTOR_LOG_LEVEL=info` prints the startup index check and one summary per run
 (`Logging pass completed: ... fetched, ... logged, ... no match, ... errors`); `debug` adds why each expectation was not
 logged yet. Common causes of "nothing logged" are an index list that does not hold the endpoint logs, events whose
-`_time` is shifted by a wrong time zone, or an endpoint that does not log process creation or network connections
-(for example Sysmon not installed).
+`_time` is shifted by a wrong time zone, an endpoint that does not log process creation or network connections
+(for example Sysmon not installed), or a custom `SPLUNKES_LOGGING_QUERY_TEMPLATE` that drops `_time`, `index` or `_raw`.
 
 ## Additional information
 
 - This collector validates detection and, when enabled, logging; it does not support prevention expectations.
-- The Logging search is built by the collector and is not customizable; `SPLUNKES_QUERY_TEMPLATE` only applies to
+- The Logging search is customizable via `SPLUNKES_LOGGING_QUERY_TEMPLATE`; `SPLUNKES_QUERY_TEMPLATE` only applies to
   Detection.
 - The SPL query is fully customizable via `SPLUNKES_QUERY_TEMPLATE`; a custom template must keep the `| table _time`
   pipe so that the resulting events can be parsed.
