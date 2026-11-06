@@ -13,7 +13,11 @@ from src.services.logging_fetch import (
     LoggingIndexCheck,
     LoggingMalformed,
 )
-from src.services.logging_query import LoggingQuery, build_logging_query
+from src.services.logging_query import (
+    LOGGING_QUERY_TEMPLATE,
+    LoggingQuery,
+    build_logging_query,
+)
 from src.services.logging_trace import LoggingTraceBuilder
 
 daemon_config_data = {
@@ -122,6 +126,7 @@ def _setup(collector: module.Collector, index_check: object = SEARCHABLE) -> Non
 
     """
     service = MagicMock()
+    service.return_value.client_api.logging_template = LOGGING_QUERY_TEMPLATE
     check = service.return_value.client_api.check_logging_indexes
     if isinstance(index_check, BaseException):
         check.side_effect = index_check
@@ -355,7 +360,7 @@ class TestCollectorLogging(unittest.TestCase):
                 {"type": "source_ipv4_address", "value": "10.0.0.1"},
             ],
             "sysmon,wineventlog",
-            None,
+            LOGGING_QUERY_TEMPLATE,
         )
         self.assertIs(
             manager.fetch_events,
@@ -395,7 +400,7 @@ class TestCollectorLogging(unittest.TestCase):
             build_logging_query(
                 [{"type": t, "value": v} for t, v in signatures],
                 "sysmon,wineventlog",
-                None,
+                LOGGING_QUERY_TEMPLATE,
             ),
         )
 
@@ -439,7 +444,7 @@ class TestCollectorLogging(unittest.TestCase):
 
     def test_missing_logging_setting_fails_the_setup_not_each_search(self):
         collector = _collector(logging_enabled=True)
-        del collector.config_instance.splunk_es.logging_query_template
+        del collector.config_instance.splunk_es.logging_max_interval
 
         _setup(collector)
 
