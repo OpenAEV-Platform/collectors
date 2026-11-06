@@ -551,9 +551,16 @@ class SentinelOneExpectationService:
         """
         end_time = datetime.now(timezone.utc)
 
-        start_time = self._extract_start_date_from_batch(batch)
-        if start_time is None or start_time > end_time:
-            start_time = end_time - self.client_api.time_window
+        # Resolve each expectation's start (or the fallback) on its own, then
+        # take the earliest, so one expectation without a start date never
+        # narrows the window of another one in the same batch.
+        fallback = end_time - self.client_api.time_window
+        start_time = fallback
+        for expectation in batch or []:
+            start = self._extract_start_date_from_batch([expectation])
+            if start is None or start > end_time:
+                start = fallback
+            start_time = min(start_time, start)
 
         return start_time, end_time
 

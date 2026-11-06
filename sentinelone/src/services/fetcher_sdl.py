@@ -791,7 +791,7 @@ class FetcherSDL:
                 return None
         try:
             dt = datetime.fromtimestamp(float(event_time) / 1000.0, tz=timezone.utc)
-        except (OverflowError, OSError, ValueError):
+        except OverflowError, OSError, ValueError:
             return None
         return dt.isoformat().replace("+00:00", "Z")
 

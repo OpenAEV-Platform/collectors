@@ -144,6 +144,8 @@ class SentinelOneClientAPI:
             response = self.session.get(endpoint, timeout=REQUEST_TIMEOUT_SECONDS)
             response.raise_for_status()
             accounts = response.json().get("data", [])
+            if not isinstance(accounts, list):
+                raise ValueError(f"unexpected account listing body: {accounts!r:.100}")
         except Exception as e:
             self.logger.warning(
                 f"{LOG_PREFIX} Self-hosted probe failed "

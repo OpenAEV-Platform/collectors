@@ -113,7 +113,7 @@ class SignatureExtractor:
                             start_date = start_date.replace(tzinfo=timezone.utc)
                         if earliest is None or start_date < earliest:
                             earliest = start_date
-                    except (ValueError, AttributeError):
+                    except ValueError, AttributeError:
                         continue
         return earliest
 
