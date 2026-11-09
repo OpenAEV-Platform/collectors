@@ -3,6 +3,9 @@
 from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
+from pyoaev.apis.inject_expectation_trace import (  # type: ignore[import-untyped]
+    TraceMatchType,
+)
 
 
 class ExpectationTrace(BaseModel):
@@ -26,6 +29,13 @@ class ExpectationTrace(BaseModel):
     )
     inject_expectation_trace_date: str = Field(
         description="Date when the trace was created (ISO format string)"
+    )
+    inject_expectation_trace_match_type: TraceMatchType | None = Field(
+        default=None,
+        description=(
+            "Signal that matched a LOGGING expectation (marker, source_ip or "
+            "target_ip); unset for the other expectation types"
+        ),
     )
 
     @field_validator("inject_expectation_trace_expectation")
@@ -130,12 +140,18 @@ class ExpectationTrace(BaseModel):
         replacing the manual sanitization logic in the expectation manager.
 
         Returns:
-            Dict with all values converted to strings.
+            Dict with all values converted to strings. The match type is
+            only included when set, so traces of the other expectation types
+            keep their payload.
 
         """
+        # JSON mode sends the match type as its value ("marker"), not as the
+        # enum's str() ("TraceMatchType.MARKER").
+        data = self.model_dump(mode="json")
+        if data["inject_expectation_trace_match_type"] is None:
+            del data["inject_expectation_trace_match_type"]
         return {
-            key: str(value) if value is not None else ""
-            for key, value in self.model_dump().items()
+            key: str(value) if value is not None else "" for key, value in data.items()
         }
 
 

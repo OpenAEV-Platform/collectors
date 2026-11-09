@@ -64,6 +64,13 @@ class ConfigLoaderSplunkESFactory(ModelFactory[_ConfigLoaderSplunkES]):
         os.environ["SPLUNKES_USERNAME"] = "test-user"
         os.environ["SPLUNKES_PASSWORD"] = "test-password"  # noqa: S105
         os.environ["SPLUNKES_ALERTS_INDEX"] = "_notable"
+        # Random values would enable Logging with invalid index names, set a
+        # Logging template, or break the at-most-one-hour rule of the Logging
+        # max interval.
+        kwargs.setdefault("logging_enabled", False)
+        kwargs.setdefault("logging_indexes", None)
+        kwargs.setdefault("logging_query_template", None)
+        kwargs.setdefault("logging_max_interval", timedelta(minutes=15))
         return super().build(**kwargs)
 
 

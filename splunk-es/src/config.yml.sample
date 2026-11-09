@@ -21,6 +21,17 @@ splunk_es:
   alerts_index: "notable"
   max_retry: 5
   offset: 120
+  # LOGGING expectations: search raw-event indexes (not the notable index).
+  # Off by default; the indexes are required when it is on.
+  # logging_enabled: true
+  # logging_indexes: "sysmon,wineventlog"
+  # Optional: replace the built-in Logging search. Placeholders: {indexes},
+  # {earliest}, {latest}, {terms}, {source_ips}, {target_ips}. Must include
+  # '| table _time, index, _raw'.
+  # logging_query_template: "search index IN ({indexes}) sourcetype=XmlWinEventLog* earliest={earliest} latest={latest} ({terms}) | table _time, index, host, sourcetype, _raw"
+  # Longest time between two Logging searches of the same expectation (at most
+  # PT1H). Searches start every collector period and back off while nothing is found.
+  # logging_max_interval: 'PT15M'
   # Signature matching happens after the fetch (raw-text regex on _raw); the
   # query only filters on IPs, hostnames, and the time window.
   # Allowed placeholders: {alerts_index}, {source_ips}, {target_ips},

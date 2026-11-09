@@ -113,8 +113,9 @@ class ParentProcessParser:
         """Extract UUIDs from URL path.
 
         Args:
-            url_path: URL path containing UUIDs.
-                Expected format: '/api/injects/{UUID1}/{UUID2}/executable-payload'
+            url_path: URL path containing UUIDs, from the plain route
+                '/api/injects/{UUID1}/{UUID2}/executable-payload' or the tenant
+                route '/api/tenants/{tenant}/injects/{UUID1}/{UUID2}/executable-payload'.
 
         Returns:
             Tuple of (inject_uuid, agent_uuid) if found, None otherwise.
@@ -133,7 +134,9 @@ class ParentProcessParser:
                 f"{LOG_PREFIX} Extracting UUIDs from URL path: {url_path}"
             )
 
-            url_pattern = r"/api/injects/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/executable-payload"
+            # No "/api/" prefix: the implant calls the tenant route, so the
+            # path also reads "/api/tenants/{tenant}/injects/...".
+            url_pattern = r"injects/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/executable-payload"
 
             match = re.search(url_pattern, url_path, re.IGNORECASE)
             if match:
@@ -154,20 +157,26 @@ class ParentProcessParser:
             return None
 
     def build_url_path(self, inject_uuid: str, agent_uuid: str) -> str:
-        """Build the plain implant callback URL path from UUIDs.
+        """Build the end of the implant callback URL path from UUIDs.
+
+        The implant fetches its payload from
+        ``/api/tenants/{tenant}/injects/{inject}/{agent}/executable-payload``,
+        and older implants from ``/api/injects/{inject}/{agent}/executable-payload``.
+        Both end with the value built here, so a substring match on it finds
+        either route.
 
         Args:
             inject_uuid: The inject UUID.
             agent_uuid: The agent UUID.
 
         Returns:
-            The callback URL path string, or an empty string when a UUID
-            is missing.
+            The end of the callback URL path, or an empty string when a
+            UUID is missing.
 
         Example:
             Input: inject_uuid='877b423b-ae91-4fc5-86c3-fa8ea3c938ba',
                    agent_uuid='1402422f-2eaa-4fbd-80b2-b30df1b83b19'
-            Output: '/api/injects/877b423b-ae91-4fc5-86c3-fa8ea3c938ba/1402422f-2eaa-4fbd-80b2-b30df1b83b19/executable-payload'
+            Output: 'injects/877b423b-ae91-4fc5-86c3-fa8ea3c938ba/1402422f-2eaa-4fbd-80b2-b30df1b83b19/executable-payload'
 
         """
         if not inject_uuid or not agent_uuid:
@@ -175,7 +184,7 @@ class ParentProcessParser:
             return ""
 
         try:
-            url_path = f"/api/injects/{inject_uuid}/{agent_uuid}/executable-payload"
+            url_path = f"injects/{inject_uuid}/{agent_uuid}/executable-payload"
             self.logger.debug(f"{LOG_PREFIX} Built URL path: {url_path}")
             return url_path
 
@@ -196,7 +205,7 @@ class ParentProcessParser:
         Example:
             Input: inject_uuid='877b423b-ae91-4fc5-86c3-fa8ea3c938ba',
                    agent_uuid='1402422f-2eaa-4fbd-80b2-b30df1b83b19'
-            Output: 'url_path="/api/injects/877b423b-ae91-4fc5-86c3-fa8ea3c938ba/1402422f-2eaa-4fbd-80b2-b30df1b83b19/executable-payload"'
+            Output: '(url_path="*injects/877b423b-ae91-4fc5-86c3-fa8ea3c938ba/1402422f-2eaa-4fbd-80b2-b30df1b83b19/executable-payload" OR ...)'
 
         """
         if not inject_uuid or not agent_uuid:
@@ -211,7 +220,9 @@ class ParentProcessParser:
             url_fields = ["url_path", "url", "path", "query"]
             url_conditions = []
             for field in url_fields:
-                url_conditions.append(f'{field}="{url_path}"')
+                # Leading wildcard: the field holds the whole path, which
+                # starts with "/api/" or "/api/tenants/{tenant}/".
+                url_conditions.append(f'{field}="*{url_path}"')
 
             search_query = f"({' OR '.join(url_conditions)})"
             self.logger.debug(
