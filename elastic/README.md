@@ -254,8 +254,18 @@ Where to set it:
 - **Platform-managed collector (catalog):** the *Query template* field of the Elastic Security connector, prefilled with
   the default query.
 - **Docker:** `ELASTIC_QUERY_TEMPLATE` in `.env` (already passed to the container by `docker-compose.yml`), on a single
-  line and unquoted.
-- **Manual deployment:** `elastic.query_template` in `src/config.yml`, or the same environment variable.
+  line, unquoted or wrapped in single quotes. Docker Compose interpolates `$` (write `$$` for a literal `$`) and treats
+  ` #` as the start of a comment.
+- **Manual deployment:** `elastic.query_template` in `src/config.yml` (wrap the value in single quotes), or the same
+  environment variable.
+
+The query is read once at startup: restart the collector after changing it. Check the startup log to confirm which query
+is used: `Using a custom query template from configuration` or `Using the built-in default query template`.
+
+The collector reads a single configuration source, in this order: `src/.env` if it exists, otherwise `src/config.yml` if
+it exists, otherwise the environment variables. A leftover `src/.env` or `src/config.yml` therefore hides every
+environment variable, including `ELASTIC_QUERY_TEMPLATE`. The Docker image excludes both files, so a container always
+reads its environment variables.
 
 Built-in default query (one line in practice, wrapped here for readability):
 
