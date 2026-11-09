@@ -299,8 +299,8 @@ class TestElasticClientAPIEssential:
     def test_query_template_choice_is_logged(self, template, expected):
         """The log says whether the built-in default or a custom query runs.
 
-        The catalog prefills the built-in query, so a configured template equal
-        to it (whitespace aside) must not be reported as custom.
+        A configured template equal to the built-in query (whitespace aside),
+        e.g. copied from the docs, must not be reported as custom.
         """
         from src.services.client_api import DEFAULT_QUERY_TEMPLATE
 

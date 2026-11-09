@@ -76,15 +76,21 @@ class _ConfigLoaderElastic(ConfigBaseSettings):
     )
     events_index: str | None = Field(
         alias="ELASTIC_EVENTS_INDEX",
-        default="logs-windows.sysmon_operational-*,logs-endpoint.events.process-*",
+        default=(
+            "logs-windows.sysmon_operational-*,logs-endpoint.events.process-*,"
+            "logs-system.security-*"
+        ),
         description=(
             "Index pattern of raw endpoint/process events used to drill down "
             "from a detection alert to its source process and recover the "
             "OpenAEV implant marker (from the process / parent-process command "
             "line). This enables deterministic per-inject correlation - two "
             "injects on the same host within the time window are told apart by "
-            "their implant/inject id. Leave empty to disable the drilldown and "
-            "fall back to host/IP + time correlation only."
+            "their implant/inject id. The default covers Sysmon, Elastic Defend "
+            "and the Windows Security channel (process creation auditing, event "
+            "4688). A host with no process-creation event in this index is "
+            "correlated on host/IP + time. Leave empty to disable the drilldown "
+            "and fall back to host/IP + time correlation only."
         ),
     )
     kibana_url: str | None = Field(

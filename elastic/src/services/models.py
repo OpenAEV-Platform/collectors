@@ -133,6 +133,17 @@ class ElasticAlert(BaseModel):
             "drilldown. Enables deterministic per-inject correlation."
         ),
     )
+    host_has_process_telemetry: Optional[bool] = Field(
+        None,
+        description=(
+            "Whether the events index holds process-creation events for the "
+            "alert's host, set by the drilldown when it recovered no marker. "
+            "False means the marker could not have been recovered (the host's "
+            "process telemetry is not in the events index), so an endpoint "
+            "alert falls back to IP + time instead of being rejected. None when "
+            "not evaluated."
+        ),
+    )
     dst_ip: Optional[str] = Field(
         None, description="Destination IP address (destination.ip)"
     )

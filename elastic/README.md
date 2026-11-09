@@ -21,6 +21,8 @@ was detected.
     - [Manual Deployment](#manual-deployment)
   - [Usage](#usage)
   - [Behavior](#behavior)
+  - [Customizing the alert query](#customizing-the-alert-query)
+  - [Deployment prerequisites](#deployment-prerequisites)
   - [Required permissions and API endpoints](#required-permissions-and-api-endpoints)
   - [PKI authentication (client certificate)](#pki-authentication-client-certificate)
   - [Debugging](#debugging)
@@ -82,8 +84,8 @@ The collector is configured either through environment variables (recommended, r
 | Client Cert  | `elastic.client_cert`  | `ELASTIC_CLIENT_CERT`       | /                           | Conditional | PKI client certificate, as the **base64-encoded PEM file** (`base64 -w0 client.crt`), not a path. See [PKI authentication](#pki-authentication-client-certificate). |
 | Client Key   | `elastic.client_key`   | `ELASTIC_CLIENT_KEY`        | /                           | Conditional | Unencrypted private key of the client certificate, as the **base64-encoded PEM file** (`base64 -w0 client.key`), not a path.                             |
 | Alerts Index | `elastic.alerts_index` | `ELASTIC_ALERTS_INDEX`      | `.alerts-security.alerts-*` | No          | Index or index pattern to search for detection alerts.                                                                                                    |
-| Query Template | `elastic.query_template` | `ELASTIC_QUERY_TEMPLATE` | / (built-in default)        | No          | Editable Lucene `query_string` used to fetch and correlate alerts. Placeholders: `{source_ips}` `{target_ips}` `{implant_urls}` `{implant_names}` `{start_date}` `{end_date}` `{time_window}` `{alerts_index}`. Empty uses the multi-field default. |
-| Events Index | `elastic.events_index` | `ELASTIC_EVENTS_INDEX`      | `logs-windows.sysmon_operational-*,logs-endpoint.events.process-*` | No | Raw endpoint/process events index used by the source-event drilldown to recover the implant marker. Set empty to disable the drilldown (IP + time correlation only). |
+| Query Template | `elastic.query_template` | `ELASTIC_QUERY_TEMPLATE` | / (built-in default)        | No          | Editable Lucene `query_string` used to fetch the candidate alerts. Empty uses the built-in default query. See [Customizing the alert query](#customizing-the-alert-query) for the default query, the placeholders and examples. |
+| Events Index | `elastic.events_index` | `ELASTIC_EVENTS_INDEX`      | `logs-windows.sysmon_operational-*,logs-endpoint.events.process-*,logs-system.security-*` | No | Raw endpoint/process events index used by the source-event drilldown to recover the implant marker: Sysmon, Elastic Defend and the Windows Security channel (event 4688) by default. A host with no process-creation event there is correlated on IP + time. Set empty to disable the drilldown (IP + time correlation only). |
 | Kibana URL   | `elastic.kibana_url`   | `ELASTIC_KIBANA_URL`        | /                           | No          | Kibana base URL used to build trace links. When unset, `base_url` is reused with its port rewritten to 5601; set it when Kibana is elsewhere.            |
 | Verify SSL   | `elastic.verify_ssl`   | `ELASTIC_VERIFY_SSL`        | true                        | No          | Whether to verify the Elasticsearch TLS certificate. Prefer trusting the cluster CA via `ELASTIC_CA_CERT` over disabling this.                            |
 | CA Cert      | `elastic.ca_cert`      | `ELASTIC_CA_CERT`           | /                           | No          | Path to a CA bundle (PEM) used to verify the Elasticsearch TLS certificate (for self-signed / private CAs). When set, it takes precedence over `ELASTIC_VERIFY_SSL`. |
@@ -183,7 +185,9 @@ only falls back to IP + time where a marker is impossible.
   the same window are told apart. An **endpoint** alert (process context: `host.name` + `process.pid`) that does *not*
   carry this inject's marker is rejected - IP is **not** accepted as a substitute - so an unrelated same-host alert is
   never misattributed. Only **network** telemetry (Suricata/Zeek), which physically cannot carry an implant marker,
-  falls back to source/target IP + time for that inject.
+  falls back to source/target IP + time for that inject - as does an endpoint alert from a host whose process-creation
+  events are not in `ELASTIC_EVENTS_INDEX` (the marker cannot be recovered there, so rejecting it would hide every
+  detection of that host).
 - **Agentless inject** (no implant marker, e.g. NetExec): there is a 0% chance of an implant marker on the endpoints,
   so correlation is source/target IP + time directly.
 
@@ -222,10 +226,12 @@ On each run, the collector:
    over a sliding time window (`ELASTIC_TIME_WINDOW`). Editing the query in the catalog changes exactly this fetch.
 3. **Drilldown** — for each candidate alert, looks up the source process in `ELASTIC_EVENTS_INDEX` by `host.name` +
    `process.pid` and recovers the `oaev-implant-<inject>-agent-<agent>` marker from the (parent) process command line.
-   Set `ELASTIC_EVENTS_INDEX` empty to disable this step.
+   When the chain is broken (a process event is missing, including the alerting process itself), it uses the implant
+   that ran on the same host just before the alert. Set `ELASTIC_EVENTS_INDEX` empty to disable this step.
 4. **Correlate** — for an implant inject the alert's recovered marker MUST match: IP is not accepted as a substitute
    for an **endpoint** alert (an unrelated same-host alert is rejected, never misattributed); only **network** telemetry
-   (no process context) falls back to IP + time. Agentless expectations use source/target IP + time directly. It
+   (no process context) and endpoint alerts of a host with no process-creation event in `ELASTIC_EVENTS_INDEX` fall
+   back to IP + time. Agentless expectations use source/target IP + time directly. It
    retries up to `ELASTIC_MAX_RETRY` times, waiting `ELASTIC_OFFSET` and widening the window, to absorb detection
    latency.
 5. **Report** — marks each matched DETECTION expectation `Detected` and submits an expectation trace that links to the
@@ -234,8 +240,93 @@ On each run, the collector:
    is exhausted are marked `Not Detected` on that run - the collector does not wait for OpenAEV's expiry.
 
 > The **fetch query** (`ELASTIC_QUERY_TEMPLATE`) and the **drilldown index** (`ELASTIC_EVENTS_INDEX`) are configurable
-> from the catalog. The deterministic correlation algorithm itself (marker for implant injects, IP + time only where a
-> marker is impossible) is collector logic, not an editable query.
+> from the catalog or from the environment. The deterministic correlation algorithm itself (marker for implant injects,
+> IP + time only where a marker is impossible) is collector logic, not an editable query.
+
+## Customizing the alert query
+
+`ELASTIC_QUERY_TEMPLATE` is the Lucene [`query_string`](https://www.elastic.co/docs/reference/query-languages/query-dsl/query-dsl-query-string-query)
+that selects the **candidate alerts** of an expectation in `ELASTIC_ALERTS_INDEX`. Leave it empty to use the built-in
+default below. The collector logs at startup which one it uses.
+
+Where to set it:
+
+- **Platform-managed collector (catalog):** the *Query template* field of the Elastic Security connector. Leave it empty
+  to keep the built-in query, which then follows collector updates; to customize it, copy the default query shown in the
+  field description and edit it. A query saved in the field is kept as is when the collector's default changes.
+- **Docker:** `ELASTIC_QUERY_TEMPLATE` in `.env` (already passed to the container by `docker-compose.yml`), on a single
+  line, unquoted or wrapped in single quotes. Docker Compose interpolates `$` (write `$$` for a literal `$`) and treats
+  ` #` as the start of a comment.
+- **Manual deployment:** `elastic.query_template` in `src/config.yml` (wrap the value in single quotes), or the same
+  environment variable.
+
+The query is read once at startup: restart the collector after changing it. With Docker Compose, run
+`docker compose up -d`, which recreates the container with the new value (`docker compose restart` keeps the old one).
+Check the startup log to confirm which query is used: `Using a custom query template from configuration` or `Using the built-in default query template`.
+
+The collector reads a single configuration source, in this order: `src/.env` if it exists, otherwise `src/config.yml` if
+it exists, otherwise the environment variables. A leftover `src/.env` or `src/config.yml` therefore hides every
+environment variable, including `ELASTIC_QUERY_TEMPLATE`. The Docker image excludes both files, so a container always
+reads its environment variables.
+
+Built-in default query (one line in practice, wrapped here for readability):
+
+```
+(source.ip:({source_ips}) OR host.ip:({source_ips}) OR client.ip:({source_ips}))
+OR (destination.ip:({target_ips}) OR server.ip:({target_ips}) OR host.ip:({target_ips}))
+OR (url.path:({implant_urls}) OR url.original:({implant_urls}))
+OR (process.name:({implant_names}) OR process.parent.name:({implant_names}) OR process.command_line:({implant_names}))
+```
+
+Placeholders, filled from the expectation's signatures:
+
+| Placeholder       | Value                                                                                   |
+|-------------------|-----------------------------------------------------------------------------------------|
+| `{source_ips}`    | Source IPs of the expectation (typically the IPs of the asset the inject ran on)        |
+| `{target_ips}`    | Target IPs of the inject                                                                |
+| `{implant_names}` | Implant marker `oaev-implant-<inject>-agent-<agent>`                                    |
+| `{implant_urls}`  | Implant payload path `/api/injects/<inject>/<agent>/executable-payload`                 |
+| `{start_date}`    | Inject start date (ISO 8601), `*` when unknown                                          |
+| `{end_date}`      | Inject end date (ISO 8601), `*` when unknown                                            |
+| `{time_window}`   | `ELASTIC_TIME_WINDOW` in seconds                                                        |
+| `{alerts_index}`  | `ELASTIC_ALERTS_INDEX`                                                                  |
+
+How the query is run:
+
+- Each list placeholder is rendered as an OR-joined set of quoted, escaped values (`"10.0.0.5" OR "fe80::1"`), so
+  write `field:({placeholder})`. An empty list becomes `__oaev_no_match__`, which matches nothing, so its clause simply
+  drops out.
+- The time range is always added separately as an `@timestamp` filter over `ELASTIC_TIME_WINDOW` (widened on
+  retries): do not add one yourself.
+- The query runs with `lenient: true`, so a field missing from your mapping does not fail it.
+- At most the 100 most recent matching alerts are fetched: a broad query can push the relevant alert out of them.
+- The query only selects candidates. Each candidate is then checked by the correlation described in
+  [Behavior](#behavior). When the implant marker is found in the alert's own process ancestry, only the matching inject
+  is credited. Otherwise (network and agentless injects, hosts whose process events are not in `ELASTIC_EVENTS_INDEX`,
+  alerting process missing from it), correlation falls back to the host or IP + time, so an unrelated alert on the
+  same host or IP within the search window can be credited: a broader query raises that risk of false detection, not
+  just the number of requests.
+- An unknown placeholder makes the collector refuse to start.
+
+Examples:
+
+- Only consider open alerts, and ignore a noisy rule:
+
+  ```
+  ((source.ip:({source_ips}) OR host.ip:({source_ips})) OR (process.parent.name:({implant_names}) OR process.command_line:({implant_names}))) AND kibana.alert.workflow_status:open AND NOT kibana.alert.rule.name:"My noisy rule"
+  ```
+
+- Endpoint alerts only (EDR, Sysmon, Windows Security), matched on the host:
+
+  ```
+  host.ip:({source_ips}) OR process.parent.name:({implant_names}) OR process.command_line:({implant_names})
+  ```
+
+- Network alerts only (Suricata, Zeek, firewall):
+
+  ```
+  source.ip:({source_ips}) OR destination.ip:({target_ips}) OR url.original:({implant_urls})
+  ```
 
 ## Deployment prerequisites
 
@@ -243,14 +334,25 @@ On each run, the collector:
   `kibana.alert.url` field for trace links, both 8.x+). Confirm the alert schema on your version.
 - **Runtime:** Python 3.14 (matching the published container image and the rest of the collectors monorepo); the image bundles it.
 - **Detection content must be enabled.** The collector only correlates alerts your rules actually raise. Enable the
-  Elastic **Detection rules** (and the **Elastic Defend** and/or **Sysmon via Elastic Agent** integrations) that fire on
-  the behaviours you inject. If no rule fires for a technique, the inject is legitimately `Not Detected`.
+  Elastic **Detection rules** (and the **Elastic Defend**, **Sysmon via Elastic Agent** and/or **System** integrations)
+  that fire on the behaviours you inject. If no rule fires for a technique, the inject is legitimately `Not Detected`.
 - **Process telemetry for deterministic correlation (important).** Per-inject determinism relies on recovering the
   implant marker from raw **process-creation events** (the drilldown into `ELASTIC_EVENTS_INDEX`, default
-  `logs-windows.sysmon_operational-*,logs-endpoint.events.process-*`). Point it at the index that actually holds your
-  endpoint process events. **SIEM-only deployments without process telemetry:** set `ELASTIC_EVENTS_INDEX=""` to disable
-  the drilldown; correlation then degrades to source/target **IP + time** (lower confidence, cannot dissociate two
-  injects on the same host in the same window). This is logged at startup.
+  `logs-windows.sysmon_operational-*,logs-endpoint.events.process-*,logs-system.security-*`). Point it at the index that
+  actually holds your endpoint process events:
+
+  | Telemetry                                     | Process-creation events                      | Index                               |
+  |-----------------------------------------------|----------------------------------------------|-------------------------------------|
+  | Elastic Defend                                | process `start` events                       | `logs-endpoint.events.process-*`    |
+  | Sysmon (Windows integration)                  | event 1                                      | `logs-windows.sysmon_operational-*` |
+  | Windows Security channel (System integration) | event 4688 (needs *Audit Process Creation*)  | `logs-system.security-*`            |
+
+  With the Windows Security channel, also enable *Include command line in process creation events* so the command
+  lines are available. At startup the collector counts the process-creation events of the last 24h in this index and
+  logs a warning when there are none. A host with no process-creation event there is correlated on source/target
+  **IP + time** (lower confidence, cannot dissociate two injects on the same host in the same window).
+  **SIEM-only deployments without process telemetry:** set `ELASTIC_EVENTS_INDEX=""` to disable the drilldown
+  altogether; correlation then degrades to IP + time for every alert. This is logged at startup.
 
 ## Required permissions and API endpoints
 
@@ -268,7 +370,8 @@ Grant `read` + `view_index_metadata` on the alerts index **and** the events inde
       {
         "names": [".alerts-security.alerts-*",
                   "logs-windows.sysmon_operational-*",
-                  "logs-endpoint.events.process-*"],
+                  "logs-endpoint.events.process-*",
+                  "logs-system.security-*"],
         "privileges": ["read", "view_index_metadata"]
       }
     ]

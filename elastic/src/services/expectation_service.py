@@ -780,22 +780,30 @@ class ElasticExpectationService:
                 # No marker on the alert. If it is endpoint/process telemetry it
                 # SHOULD have carried the marker: reject it (no IP substitute) so
                 # an unrelated same-host alert is never cross-attributed - but
-                # ONLY when the drilldown is actually available. With no events
-                # index there is no way to recover a marker, so rejecting would
-                # false-negative every implant inject; degrade to IP + time.
-                if data_item.get("_endpoint_context") and self.drilldown_enabled:
+                # ONLY when the marker could actually be recovered: the
+                # drilldown is configured AND the events index holds the host's
+                # process-creation events. Otherwise (no events index, or one
+                # that does not cover this host, e.g. Windows Security logs with
+                # the Sysmon/Defend default) rejecting would false-negative every
+                # implant inject; degrade to IP + time.
+                if (
+                    data_item.get("_endpoint_context")
+                    and self.drilldown_enabled
+                    and data_item.get("_marker_recoverable", True)
+                ):
                     self.logger.debug(
                         f"{LOG_PREFIX} Endpoint alert without implant marker "
                         f"-> reject (deterministic, no IP substitute)"
                     )
                     return False
 
-                # Network telemetry (Suricata/Zeek) cannot carry an implant
-                # marker: accept it via source/target IP + time below (lower
+                # Network telemetry (Suricata/Zeek), or an endpoint alert whose
+                # marker cannot be recovered, cannot carry an implant marker:
+                # accept it via source/target IP + time below (lower
                 # confidence, cannot dissociate same-host injects).
                 self.logger.debug(
-                    f"{LOG_PREFIX} Network telemetry for implant inject "
-                    f"-> IP + time fallback"
+                    f"{LOG_PREFIX} No recoverable implant marker for implant "
+                    f"inject -> IP + time fallback"
                 )
 
             if has_source_sigs and has_target_sigs:

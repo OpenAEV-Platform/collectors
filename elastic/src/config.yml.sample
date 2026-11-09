@@ -26,13 +26,17 @@ elastic:
   # client_cert: "ChangeMe"
   # client_key: "ChangeMe"
   alerts_index: ".alerts-security.alerts-*"
-  # Optional editable Lucene query_string (unset = built-in default).
-  # Placeholders: {source_ips} {target_ips} {implant_urls} {implant_names}
-  # {start_date} {end_date} {time_window} {alerts_index}.
-  # query_template: ""
-  # Raw endpoint/process events index for the implant-marker drilldown
+  # Optional editable Lucene query_string used to fetch the candidate alerts
+  # (unset = built-in default, shown below). Placeholders: {source_ips}
+  # {target_ips} {implant_urls} {implant_names} {start_date} {end_date}
+  # {time_window} {alerts_index}. The @timestamp range is added separately.
+  # See README "Customizing the alert query" for examples.
+  # query_template: '(source.ip:({source_ips}) OR host.ip:({source_ips}) OR client.ip:({source_ips})) OR (destination.ip:({target_ips}) OR server.ip:({target_ips}) OR host.ip:({target_ips})) OR (url.path:({implant_urls}) OR url.original:({implant_urls})) OR (process.name:({implant_names}) OR process.parent.name:({implant_names}) OR process.command_line:({implant_names}))'
+  # Raw endpoint/process events index for the implant-marker drilldown:
+  # Sysmon, Elastic Defend and the Windows Security channel (event 4688). A
+  # host with no process-creation event there is correlated on IP + time.
   # (empty string disables the drilldown -> IP + time correlation only).
-  events_index: "logs-windows.sysmon_operational-*,logs-endpoint.events.process-*"
+  events_index: "logs-windows.sysmon_operational-*,logs-endpoint.events.process-*,logs-system.security-*"
   # kibana_url: "https://kibana.company.com:5601"
   verify_ssl: true
   # Optional CA bundle to verify a self-signed cluster instead of disabling
