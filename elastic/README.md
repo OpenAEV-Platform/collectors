@@ -251,8 +251,9 @@ default below. The collector logs at startup which one it uses.
 
 Where to set it:
 
-- **Platform-managed collector (catalog):** the *Query template* field of the Elastic Security connector, prefilled with
-  the default query.
+- **Platform-managed collector (catalog):** the *Query template* field of the Elastic Security connector. Leave it empty
+  to keep the built-in query, which then follows collector updates; to customize it, copy the default query shown in the
+  field description and edit it. A query saved in the field is kept as is when the collector's default changes.
 - **Docker:** `ELASTIC_QUERY_TEMPLATE` in `.env` (already passed to the container by `docker-compose.yml`), on a single
   line, unquoted or wrapped in single quotes. Docker Compose interpolates `$` (write `$$` for a literal `$`) and treats
   ` #` as the start of a comment.

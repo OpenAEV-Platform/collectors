@@ -200,7 +200,7 @@ class ElasticClientAPI:
             if " ".join(configured_template.split()) == " ".join(
                 DEFAULT_QUERY_TEMPLATE.split()
             ):
-                # The catalog prefills the built-in query: report it as such.
+                # The built-in query copied as is (e.g. from the docs): report it as such.
                 self.logger.info(
                     f"{LOG_PREFIX} Using the built-in default query template"
                 )
