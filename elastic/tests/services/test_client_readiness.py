@@ -250,9 +250,12 @@ class TestSecurityHardening:
             ElasticAlert(time="t", host_name=f"h{i}", pid=1000 + i)
             for i in range(MAX_DRILLDOWN_ALERTS + 5)
         ]
-        with patch.object(
-            client, "_fetch_source_event_marker", return_value=None
-        ) as spy:
+        with (
+            patch.object(
+                client, "_fetch_source_event_marker", return_value=None
+            ) as spy,
+            patch.object(client, "_host_has_process_telemetry", return_value=True),
+        ):
             client._enrich_alerts_with_source_events(alerts)
         assert spy.call_count == MAX_DRILLDOWN_ALERTS  # noqa: S101  fan-out capped
 

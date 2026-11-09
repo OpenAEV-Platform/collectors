@@ -206,6 +206,13 @@ class Converter:
                 oaev_data["_endpoint_context"] = bool(
                     alert_data.host_name and alert_data.pid
                 )
+                # Whether a missing marker is meaningful: False when the
+                # drilldown found no process-creation event at all for the host
+                # (its telemetry is not in the events index), so the marker
+                # could never have been recovered (non-signature key).
+                oaev_data["_marker_recoverable"] = (
+                    alert_data.host_has_process_telemetry is not False
+                )
 
             self.logger.debug(
                 f"{LOG_PREFIX} Converted Elastic Security alert to OAEV with {len(oaev_data)} fields"

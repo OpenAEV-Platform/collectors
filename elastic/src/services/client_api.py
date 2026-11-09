@@ -179,6 +179,9 @@ class ElasticClientAPI:
             # Recovered-marker cache, shared across alerts/retries/expectations
             # within one processing cycle (reset via reset_marker_cache()).
             self._marker_cache: dict[tuple[str, str], str | None] = {}
+            # Per-host "process-creation events present in the events index"
+            # probe, same lifetime as the marker cache.
+            self._telemetry_cache: dict[str, bool] = {}
         except AttributeError as e:
             raise ElasticValidationError(f"Invalid config structure: {e}") from e
 
@@ -593,13 +596,78 @@ class ElasticClientAPI:
             if marker:
                 alert.implant_marker = marker
 
+        # An endpoint alert with no recovered marker is rejected for an implant
+        # inject, which is only sound when the marker COULD have been recovered:
+        # the host's process-creation events must be in the events index. When
+        # they are not (e.g. a SIEM fed by the Windows Security channel while the
+        # events index points at Sysmon / Elastic Defend), record it so matching
+        # degrades to IP + time instead of rejecting every alert of that host.
+        for alert in alerts:
+            if alert.implant_marker or not alert.host_name:
+                continue
+            if alert.pid is None and not alert.process_entity_id:
+                continue
+            alert.host_has_process_telemetry = self._host_has_process_telemetry(
+                alert.host_name
+            )
+
+    def _host_has_process_telemetry(self, host_name: str) -> bool:
+        """Return whether the events index holds process-creation events for a host.
+
+        Looks for any process start event (``event.category: process`` and
+        ``event.type: start``: Sysmon event 1, Elastic Defend process start,
+        Windows Security 4688) of ``host_name`` over the drilldown lookback.
+        The answer is cached per host for the processing cycle (cleared by
+        ``reset_marker_cache``): it describes the host's telemetry, not a given
+        alert, so one query per host is enough.
+
+        Args:
+            host_name: Host the alert fired on (``host.name``).
+
+        Returns:
+            True when at least one process-creation event of the host is found.
+
+        """
+        if host_name in self._telemetry_cache:
+            return self._telemetry_cache[host_name]
+        lookback = int(self.time_window.total_seconds()) + 900
+        body = {
+            "size": 1,
+            "_source": False,
+            "query": {
+                "bool": {
+                    "filter": [
+                        {"term": {"host.name": host_name}},
+                        {"term": {"event.category": "process"}},
+                        {"term": {"event.type": "start"}},
+                        {"range": {"@timestamp": {"gte": f"now-{lookback}s"}}},
+                    ]
+                }
+            },
+        }
+        has_telemetry = bool(
+            self._events_search(body, host_name, "process telemetry probe")
+        )
+        if not has_telemetry:
+            self.logger.debug(
+                f"{LOG_PREFIX} No process-creation event for host={host_name} in "
+                f"'{self.events_index}': its endpoint alerts are correlated on "
+                "IP + time (the implant marker cannot be recovered). Point "
+                "ELASTIC_EVENTS_INDEX at the index holding this host's process "
+                "events (Sysmon, Elastic Defend or Windows Security 4688)."
+            )
+        self._telemetry_cache[host_name] = has_telemetry
+        return has_telemetry
+
     def reset_marker_cache(self) -> None:
-        """Clear the recovered-marker cache. Only reuse-safe entity_id seeds are
-        cached (pid-only seeds are never cached, see
-        _enrich_alerts_with_source_events); clearing per cycle keeps the cache
-        from growing without bound across cycles.
+        """Clear the per-cycle drilldown caches. Only reuse-safe entity_id seeds
+        are cached (pid-only seeds are never cached, see
+        _enrich_alerts_with_source_events), plus the per-host process telemetry
+        probe; clearing per cycle keeps the caches from growing without bound
+        and lets a host whose telemetry starts flowing be re-evaluated.
         """
         self._marker_cache = {}
+        self._telemetry_cache = {}
 
     # Event ``_source`` fields the drilldown needs: process/parent text (for the
     # marker) plus the entity ids used to climb the ancestry reuse-safely.
@@ -632,8 +700,9 @@ class ElasticClientAPI:
         ``oaev-implant-<inject>-agent-<agent>`` marker found. The walk is seeded
         by the alert's ``process.entity_id`` when available (exact), else by pid.
 
-        When the climb dead-ends because an intermediate process event is missing
-        from the events index (incomplete endpoint telemetry), it falls back to
+        When the climb dead-ends because a process event is missing from the
+        events index (incomplete endpoint telemetry), including the alerting
+        process's own event, it falls back to
         ``_fallback_host_marker``, which uses the lone implant lineage on the host
         when there is one, and otherwise disambiguates by timing (the implant
         nearest before the alert) - crediting the alert to a single inject.
@@ -668,7 +737,12 @@ class ElasticClientAPI:
         else:
             return None
         if not frontier:
-            return None
+            # The alerting process itself is not in the events index (e.g. the
+            # alert comes from PowerShell script-block logging while the events
+            # index holds only process creations): the chain is broken at its
+            # first hop, so use the same host + time-window fallback as a chain
+            # broken further up.
+            return self._fallback_host_marker(host_name, alert_time)
 
         visited: set[str] = set()
         for depth in range(MAX_ANCESTRY_DEPTH + 1):
@@ -1160,7 +1234,65 @@ class ElasticClientAPI:
             f"{LOG_PREFIX} Connected to Elastic at {target}: "
             f"{count} alert(s) in '{self.alerts_index}'"
         )
+        self._check_events_index()
         return True
+
+    def _check_events_index(self) -> None:
+        """Warn at startup when the drilldown index holds no process-creation event.
+
+        The default events index targets Sysmon and Elastic Defend; a SIEM fed
+        only by the Windows Security channel (or anything else) keeps its
+        process events elsewhere, and the drilldown then silently recovers no
+        implant marker. Counting process start events over the last day makes
+        that visible at the default log level. Never raises.
+        """
+        if not self.events_index:
+            return
+        endpoint = f"{self.base_url}/{self.events_index}/_count"
+        body = {
+            "query": {
+                "bool": {
+                    "filter": [
+                        {"term": {"event.category": "process"}},
+                        {"term": {"event.type": "start"}},
+                        {"range": {"@timestamp": {"gte": "now-1d"}}},
+                    ]
+                }
+            }
+        }
+        try:
+            response = self.session.post(
+                endpoint, json=body, timeout=REQUEST_TIMEOUT_SECONDS
+            )
+            if response.status_code != 200:
+                self.logger.warning(
+                    f"{LOG_PREFIX} Events index '{self.events_index}' answered "
+                    f"{response.status_code}: the implant-marker drilldown will "
+                    "not work. Check ELASTIC_EVENTS_INDEX and the 'read' privilege "
+                    "on it, or set it empty to correlate on IP + time."
+                )
+                return
+            count = response.json().get("count")
+        except Exception as e:
+            self.logger.warning(
+                f"{LOG_PREFIX} Could not check events index "
+                f"'{self.events_index}': {redact_userinfo(str(e))}"
+            )
+            return
+        if not count:
+            self.logger.warning(
+                f"{LOG_PREFIX} No process-creation event in the last 24h in "
+                f"'{self.events_index}': the implant-marker drilldown cannot work, "
+                "endpoint alerts will be correlated on IP + time only. Point "
+                "ELASTIC_EVENTS_INDEX at your process events (Sysmon, Elastic "
+                "Defend, or logs-system.security-* with process creation "
+                "auditing - event 4688 - enabled)."
+            )
+        else:
+            self.logger.info(
+                f"{LOG_PREFIX} Events index '{self.events_index}': {count} "
+                "process-creation event(s) in the last 24h"
+            )
 
     def _execute_query(
         self, search_criteria: ElasticSearchCriteria, extend_end_seconds: int = 0
