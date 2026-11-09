@@ -259,8 +259,9 @@ Where to set it:
 - **Manual deployment:** `elastic.query_template` in `src/config.yml` (wrap the value in single quotes), or the same
   environment variable.
 
-The query is read once at startup: restart the collector after changing it. Check the startup log to confirm which query
-is used: `Using a custom query template from configuration` or `Using the built-in default query template`.
+The query is read once at startup: restart the collector after changing it. With Docker Compose, run
+`docker compose up -d`, which recreates the container with the new value (`docker compose restart` keeps the old one).
+Check the startup log to confirm which query is used: `Using a custom query template from configuration` or `Using the built-in default query template`.
 
 The collector reads a single configuration source, in this order: `src/.env` if it exists, otherwise `src/config.yml` if
 it exists, otherwise the environment variables. A leftover `src/.env` or `src/config.yml` therefore hides every
