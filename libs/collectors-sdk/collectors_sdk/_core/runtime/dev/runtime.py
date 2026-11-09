@@ -15,13 +15,12 @@ from collectors_sdk.seam.runtime import CollectorDevOptions
 from pydantic import TypeAdapter, ValidationError
 from xtm_oaev_sdk import (
     InjectExpectationOutput,
-    dev_argument_parser,
-    dev_options,
     dev_sink,
     environment_secret_values,
 )
 
 from .client import CollectorDevClient
+from .options import collector_help, collector_options
 
 __all__ = ["CollectorDevRuntime"]
 
@@ -36,33 +35,6 @@ KEPT_KEYS = (
 )
 _PENDING = TypeAdapter(list[InjectExpectationOutput])
 
-_DESCRIPTION = (
-    "Collector dev mode: run the collector without the OpenAEV platform. It reads the"
-    " pending expectations as the platform serves them, and writes every call the"
-    ' platform would have received as one JSON list of {"method", "path", "body"}.'
-)
-_EPILOG = (
-    "Exit code 2 when the expectations are missing or not the platform's."
-    " Guide: xtm-oaev-sdk docs/how_to_dev_mode.md."
-)
-
-
-def _parser():
-    parser = dev_argument_parser(_DESCRIPTION, _EPILOG)
-    collector = parser.add_argument_group("collector options")
-    collector.add_argument(
-        "--expectations",
-        metavar="PATH",
-        help="the pending expectations to answer, a JSON list as the platform"
-        " serves them (- for stdin)",
-    )
-    collector.add_argument(
-        "--once",
-        action="store_true",
-        help="run a single cycle, then return",
-    )
-    return parser
-
 
 def _read(path: str) -> str:
     if path == "-":
@@ -75,20 +47,10 @@ class CollectorDevRuntime:
     """Implements ``CollectorDevRuntimePort``."""
 
     def options(self, argv: list[str] | None = None) -> CollectorDevOptions:
-        args, _ = _parser().parse_known_args(argv)
-        common = dev_options(argv)
-        return CollectorDevOptions(
-            enabled=common.enabled,
-            out=common.out,
-            record=common.record,
-            replay=common.replay,
-            help=common.help,
-            expectations=args.expectations,
-            once=args.once,
-        )
+        return collector_options(argv)
 
     def help(self) -> str:
-        return _parser().format_help()
+        return collector_help()
 
     def exit_on_help(self, options: CollectorDevOptions) -> None:
         if options.help:
