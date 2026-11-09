@@ -354,8 +354,8 @@ class TestSplunkESClientAPIEssential:
         # Test URL path query building
         url_query = parser.build_url_path_search_query(inject_uuid, agent_uuid)
 
-        expected_path = "/api/injects/12345678-1234-1234-1234-123456789abc/87654321-4321-4321-4321-cba987654321/executable-payload"
-        assert expected_path in url_query  # noqa: S101
+        expected_path = "injects/12345678-1234-1234-1234-123456789abc/87654321-4321-4321-4321-cba987654321/executable-payload"
+        assert f'url_path="*{expected_path}"' in url_query  # noqa: S101
         assert "url_path" in url_query  # noqa: S101
         assert "url=" in url_query  # noqa: S101
         assert "path=" in url_query  # noqa: S101
@@ -377,8 +377,9 @@ class TestSplunkESClientAPIEssential:
             "87654321-4321-4321-4321-cba987654321",
         )
 
+        # No "/api/" prefix, so it is found in the plain and the tenant routes.
         assert url_path == (
-            "/api/injects/12345678-1234-1234-1234-123456789abc/"
+            "injects/12345678-1234-1234-1234-123456789abc/"
             "87654321-4321-4321-4321-cba987654321/executable-payload"
         )
         assert parser.build_url_path("", "87654321-4321-4321-4321-cba987654321") == ""

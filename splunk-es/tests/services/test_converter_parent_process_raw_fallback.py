@@ -38,6 +38,29 @@ class TestConverterParentProcessRawFallback:
             f"oaev-implant-{inject_uuid}-agent-{agent_uuid}"
         ]
 
+    def test_extract_parent_process_name_from_tenant_url_path(self):
+        """Test extracting parent process name from the tenant callback URL.
+
+        The implant fetches its payload from the tenant route
+        (/api/tenants/{tenant}/injects/...), which must be read like the
+        plain route.
+        """
+        converter = Converter()
+        inject_uuid = "877b423b-ae91-4fc5-86c3-fa8ea3c938ba"
+        agent_uuid = "1402422f-2eaa-4fbd-80b2-b30df1b83b19"
+        url_path = (
+            "/api/tenants/2cffad3a-0001-4078-b0e2-ef74274022c3/injects/"
+            f"{inject_uuid}/{agent_uuid}/executable-payload"
+        )
+
+        alert = SplunkESAlert(time="2024-01-01T12:30:00Z", url_path=url_path)
+
+        result = converter._extract_parent_process_name(alert)
+
+        assert result == [  # noqa: S101
+            f"oaev-implant-{inject_uuid}-agent-{agent_uuid}"
+        ]
+
     def test_extract_parent_process_name_from_url_path_not_found(self):
         """Test that extraction returns empty string when url_path has no UUIDs.
 

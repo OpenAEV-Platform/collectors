@@ -12,7 +12,8 @@ from src.services.logging_query import (
 INJECT_ID = "877b423b-ae91-4fc5-86c3-fa8ea3c938ba"
 AGENT_ID = "1402422f-2eaa-4fbd-80b2-b30df1b83b19"
 MARKER = f"oaev-implant-{INJECT_ID}-agent-{AGENT_ID}"
-MARKER_URL = f"/api/injects/{INJECT_ID}/{AGENT_ID}/executable-payload"
+# The end of the callback URL, shared by the plain and the tenant routes.
+MARKER_URL = f"injects/{INJECT_ID}/{AGENT_ID}/executable-payload"
 START = "2026-11-03T14:00:00.123456789Z"
 END = "2026-11-03T14:10:00Z"
 START_EPOCH = 1793714400
