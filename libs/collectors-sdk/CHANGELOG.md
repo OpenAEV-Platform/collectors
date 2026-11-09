@@ -16,6 +16,20 @@ version of its seam.
 - `daemons`: started with `--dev --help` (or `-h`), `CollectorDaemon` prints the
   collector dev options and exits with code 0, before building the API client or
   reaching the platform. Without `--dev`, `-h` stays the collector's own.
+- `runtime`: run a collector without the platform. Started with `--dev`,
+  `CollectorDaemon` never builds the API client and starts no heartbeat. It serves the
+  `--expectations` list (exactly the platform's pending expectations, a JSON list of
+  `xtm_oaev_sdk.InjectExpectationOutput`, from a file or `-` for stdin, as an
+  injector's `--emit expectations` writes it) through the expectation endpoints and
+  `expectations_models_for_source`, and stops serving an expectation once answered.
+  Every update, bulk update and trace goes to the dev sink, one JSON list (`--out`, or
+  stdout), checked against what the platform accepts (a call it would reject is
+  refused with a 400). Registration calls get ids back and write nothing; any other
+  manager raises `xtm_oaev_sdk.NeedsPlatformError` naming it. `--once` runs a single
+  cycle. The run exits with code 2 without `--expectations`, or when the list is not
+  the platform's pending expectations. Secrets from the configuration and the
+  environment are redacted. The port gains `api_client` and `run`. Seam `runtime`
+  `1.0.0`.
 
 ## [0.1.0] - Unreleased
 

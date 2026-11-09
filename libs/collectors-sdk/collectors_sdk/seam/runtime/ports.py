@@ -1,6 +1,6 @@
 """Collector runtime ports: the behaviour the public runtime expects from the core."""
 
-from typing import Protocol, runtime_checkable
+from typing import Any, Callable, Protocol, runtime_checkable
 
 from collectors_sdk.seam.runtime.models import CollectorDevOptions
 
@@ -21,3 +21,23 @@ class CollectorDevRuntimePort(Protocol):
 
     def exit_on_help(self, options: CollectorDevOptions) -> None:
         """Print the dev help and exit with code 0 when ``options`` ask for it."""
+
+    def api_client(
+        self,
+        configuration: Any,
+        options: CollectorDevOptions,
+        models_for_source: Callable[..., list[Any]],
+    ) -> Any:
+        """A stand-in of the platform client serving the ``--expectations`` list as
+        the pending feed and writing every update and trace to the dev sink. Exits
+        with code 2 when the list is not the platform's pending expectations."""
+
+    def run(
+        self,
+        callback: Callable[[], Any],
+        period: Any,
+        api: Any,
+        options: CollectorDevOptions,
+    ) -> None:
+        """Run the collector's cycle once (``--once``) or on its period, then write the
+        calls. Exits with code 2 without ``--expectations``."""

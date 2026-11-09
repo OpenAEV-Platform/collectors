@@ -69,6 +69,6 @@
   },
   "collectors_sdk.seam.runtime.ports.CollectorDevRuntimePort": {
     "kind": "class",
-    "sha256": "763d4626896be619e78f9a784b7f974219c81f42344b7abaa728ee01c65556ec"
+    "sha256": "1e694cb9c03415ce520517f332f569eef2409a03398d11894a10fc06de801cc5"
   }
 }
