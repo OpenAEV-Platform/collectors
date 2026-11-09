@@ -10,7 +10,11 @@ import re
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-from src.services.client_api import DEFAULT_QUERY_TEMPLATE, ElasticClientAPI
+from src.services.client_api import (
+    DEFAULT_QUERY_TEMPLATE,
+    MAX_DRILLDOWN_ALERTS,
+    ElasticClientAPI,
+)
 from src.services.converter import Converter
 from src.services.expectation_service import ElasticExpectationService
 from src.services.models import ElasticAlert, ElasticResponse
@@ -65,7 +69,7 @@ class TestHostProcessTelemetryProbe:
         alert = ElasticAlert(time="2026-11-09T09:00:31Z", host_name="h", pid=42)
         with (
             patch.object(client, "_fetch_source_event_marker", return_value=None),
-            patch.object(client, "_events_search", return_value=[]) as search,
+            patch.object(client, "_try_events_search", return_value=[]) as search,
         ):
             client._enrich_alerts_with_source_events([alert])
         assert alert.host_has_process_telemetry is False  # noqa: S101
@@ -79,7 +83,7 @@ class TestHostProcessTelemetryProbe:
         alert = ElasticAlert(time="t", host_name="h", pid=42)
         with (
             patch.object(client, "_fetch_source_event_marker", return_value=None),
-            patch.object(client, "_events_search", return_value=[{"_id": "e"}]),
+            patch.object(client, "_try_events_search", return_value=[{"_id": "e"}]),
         ):
             client._enrich_alerts_with_source_events([alert])
         assert alert.host_has_process_telemetry is True  # noqa: S101
@@ -100,7 +104,7 @@ class TestHostProcessTelemetryProbe:
         alerts = [ElasticAlert(time="t", host_name="h", pid=40 + i) for i in range(3)]
         with (
             patch.object(client, "_fetch_source_event_marker", return_value=None),
-            patch.object(client, "_events_search", return_value=[]) as search,
+            patch.object(client, "_try_events_search", return_value=[]) as search,
         ):
             client._enrich_alerts_with_source_events(alerts)
             assert search.call_count == 1  # noqa: S101  one probe for the host
@@ -112,10 +116,49 @@ class TestHostProcessTelemetryProbe:
         client = _client()
         client.events_index = None
         alert = ElasticAlert(time="t", host_name="h", pid=42)
-        with patch.object(client, "_events_search") as search:
+        with patch.object(client, "_try_events_search") as search:
             client._enrich_alerts_with_source_events([alert])
         search.assert_not_called()
         assert alert.host_has_process_telemetry is None  # noqa: S101
+
+    def test_failed_probe_stays_unknown_and_is_retried(self):
+        """A probe that could not run must not be taken as "no telemetry"."""
+        client = _client()
+        alert = ElasticAlert(time="t", host_name="h", pid=42)
+        with (
+            patch.object(client, "_fetch_source_event_marker", return_value=None),
+            patch.object(client, "_try_events_search", return_value=None) as search,
+        ):
+            client._enrich_alerts_with_source_events([alert])
+            assert alert.host_has_process_telemetry is None  # noqa: S101
+            assert "h" not in client._telemetry_cache  # noqa: S101
+            client._enrich_alerts_with_source_events([alert])
+            assert search.call_count == 2  # noqa: S101  retried, not cached
+
+    @patch("requests.Session.post")
+    def test_transient_http_error_is_unknown(self, mock_post):
+        client = _client()
+        mock_post.return_value = Mock(status_code=503)
+        assert client._host_has_process_telemetry("h") is None  # noqa: S101
+        assert client._events_search({}, "h", "ctx") == []  # noqa: S101
+
+    def test_new_probes_are_capped_and_cached_answers_are_free(self):
+        client = _client()
+        client._telemetry_cache["known"] = False
+        alerts = [ElasticAlert(time="t", host_name="known", pid=1)] + [
+            ElasticAlert(time="t", host_name=f"h{i}", pid=1)
+            for i in range(MAX_DRILLDOWN_ALERTS + 5)
+        ]
+        with (
+            patch.object(client, "_fetch_source_event_marker", return_value=None),
+            patch.object(client, "_try_events_search", return_value=[]) as search,
+        ):
+            client._enrich_alerts_with_source_events(alerts)
+        assert search.call_count == MAX_DRILLDOWN_ALERTS  # noqa: S101
+        assert alerts[0].host_has_process_telemetry is False  # noqa: S101
+        flags = [a.host_has_process_telemetry for a in alerts[1:]]
+        assert flags.count(False) == MAX_DRILLDOWN_ALERTS  # noqa: S101
+        assert flags[-5:] == [None] * 5  # noqa: S101  unprobed: strict reject
 
 
 class TestMissingSeedFallsBackToHostMarker:
@@ -164,7 +207,7 @@ class TestWindowsSecurityAlertMatching:
             {"hits": {"hits": [WINDOWS_SECURITY_HIT]}}
         ).results[0]
         with patch.object(
-            service.client_api, "_events_search", return_value=telemetry_hits
+            service.client_api, "_try_events_search", return_value=telemetry_hits
         ):
             service.client_api._enrich_alerts_with_source_events([alert])
         oaev_data = service.converter.convert_data_to_oaev_data([alert])

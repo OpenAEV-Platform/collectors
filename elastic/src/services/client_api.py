@@ -602,16 +602,23 @@ class ElasticClientAPI:
         # they are not (e.g. a SIEM fed by the Windows Security channel while the
         # events index points at Sysmon / Elastic Defend), record it so matching
         # degrades to IP + time instead of rejecting every alert of that host.
+        # New probes are capped like the drilldowns (cached answers are free);
+        # an alert left unprobed stays unknown (None) and keeps the strict reject.
+        probes = 0
         for alert in alerts:
             if alert.implant_marker or not alert.host_name:
                 continue
             if alert.pid is None and not alert.process_entity_id:
                 continue
+            if alert.host_name not in self._telemetry_cache:
+                if probes >= MAX_DRILLDOWN_ALERTS:
+                    continue
+                probes += 1
             alert.host_has_process_telemetry = self._host_has_process_telemetry(
                 alert.host_name
             )
 
-    def _host_has_process_telemetry(self, host_name: str) -> bool:
+    def _host_has_process_telemetry(self, host_name: str) -> bool | None:
         """Return whether the events index holds process-creation events for a host.
 
         Looks for any process start event (``event.category: process`` and
@@ -625,7 +632,9 @@ class ElasticClientAPI:
             host_name: Host the alert fired on (``host.name``).
 
         Returns:
-            True when at least one process-creation event of the host is found.
+            True when at least one process-creation event of the host is found,
+            False when the search ran and found none, None when it could not
+            run (transient failure: not cached, so the next fetch probes again).
 
         """
         if host_name in self._telemetry_cache:
@@ -645,9 +654,10 @@ class ElasticClientAPI:
                 }
             },
         }
-        has_telemetry = bool(
-            self._events_search(body, host_name, "process telemetry probe")
-        )
+        hits = self._try_events_search(body, host_name, "process telemetry probe")
+        if hits is None:
+            return None
+        has_telemetry = bool(hits)
         if not has_telemetry:
             self.logger.debug(
                 f"{LOG_PREFIX} No process-creation event for host={host_name} in "
@@ -1047,6 +1057,29 @@ class ElasticClientAPI:
             ElasticAPIError: When the events index does not exist (404).
 
         """
+        return self._try_events_search(body, host_name, context) or []
+
+    def _try_events_search(
+        self, body: dict[str, Any], host_name: str, context: str
+    ) -> list[dict[str, Any]] | None:
+        """Same as ``_events_search``, but a transient failure returns None.
+
+        Lets a caller tell a search that found nothing (``[]``) from one that
+        could not run (timeout, network error, malformed JSON, other non-200).
+
+        Args:
+            body: The ``_search`` request body.
+            host_name: Host the drilldown is scoped to (for logs).
+            context: Short description of the drilldown for debug logs.
+
+        Returns:
+            The raw ``hits`` list (possibly empty), or None on a transient failure.
+
+        Raises:
+            ElasticAuthenticationError: On 401/403 against the events index.
+            ElasticAPIError: When the events index does not exist (404).
+
+        """
         endpoint = f"{self.base_url}/{self.events_index}/_search"
         try:
             response = self.session.post(
@@ -1057,7 +1090,7 @@ class ElasticClientAPI:
                 f"{LOG_PREFIX} Drilldown failed for host={host_name} "
                 f"({context}): {redact_userinfo(str(e))}"
             )
-            return []
+            return None
         if response.status_code in (401, 403):
             raise ElasticAuthenticationError(
                 f"Authorization failed ({response.status_code}) on the events "
@@ -1076,11 +1109,11 @@ class ElasticClientAPI:
                 f"{LOG_PREFIX} Drilldown returned {response.status_code} "
                 f"for host={host_name} ({context})"
             )
-            return []
+            return None
         try:
             return response.json().get("hits", {}).get("hits", [])
         except ValueError:
-            return []
+            return None
 
     def _marker_from_source(self, source: dict[str, Any]) -> str | None:
         """Extract the implant marker from a single event ``_source`` if present.

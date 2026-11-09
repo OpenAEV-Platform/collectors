@@ -301,8 +301,12 @@ How the query is run:
 - The query runs with `lenient: true`, so a field missing from your mapping does not fail it.
 - At most the 100 most recent matching alerts are fetched: a broad query can push the relevant alert out of them.
 - The query only selects candidates. Each candidate is then checked by the correlation described in
-  [Behavior](#behavior), so a query that is too broad does not credit unrelated alerts, it only costs more requests.
-  An unknown placeholder makes the collector refuse to start.
+  [Behavior](#behavior). When the implant marker is found in the alert's own process ancestry, only the matching inject
+  is credited. Otherwise (network and agentless injects, hosts whose process events are not in `ELASTIC_EVENTS_INDEX`,
+  alerting process missing from it), correlation falls back to the host or IP + time, so an unrelated alert on the
+  same host or IP within the search window can be credited: a broader query raises that risk of false detection, not
+  just the number of requests.
+- An unknown placeholder makes the collector refuse to start.
 
 Examples:
 
@@ -366,7 +370,8 @@ Grant `read` + `view_index_metadata` on the alerts index **and** the events inde
       {
         "names": [".alerts-security.alerts-*",
                   "logs-windows.sysmon_operational-*",
-                  "logs-endpoint.events.process-*"],
+                  "logs-endpoint.events.process-*",
+                  "logs-system.security-*"],
         "privileges": ["read", "view_index_metadata"]
       }
     ]
