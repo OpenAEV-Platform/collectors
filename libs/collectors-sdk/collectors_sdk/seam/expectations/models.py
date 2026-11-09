@@ -1,5 +1,6 @@
 """Expectation data contracts: expectation types, signatures and data."""
 
+import logging
 from enum import Enum
 from typing import Any, List
 from uuid import UUID
@@ -8,6 +9,20 @@ from pydantic import BaseModel, Field, field_validator
 from xtm_oaev_sdk import SignatureTypes
 
 __all__ = ["ExpectationData", "ExpectationSignature", "ExpectationTypeEnum"]
+
+_logger = logging.getLogger(__name__)
+
+
+def _readable(signature: Any) -> bool:
+    """Whether a raw signature has a type collectors know (legacy names included)."""
+    kind = signature.get("type") if isinstance(signature, dict) else None
+    if kind is None or isinstance(signature, ExpectationSignature):
+        return True
+    try:
+        SignatureTypes(kind)
+    except ValueError:
+        return False
+    return True
 
 
 class ExpectationTypeEnum(str, Enum):
@@ -55,4 +70,16 @@ class ExpectationData(BaseModel):
         # The platform serializes this field as null when an expectation has no
         # signatures yet. Without this, a single such expectation raises a
         # ValidationError that aborts the whole batch fetch (collectors#490).
-        return [] if value is None else value
+        if value is None:
+            return []
+        # Same reason: a signature of a type this SDK does not know (a custom one an
+        # injector added) is dropped, not left to fail the whole batch.
+        kept = []
+        for signature in value:
+            if _readable(signature):
+                kept.append(signature)
+            else:
+                _logger.warning(
+                    "Ignoring signature of unknown type %r", signature.get("type")
+                )
+        return kept

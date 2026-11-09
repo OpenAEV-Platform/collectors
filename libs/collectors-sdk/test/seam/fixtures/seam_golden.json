@@ -29,11 +29,11 @@
   },
   "collectors_sdk.seam.expectations.SEAM_VERSION": {
     "kind": "assignment",
-    "sha256": "c26dc544bb2976ca7c5a7465be69719edcc7893657a494ef17b0285e7e2a37db"
+    "sha256": "4ea7962865d6821b35941c5f6e578940ab9b3c7328476859f83002b83cd93323"
   },
   "collectors_sdk.seam.expectations.models.ExpectationData": {
     "kind": "pydantic model",
-    "sha256": "95c43f36cfc3ae6a39485314bf3b17544e092c6cd14e32ad88123ae19e1c843e"
+    "sha256": "1381638c77ee90f7c7a6cf1f23319fe3b2f0fb5713b311f8737aa01817325d5d"
   },
   "collectors_sdk.seam.expectations.models.ExpectationSignature": {
     "kind": "pydantic model",

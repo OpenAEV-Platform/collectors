@@ -31,6 +31,13 @@ version of its seam.
   environment are redacted. The port gains `api_client` and `run`. Seam `runtime`
   `1.0.0`.
 
+### Changed
+
+- `expectations`: a signature whose type collectors do not know (a custom one an
+  injector added) is dropped from its expectation with a warning, instead of making
+  the whole pending feed fail to load. Legacy signature names are read as their type
+  (`xtm_oaev_sdk.LEGACY_SIGNATURE_TYPES`). Seam `1.1.0`.
+
 ## [0.1.0] - Unreleased
 
 First version. The collector runtime of `pyoaev` 3.260923.0 moves out and into this
