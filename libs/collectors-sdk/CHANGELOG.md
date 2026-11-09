@@ -30,6 +30,12 @@ version of its seam.
   the platform's pending expectations. Secrets from the configuration and the
   environment are redacted. The port gains `api_client` and `run`. Seam `runtime`
   `1.0.0`.
+- `runtime`: `--record PATH` writes every outside call the collector makes during a dev
+  run (its product's API over HTTP, its commands through `subprocess.run`) and the
+  answers to a tape (`xtm_oaev_sdk.CallTape`, one readable JSON document whose header
+  names the collector); `--replay PATH` answers them from it, offline, any other outbound
+  connection failing. Secrets from the configuration and the environment stay off the
+  tape. Both at once, or a tape that cannot be replayed, are refused (exit code 2).
 
 ### Changed
 

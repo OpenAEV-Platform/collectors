@@ -137,8 +137,11 @@ class CollectorDevClient:
         feed: list[dict[str, Any]],
         sink: DevSinkPort,
         models_for_source: Callable[..., list[Any]],
+        tape: Any = None,
     ) -> None:
         self.sink = sink
+        #: The call tape recording or replaying the run's outside calls, if any.
+        self.tape = tape
         self.inject_expectation = _InjectExpectationManager(
             feed, sink, models_for_source
         )

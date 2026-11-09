@@ -14,7 +14,9 @@ from collectors_sdk._core.daemons.schedule import CollectorSchedule
 from collectors_sdk.seam.runtime import CollectorDevOptions
 from pydantic import TypeAdapter, ValidationError
 from xtm_oaev_sdk import (
+    CallTape,
     InjectExpectationOutput,
+    OpenAEVError,
     dev_sink,
     environment_secret_values,
 )
@@ -43,6 +45,26 @@ def _read(path: str) -> str:
         return handle.read()
 
 
+def _start_tape(
+    sink: Any, options: CollectorDevOptions, secrets: list[str], daemon: Any
+) -> CallTape | None:
+    """The tape recording or replaying the run's outside calls, if one is asked for;
+    exits with code 2 when the replay tape cannot be read."""
+    if not (options.record or options.replay):
+        return None
+    mode = "record" if options.record else "replay"
+    tape = CallTape(
+        options.record or options.replay,
+        mode,
+        secrets=secrets,
+        daemon=str(daemon) if daemon else None,
+    )
+    try:
+        return tape.start()
+    except OpenAEVError as error:
+        raise SystemExit(sink.refuse(str(error))) from error
+
+
 class CollectorDevRuntime:
     """Implements ``CollectorDevRuntimePort``."""
 
@@ -68,6 +90,10 @@ class CollectorDevRuntime:
         if configuration is not None:
             secrets += configuration.secret_values()
         sink = dev_sink(options.out, secrets, KEPT_KEYS)
+        if options.record and options.replay:
+            raise SystemExit(
+                sink.refuse("--record and --replay cannot be given together")
+            )
         feed: list[dict[str, Any]] = []
         if options.expectations:
             try:
@@ -77,7 +103,12 @@ class CollectorDevRuntime:
                 code = sink.refuse(f"not the platform's pending expectations: {error}")
                 sink.close()
                 raise SystemExit(code) from error
-        return CollectorDevClient(feed, sink, models_for_source)
+        name = None
+        if configuration is not None:
+            name = configuration.get("collector_name") or configuration.get("name")
+        return CollectorDevClient(
+            feed, sink, models_for_source, _start_tape(sink, options, secrets, name)
+        )
 
     def run(
         self,
@@ -100,3 +131,5 @@ class CollectorDevRuntime:
                 CollectorSchedule().run(callback, period)
         finally:
             sink.close()
+            if api.tape is not None:
+                api.tape.stop()
