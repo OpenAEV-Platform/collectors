@@ -91,9 +91,10 @@ Docker deployment) or through a `config.yml` file (for a manual deployment). Cop
 | Logging Query Template | `splunk_es.logging_query_template` | `SPLUNKES_LOGGING_QUERY_TEMPLATE` | *(built-in)* | No | Custom SPL template of the Logging search (leave empty to use the built-in search, see [Logging search template](#logging-search-template)). |
 | Logging Max Interval | `splunk_es.logging_max_interval` | `SPLUNKES_LOGGING_MAX_INTERVAL` | PT15M | No | Longest wait between two searches of the same LOGGING expectation, as an ISO 8601 duration of at most `PT1H`. |
 
-With `SPLUNKES_LOGGING_ENABLED=true`, a missing index list or an invalid Logging setting stops the collector at startup,
-so the mistake is seen at once. With Logging off, invalid Logging settings are ignored with a warning and never block
-Detection.
+With `SPLUNKES_LOGGING_ENABLED=true`, a missing index list or an invalid `SPLUNKES_LOGGING_MAX_INTERVAL` stops the
+collector at startup, so the mistake is seen at once. With Logging off, an invalid `SPLUNKES_LOGGING_MAX_INTERVAL` is
+ignored with a warning. `SPLUNKES_LOGGING_QUERY_TEMPLATE` is checked at startup even with Logging off: an unknown
+placeholder stops the collector, Detection included. Leave it empty when Logging is off.
 
 ### Query template
 
@@ -277,8 +278,10 @@ On each run, before the Detection pass, the collector:
 1. Fetches the pending LOGGING expectations assigned to this collector.
 2. Skips the ones without an end date yet (the inject is still running). They are searched on a later run.
 3. Builds one search per expectation from its signatures:
-   - the implant marker (`parent_process_name`, e.g. `oaev-implant-<inject>-agent-<agent>`) and its callback URL path
-     (`/api/injects/<inject>/<agent>/executable-payload`), since network events only show the URL;
+   - the implant marker (`parent_process_name`, e.g. `oaev-implant-<inject>-agent-<agent>`) and the end of its
+     callback URL path (`injects/<inject>/<agent>/executable-payload`), since network events only show the URL. The
+     end of the path matches both the tenant route that current implants call
+     (`/api/tenants/<tenant>/injects/...`) and the older `/api/injects/...` route;
    - the source and target IPs;
    - the window from `start_date` to `end_date`, rounded outwards to the second.
 
@@ -296,7 +299,7 @@ Example: an inject that ran from `2026-11-04T10:00:00Z` to `2026-11-04T10:00:42.
 
 ```spl
 search index IN (sysmon,wineventlog) earliest=1793786400 latest=1793786444
-    ("oaev-implant-<inject>-agent-<agent>" OR "/api/injects/<inject>/<agent>/executable-payload" OR "192.168.2.4")
+    ("oaev-implant-<inject>-agent-<agent>" OR "injects/<inject>/<agent>/executable-payload" OR "192.168.2.4")
 | table _time, index, host, sourcetype, _raw
 ```
 
@@ -320,7 +323,8 @@ At startup and while running, Logging reacts to errors as follows:
 
 | Situation                                                                       | What happens                                                                   |
 |---------------------------------------------------------------------------------|--------------------------------------------------------------------------------|
-| Logging enabled without index, or with an invalid Logging setting               | The collector does not start (configuration error).                            |
+| Logging enabled without index, or with an invalid max interval                  | The collector does not start (configuration error).                            |
+| Logging search template with an unknown placeholder, even with Logging off      | The collector does not start (configuration error).                            |
 | None of the Logging indexes exists or is readable (checked once at startup)     | LOGGING is withdrawn from the collector; Detection goes on.                    |
 | Some Logging indexes are missing                                                | An error log lists them; Logging goes on with the others.                      |
 | Splunk answers 401 or 403 to a Logging search or to the startup check           | Logging stops until the collector restarts and LOGGING is withdrawn.           |
