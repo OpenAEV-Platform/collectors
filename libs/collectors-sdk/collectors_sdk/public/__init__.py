@@ -23,6 +23,13 @@ from collectors_sdk.public.expectations import (
     expectations_models_for_source,
 )
 
+# --- Runtime ---
+from collectors_sdk.public.runtime import (
+    CollectorDevOptions,
+    collector_dev_help,
+    collector_dev_options,
+)
+
 __all__ = [
     "__version__",
     # Daemons
@@ -39,4 +46,8 @@ __all__ = [
     "expectations_models_for_source",
     # Detection
     "OpenAEVDetectionHelper",
+    # Runtime
+    "CollectorDevOptions",
+    "collector_dev_help",
+    "collector_dev_options",
 ]

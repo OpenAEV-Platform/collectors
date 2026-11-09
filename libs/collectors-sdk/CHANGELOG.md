@@ -3,6 +3,20 @@
 Every notable change to collectors-sdk lands here. Every seam change too, with the new
 version of its seam.
 
+## [Unreleased]
+
+### Added
+
+- `runtime` (new): the dev options of a collector. `CollectorDevOptions` (seam model)
+  extends `xtm_oaev_sdk.DevOptions` with `--expectations` and `--once`;
+  `collector_dev_options(argv=None)` reads them and `collector_dev_help()` describes
+  them next to the common options. They are read only under their full name; injector
+  options and the collector's own flags are left alone. Port `CollectorDevRuntimePort`.
+  Seam `runtime` `1.0.0`.
+- `daemons`: started with `--dev --help` (or `-h`), `CollectorDaemon` prints the
+  collector dev options and exits with code 0, before building the API client or
+  reaching the platform. Without `--dev`, `-h` stays the collector's own.
+
 ## [0.1.0] - Unreleased
 
 First version. The collector runtime of `pyoaev` 3.260923.0 moves out and into this

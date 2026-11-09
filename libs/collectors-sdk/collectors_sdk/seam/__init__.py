@@ -4,6 +4,8 @@
 - **``detection``** — the alert-matching port.
 - **``expectations``** — expectation types, signatures and data, and the
   matching / update ports.
+- **``runtime``** — the dev runtime: the dev options of a collector and running it
+  without the platform.
 
 A seam is **closed**: it imports only the standard library, third-party
 libraries (including the ``xtm_oaev_sdk`` public package) and sibling seam

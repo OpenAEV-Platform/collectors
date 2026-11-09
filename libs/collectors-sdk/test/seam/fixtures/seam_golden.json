@@ -58,5 +58,17 @@
   "collectors_sdk.seam.expectations.ports.ExpectationUpdatePort": {
     "kind": "class",
     "sha256": "d40a2b718c4efb50a6f4c8e0a3c5c8880c7f481bf6cd6d78723484cb46fe9ac1"
+  },
+  "collectors_sdk.seam.runtime.SEAM_VERSION": {
+    "kind": "assignment",
+    "sha256": "c26dc544bb2976ca7c5a7465be69719edcc7893657a494ef17b0285e7e2a37db"
+  },
+  "collectors_sdk.seam.runtime.models.CollectorDevOptions": {
+    "kind": "class",
+    "sha256": "a7f131041c6b1cf6e03cdfbcf7c6271ac4f70f79e24bebb491c5f91d643f9816"
+  },
+  "collectors_sdk.seam.runtime.ports.CollectorDevRuntimePort": {
+    "kind": "class",
+    "sha256": "763d4626896be619e78f9a784b7f974219c81f42344b7abaa728ee01c65556ec"
   }
 }
