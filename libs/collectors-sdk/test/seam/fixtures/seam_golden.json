@@ -1,0 +1,62 @@
+{
+  "collectors_sdk.seam.daemons.SEAM_VERSION": {
+    "kind": "assignment",
+    "sha256": "c26dc544bb2976ca7c5a7465be69719edcc7893657a494ef17b0285e7e2a37db"
+  },
+  "collectors_sdk.seam.daemons.models.DEFAULT_PERIOD_SECONDS": {
+    "kind": "assignment",
+    "sha256": "038853cb22f30970a728dadec58c23ed701da24d8d207d96b42f7aa1da480f99"
+  },
+  "collectors_sdk.seam.daemons.models.DEFAULT_PLATFORM_TAG_COLOR": {
+    "kind": "assignment",
+    "sha256": "7e6b45ae3bc77cf2be0f2e6ff2c7c6b363473b5a92a57a9210799a301d50645d"
+  },
+  "collectors_sdk.seam.daemons.ports.CollectorRegistrationPort": {
+    "kind": "class",
+    "sha256": "00bd1fc26d5f00601a79df7de8ef9e84e843551741b0cfe06a7eb95133397af5"
+  },
+  "collectors_sdk.seam.daemons.ports.CollectorSchedulePort": {
+    "kind": "class",
+    "sha256": "cc139cc8ff94fbfe9817e7be442db1eb58f5e874496b39b72d54f99fe5b097e3"
+  },
+  "collectors_sdk.seam.detection.SEAM_VERSION": {
+    "kind": "assignment",
+    "sha256": "c26dc544bb2976ca7c5a7465be69719edcc7893657a494ef17b0285e7e2a37db"
+  },
+  "collectors_sdk.seam.detection.ports.AlertMatchingPort": {
+    "kind": "class",
+    "sha256": "2441ac52595366a95775c1f03506bff564dcf7cee7c25359c6b0cfa40ec70fb4"
+  },
+  "collectors_sdk.seam.expectations.SEAM_VERSION": {
+    "kind": "assignment",
+    "sha256": "c26dc544bb2976ca7c5a7465be69719edcc7893657a494ef17b0285e7e2a37db"
+  },
+  "collectors_sdk.seam.expectations.models.ExpectationData": {
+    "kind": "pydantic model",
+    "sha256": "95c43f36cfc3ae6a39485314bf3b17544e092c6cd14e32ad88123ae19e1c843e"
+  },
+  "collectors_sdk.seam.expectations.models.ExpectationSignature": {
+    "kind": "pydantic model",
+    "sha256": "c50810a86ad6696e8cefd49a70b84d83f9b583d7debbfb05aec4695313c9861d"
+  },
+  "collectors_sdk.seam.expectations.models.ExpectationTypeEnum": {
+    "kind": "class",
+    "sha256": "eedd3815e06ba2534096a47511e244290f0ce8fb8f23335a12449a804a2a9efd"
+  },
+  "collectors_sdk.seam.expectations.ports.ExpectationApiProtocol": {
+    "kind": "class",
+    "sha256": "eda9bf0a75185b80d41ed07adbf98af74c4460eaa5163847a7f814f3b7549fd7"
+  },
+  "collectors_sdk.seam.expectations.ports.ExpectationLoadingPort": {
+    "kind": "class",
+    "sha256": "cd512c34330ed1f2bf567f2d84685c186a16c51e9a9b4553bde559b42a154e31"
+  },
+  "collectors_sdk.seam.expectations.ports.ExpectationMatchingPort": {
+    "kind": "class",
+    "sha256": "1f08beb4e7bb961a386c4bb70abb66fff93b9ccae6c25b3edf8e8b751aee476f"
+  },
+  "collectors_sdk.seam.expectations.ports.ExpectationUpdatePort": {
+    "kind": "class",
+    "sha256": "d40a2b718c4efb50a6f4c8e0a3c5c8880c7f481bf6cd6d78723484cb46fe9ac1"
+  }
+}
