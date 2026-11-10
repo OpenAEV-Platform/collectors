@@ -8,7 +8,7 @@ from typing import Any
 
 from requests import ConnectionError, RequestException, Timeout
 
-from .client_api import SentinelOneClientAPI
+from .client_api import REQUEST_TIMEOUT_SECONDS, SentinelOneClientAPI
 from .exception import (
     SentinelOneAPIError,
     SentinelOneNetworkError,
@@ -16,7 +16,6 @@ from .exception import (
 )
 
 LOG_PREFIX = "[FetcherDeepVisibility]"
-REQUEST_TIMEOUT_SECONDS = 30
 MAX_STATUS_POLL_ATTEMPTS = 30
 
 

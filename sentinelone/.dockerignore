@@ -98,3 +98,7 @@ ehthumbs.db
 Thumbs.db
 desktop.ini
 
+
+# local test venvs
+.venv
+.venv-*
