@@ -10,7 +10,7 @@ from __future__ import annotations
 from pathlib import Path
 from types import ModuleType
 from typing import TYPE_CHECKING
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from polyfactory.factories.pydantic_factory import ModelFactory
@@ -433,8 +433,16 @@ def _when_microsoft_defender_o365_engine_cycle_triggered(
         ``None`` on success, or the raised exception on failure.
 
     """
+    from src.collector.engines import basic
+
     try:
-        engine.run_engine()
+        with (
+            patch.object(basic, "time_window_over") as m_time_window_over,
+            patch.object(basic, "detect_date") as m_detect_date,
+        ):
+            m_time_window_over.return_value = True
+            m_detect_date.return_value = True
+            engine.run_engine()
         return None
     except Exception as err:  # pylint: disable=broad-except
         return err
@@ -1224,7 +1232,7 @@ def _when_engine_processes_batch(
         List of ExpectationResult objects.
     """
     from pyoaev.helpers import OpenAEVDetectionHelper
-    from src.collector.engines.basic import BasicCollectorEngine
+    from src.collector.engines import basic
     from src.collector.models.source import SourceHandler
     from src.models.settings.source_configs import _ConfigLoaderSource
     from src.source.signatures import SUPPORTED_SIGNATURES
@@ -1294,7 +1302,7 @@ def _when_engine_processes_batch(
 
     from pyoaev import OpenAEV
 
-    engine = BasicCollectorEngine(
+    engine = basic.BasicCollectorEngine(
         name="Test Collector",
         collector_id="test-collector-id",
         source=mock_source,
@@ -1303,7 +1311,9 @@ def _when_engine_processes_batch(
     )
     engine.configure_engine(MagicMock())
 
-    return engine._process_batch(expectations)
+    with patch.object(basic, "time_window_over") as m_time_window_over:
+        m_time_window_over.return_value = True
+        return engine._process_batch(expectations)
 
 
 def _when_source_handler_filters_sigs(expectation) -> dict:

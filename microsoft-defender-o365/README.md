@@ -88,6 +88,7 @@ Below are the parameters you'll need to set for the collector:
 | Filter Service Source               | `source.filter_service_source`                  | `SOURCE_FILTER_SERVICE_SOURCE`            | microsoftDefenderForOffice365        | No        | Value used to filter Microsoft Graph security alerts down to those produced by Microsoft Defender for Office 365. |
 | Rate Limit (requests per minute)    | `source.rate_limit_requests_per_minute`         | `SOURCE_RATE_LIMIT_REQUESTS_PER_MINUTE`   | 150                                   | No        | Maximum number of Microsoft Graph API requests issued per minute (must be >= 1).                   |
 | Max Fetch Retries                   | `source.max_fetch_retries`                      | `SOURCE_MAX_FETCH_RETRIES`                | 5                                     | No        | Maximum number of retries when fetching data from Microsoft Graph fails transiently.                |
+| Retry Window                        | `source.retry_window`                           | `SOURCE_RETRY_WINDOW`                     | PT10M                                 | No        | Time after the recorded end date before invalidating an expectation (ISO 8601 format) - if the end date is not available, the start date is used with a factor 1.5 on the retry window (until the end date is available) |
 
 *Nota bene*: exactly one authentication mode must be fully configured: either `use_certificate_auth=false` with `client_secret` set, or `use_certificate_auth=true` with both `client_cert_data` and `client_cert_thumbprint` set.
 

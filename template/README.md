@@ -83,6 +83,7 @@ Below are the parameters you'll need to set for the collector:
 | Key                  | `source.key`                          | `SOURCE_KEY`                      |value                        | No        | Template example key value                                                                 |
 | Time Window              | `source.time_window`              | `SOURCE_TIME_WINDOW`              | PT1H                        | No        | Default search time window when no date signatures are provided (ISO 8601 format)                |
 | Expectation Batch Size   | `source.expectation_batch_size`   | `SOURCE_EXPECTATION_BATCH_SIZE`   | 50                          | No        | Number of expectations to process in each batch for batch-based processing                         |
+| Retry Window       | `source.retry_window`                   | `SOURCE_RETRY_WINDOW`             | PT10M                       | No        | Time after the recorded end date before invalidating an expectation (ISO 8601 format) - if the end date is not available, the start date is used with a factor 1.5 on the retry window (until the end date is available) |
 
 ### Example Configuration Files
 
