@@ -26,8 +26,26 @@ class ConfigLoader(SettingsLoader):
                 },
                 "collector_icon_filepath": {"data": self.collector.icon_filepath},
                 # Google workspace
+                "google_workspace_auth_type": {
+                    "data": self.collector.google_workspace_auth_type
+                },
                 "google_workspace_service_account_json": {
                     "data": self.collector.google_workspace_service_account_json
+                },
+                "google_workspace_client_email": {
+                    "data": self.collector.google_workspace_client_email
+                },
+                "google_workspace_client_certificate": {
+                    "data": self.collector.google_workspace_client_certificate
+                },
+                "google_workspace_client_private_key": {
+                    "data": self.collector.google_workspace_client_private_key
+                },
+                "google_workspace_client_private_key_id": {
+                    "data": self.collector.google_workspace_client_private_key_id
+                },
+                "google_workspace_token_uri": {
+                    "data": self.collector.google_workspace_token_uri
                 },
                 "google_workspace_delegated_admin_email": {
                     "data": self.collector.google_workspace_delegated_admin_email
