@@ -10,7 +10,7 @@
   "max_confidence_level": 80,
   "support_version": "",
   "subscription_link": "https://www.microsoft.com/en-us/security/business/siem-and-xdr/microsoft-defender-office-365",
-  "source_code": "",
+  "source_code": "https://github.com/OpenAEV-Platform/collectors/tree/main/microsoft-defender-o365",
   "manager_supported": true,
   "container_version": "rolling",
   "container_image": "openaev/collector-microsoft-defender-o365",
