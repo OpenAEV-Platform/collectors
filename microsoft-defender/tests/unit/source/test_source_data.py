@@ -12,7 +12,7 @@ class TestAlert(unittest.TestCase):
             "status": "inProgress",
             "serviceSource": "microsoftDefenderForEndpoint",
             "alertWebUrl": "http://endpoint.tld",
-            "createdDateTime": "1987-06-05T04:03:02.1",
+            "lastUpdateDateTime": "1987-06-05T04:03:02.1",
             "evidence": [],
         }
 
@@ -24,7 +24,7 @@ class TestAlert(unittest.TestCase):
         self.assertEqual(alert.service_source, "microsoftDefenderForEndpoint")
         self.assertEqual(str(alert.alert_web_url), "http://endpoint.tld/")
         self.assertEqual(
-            alert.created_date_time.isoformat(), "1987-06-05T04:03:02.100000"
+            alert.last_update_date_time.isoformat(), "1987-06-05T04:03:02.100000"
         )
         self.assertEqual(alert.evidence, [])
         self.assertEqual(alert.raw, data)
@@ -36,7 +36,7 @@ class TestAlert(unittest.TestCase):
             "status": "inProgress",
             "serviceSource": "microsoftDefenderForEndpoint",
             "alertWebUrl": "http://endpoint.tld",
-            "createdDateTime": "1987-06-05T04:03:02.1",
+            "lastUpdateDateTime": "1987-06-05T04:03:02.1",
             "evidence": [
                 {
                     "@odata.type": "#microsoft.graph.security.processEvidence",
@@ -64,7 +64,7 @@ class TestAlert(unittest.TestCase):
             "status": "inProgress",
             "serviceSource": "microsoftDefenderForEndpoint",
             "alertWebUrl": "http://endpoint.tld",
-            "createdDateTime": "1987-06-05T04:03:02.1",
+            "lastUpdateDateTime": "1987-06-05T04:03:02.1",
             "evidence": [
                 {
                     "@odata.type": "#microsoft.graph.security.processEvidence",
@@ -87,7 +87,7 @@ class TestAlert(unittest.TestCase):
             "status": "inProgress",
             "serviceSource": "microsoftDefenderForEndpoint",
             "alertWebUrl": "http://endpoint.tld",
-            "createdDateTime": "1987-06-05T04:03:02.1",
+            "lastUpdateDateTime": "1987-06-05T04:03:02.1",
             "evidence": [
                 {
                     "@odata.type": "#microsoft.graph.security.processEvidence",
@@ -111,7 +111,7 @@ class TestAlert(unittest.TestCase):
             "status": "inProgress",
             "serviceSource": "microsoftDefenderForEndpoint",
             "alertWebUrl": "http://endpoint.tld",
-            "createdDateTime": "1987-06-05T04:03:02.1",
+            "lastUpdateDateTime": "1987-06-05T04:03:02.1",
             "evidence": [
                 {
                     "@odata.type": "#microsoft.graph.security.processEvidence",

@@ -39,9 +39,9 @@ class TestDefenderSourceHandler(unittest.TestCase):
         self.assertIsNotNone(hook)
 
         # Assert: hook injects the since clause
-        params = {"$filter": "existing filter", "$orderby": "createdDateTime desc"}
+        params = {"$filter": "existing filter", "$orderby": "lastUpdateDateTime desc"}
         result = hook(params)
-        self.assertIn("createdDateTime ge", result["$filter"])
+        self.assertIn("lastUpdateDateTime ge", result["$filter"])
         self.assertIn("2026-07-01T00:00:00", result["$filter"])
 
     def test_source_handler_build_fetch_params_hook_both(self):
@@ -69,9 +69,9 @@ class TestDefenderSourceHandler(unittest.TestCase):
         self.assertIsNotNone(hook)
 
         # Assert: hook injects the since clause
-        params = {"$filter": "existing filter", "$orderby": "createdDateTime desc"}
+        params = {"$filter": "existing filter", "$orderby": "lastUpdateDateTime desc"}
         result = hook(params)
-        self.assertIn("createdDateTime ge", result["$filter"])
+        self.assertIn("lastUpdateDateTime ge", result["$filter"])
         self.assertIn("2026-07-01T00:00:00", result["$filter"])
 
     def test_source_handler_build_fetch_params_hook_start_date(self):
@@ -94,9 +94,9 @@ class TestDefenderSourceHandler(unittest.TestCase):
         self.assertIsNotNone(hook)
 
         # Assert: hook injects the since clause
-        params = {"$filter": "existing filter", "$orderby": "createdDateTime desc"}
+        params = {"$filter": "existing filter", "$orderby": "lastUpdateDateTime desc"}
         result = hook(params)
-        self.assertIn("createdDateTime ge", result["$filter"])
+        self.assertIn("lastUpdateDateTime ge", result["$filter"])
         self.assertIn("2026-07-01T00:00:00", result["$filter"])
 
     def test_source_handler_build_fetch_params_hook_neither(self):

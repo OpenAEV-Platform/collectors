@@ -20,7 +20,7 @@ def _make_alert(alert_id: str = "ALT-001") -> dict:
         "status": "new",
         "serviceSource": "microsoftDefenderForEndpoint",
         "alertWebUrl": "https://security.microsoft.com/alerts/2adc66d2-5ad1-4c1c-8cd9-28ebca55995b?tid=4ad60791-cdca-478f-84e7-533c7d771946",
-        "createdDateTime": "2026-07-05T14:00:00Z",
+        "lastUpdateDateTime": "2026-07-05T14:00:00Z",
         "evidence": [],
     }
 
@@ -251,7 +251,7 @@ class TestDefenderDataFetcher(unittest.TestCase):
         self.assertIn("$filter", params)
         self.assertIn("microsoftDefenderForOffice365", params["$filter"])
         self.assertIn("$orderby", params)
-        self.assertEqual(params["$orderby"], "createdDateTime desc")
+        self.assertEqual(params["$orderby"], "lastUpdateDateTime desc")
 
     @patch.object(module, "MSGraphAuthClient")
     @patch.object(module, "Session")
@@ -277,7 +277,7 @@ class TestDefenderDataFetcher(unittest.TestCase):
 
         def _since_hook(params: dict) -> dict:
             current = params.get("$filter", "")
-            clause = f"createdDateTime ge '{since.isoformat()}'"
+            clause = f"lastUpdateDateTime ge '{since.isoformat()}'"
             params["$filter"] = f"{current} and {clause}" if current else clause
             return params
 
@@ -289,7 +289,7 @@ class TestDefenderDataFetcher(unittest.TestCase):
         # Assert: hook injected the clause into the request params
         call_args = mock_session.get.call_args
         params = call_args[1].get("params", {})
-        self.assertIn("createdDateTime ge", params["$filter"])
+        self.assertIn("lastUpdateDateTime ge", params["$filter"])
         self.assertIn("2026-07-01T00:00:00", params["$filter"])
 
 
