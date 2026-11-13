@@ -97,7 +97,7 @@ class DefenderDataFetcher:
     def _build_filter_params(self) -> dict[str, str]:
         """Build OData filter parameters from config.
 
-        Combines serviceSource filter. Always orders results by createdDateTime
+        Combines serviceSource filter. Always orders results by lastUpdateDateTime
         descending (most recent first).
 
         Returns:
@@ -105,7 +105,7 @@ class DefenderDataFetcher:
         """
         return {
             "$filter": f"serviceSource eq '{self.config.filter_service_source}'",
-            "$orderby": "createdDateTime desc",
+            "$orderby": "lastUpdateDateTime desc",
         }
 
     def fetch_data(self) -> list[Alert]:
@@ -114,7 +114,7 @@ class DefenderDataFetcher:
         Follows @odata.nextLink pagination until no next page exists.
         Handles HTTP 401 (token refresh + single retry).
         Returns one Alert (SourceDataProtocol-valid) per alert,
-        all pages merged. Results are ordered by createdDateTime
+        all pages merged. Results are ordered by lastUpdateDateTime
         descending (most recent first).
 
         Returns:

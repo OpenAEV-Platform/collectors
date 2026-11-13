@@ -12,7 +12,8 @@ class TestAlert(unittest.TestCase):
             "status": "inProgress",
             "serviceSource": "microsoftDefenderForEndpoint",
             "alertWebUrl": "http://endpoint.tld",
-            "createdDateTime": "1987-06-05T04:03:02.1",
+            "lastActivityDateTime": "1987-06-05T04:02:55.1",
+            "lastUpdateDateTime": "1987-06-05T04:03:02.1",
             "evidence": [],
         }
 
@@ -24,7 +25,10 @@ class TestAlert(unittest.TestCase):
         self.assertEqual(alert.service_source, "microsoftDefenderForEndpoint")
         self.assertEqual(str(alert.alert_web_url), "http://endpoint.tld/")
         self.assertEqual(
-            alert.created_date_time.isoformat(), "1987-06-05T04:03:02.100000"
+            alert.last_activity_date_time.isoformat(), "1987-06-05T04:02:55.100000"
+        )
+        self.assertEqual(
+            alert.last_update_date_time.isoformat(), "1987-06-05T04:03:02.100000"
         )
         self.assertEqual(alert.evidence, [])
         self.assertEqual(alert.raw, data)
@@ -36,7 +40,8 @@ class TestAlert(unittest.TestCase):
             "status": "inProgress",
             "serviceSource": "microsoftDefenderForEndpoint",
             "alertWebUrl": "http://endpoint.tld",
-            "createdDateTime": "1987-06-05T04:03:02.1",
+            "lastActivityDateTime": "1987-06-05T04:02:55.1",
+            "lastUpdateDateTime": "1987-06-05T04:03:02.1",
             "evidence": [
                 {
                     "@odata.type": "#microsoft.graph.security.processEvidence",
@@ -64,7 +69,8 @@ class TestAlert(unittest.TestCase):
             "status": "inProgress",
             "serviceSource": "microsoftDefenderForEndpoint",
             "alertWebUrl": "http://endpoint.tld",
-            "createdDateTime": "1987-06-05T04:03:02.1",
+            "lastActivityDateTime": "1987-06-05T04:02:55.1",
+            "lastUpdateDateTime": "1987-06-05T04:03:02.1",
             "evidence": [
                 {
                     "@odata.type": "#microsoft.graph.security.processEvidence",
@@ -87,7 +93,8 @@ class TestAlert(unittest.TestCase):
             "status": "inProgress",
             "serviceSource": "microsoftDefenderForEndpoint",
             "alertWebUrl": "http://endpoint.tld",
-            "createdDateTime": "1987-06-05T04:03:02.1",
+            "lastActivityDateTime": "1987-06-05T04:02:55.1",
+            "lastUpdateDateTime": "1987-06-05T04:03:02.1",
             "evidence": [
                 {
                     "@odata.type": "#microsoft.graph.security.processEvidence",
@@ -103,6 +110,7 @@ class TestAlert(unittest.TestCase):
         self.assertIsInstance(traces_data, module.TraceData)
         self.assertEqual(traces_data.alert_name, data["title"])
         self.assertEqual(str(traces_data.alert_link), "http://endpoint.tld/")
+        self.assertEqual(str(traces_data.alert_date), "1987-06-05 04:02:55.100000")
 
     def test_alert_is_prevented_detected(self):
         data = {
@@ -111,7 +119,8 @@ class TestAlert(unittest.TestCase):
             "status": "inProgress",
             "serviceSource": "microsoftDefenderForEndpoint",
             "alertWebUrl": "http://endpoint.tld",
-            "createdDateTime": "1987-06-05T04:03:02.1",
+            "lastActivityDateTime": "1987-06-05T04:02:55.1",
+            "lastUpdateDateTime": "1987-06-05T04:03:02.1",
             "evidence": [
                 {
                     "@odata.type": "#microsoft.graph.security.processEvidence",

@@ -22,10 +22,15 @@ class Alert(BaseModel):
         alias="alertWebUrl",
         description="URL for the Microsoft 365 Defender portal alert page.",
     )
-    created_date_time: datetime = Field(
+    last_activity_date_time: datetime = Field(
         ...,
-        alias="createdDateTime",
-        description="Time when Microsoft 365 Defender created the alert.",
+        alias="lastActivityDateTime",
+        description="The oldest activity associated with the alert.",
+    )
+    last_update_date_time: datetime = Field(
+        ...,
+        alias="lastUpdateDateTime",
+        description="Time when the alert was last updated at Microsoft 365 Defender.",
     )
     evidence: list[Evidence]
     raw: dict[str, Any] = Field(default_factory=dict)
@@ -59,7 +64,7 @@ class Alert(BaseModel):
         return TraceData(
             alert_name=self.title,
             alert_link=self.alert_web_url,
-            alert_date=self.created_date_time,
+            alert_date=self.last_activity_date_time,
         )
 
     def is_prevented(self) -> bool:
