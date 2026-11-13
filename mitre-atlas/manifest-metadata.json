@@ -10,7 +10,7 @@
   "max_confidence_level": 80,
   "support_version": "",
   "subscription_link": "https://atlas.mitre.org/",
-  "source_code": "",
+  "source_code": "https://github.com/OpenAEV-Platform/collectors/tree/main/mitre-atlas",
   "manager_supported": true,
   "container_version": "rolling",
   "container_image": "openaev/collector-mitre-atlas",

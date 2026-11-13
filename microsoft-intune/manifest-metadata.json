@@ -10,7 +10,7 @@
   "max_confidence_level": 80,
   "support_version": "",
   "subscription_link": "https://www.microsoft.com/es-es/security/business/microsoft-intune",
-  "source_code": "",
+  "source_code": "https://github.com/OpenAEV-Platform/collectors/tree/main/microsoft-intune",
   "manager_supported": true,
   "container_version": "rolling",
   "container_image": "openaev/collector-microsoft-intune",
