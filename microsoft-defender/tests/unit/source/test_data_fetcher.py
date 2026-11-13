@@ -20,6 +20,7 @@ def _make_alert(alert_id: str = "ALT-001") -> dict:
         "status": "new",
         "serviceSource": "microsoftDefenderForEndpoint",
         "alertWebUrl": "https://security.microsoft.com/alerts/2adc66d2-5ad1-4c1c-8cd9-28ebca55995b?tid=4ad60791-cdca-478f-84e7-533c7d771946",
+        "lastActivityDateTime": "2026-07-05T13:59:23Z",
         "lastUpdateDateTime": "2026-07-05T14:00:00Z",
         "evidence": [],
     }
