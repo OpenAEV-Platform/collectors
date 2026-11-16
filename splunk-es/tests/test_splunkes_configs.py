@@ -319,3 +319,29 @@ def test_blank_logging_settings_use_their_defaults_silently(
     # Assert
     assert config.logging_max_interval == timedelta(minutes=15)  # noqa: S101
     assert "is invalid" not in caplog.text  # noqa: S101
+
+
+# Scenario: The retry window defaults to 20 minutes and is configurable
+# (behavior contract in tests/services/test_expectation_retry_window.py).
+@pytest.mark.parametrize(
+    ("env_value", "expected"),
+    [
+        (None, timedelta(minutes=20)),
+        ("", timedelta(minutes=20)),
+        ("PT30M", timedelta(minutes=30)),
+    ],
+    ids=["unset-defaults-to-20m", "blank-defaults-to-20m", "pt30m-is-kept"],
+)
+def test_retry_window_defaults_to_20_minutes_and_is_configurable(
+    monkeypatch, required_env, env_value, expected
+):  # type: ignore
+    """The detection retry window covers the risk-index ingestion lag."""
+    # Arrange
+    if env_value is not None:
+        monkeypatch.setenv("SPLUNKES_RETRY_WINDOW", env_value)
+
+    # Act
+    config = _ConfigLoaderSplunkES()
+
+    # Assert
+    assert config.retry_window == expected  # noqa: S101
