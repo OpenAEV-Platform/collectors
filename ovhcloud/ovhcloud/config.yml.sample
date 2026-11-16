@@ -1,0 +1,44 @@
+openaev:
+  url: 'http://localhost:3001'
+  token: 'ChangeMe'
+  # only required for multi-tenancy (Enterprise Edition), keep commented otherwise
+  # tenant_id: 'ChangeMe'
+
+collector:
+  id: 'ChangeMe'
+  name: 'OVHcloud'
+  period: 'PT1H'
+  log_level: 'error'
+
+  # API endpoint: ovh-eu, ovh-ca or ovh-us
+  ovhcloud_endpoint: 'ovh-eu'
+  # Either application key + application secret + consumer key...
+  ovhcloud_application_key: 'ChangeMe'
+  ovhcloud_application_secret: 'ChangeMe'
+  ovhcloud_consumer_key: 'ChangeMe'
+  # ... or an OAuth2 service account (leave the three keys above unset)
+  # ovhcloud_client_id: 'ChangeMe'
+  # ovhcloud_client_secret: 'ChangeMe'
+
+  # What to collect
+  ovhcloud_collect_dedicated_servers: true
+  ovhcloud_collect_public_cloud: false
+  ovhcloud_collect_vps: false
+  ovhcloud_collect_hosted_private_cloud: false
+
+  # Filters (all optional)
+  # ovhcloud_public_cloud_project_ids: 'projectId1,projectId2'
+  # ovhcloud_regions: 'GRA11,rbx,BHS5'
+  # ovhcloud_name_include: '^prod-'
+  # ovhcloud_name_exclude: 'test'
+  # ovhcloud_iam_tags: 'environment=production,team=infra'
+  ovhcloud_skip_inactive: true
+
+  # IP addresses
+  ovhcloud_include_public_ipv4: true
+  ovhcloud_include_public_ipv6: true
+  ovhcloud_include_private_ips: true
+
+  # Tagging and tuning
+  ovhcloud_import_tags: true
+  ovhcloud_max_workers: 5
