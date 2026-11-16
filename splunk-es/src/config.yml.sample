@@ -21,6 +21,7 @@ splunk_es:
   alerts_index: "notable"
   max_retry: 5
   offset: 120
+  # retry_window: "PT20M"  # time after the recorded end date before an unmatched detection expectation is marked Not Detected (ISO 8601) - without an end date, the start date is used with a factor 1.5
   # LOGGING expectations: search raw-event indexes (not the notable index).
   # Off by default; the indexes are required when it is on.
   # logging_enabled: true

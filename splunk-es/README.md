@@ -85,6 +85,7 @@ Docker deployment) or through a `config.yml` file (for a manual deployment). Cop
 | Time Window    | `splunk_es.time_window`    | `SPLUNKES_TIME_WINDOW`      | PT1H         | No        | Default search window when no date signatures are provided, as an ISO 8601 duration.     |
 | Offset         | `splunk_es.offset`         | `SPLUNKES_OFFSET`           | PT2M         | No        | Delay between retry attempts to absorb alert ingestion latency, as an ISO 8601 duration. |
 | Max Retry      | `splunk_es.max_retry`      | `SPLUNKES_MAX_RETRY`        | 5            | No        | Maximum number of retry attempts after the initial search returns no results.            |
+| Retry Window   | `splunk_es.retry_window`   | `SPLUNKES_RETRY_WINDOW`     | PT20M        | No        | How long after the recorded end date an unmatched DETECTION expectation is searched again on every run before it is marked `Not Detected` (ISO 8601 duration). Without an end date, the start date is used with 1.5 times the window. |
 | Query Template | `splunk_es.query_template` | `SPLUNKES_QUERY_TEMPLATE`   | *(built-in)* | No        | Custom SPL query template with placeholders (leave empty to use the default below).      |
 | Logging Enabled | `splunk_es.logging_enabled` | `SPLUNKES_LOGGING_ENABLED` | false | No | Validate LOGGING expectations by searching the raw-event indexes. Requires `SPLUNKES_LOGGING_INDEXES`. |
 | Logging Indexes | `splunk_es.logging_indexes` | `SPLUNKES_LOGGING_INDEXES` | / | When Logging is enabled | Comma-separated raw-event indexes or patterns (e.g. `sysmon,wineventlog,net*`), written as is in `index IN (...)`. No default on purpose. |
@@ -254,8 +255,11 @@ On each run, the collector:
    signatures are present, at least one source or destination IP must match. Each matched DETECTION expectation is marked
    `Detected` and gets an expectation trace linking to the Splunk ES search results.
 
-Expectations that remain unmatched after all retries are left for OpenAEV to mark as failed (`Not Detected`) once they
-expire.
+An expectation that is still unmatched is not marked `Not Detected` straight away: risk events can reach the index
+minutes after the attack. The collector writes no verdict and searches again on its next runs, until
+`SPLUNKES_RETRY_WINDOW` (default 20 minutes) has passed since the expectation's end date (1.5 times that window after its
+start date when it has no end date). The run after that makes a last search and writes the final verdict. Expectations
+with neither a start date nor an end date are not searched and are left for OpenAEV to expire.
 
 ### Logging expectations
 
