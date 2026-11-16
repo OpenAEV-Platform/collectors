@@ -20,6 +20,7 @@ from src.collector.models.source import Source
 from src.collector.protocols.data_fetcher import DataFetcherProtocol
 from src.collector.protocols.source_handler import SourceHandlerProtocol
 from src.collector.types.collector import ExpectationsList, SourceConfig
+from src.collector.utils.expectation_utils import time_window_over
 
 LOG_PREFIX = "[BasicCollectorEngine]"
 
@@ -245,13 +246,18 @@ class BasicCollectorEngine:
                         if breakflag:
                             break
 
-                # (8) create results from step 7 + tracedata (6)
-                result = ExpectationResult(
-                    expectation_id=str(expectation.inject_expectation_id),
-                    is_valid=matched,
-                    expectation=expectation,
-                    matched_alerts=traces,
+                self.logger.debug(
+                    f"{LOG_PREFIX} Creating expectation result for expectation {expectation.inject_expectation_id} with match at {matched}"
                 )
+                result = None
+                if matched or time_window_over(expectation, self.config.retry_window):
+                    # (8) create results from step 7 + tracedata (6)
+                    result = ExpectationResult(
+                        expectation_id=str(expectation.inject_expectation_id),
+                        is_valid=matched,
+                        expectation=expectation,
+                        matched_alerts=traces,
+                    )
             except Exception as err:
                 result = ExpectationResult.from_error(
                     ExpectationProcessingError(f"Processing error: {err}"),
@@ -259,10 +265,13 @@ class BasicCollectorEngine:
                 )
                 self.logger.error(f"{LOG_PREFIX} Processing batch: {err}")
                 error_count += 1
-            batch_results.append(result)
+
+            if result:
+                # in case it is still at None due to the time window not being over
+                batch_results.append(result)
 
         self.logger.info(
-            f"{LOG_PREFIX} Batch processed: {len(batch_results)} results (including {error_count} errors))"
+            f"{LOG_PREFIX} Batch processed: {len(batch_results)} results (including {error_count} errors, excluding {len(batch)-len(batch_results)} postponed expectations)"
         )
 
         return batch_results

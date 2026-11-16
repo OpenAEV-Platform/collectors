@@ -53,6 +53,8 @@ def test_non_matching_alert_produces_invalid_result():
     # When: the engine processes the expectation against the fetched data
     results = _when_engine_processes_batch([expectation], alert_data)
 
+    print(results)
+
     # Then: ExpectationResult.is_valid is False and matched_alerts is empty
     _then_expectation_result_not_valid_no_traces(results[0])
 
