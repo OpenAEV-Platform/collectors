@@ -33,10 +33,13 @@ from .exception import (
     SplunkESValidationError,
 )
 from .models import SplunkESAlert
+from .utils.expectation_utils import detect_correct_date, time_window_over
 from .utils.parent_process_parser import ParentProcessParser
 from .utils.regex_engine import RegexSignatureEngine, Signature
 
 LOG_PREFIX = "[SplunkESExpectationService]"
+
+DEFAULT_RETRY_WINDOW = timedelta(minutes=20)
 
 
 class SplunkESExpectationService:
@@ -123,6 +126,9 @@ class SplunkESExpectationService:
             )
 
         if hasattr(config, "splunk_es"):
+            self.retry_window = getattr(
+                config.splunk_es, "retry_window", DEFAULT_RETRY_WINDOW
+            )
             self.max_retry = getattr(config.splunk_es, "max_retry", 5)
             self.offset = getattr(
                 config.splunk_es, "offset", timedelta(seconds=120)
@@ -131,6 +137,7 @@ class SplunkESExpectationService:
                 f"{LOG_PREFIX} Using configured retry parameters: max_retry={self.max_retry}, offset={self.offset}s"
             )
         else:
+            self.retry_window = DEFAULT_RETRY_WINDOW
             self.max_retry = 5
             self.offset = 120
             self.logger.warning(
@@ -180,12 +187,22 @@ class SplunkESExpectationService:
             )
 
             all_results_with_expectations_associated = []
+            postponed_count = 0
 
             for i, expectation in enumerate(expectations, 1):
                 expectation_id = str(expectation.inject_expectation_id)
                 self.logger.debug(
                     f"{LOG_PREFIX} Processing expectation {i}/{len(expectations)}: {expectation_id}"
                 )
+
+                if isinstance(
+                    expectation, DetectionExpectation
+                ) and not detect_correct_date(expectation):
+                    self.logger.debug(
+                        f"{LOG_PREFIX} Skipping expectation {expectation_id}: "
+                        f"neither start_date nor end_date"
+                    )
+                    continue
 
                 try:
                     result = self.process_expectation(expectation, detection_helper)
@@ -198,6 +215,18 @@ class SplunkESExpectationService:
                             f"{LOG_PREFIX} Expectation {expectation_id} failed validation"
                         )
 
+                except (
+                    SplunkESNoAlertsFoundError,
+                    SplunkESNoMatchingAlertsError,
+                ) as e:
+                    if not time_window_over(expectation, self.retry_window):
+                        self.logger.info(
+                            f"{LOG_PREFIX} No match yet for expectation {expectation_id}, "
+                            f"postponed until its retry window ({self.retry_window}) is over"
+                        )
+                        postponed_count += 1
+                        continue
+                    result = self._create_error_result_object(e, expectation)
                 except SplunkESServiceError as e:
                     self.logger.warning(
                         f"{LOG_PREFIX} Splunk ES service error for expectation {expectation_id}: {e}"
@@ -223,7 +252,8 @@ class SplunkESExpectationService:
                 f"{LOG_PREFIX} Batch expectation processing: processed {len(expectations)} items -> {len(all_results_with_expectations_associated)} results"
             )
             self.logger.info(
-                f"{LOG_PREFIX} Batch processing completed: {valid_count} valid, {invalid_count} invalid"
+                f"{LOG_PREFIX} Batch processing completed: {valid_count} valid, {invalid_count} invalid, "
+                f"{postponed_count} postponed"
             )
 
             return all_results_with_expectations_associated

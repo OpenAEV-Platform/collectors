@@ -67,6 +67,15 @@ class _ConfigLoaderSplunkES(ConfigBaseSettings):
         description="Time waited between retry attempts, also used to extend the "
         "search window forward on each retry.",
     )
+    retry_window: timedelta = Field(
+        alias="SPLUNKES_RETRY_WINDOW",
+        default=timedelta(minutes=20),
+        description="How long after the recorded end date an unmatched detection "
+        "expectation is re-attempted on every collector cycle, before one final "
+        "attempt emits the verdict (ISO 8601 format). If the end date is not "
+        "available, the start date is used with a factor 1.5 on the retry window. "
+        "Expectations with neither date are left to the platform.",
+    )
     query_template: Optional[str] = Field(
         alias="SPLUNKES_QUERY_TEMPLATE",
         default=None,
@@ -109,6 +118,7 @@ class _ConfigLoaderSplunkES(ConfigBaseSettings):
     @field_validator(
         "alerts_index",
         "time_window",
+        "retry_window",
         "query_template",
         "logging_enabled",
         "logging_indexes",
