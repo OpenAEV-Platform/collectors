@@ -1,8 +1,7 @@
-from ovhcloud.configuration.collector_config_override import (
-    CollectorConfigOverride,
-)
 from pydantic import Field, SecretStr
 from pyoaev.configuration import ConfigLoaderOAEV, Configuration, SettingsLoader
+
+from ovhcloud.configuration.collector_config_override import CollectorConfigOverride
 
 SECRET_FIELDS = (
     "ovhcloud_application_key",

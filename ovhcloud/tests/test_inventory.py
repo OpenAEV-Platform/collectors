@@ -1,6 +1,9 @@
 """Tests of the OVHcloud inventory: toggles, filters, IP options and mapping."""
 
 import pytest
+from tests import fixtures
+from tests.fixtures import FakeClient
+
 from ovhcloud.inventory import (
     RESOURCE_DEDICATED_SERVER,
     RESOURCE_HOSTED_PRIVATE_CLOUD_VM,
@@ -14,8 +17,6 @@ from ovhcloud.inventory import (
     platform_from_os,
     select_ips,
 )
-from tests import fixtures
-from tests.fixtures import FakeClient
 
 ALL_TYPES = InventorySettings(
     collect_dedicated_servers=True,

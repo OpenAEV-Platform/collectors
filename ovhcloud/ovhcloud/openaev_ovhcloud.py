@@ -1,6 +1,9 @@
 import os
 from typing import Any
 
+from pyoaev.configuration import Configuration
+from pyoaev.daemons import CollectorDaemon
+
 from ovhcloud.client import OvhClient
 from ovhcloud.configuration.config_loader import ConfigLoader
 from ovhcloud.inventory import (
@@ -11,8 +14,6 @@ from ovhcloud.inventory import (
     parse_list,
     parse_tags,
 )
-from pyoaev.configuration import Configuration
-from pyoaev.daemons import CollectorDaemon
 
 # OpenAEV has no dedicated cloud provider value for OVHcloud: assets are registered with
 # OTHER and carry "ovhcloud" in their metadata and tags.

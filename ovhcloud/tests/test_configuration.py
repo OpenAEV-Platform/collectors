@@ -3,12 +3,13 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+from pydantic import ValidationError
+
 from ovhcloud import openaev_ovhcloud
 from ovhcloud.configuration.collector_config_override import CollectorConfigOverride
 from ovhcloud.configuration.config_loader import ConfigLoader
 from ovhcloud.inventory import OvhAsset
 from ovhcloud.openaev_ovhcloud import OpenAEVOvhcloud, build_endpoint, tag_names
-from pydantic import ValidationError
 
 APPLICATION_KEYS = {
     "ovhcloud_application_key": "ak",

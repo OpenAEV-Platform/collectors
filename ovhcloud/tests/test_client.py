@@ -4,6 +4,7 @@ import hashlib
 from unittest.mock import MagicMock, patch
 
 import pytest
+
 from ovhcloud import client as client_module
 from ovhcloud.client import OvhApiError, OvhClient, compute_signature
 
