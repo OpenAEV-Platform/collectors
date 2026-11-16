@@ -11,6 +11,7 @@ class TestEvidence(unittest.TestCase):
     def test_process_evidence(self):
         process_data = {
             "@odata.type": "#microsoft.graph.security.processEvidence",
+            "remediationStatus": "active",
             "imageFile": {"fileName": "deadbeef.exe"},
             "parentProcessImageFile": {"fileName": "badc0ffee.exe"},
         }
@@ -21,11 +22,13 @@ class TestEvidence(unittest.TestCase):
         self.assertEqual(
             process_evidence.odata_type, "#microsoft.graph.security.processEvidence"
         )
+        self.assertEqual(process_evidence.remediation_status, "active")
         self.assertEqual(process_evidence.image_file.file_name, "deadbeef.exe")
         self.assertEqual(
             process_evidence.parent_process_image_file.file_name, "badc0ffee.exe"
         )
         self.assertIsNone(process_evidence.process_command_line)
+        self.assertFalse(process_evidence.is_prevented())
 
         extracted_evidences = process_evidence.extract_evidences()
 
@@ -48,6 +51,7 @@ class TestEvidence(unittest.TestCase):
     def test_device_evidence(self):
         device_data = {
             "@odata.type": "#microsoft.graph.security.deviceEvidence",
+            "remediationStatus": "active",
             "deviceDnsName": "me.here",
             "hostName": "me",
             "lastIpAddress": "1.2.3.4",
@@ -59,10 +63,12 @@ class TestEvidence(unittest.TestCase):
         self.assertEqual(
             device_evidence.odata_type, "#microsoft.graph.security.deviceEvidence"
         )
+        self.assertEqual(device_evidence.remediation_status, "active")
         self.assertEqual(device_evidence.device_dns_name, "me.here")
         self.assertEqual(device_evidence.host_name, "me")
         self.assertEqual(str(device_evidence.last_ip_address), "1.2.3.4")
         self.assertIsNone(device_evidence.last_external_ip_address)
+        self.assertFalse(device_evidence.is_prevented())
 
         extracted_evidences = device_evidence.extract_evidences()
 
@@ -84,6 +90,7 @@ class TestEvidence(unittest.TestCase):
     def test_file_evidence(self):
         file_data = {
             "@odata.type": "#microsoft.graph.security.fileEvidence",
+            "remediationStatus": "prevented",
             "fileDetails": {
                 "fileName": "myfile.exe",
                 "filePath": "/this/is/myfile.exe",
@@ -95,8 +102,10 @@ class TestEvidence(unittest.TestCase):
         self.assertEqual(
             file_evidence.odata_type, "#microsoft.graph.security.fileEvidence"
         )
+        self.assertEqual(file_evidence.remediation_status, "prevented")
         self.assertEqual(file_evidence.file_details.file_name, "myfile.exe")
         self.assertEqual(file_evidence.file_details.file_path, "/this/is/myfile.exe")
+        self.assertTrue(file_evidence.is_prevented())
 
         extracted_evidences = file_evidence.extract_evidences()
 
@@ -109,13 +118,16 @@ class TestEvidence(unittest.TestCase):
     def test_ip_evidence_ipv4(self):
         ip_data = {
             "@odata.type": "#microsoft.graph.security.ipEvidence",
+            "remediationStatus": "none",
             "ipAddress": "1.2.3.4",
         }
         ip_evidence = FakeAlert(evidence=ip_data).evidence
 
         self.assertIsInstance(ip_evidence, module.ipEvidence)
         self.assertEqual(ip_evidence.odata_type, "#microsoft.graph.security.ipEvidence")
+        self.assertEqual(ip_evidence.remediation_status, "none")
         self.assertEqual(str(ip_evidence.ip_address), "1.2.3.4")
+        self.assertFalse(ip_evidence.is_prevented())
 
         extracted_evidences = ip_evidence.extract_evidences()
 
@@ -133,13 +145,16 @@ class TestEvidence(unittest.TestCase):
     def test_ip_evidence_ipv6(self):
         ip_data = {
             "@odata.type": "#microsoft.graph.security.ipEvidence",
+            "remediationStatus": "none",
             "ipAddress": "2001:db8::1",
         }
         ip_evidence = FakeAlert(evidence=ip_data).evidence
 
         self.assertIsInstance(ip_evidence, module.ipEvidence)
         self.assertEqual(ip_evidence.odata_type, "#microsoft.graph.security.ipEvidence")
+        self.assertEqual(ip_evidence.remediation_status, "none")
         self.assertEqual(str(ip_evidence.ip_address), "2001:db8::1")
+        self.assertFalse(ip_evidence.is_prevented())
 
         extracted_evidences = ip_evidence.extract_evidences()
 
@@ -157,6 +172,7 @@ class TestEvidence(unittest.TestCase):
     def test_generic_evidence(self):
         generic_data = {
             "@odata.type": "#microsoft.graph.security.userEvidence",
+            "remediationStatus": "none",
             "key": "value",
         }
         generic_evidence = FakeAlert(evidence=generic_data).evidence
@@ -165,7 +181,9 @@ class TestEvidence(unittest.TestCase):
         self.assertEqual(
             generic_evidence.odata_type, "#microsoft.graph.security.userEvidence"
         )
+        self.assertEqual(generic_evidence.remediation_status, "none")
         self.assertEqual(generic_evidence.extract_evidences(), {})
+        self.assertFalse(generic_evidence.is_prevented())
 
     def test_evidence_discriminator(self):
         supported = [

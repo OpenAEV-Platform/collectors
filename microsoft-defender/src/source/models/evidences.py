@@ -7,11 +7,38 @@ from pydantic.networks import IPvAnyAddress
 from pyoaev.signatures.types import SignatureTypes
 
 
+class BaseEvidence(BaseModel):
+    remediation_status: Literal[
+        "none",
+        "remediated",
+        "prevented",
+        "blocked",
+        "notFound",
+        "unknownFutureValue",
+        "active",
+        "pendingApproval",
+        "declined",
+        "unremediated",
+        "running",
+        "partiallyRemediated",
+    ] = Field(
+        ...,
+        alias="remediationStatus",
+        description="Status of the remediation action taken.",
+    )
+
+    def is_prevented(self) -> bool:
+        return self.remediation_status in ["prevented", "blocked"]
+
+    def extract_evidences(self) -> dict[SignatureTypes, list[str]]:
+        return {}
+
+
 class imageFile(BaseModel):
     file_name: str | None = Field(None, alias="fileName")
 
 
-class processEvidence(BaseModel):
+class processEvidence(BaseEvidence):
     odata_type: Literal["#microsoft.graph.security.processEvidence"] = Field(
         ..., alias="@odata.type"
     )
@@ -42,7 +69,7 @@ class processEvidence(BaseModel):
         return extract
 
 
-class deviceEvidence(BaseModel):
+class deviceEvidence(BaseEvidence):
     odata_type: Literal["#microsoft.graph.security.deviceEvidence"] = Field(
         ..., alias="@odata.type"
     )
@@ -101,7 +128,7 @@ class fileDetails(BaseModel):
     file_path: str | None = Field(None, alias="filePath")
 
 
-class fileEvidence(BaseModel):
+class fileEvidence(BaseEvidence):
     odata_type: Literal["#microsoft.graph.security.fileEvidence"] = Field(
         ..., alias="@odata.type"
     )
@@ -122,7 +149,7 @@ class fileEvidence(BaseModel):
         return extract
 
 
-class ipEvidence(BaseModel):
+class ipEvidence(BaseEvidence):
     odata_type: Literal["#microsoft.graph.security.ipEvidence"] = Field(
         ..., alias="@odata.type"
     )
@@ -144,11 +171,8 @@ class ipEvidence(BaseModel):
         return extract
 
 
-class genericEvidence(BaseModel):
+class genericEvidence(BaseEvidence):
     odata_type: str = Field(..., alias="@odata.type")
-
-    def extract_evidences(self) -> dict[SignatureTypes, list[str]]:
-        return {}
 
 
 def discriminate_evidence_type(model: dict) -> str:

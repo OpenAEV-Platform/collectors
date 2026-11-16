@@ -69,7 +69,14 @@ class Alert(BaseModel):
 
     def is_prevented(self) -> bool:
         """Determine if the threat is/has been prevented."""
-        return self.status in ["inProgress", "resolved"]
+        # first, check if any relevant evidence has been prevented
+        if any(el.is_prevented() for el in self.evidence):
+            return True
+        # if not, check if the overall alert has been resolved
+        if self.status in ["inProgress", "resolved"]:
+            return True
+        # else, it wasn't prevented
+        return False
 
     def is_detected(self) -> bool:
         """By essence, the element is detected if an alert has been created."""
