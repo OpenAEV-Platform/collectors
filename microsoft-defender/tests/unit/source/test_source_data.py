@@ -45,6 +45,7 @@ class TestAlert(unittest.TestCase):
             "evidence": [
                 {
                     "@odata.type": "#microsoft.graph.security.processEvidence",
+                    "detectionStatus": "blocked",
                     "remediationStatus": "blocked",
                     "imageFile": {"fileName": "cuckoo_agent.exe"},
                 },
@@ -75,6 +76,7 @@ class TestAlert(unittest.TestCase):
             "evidence": [
                 {
                     "@odata.type": "#microsoft.graph.security.processEvidence",
+                    "detectionStatus": "blocked",
                     "remediationStatus": "blocked",
                     "imageFile": {"fileName": "cuckoo_agent.exe"},
                 },
@@ -100,6 +102,7 @@ class TestAlert(unittest.TestCase):
             "evidence": [
                 {
                     "@odata.type": "#microsoft.graph.security.processEvidence",
+                    "detectionStatus": "blocked",
                     "remediationStatus": "blocked",
                     "imageFile": {"fileName": "cuckoo_agent.exe"},
                 },
@@ -127,6 +130,7 @@ class TestAlert(unittest.TestCase):
             "evidence": [
                 {
                     "@odata.type": "#microsoft.graph.security.processEvidence",
+                    "detectionStatus": "detected",
                     "remediationStatus": "none",
                     "imageFile": {"fileName": "cuckoo_agent.exe"},
                 },

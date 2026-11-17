@@ -11,6 +11,7 @@ class TestEvidence(unittest.TestCase):
     def test_process_evidence(self):
         process_data = {
             "@odata.type": "#microsoft.graph.security.processEvidence",
+            "detectionStatus": "detected",
             "remediationStatus": "active",
             "imageFile": {"fileName": "deadbeef.exe"},
             "parentProcessImageFile": {"fileName": "badc0ffee.exe"},
@@ -22,13 +23,29 @@ class TestEvidence(unittest.TestCase):
         self.assertEqual(
             process_evidence.odata_type, "#microsoft.graph.security.processEvidence"
         )
+        self.assertEqual(process_evidence.detection_status, "detected")
         self.assertEqual(process_evidence.remediation_status, "active")
         self.assertEqual(process_evidence.image_file.file_name, "deadbeef.exe")
         self.assertEqual(
             process_evidence.parent_process_image_file.file_name, "badc0ffee.exe"
         )
         self.assertIsNone(process_evidence.process_command_line)
+
+        process_evidence.detection_status = "detected"
+        process_evidence.remediation_status = "active"
         self.assertFalse(process_evidence.is_prevented())
+
+        process_evidence.detection_status = "detected"
+        process_evidence.remediation_status = "blocked"
+        self.assertTrue(process_evidence.is_prevented())
+
+        process_evidence.detection_status = "blocked"
+        process_evidence.remediation_status = "active"
+        self.assertTrue(process_evidence.is_prevented())
+
+        process_evidence.detection_status = "blocked"
+        process_evidence.remediation_status = "blocked"
+        self.assertTrue(process_evidence.is_prevented())
 
         extracted_evidences = process_evidence.extract_evidences()
 
@@ -90,6 +107,7 @@ class TestEvidence(unittest.TestCase):
     def test_file_evidence(self):
         file_data = {
             "@odata.type": "#microsoft.graph.security.fileEvidence",
+            "detectionStatus": "blocked",
             "remediationStatus": "prevented",
             "fileDetails": {
                 "fileName": "myfile.exe",
@@ -102,9 +120,25 @@ class TestEvidence(unittest.TestCase):
         self.assertEqual(
             file_evidence.odata_type, "#microsoft.graph.security.fileEvidence"
         )
+        self.assertEqual(file_evidence.detection_status, "blocked")
         self.assertEqual(file_evidence.remediation_status, "prevented")
         self.assertEqual(file_evidence.file_details.file_name, "myfile.exe")
         self.assertEqual(file_evidence.file_details.file_path, "/this/is/myfile.exe")
+
+        file_evidence.detection_status = "detected"
+        file_evidence.remediation_status = "active"
+        self.assertFalse(file_evidence.is_prevented())
+
+        file_evidence.detection_status = "detected"
+        file_evidence.remediation_status = "blocked"
+        self.assertTrue(file_evidence.is_prevented())
+
+        file_evidence.detection_status = "blocked"
+        file_evidence.remediation_status = "active"
+        self.assertTrue(file_evidence.is_prevented())
+
+        file_evidence.detection_status = "blocked"
+        file_evidence.remediation_status = "blocked"
         self.assertTrue(file_evidence.is_prevented())
 
         extracted_evidences = file_evidence.extract_evidences()

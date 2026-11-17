@@ -21,8 +21,8 @@ class BaseEvidence(BaseModel):
         "unremediated",
         "running",
         "partiallyRemediated",
-    ] = Field(
-        ...,
+    ] | None = Field(
+        None,
         alias="remediationStatus",
         description="Status of the remediation action taken.",
     )
@@ -42,11 +42,19 @@ class processEvidence(BaseEvidence):
     odata_type: Literal["#microsoft.graph.security.processEvidence"] = Field(
         ..., alias="@odata.type"
     )
+    detection_status: Literal[
+        "detected", "blocked", "prevented", "unknownFutureValue"
+    ] | None = Field(None, alias="detectionStatus", description="Status of the detection")
     image_file: imageFile | None = Field(None, alias="imageFile")
     parent_process_image_file: imageFile | None = Field(
         None, alias="parentProcessImageFile"
     )
     process_command_line: str | None = Field(None, alias="processCommandLine")
+
+    def is_prevented(self) -> bool:
+        if self.detection_status in ["prevented", "blocked"]:
+            return True
+        return super().is_prevented()
 
     def extract_evidences(self) -> dict[SignatureTypes, list[str]]:
         process_names = []
@@ -132,7 +140,15 @@ class fileEvidence(BaseEvidence):
     odata_type: Literal["#microsoft.graph.security.fileEvidence"] = Field(
         ..., alias="@odata.type"
     )
+    detection_status: Literal[
+        "detected", "blocked", "prevented", "unknownFutureValue"
+    ] | None = Field(None, alias="detectionStatus", description="Status of the detection")
     file_details: fileDetails | None = Field(None, alias="fileDetails")
+
+    def is_prevented(self) -> bool:
+        if self.detection_status in ["prevented", "blocked"]:
+            return True
+        return super().is_prevented()
 
     def extract_evidences(self) -> dict[SignatureTypes, list[str]]:
         file_names = []
