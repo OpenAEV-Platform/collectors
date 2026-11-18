@@ -113,6 +113,8 @@ def test_build_endpoint_payload():
     assert endpoint["asset_tags"] == ["t1", "t2"]
     assert endpoint["asset_metadata"] == {"provider": "ovhcloud"}
     assert "asset_mac_addresses" not in endpoint
+    # Unknown exposure is omitted, never sent as false.
+    assert "asset_internet_facing" not in endpoint
 
     vm_asset = _asset(
         resource_type="hosted_private_cloud_vm", region=None, mac_addresses=["aa"]
@@ -122,6 +124,12 @@ def test_build_endpoint_payload():
     assert vm["asset_cloud_region"] == "rbx8"
     assert vm["asset_mac_addresses"] == ["aa"]
     assert "asset_tags" not in vm
+
+
+@pytest.mark.parametrize("facing", [True, False])
+def test_build_endpoint_sends_the_known_internet_exposure(facing):
+    endpoint = build_endpoint(_asset(internet_facing=facing), [])
+    assert endpoint["asset_internet_facing"] is facing
 
 
 def test_tag_names_skip_ovh_system_tags_and_honour_the_toggle():
