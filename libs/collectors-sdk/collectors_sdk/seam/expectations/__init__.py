@@ -18,7 +18,7 @@ from collectors_sdk.seam.expectations.ports import (
 )
 
 #: Version of the expectations seam. Bump on any contract change.
-SEAM_VERSION = "1.0.0"
+SEAM_VERSION = "1.1.0"
 
 __all__ = [
     "SEAM_VERSION",

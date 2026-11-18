@@ -6,12 +6,15 @@ Architecture:
     _core/daemons/        Collector registration and schedule
     _core/detection/      Alert-element matching
     _core/expectations/   Expectation matching and updates
+    _core/runtime/        Dev runtime: running a collector without the platform
     seam/daemons/         Collector defaults and ports (closed, versioned)
     seam/detection/       Alert-matching port (closed, versioned)
     seam/expectations/    Expectation contracts and ports (closed, versioned)
+    seam/runtime/         Dev runtime contracts and ports (closed, versioned)
     public/daemons        CollectorDaemon adapter
     public/detection      OpenAEVDetectionHelper adapter
     public/expectations   Expectation adapters
+    public/runtime        Dev runtime adapters
     public/               User-facing re-exports
 
 Port/adapter layering: ``seam`` holds the contracts and imports nothing from

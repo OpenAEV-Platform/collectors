@@ -71,6 +71,13 @@ The seam imports nothing from `_core` or `public`. The core never touches `publi
 And `public` never hands a core object to users. The full rationale lives in
 `xtm-oaev-sdk`'s `docs/seam_strategy.md`.
 
+## Dev mode
+
+Run a collector without the OpenAEV platform: `--dev` reads the platform's own payloads,
+writes every call the platform would have received as one readable JSON list, chains an
+injector into a collector, and records and replays the outside calls offline. See
+[the dev mode guide](https://github.com/OpenAEV-Platform/client-python/blob/main/libs/xtm-oaev-sdk/docs/how_to_dev_mode.md).
+
 ## Migrating from pyoaev
 
 The former `pyoaev` paths still work, and each one fires a `DeprecationWarning`.
