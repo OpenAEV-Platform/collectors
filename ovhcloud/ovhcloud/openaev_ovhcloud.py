@@ -64,6 +64,8 @@ def build_endpoint(asset: OvhAsset, tag_ids: list[str]) -> dict[str, Any]:
             k: v for k, v in asset.metadata.items() if v not in (None, [], "")
         },
     }
+    if asset.internet_facing is not None:
+        endpoint["asset_internet_facing"] = asset.internet_facing
     if asset.mac_addresses:
         endpoint["asset_mac_addresses"] = asset.mac_addresses
     if tag_ids:

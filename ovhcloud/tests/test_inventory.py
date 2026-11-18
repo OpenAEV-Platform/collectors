@@ -12,6 +12,10 @@ from ovhcloud.inventory import (
     Inventory,
     InventorySettings,
     arch_from_os,
+    internet_facing,
+    map_dedicated_server,
+    map_public_cloud_instance,
+    map_vps,
     parse_list,
     parse_tags,
     platform_from_os,
@@ -109,6 +113,93 @@ def test_select_ips_honours_the_ip_options_and_drops_routed_blocks():
         include_public_ipv4=False, include_public_ipv6=False
     )
     assert select_ips(addresses, only_private) == ["10.10.0.5"]
+
+
+# -- internet exposure --
+
+
+@pytest.mark.parametrize(
+    "addresses, types, expected",
+    [
+        (["51.75.1.10", "10.10.0.5"], (), True),
+        (["2001:41d0:303:1234::1"], (), True),
+        (["10.10.0.5", "192.168.0.11", "fd00::1"], (), False),
+        # A public routed block (failover /28, IPv6 /64) is public exposure.
+        (["10.10.0.5", "178.32.10.0/28"], (), True),
+        (["2001:41d0:303:1234::/64"], (), True),
+        # Loopback, link-local, shared (CGNAT) and invalid addresses say nothing.
+        (["127.0.0.1", "169.254.1.1", "100.64.0.1", "not-an-ip", None], (), None),
+        ([], (), None),
+        # The type the API declares wins over the range.
+        (["57.128.10.11"], ("private",), False),
+        (["57.128.10.11", "192.168.0.11"], ("public", "private"), True),
+        (["192.168.0.11"], (None,), False),
+    ],
+)
+def test_internet_facing(addresses, types, expected):
+    assert internet_facing(addresses, types) is expected
+
+
+def test_dedicated_server_with_a_public_ip_is_internet_facing():
+    assets, _ = collect()
+    assert all(asset.internet_facing is True for asset in assets)
+
+
+def test_hiding_public_ips_does_not_make_a_server_look_internal():
+    settings = InventorySettings(include_public_ipv4=False, include_public_ipv6=False)
+    server = map_dedicated_server(
+        fixtures.DEDICATED_SERVER,
+        [fixtures.DEDICATED_SERVER["ip"], *fixtures.DEDICATED_SERVER_IPS],
+        settings,
+    )
+    assert server.ips == ["10.10.0.5"]
+    assert server.internet_facing is True
+
+
+def test_dedicated_server_with_private_addresses_only_is_not_internet_facing():
+    server = map_dedicated_server(
+        {"name": "ns1", "state": "ok"}, [None, "10.10.0.5"], InventorySettings()
+    )
+    assert server.internet_facing is False
+
+
+def test_vps_internet_facing():
+    settings = InventorySettings(collect_dedicated_servers=False, collect_vps=True)
+    (vps,) = collect(settings)[0]
+    assert vps.internet_facing is True
+    unknown = map_vps(fixtures.VPS, [], {}, InventorySettings())
+    assert unknown.internet_facing is None
+
+
+def test_public_cloud_instance_internet_facing():
+    project = fixtures.CLOUD_PROJECT
+    public = map_public_cloud_instance(
+        fixtures.CLOUD_INSTANCES[0], project["project_id"], project, InventorySettings()
+    )
+    assert public.internet_facing is True
+    private_only = dict(
+        fixtures.CLOUD_INSTANCES[0],
+        ipAddresses=[
+            {"ip": "192.168.0.11", "type": "private", "version": 4},
+        ],
+    )
+    private = map_public_cloud_instance(
+        private_only, project["project_id"], project, InventorySettings()
+    )
+    assert private.internet_facing is False
+    no_address = dict(fixtures.CLOUD_INSTANCES[0], ipAddresses=[])
+    unknown = map_public_cloud_instance(
+        no_address, project["project_id"], project, InventorySettings()
+    )
+    assert unknown.internet_facing is None
+
+
+def test_hosted_private_cloud_vm_exposure_is_unknown():
+    settings = InventorySettings(
+        collect_dedicated_servers=False, collect_hosted_private_cloud=True
+    )
+    (vm,) = collect(settings)[0]
+    assert vm.internet_facing is None
 
 
 # -- toggles --

@@ -107,6 +107,9 @@ class OvhAsset:
     mac_addresses: list[str] = field(default_factory=list)
     iam_tags: dict[str, str] = field(default_factory=dict)
     metadata: dict[str, Any] = field(default_factory=dict)
+    # True: at least one public address; False: addresses known, all private; None: the
+    # API returned no address, so nothing is known.
+    internet_facing: bool | None = None
 
 
 # -- parsing helpers ----------------------------------------------------------------------
@@ -212,6 +215,57 @@ def select_ips(addresses: Iterable[str], settings: InventorySettings) -> list[st
         if address not in selected:
             selected.append(address)
     return selected
+
+
+def _address_class(raw: str) -> str | None:
+    """Classify an address or a CIDR block as ``public`` or ``private``; None if unusable.
+
+    Loopback, link-local, multicast, unspecified and reserved ranges (e.g. the shared
+    ``100.64.0.0/10``) say nothing about exposure and are ignored.
+    """
+    try:
+        network = ipaddress.ip_network(str(raw).strip(), strict=False)
+    except ValueError:
+        return None
+    ip = network.network_address
+    if ip.is_loopback or ip.is_link_local or ip.is_unspecified or ip.is_multicast:
+        return None
+    if network.is_private:
+        return "private"
+    if network.is_global:
+        return "public"
+    return None
+
+
+def internet_facing(
+    addresses: Iterable[str | None], declared_types: Iterable[str | None] = ()
+) -> bool | None:
+    """Whether an asset is reachable from the Internet, from its RAW addresses.
+
+    Computed before the IP options filter the addresses, so hiding public addresses from
+    the endpoint never makes a public server look internal. A routed block (failover IP,
+    IPv6 ``/64``) counts like an address. ``declared_types`` gives, per address, the type
+    the API states (``public`` / ``private``, Public Cloud ``ipAddresses``); an address
+    without one is classified by its range.
+
+    Returns True when one address is public, False when addresses are known and all are
+    private, None when no usable address is known.
+    """
+    types = list(declared_types)
+    classes = set()
+    for index, raw in enumerate(addresses):
+        if not raw:
+            continue
+        declared = str(types[index] or "").lower() if index < len(types) else ""
+        kind = _address_class(str(raw))
+        if kind is None:
+            continue
+        classes.add(declared if declared in ("public", "private") else kind)
+    if "public" in classes:
+        return True
+    if "private" in classes:
+        return False
+    return None
 
 
 def routed_blocks(addresses: Iterable[str]) -> list[str]:
@@ -494,6 +548,7 @@ def map_dedicated_server(
             "routed_blocks": routed_blocks(clean),
             "iam_urn": _iam(server).get("urn"),
         },
+        internet_facing=internet_facing(clean),
     )
 
 
@@ -506,9 +561,8 @@ def map_public_cloud_instance(
     """Map one entry of ``GET /cloud/project/{serviceName}/instance``."""
     image = instance.get("image") or {}
     flavor = instance.get("flavor") or {}
-    addresses = [
-        str(ip.get("ip")) for ip in instance.get("ipAddresses") or [] if ip.get("ip")
-    ]
+    entries = [ip for ip in instance.get("ipAddresses") or [] if ip.get("ip")]
+    addresses = [str(ip.get("ip")) for ip in entries]
     name = str(instance.get("name") or instance.get("id") or "")
     region = instance.get("region")
     platform = platform_from_os(
@@ -551,6 +605,7 @@ def map_public_cloud_instance(
             "image": image.get("name") or instance.get("imageId"),
             "status": instance.get("status"),
         },
+        internet_facing=internet_facing(addresses, [ip.get("type") for ip in entries]),
     )
 
 
@@ -599,6 +654,7 @@ def map_vps(
             "memory_mb": vps.get("memoryLimit"),
             "iam_urn": _iam(vps).get("urn"),
         },
+        internet_facing=internet_facing([str(a) for a in addresses]),
     )
 
 

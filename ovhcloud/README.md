@@ -123,6 +123,9 @@ All filters are optional and combine (a machine must pass every filter set).
 Only single addresses are registered on an endpoint. Routed blocks (the IPv6 `/64` of a dedicated server, failover IP
 blocks) are not host addresses: they are kept in the asset metadata under `routed_blocks`.
 
+The IP options choose which addresses are registered; they do not change `asset_internet_facing`, which is computed
+on every address the API returns, routed blocks included (see [Asset mapping](#asset-mapping)).
+
 ### Tagging and tuning
 
 | Parameter        | config.yml                        | Docker environment variable        | Default | Description                                                                          |
@@ -237,6 +240,13 @@ On each run, the collector:
 | `asset_external_reference` | Service name                                     | Instance id                                | Service name                         | `<service>/<datacenterId>/<vmId>`           |
 | `asset_subcategory`        | `SERVER`                                         | `VIRTUAL_MACHINE`                          | `VIRTUAL_MACHINE`                    | `VIRTUAL_MACHINE`                           |
 | `asset_cloud_region`       | Region (e.g. `eu-west-rbx`)                      | Region (e.g. `GRA11`)                      | Zone                                 | Service location                            |
+| `asset_internet_facing`    | True if `ip` or a block of `/ips` is public      | True if an `ipAddresses` entry is public   | True if an address of `/ips` is public | Not sent (the API exposes no address)     |
+
+`asset_internet_facing` is true when the asset holds at least one public (globally routable) IPv4 or IPv6 address or
+routed block, false when the API returned addresses and all are private, and not sent when no address is known. It is
+computed before the IP options filter the addresses, so a server whose public addresses are not registered is still
+Internet-facing. For Public Cloud instances the `type` (`public` / `private`) the API gives on each address wins over
+the address range.
 
 Every asset has category `HOST`, cloud provider `OTHER` (OpenAEV has no OVHcloud value yet), a cloud native type
 (`ovh_dedicated_server`, `ovh_public_cloud_instance`, `ovh_vps`, `ovh_hosted_private_cloud_vm`) and `asset_metadata`
