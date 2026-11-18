@@ -1,0 +1,86 @@
+name: "Test Container Collectors"
+
+on:
+  push:
+    branches:
+      - main
+      - "release/**"
+    tags:
+      - "[0-9]+.[0-9]+.[0-9]*"
+  pull_request:
+
+concurrency:
+  group: container-tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  detect-test-files:
+    name: Detect test files
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+      has_tests: ${{ steps.set-matrix.outputs.has_tests }}
+      runtime_matrix: ${{ steps.set-matrix.outputs.runtime_matrix }}
+      has_shipped: ${{ steps.set-matrix.outputs.has_shipped }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Self-test the matrix builder
+        run: python -m unittest discover -s .github/scripts -p "test_*.py"
+
+      - id: set-matrix
+        name: Build test matrix
+        env:
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          RELEASE_REF: main
+        run: python .github/scripts/build_test_matrix.py
+
+  test:
+    name: Test ${{ matrix.name }}
+    needs: detect-test-files
+    if: needs.detect-test-files.outputs.has_tests == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.detect-test-files.outputs.matrix) }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: docker/setup-buildx-action@v4
+        if: ${{ hashFiles(format('{0}/Dockerfile', matrix.collector)) != '' }}
+
+      - uses: docker/build-push-action@v4
+        if: ${{ hashFiles(format('{0}/Dockerfile', matrix.collector)) != '' }}
+        with:
+          context: ${{ matrix.collector }}/.
+          file: "${{ matrix.collector }}/Dockerfile"
+          tags: localpytest-${{ matrix.collector }}:latest
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          push: false
+
+      - uses: addnab/docker-run-action@v3
+        if: ${{ hashFiles(format('{0}/Dockerfile', matrix.collector)) != '' }}
+        with:
+          image: localpytest-${{ matrix.collector }}:latest
+          options: -v ${{ github.workspace }}:/tmp/github_workspace/ -e POETRY_VIRTUALENVS_CREATE=false -e POETRY_INSTALLER_RE_RESOLVE=false -e POETRY_CACHE_DIR=/tmp/poetry-cache -e POETRY_CONFIG_DIR=/tmp/poetry-config
+          run: |
+            set -e
+            source /collector/.venv/bin/activate
+            cp -R /tmp/github_workspace /tmp/collector-tests
+            cd /tmp/collector-tests/${{ matrix.collector }}
+            echo "> install and configure poetry"
+            python -m pip install poetry
+            echo "> install dev and test dependencies"
+            python -m poetry install --only=dev,test
+            echo "> run pytest through coverage"
+            python -m pytest
