@@ -150,9 +150,7 @@ class OpenAEVMicrosoftEntra(CollectorDaemon):
                 select=MEMBER_SELECT
             )
         )
-        members = await members_builder.get(
-            request_configuration=request_configuration
-        )
+        members = await members_builder.get(request_configuration=request_configuration)
         # Graph returns results in pages (100 rows by default): the first page
         # and every next page go through the same handler. The next link keeps
         # the $select of the first request.
@@ -176,9 +174,7 @@ class OpenAEVMicrosoftEntra(CollectorDaemon):
                 team = {"team_name": group.display_name}
                 openaev_team = self.api.team.upsert(team)
                 totals["groups"] += 1
-                outcomes = await self.create_users(
-                    graph_client, group.id, openaev_team
-                )
+                outcomes = await self.create_users(graph_client, group.id, openaev_team)
                 if isinstance(outcomes, Counter):
                     totals.update(outcomes)
             if groups.odata_next_link is None:
