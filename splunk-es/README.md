@@ -79,6 +79,7 @@ Docker deployment) or through a `config.yml` file (for a manual deployment). Cop
 | Parameter      | config.yml                 | Docker environment variable | Default      | Mandatory | Description                                                                              |
 |----------------|----------------------------|-----------------------------|--------------|-----------|-----------------------------------------------------------------------------------------|
 | Base URL       | `splunk_es.base_url`       | `SPLUNKES_BASE_URL`         | /            | Yes       | Splunk ES management URL (e.g. `https://splunk.company.com:8089`).                       |
+| Web Base URL   | `splunk_es.web_base_url`   | `SPLUNKES_WEB_BASE_URL`     | /            | No        | Splunk Web URL used in the trace links (e.g. `https://splunk.company.com`). When empty, `SPLUNKES_BASE_URL` with port `8089` replaced by `8000`. |
 | Username       | `splunk_es.username`       | `SPLUNKES_USERNAME`         | /            | Yes       | Splunk username with REST API search permissions.                                       |
 | Password       | `splunk_es.password`       | `SPLUNKES_PASSWORD`         | /            | Yes       | Splunk user password.                                                                    |
 | Alerts Index   | `splunk_es.alerts_index`   | `SPLUNKES_ALERTS_INDEX`     | notable      | No        | Splunk index to search for security alerts.                                              |
@@ -352,6 +353,10 @@ Set `COLLECTOR_LOG_LEVEL=debug` to get verbose logs, including the resolved SPL 
 matching decisions. Common causes of "nothing detected" are the wrong `SPLUNKES_ALERTS_INDEX`, a `SPLUNKES_TIME_WINDOW`
 shorter than your ingestion latency, or a custom `SPLUNKES_QUERY_TEMPLATE` that omits `| table _time` (which breaks field
 extraction). Make sure `SPLUNKES_BASE_URL` targets the Splunk management port (typically 8089), not the web UI port.
+
+If the trace links in OpenAEV do not open, Splunk Web is not served at the REST host on port 8000 (reverse proxy, TLS on
+443, another port or hostname, Splunk Cloud). Set `SPLUNKES_WEB_BASE_URL` to the URL you open Splunk Web with, including
+the `root_endpoint` path if any (e.g. `https://proxy.company.com/splunk`).
 
 For Logging, `COLLECTOR_LOG_LEVEL=info` prints the startup index check and one summary per run
 (`Logging pass completed: ... fetched, ... logged, ... no match, ... errors`); `debug` adds why each expectation was not

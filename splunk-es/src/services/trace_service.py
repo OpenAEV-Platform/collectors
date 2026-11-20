@@ -266,7 +266,11 @@ class SplunkESTraceService:
             search_criteria = self.client_api._build_search_criteria(search_signatures)
             spl_query = self.client_api._build_spl_query(search_criteria, 0)
 
-            url = build_search_url(str(self.config.splunk_es.base_url), spl_query)
+            url = build_search_url(
+                str(self.config.splunk_es.base_url),
+                spl_query,
+                web_base_url=self.config.splunk_es.web_base_url,
+            )
 
             self.logger.debug(f"{LOG_PREFIX} Built trace URL with query: {spl_query}")
             return url
