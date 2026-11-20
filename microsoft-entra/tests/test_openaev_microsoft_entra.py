@@ -128,3 +128,144 @@ def test_process_message_asyncio_run_works_without_existing_event_loop():
         collector._process_message()
 
     collector.create_groups.assert_awaited_once()
+
+
+def _page(values, next_link=None):
+    return types.SimpleNamespace(value=values, odata_next_link=next_link)
+
+
+def _group(group_id):
+    return types.SimpleNamespace(id=group_id, display_name=f"Group {group_id}")
+
+
+def _user(name, external=False):
+    upn = f"{name}_example.com#EXT#@tenant.test" if external else f"{name}@tenant.test"
+    return types.SimpleNamespace(
+        odata_type="#microsoft.graph.user",
+        mail=f"{name}@example.com",
+        user_principal_name=upn,
+        given_name=name,
+        surname="Test",
+        department=None,
+        job_title=None,
+    )
+
+
+def _collector(include_external=False):
+    collector = OpenAEVMicrosoftEntra.__new__(OpenAEVMicrosoftEntra)
+    collector.logger = MagicMock()
+    collector.include_external = include_external
+    collector.api = MagicMock()
+    collector.api.team.upsert.side_effect = lambda team: {
+        "team_id": f"team-{team['team_name']}"
+    }
+    collector.api.tag.upsert.side_effect = lambda tag: {
+        "tag_id": f"tag-{tag['tag_name']}"
+    }
+    return collector
+
+
+def test_create_groups_collects_every_page_of_groups():
+    """Regression: the next page of groups was awaited on the request builder
+    (missing .get()), which raised TypeError on any tenant with more than one
+    page of groups, so groups after the first page were never collected."""
+    import asyncio
+
+    collector = _collector()
+    collector.create_users = AsyncMock()
+
+    next_builder = MagicMock()
+    next_builder.get = AsyncMock(return_value=_page([_group("g3")]))
+    graph_client = MagicMock()
+    graph_client.groups.get = AsyncMock(
+        return_value=_page([_group("g1"), _group("g2")], "https://graph/next")
+    )
+    graph_client.groups.with_url.return_value = next_builder
+
+    asyncio.run(collector.create_groups(graph_client))
+
+    graph_client.groups.with_url.assert_called_once_with("https://graph/next")
+    next_builder.get.assert_awaited_once()
+    assert [c.args[0] for c in collector.api.team.upsert.call_args_list] == [
+        {"team_name": "Group g1"},
+        {"team_name": "Group g2"},
+        {"team_name": "Group g3"},
+    ]
+    assert [c.args[1] for c in collector.create_users.await_args_list] == [
+        "g1",
+        "g2",
+        "g3",
+    ]
+
+
+def test_create_groups_single_page_does_not_follow_a_next_link():
+    import asyncio
+
+    collector = _collector()
+    collector.create_users = AsyncMock()
+    graph_client = MagicMock()
+    graph_client.groups.get = AsyncMock(return_value=_page([_group("g1")]))
+
+    asyncio.run(collector.create_groups(graph_client))
+
+    graph_client.groups.with_url.assert_not_called()
+    collector.api.team.upsert.assert_called_once_with({"team_name": "Group g1"})
+    collector.create_users.assert_awaited_once()
+
+
+def test_create_users_collects_every_page_of_members():
+    import asyncio
+
+    collector = _collector(include_external=False)
+    members_builder = MagicMock()
+    members_builder.get = AsyncMock(
+        return_value=_page(
+            [
+                _user("alice"),
+                types.SimpleNamespace(odata_type="#microsoft.graph.device"),
+            ],
+            "https://graph/members-next",
+        )
+    )
+    next_builder = MagicMock()
+    next_builder.get = AsyncMock(
+        return_value=_page([_user("bob"), _user("guest", external=True)])
+    )
+    members_builder.with_url.return_value = next_builder
+    graph_client = MagicMock()
+    graph_client.groups.by_group_id.return_value.members = members_builder
+
+    asyncio.run(collector.create_users(graph_client, "g1", {"team_id": "team-1"}))
+
+    members_builder.with_url.assert_called_once_with("https://graph/members-next")
+    upserted = [c.args[0] for c in collector.api.user.upsert.call_args_list]
+    assert [u["user_email"] for u in upserted] == [
+        "alice@example.com",
+        "bob@example.com",
+    ]
+    assert upserted[0] == {
+        "user_email": "alice@example.com",
+        "user_firstname": "alice",
+        "user_lastname": "Test",
+        "user_teams": ["team-1"],
+        "user_tags": ["tag-source:microsoft-entra", "tag-user-type:internal"],
+    }
+
+
+def test_create_users_includes_external_members_when_configured():
+    import asyncio
+
+    collector = _collector(include_external=True)
+    members_builder = MagicMock()
+    members_builder.get = AsyncMock(return_value=_page([_user("guest", external=True)]))
+    graph_client = MagicMock()
+    graph_client.groups.by_group_id.return_value.members = members_builder
+
+    asyncio.run(collector.create_users(graph_client, "g1", {"team_id": "team-1"}))
+
+    members_builder.with_url.assert_not_called()
+    collector.api.user.upsert.assert_called_once()
+    assert collector.api.user.upsert.call_args.args[0]["user_tags"] == [
+        "tag-source:microsoft-entra",
+        "tag-user-type:external",
+    ]
