@@ -44,3 +44,20 @@ class TestSplunkESTraceServiceUrl:
             "https://test-splunk.example.com:8000/en-US/app/search/search"
             "?q=search%20index%3D%22_notable%22%20src%3D%221.2.3.4%22"
         )
+
+    def test_link_uses_the_configured_splunk_web_url(self):
+        """A configured Splunk Web URL replaces the port-8000 guess."""
+        client_api = Mock()
+        client_api._build_search_criteria.return_value = Mock()
+        client_api._build_spl_query.return_value = 'search index="_notable"'
+        config = create_test_config()
+        config.splunk_es.web_base_url = "https://splunk-web.example.com/"
+        service = SplunkESTraceService(config, client_api=client_api)
+        expectation = Mock(inject_expectation_signatures=[])
+
+        url = service._build_trace_url_from_expectation(expectation)
+
+        assert url == (
+            "https://splunk-web.example.com/en-US/app/search/search"
+            "?q=search%20index%3D%22_notable%22"
+        )

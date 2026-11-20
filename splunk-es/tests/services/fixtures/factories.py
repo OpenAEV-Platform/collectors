@@ -71,6 +71,8 @@ class ConfigLoaderSplunkESFactory(ModelFactory[_ConfigLoaderSplunkES]):
         kwargs.setdefault("logging_indexes", None)
         kwargs.setdefault("logging_query_template", None)
         kwargs.setdefault("logging_max_interval", timedelta(minutes=15))
+        # A random Splunk Web URL would change every trace link.
+        kwargs.setdefault("web_base_url", None)
         return super().build(**kwargs)
 
 

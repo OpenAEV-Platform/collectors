@@ -58,6 +58,50 @@ def test_set_optional_env_vars_are_kept(monkeypatch, required_env):  # type: ign
     assert config.time_window == timedelta(hours=2)  # noqa: S101
 
 
+@pytest.mark.parametrize("value", [None, "", "   "], ids=["unset", "empty", "blank"])
+def test_web_base_url_is_unset_by_default(monkeypatch, required_env, value):  # type: ignore
+    """Without a Splunk Web URL, the links fall back to the REST host on port 8000."""
+    # Arrange
+    if value is not None:
+        monkeypatch.setenv("SPLUNKES_WEB_BASE_URL", value)
+
+    # Act
+    config = _ConfigLoaderSplunkES()
+
+    # Assert
+    assert config.web_base_url is None  # noqa: S101
+
+
+def test_web_base_url_is_kept_as_written(monkeypatch, required_env):  # type: ignore
+    """A Splunk Web URL is loaded as given, decoupled from SPLUNKES_BASE_URL."""
+    # Arrange
+    monkeypatch.setenv("SPLUNKES_WEB_BASE_URL", "https://splunk-web.example.com/")
+
+    # Act
+    config = _ConfigLoaderSplunkES()
+
+    # Assert
+    assert config.web_base_url == "https://splunk-web.example.com/"  # noqa: S101
+    assert config.base_url == "https://splunk.example.com:8089"  # noqa: S101
+
+
+@pytest.mark.parametrize(
+    "value",
+    ["splunk-web.example.com", "ftp://splunk-web.example.com", "https://"],
+    ids=["no-scheme", "not-http", "no-host"],
+)
+def test_web_base_url_must_be_an_http_url(
+    monkeypatch, required_env, value
+):  # type: ignore
+    """A Splunk Web URL that cannot be opened in a browser fails at startup."""
+    # Arrange
+    monkeypatch.setenv("SPLUNKES_WEB_BASE_URL", value)
+
+    # Act / Assert
+    with pytest.raises(ValidationError, match="SPLUNKES_WEB_BASE_URL"):
+        _ConfigLoaderSplunkES()
+
+
 def test_logging_is_disabled_by_default(monkeypatch, required_env):  # type: ignore
     """Without the Logging settings, Logging is off and no index is set."""
     # Act

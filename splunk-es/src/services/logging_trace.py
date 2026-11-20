@@ -70,6 +70,7 @@ class LoggingTraceBuilder:
                 inject_expectation_trace_alert_link=build_search_url(
                     str(self.config.splunk_es.base_url),
                     query.spl,
+                    web_base_url=self.config.splunk_es.web_base_url,
                     earliest=query.earliest,
                     latest=query.latest + 1,
                 ),

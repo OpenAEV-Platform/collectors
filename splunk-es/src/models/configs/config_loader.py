@@ -162,6 +162,7 @@ class ConfigLoader(ConfigBaseSettings):
                 "collector_icon_filepath": {"data": self.collector.icon_filepath},
                 # SplunkES configuration (flattened)
                 "splunk_es_base_url": {"data": str(self.splunk_es.base_url)},
+                "splunk_es_web_base_url": {"data": self.splunk_es.web_base_url},
                 "splunk_es_username": {"data": self.splunk_es.username},
                 "splunk_es_password": {
                     "data": self.splunk_es.password.get_secret_value()
