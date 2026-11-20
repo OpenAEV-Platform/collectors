@@ -36,6 +36,33 @@ def _install_dependency_stubs() -> None:
 
     msgraph_module.GraphServiceClient = GraphServiceClient
 
+    ensure_module("kiota_abstractions")
+    kiota_config_module = ensure_module("kiota_abstractions.base_request_configuration")
+
+    class RequestConfiguration:  # pragma: no cover - import-time fallback only
+        def __init__(self, query_parameters=None, **kwargs):
+            self.query_parameters = query_parameters
+
+    kiota_config_module.RequestConfiguration = RequestConfiguration
+
+    for name in (
+        "msgraph.generated",
+        "msgraph.generated.groups",
+        "msgraph.generated.groups.item",
+        "msgraph.generated.groups.item.members",
+    ):
+        ensure_module(name)
+    members_module = ensure_module(
+        "msgraph.generated.groups.item.members.members_request_builder"
+    )
+
+    class MembersRequestBuilder:  # pragma: no cover - import-time fallback only
+        class MembersRequestBuilderGetQueryParameters:
+            def __init__(self, select=None, **kwargs):
+                self.select = select
+
+    members_module.MembersRequestBuilder = MembersRequestBuilder
+
     ensure_module("pyoaev")
     configuration_module = ensure_module("pyoaev.configuration")
     daemons_module = ensure_module("pyoaev.daemons")
@@ -305,6 +332,116 @@ def test_create_users_collects_every_page_of_members():
         "user_teams": ["team-1"],
         "user_tags": ["tag-source:microsoft-entra", "tag-user-type:internal"],
     }
+
+
+def test_create_users_selects_the_properties_the_collector_reads():
+    """department is not in Graph's default member property set: the members
+    request must $select it with every other property the collector reads."""
+    import asyncio
+
+    from microsoft_entra.openaev_microsoft_entra import MEMBER_SELECT
+
+    collector = _collector()
+    members_builder = MagicMock()
+    members_builder.get = AsyncMock(return_value=_page([_user("alice")]))
+    graph_client = MagicMock()
+    graph_client.groups.by_group_id.return_value.members = members_builder
+
+    asyncio.run(collector.create_users(graph_client, "g1", {"team_id": "team-1"}))
+
+    config = members_builder.get.await_args.kwargs["request_configuration"]
+    assert config.query_parameters.select == MEMBER_SELECT
+    for prop in ("mail", "userPrincipalName", "department", "jobTitle"):
+        assert prop in MEMBER_SELECT
+
+
+def test_create_users_counts_each_member_outcome():
+    import asyncio
+
+    collector = _collector(include_external=False)
+    no_mail = _user("nomail")
+    no_mail.mail = None
+    members_builder = MagicMock()
+    members_builder.get = AsyncMock(
+        return_value=_page(
+            [
+                _user("alice"),
+                no_mail,
+                _user("guest", external=True),
+                types.SimpleNamespace(odata_type="#microsoft.graph.device"),
+                types.SimpleNamespace(odata_type="#microsoft.graph.group", mail=None),
+            ]
+        )
+    )
+    graph_client = MagicMock()
+    graph_client.groups.by_group_id.return_value.members = members_builder
+
+    outcomes = asyncio.run(
+        collector.create_users(graph_client, "g1", {"team_id": "team-1"})
+    )
+
+    assert outcomes == {
+        "upserted": 1,
+        "skipped_no_mail": 1,
+        "skipped_external": 1,
+        "skipped_not_user": 2,
+    }
+
+
+def test_collect_logs_end_of_run_counts():
+    import asyncio
+
+    collector = _collector()
+    no_mail = _user("nomail")
+    no_mail.mail = None
+    members_builder = MagicMock()
+    members_builder.get = AsyncMock(return_value=_page([_user("alice"), no_mail]))
+    graph_client = MagicMock()
+    graph_client.groups.get = AsyncMock(return_value=_page([_group("g1")]))
+    graph_client.groups.by_group_id.return_value.members = members_builder
+
+    asyncio.run(collector._collect(_AsyncCredential(), graph_client))
+
+    summary = collector.logger.info.call_args.args[0]
+    assert "1 group(s)" in summary
+    assert "1 member(s) upserted" in summary
+    assert "1 without mail" in summary
+    assert "nested groups are not expanded" in summary
+    collector.logger.warning.assert_not_called()
+
+
+def test_collect_warns_when_every_user_member_lacks_mail():
+    """Regression: without User.Read.All / Directory.Read.All Graph returns
+    user members without mail; every one was dropped with no log, so teams
+    were imported with 0 players and nothing told the operator why."""
+    import asyncio
+
+    collector = _collector()
+    members = []
+    for name in ("a", "b"):
+        user = _user(name)
+        user.mail = None
+        members.append(user)
+    members_builder = MagicMock()
+    members_builder.get = AsyncMock(return_value=_page(members))
+    graph_client = MagicMock()
+    graph_client.groups.get = AsyncMock(return_value=_page([_group("g1")]))
+    graph_client.groups.by_group_id.return_value.members = members_builder
+
+    asyncio.run(collector._collect(_AsyncCredential(), graph_client))
+
+    collector.api.user.upsert.assert_not_called()
+    warning = collector.logger.warning.call_args.args[0]
+    assert "all 2 user member(s) came back without mail" in warning
+    assert "User.Read.All" in warning
+
+
+class _AsyncCredential:
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *exc):
+        return False
 
 
 def test_create_users_includes_external_members_when_configured():

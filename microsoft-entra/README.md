@@ -172,7 +172,8 @@ On each run, the collector:
    - `ClientSecretCredential` when `microsoft_entra_use_certificate_auth=false`
    - `CertificateCredential` when `microsoft_entra_use_certificate_auth=true`
 2. Lists all groups (`/groups`, paginated) and upserts each as an OpenAEV team.
-3. For each group, lists its members (`/groups/{id}/members`, paginated) and keeps only user objects
+3. For each group, lists its direct members (`/groups/{id}/members`, paginated, with `$select` on the properties the
+   collector reads, `department` included; nested groups are not expanded) and keeps only user objects
    (`#microsoft.graph.user`) that have a mail address.
 4. Applies the `include_external` toggle: guest users (those with `#EXT#` in their user principal name) are imported only
    when `include_external` is `true`.
@@ -181,6 +182,10 @@ On each run, the collector:
 
 The synchronization is incremental from the platform's point of view: teams and players are created or updated
 (upserted), so a record seen in a previous run is refreshed rather than duplicated.
+
+At the end of each run the collector logs one line with the number of groups, the members upserted and the members
+skipped by reason (without mail, external, not a user). When every user member came back without mail, it also logs a
+warning: that is what Microsoft Graph returns when the application lacks `User.Read.All` or `Directory.Read.All`.
 
 ## Required permissions and API endpoints
 
@@ -202,8 +207,9 @@ Set `COLLECTOR_LOG_LEVEL=debug` to get verbose logs, including each team and pla
 - Authentication failures:
   - Secret mode: confirm tenant ID/client ID/client secret and that the secret has not expired.
   - Certificate mode: confirm tenant ID/client ID/certificate and private key/thumbprint, and that the matching certificate public key is registered on the Entra app.
-- No players imported: confirm that admin consent was granted for `Directory.Read.All`, and remember that only members
-  of a group are imported. Guest users are skipped unless `include_external` is set to `true`.
+- No players imported: read the end-of-run line. Members skipped "without mail" with the warning mean the token does not
+  hold `Directory.Read.All` (or `User.Read.All`) as an application permission with admin consent. Remember that only
+  direct members of a group are imported. Guest users are skipped unless `include_external` is set to `true`.
 
 ## Additional information
 
