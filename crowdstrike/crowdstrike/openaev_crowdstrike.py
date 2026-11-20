@@ -121,62 +121,78 @@ class OpenAEVCrowdStrike(CollectorDaemon):
                 )
                 continue
 
-            for alert in alerts:
+            matching_alerts = [
+                alert
+                for alert in alerts
                 if self.detection_helper.match_alert_elements(
                     signatures=expectation.get("inject_expectation_signatures"),
                     alert_data=self.strategy.get_signature_data(
                         alert, self.signature_types
                     ),
-                ):
-                    result: str
-                    success_or_failure: bool
-                    if expectation.get("inject_expectation_type") == "DETECTION":
-                        success_or_failure = True
-                        result = "Detected"
-                    elif expectation.get("inject_expectation_type") == "PREVENTION":
-                        success_or_failure = self.strategy.is_prevented(alert)
-                        result = "Prevented" if success_or_failure else "Not Prevented"
-                    else:
-                        self.logger.warning(
-                            f"Unsupported expectation type for now: {expectation.get('inject_expectation_type')}"
+                )
+            ]
+            if not matching_alerts:
+                continue
+
+            result: str
+            success_or_failure: bool
+            result_alert: Item
+            if expectation.get("inject_expectation_type") == "DETECTION":
+                success_or_failure = True
+                result = "Detected"
+                result_alert = matching_alerts[0]
+            elif expectation.get("inject_expectation_type") == "PREVENTION":
+                # A test can raise several alerts: it is prevented as soon as one of them shows a prevention action
+                prevented_alerts = [
+                    alert
+                    for alert in matching_alerts
+                    if self.strategy.is_prevented(alert)
+                ]
+                success_or_failure = len(prevented_alerts) > 0
+                result = "Prevented" if success_or_failure else "Not Prevented"
+                result_alert = (prevented_alerts or matching_alerts)[0]
+            else:
+                self.logger.warning(
+                    f"Unsupported expectation type for now: {expectation.get('inject_expectation_type')}"
+                )
+                continue
+
+            self.api.inject_expectation.update(
+                expectation["inject_expectation_id"],
+                {
+                    "collector_id": self._configuration.get("collector_id"),
+                    "result": result,
+                    "is_success": success_or_failure,
+                    "metadata": {"alertId": self.strategy.get_alert_id(result_alert)},
+                },
+            )
+
+            for alert in matching_alerts:
+                # Save alert to openaev for current matched expectation. Duplicate alerts are handled by openaev itself
+                self.logger.info(
+                    "Expectation matched, adding trace for expectation "
+                    + expectation["inject_expectation_id"]
+                    + " ("
+                    + expectation["inject_expectation_type"]
+                    + ")"
+                )
+                traces_to_create.append(
+                    {
+                        "inject_expectation_trace_expectation": expectation[
+                            "inject_expectation_id"
+                        ],
+                        "inject_expectation_trace_source_id": self._configuration.get(
+                            "collector_id"
+                        ),
+                        "inject_expectation_trace_alert_name": alert.display_name,
+                        "inject_expectation_trace_alert_link": self._configuration.get(
+                            "crowdstrike_ui_base_url"
                         )
-                        continue
-
-                    self.api.inject_expectation.update(
-                        expectation["inject_expectation_id"],
-                        {
-                            "collector_id": self._configuration.get("collector_id"),
-                            "result": result,
-                            "is_success": success_or_failure,
-                            "metadata": {"alertId": self.strategy.get_alert_id(alert)},
-                        },
-                    )
-
-                    # Save alert to openaev for current matched expectation. Duplicate alerts are handled by openaev itself
-                    self.logger.info(
-                        "Expectation matched, adding trace for expectation "
-                        + expectation["inject_expectation_id"]
-                        + " ("
-                        + expectation["inject_expectation_type"]
-                        + ")"
-                    )
-                    traces_to_create.append(
-                        {
-                            "inject_expectation_trace_expectation": expectation[
-                                "inject_expectation_id"
-                            ],
-                            "inject_expectation_trace_source_id": self._configuration.get(
-                                "collector_id"
-                            ),
-                            "inject_expectation_trace_alert_name": alert.display_name,
-                            "inject_expectation_trace_alert_link": self._configuration.get(
-                                "crowdstrike_ui_base_url"
-                            )
-                            + "/unified-detections/"
-                            + alert.composite_id,
-                            "inject_expectation_trace_date": alert.updated_timestamp,
-                        }
-                    )
+                        + "/unified-detections/"
+                        + alert.composite_id,
+                        "inject_expectation_trace_date": alert.updated_timestamp,
+                    }
+                )
 
         return traces_to_create
 

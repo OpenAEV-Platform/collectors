@@ -2,9 +2,13 @@ import unittest
 from unittest.mock import patch
 
 from tests.fixtures.crowdstrike_alerts_v2 import MOCKED_ALERT
-from tests.fixtures.defaults import TestStrategy, get_default_collector
+from tests.fixtures.defaults import (
+    TestStrategy,
+    get_default_api_handler,
+    get_default_collector,
+)
 
-from crowdstrike.query_strategy.alert import Item
+from crowdstrike.query_strategy.alert import Alert, Item
 
 
 class TestOpenAEVCrowdstrike(unittest.TestCase):
@@ -336,6 +340,78 @@ class TestOpenAEVCrowdstrike(unittest.TestCase):
         mock_expectation_update.assert_not_called()
 
         self.assertEqual(0, len(traces))
+
+    @patch("pyoaev.apis.InjectExpectationManager.update")
+    def test_when_several_alerts_match_and_one_is_prevented_update_prevention_expectation_once(
+        self, mock_expectation_update
+    ):
+        expected_expectation_id = "expectation_id"
+        expectations = [
+            {
+                "inject_expectation_type": "PREVENTION",
+                "inject_expectation_id": expected_expectation_id,
+                "inject_expectation_signatures": [
+                    {"type": "parent_process_name", "value": "grandparent.exe"},
+                ],
+                "inject_expectation_results": {},
+            }
+        ]
+        # the prevented alert is neither the first nor the last matching alert
+        alerts = [
+            Item(**{**MOCKED_ALERT, "id": "detected_1", "pattern_disposition": 0}),
+            Item(**{**MOCKED_ALERT, "id": "prevented", "pattern_disposition": 2048}),
+            Item(**{**MOCKED_ALERT, "id": "detected_2", "pattern_disposition": 0}),
+        ]
+
+        collector = get_default_collector(Alert(api_handler=get_default_api_handler()))
+
+        traces = collector._match_expectations(alerts, expectations)
+
+        mock_expectation_update.assert_called_once_with(
+            expected_expectation_id,
+            {
+                "collector_id": collector._configuration.get("collector_id"),
+                "result": "Prevented",
+                "is_success": True,
+                "metadata": {"alertId": "prevented"},
+            },
+        )
+        self.assertEqual(3, len(traces))
+
+    @patch("pyoaev.apis.InjectExpectationManager.update")
+    def test_when_several_alerts_match_and_none_is_prevented_update_prevention_expectation_once(
+        self, mock_expectation_update
+    ):
+        expected_expectation_id = "expectation_id"
+        expectations = [
+            {
+                "inject_expectation_type": "PREVENTION",
+                "inject_expectation_id": expected_expectation_id,
+                "inject_expectation_signatures": [
+                    {"type": "parent_process_name", "value": "grandparent.exe"},
+                ],
+                "inject_expectation_results": {},
+            }
+        ]
+        alerts = [
+            Item(**{**MOCKED_ALERT, "id": "detected_1", "pattern_disposition": 0}),
+            Item(**{**MOCKED_ALERT, "id": "detected_2", "pattern_disposition": 0}),
+        ]
+
+        collector = get_default_collector(Alert(api_handler=get_default_api_handler()))
+
+        traces = collector._match_expectations(alerts, expectations)
+
+        mock_expectation_update.assert_called_once_with(
+            expected_expectation_id,
+            {
+                "collector_id": collector._configuration.get("collector_id"),
+                "result": "Not Prevented",
+                "is_success": False,
+                "metadata": {"alertId": "detected_1"},
+            },
+        )
+        self.assertEqual(2, len(traces))
 
 
 if __name__ == "__main__":
