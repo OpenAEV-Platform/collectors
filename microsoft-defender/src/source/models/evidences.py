@@ -7,19 +7,54 @@ from pydantic.networks import IPvAnyAddress
 from pyoaev.signatures.types import SignatureTypes
 
 
+class BaseEvidence(BaseModel):
+    remediation_status: Literal[
+        "none",
+        "remediated",
+        "prevented",
+        "blocked",
+        "notFound",
+        "unknownFutureValue",
+        "active",
+        "pendingApproval",
+        "declined",
+        "unremediated",
+        "running",
+        "partiallyRemediated",
+    ] | None = Field(
+        None,
+        alias="remediationStatus",
+        description="Status of the remediation action taken.",
+    )
+
+    def is_prevented(self) -> bool:
+        return self.remediation_status in ["prevented", "blocked"]
+
+    def extract_evidences(self) -> dict[SignatureTypes, list[str]]:
+        return {}
+
+
 class imageFile(BaseModel):
     file_name: str | None = Field(None, alias="fileName")
 
 
-class processEvidence(BaseModel):
+class processEvidence(BaseEvidence):
     odata_type: Literal["#microsoft.graph.security.processEvidence"] = Field(
         ..., alias="@odata.type"
     )
+    detection_status: Literal[
+        "detected", "blocked", "prevented", "unknownFutureValue"
+    ] | None = Field(None, alias="detectionStatus", description="Status of the detection")
     image_file: imageFile | None = Field(None, alias="imageFile")
     parent_process_image_file: imageFile | None = Field(
         None, alias="parentProcessImageFile"
     )
     process_command_line: str | None = Field(None, alias="processCommandLine")
+
+    def is_prevented(self) -> bool:
+        if self.detection_status in ["prevented", "blocked"]:
+            return True
+        return super().is_prevented()
 
     def extract_evidences(self) -> dict[SignatureTypes, list[str]]:
         process_names = []
@@ -42,7 +77,7 @@ class processEvidence(BaseModel):
         return extract
 
 
-class deviceEvidence(BaseModel):
+class deviceEvidence(BaseEvidence):
     odata_type: Literal["#microsoft.graph.security.deviceEvidence"] = Field(
         ..., alias="@odata.type"
     )
@@ -101,11 +136,19 @@ class fileDetails(BaseModel):
     file_path: str | None = Field(None, alias="filePath")
 
 
-class fileEvidence(BaseModel):
+class fileEvidence(BaseEvidence):
     odata_type: Literal["#microsoft.graph.security.fileEvidence"] = Field(
         ..., alias="@odata.type"
     )
+    detection_status: Literal[
+        "detected", "blocked", "prevented", "unknownFutureValue"
+    ] | None = Field(None, alias="detectionStatus", description="Status of the detection")
     file_details: fileDetails | None = Field(None, alias="fileDetails")
+
+    def is_prevented(self) -> bool:
+        if self.detection_status in ["prevented", "blocked"]:
+            return True
+        return super().is_prevented()
 
     def extract_evidences(self) -> dict[SignatureTypes, list[str]]:
         file_names = []
@@ -122,7 +165,7 @@ class fileEvidence(BaseModel):
         return extract
 
 
-class ipEvidence(BaseModel):
+class ipEvidence(BaseEvidence):
     odata_type: Literal["#microsoft.graph.security.ipEvidence"] = Field(
         ..., alias="@odata.type"
     )
@@ -144,11 +187,8 @@ class ipEvidence(BaseModel):
         return extract
 
 
-class genericEvidence(BaseModel):
+class genericEvidence(BaseEvidence):
     odata_type: str = Field(..., alias="@odata.type")
-
-    def extract_evidences(self) -> dict[SignatureTypes, list[str]]:
-        return {}
 
 
 def discriminate_evidence_type(model: dict) -> str:

@@ -45,6 +45,8 @@ class TestAlert(unittest.TestCase):
             "evidence": [
                 {
                     "@odata.type": "#microsoft.graph.security.processEvidence",
+                    "detectionStatus": "blocked",
+                    "remediationStatus": "blocked",
                     "imageFile": {"fileName": "cuckoo_agent.exe"},
                 },
             ],
@@ -74,6 +76,8 @@ class TestAlert(unittest.TestCase):
             "evidence": [
                 {
                     "@odata.type": "#microsoft.graph.security.processEvidence",
+                    "detectionStatus": "blocked",
+                    "remediationStatus": "blocked",
                     "imageFile": {"fileName": "cuckoo_agent.exe"},
                 },
             ],
@@ -98,6 +102,8 @@ class TestAlert(unittest.TestCase):
             "evidence": [
                 {
                     "@odata.type": "#microsoft.graph.security.processEvidence",
+                    "detectionStatus": "blocked",
+                    "remediationStatus": "blocked",
                     "imageFile": {"fileName": "cuckoo_agent.exe"},
                 },
             ],
@@ -124,6 +130,8 @@ class TestAlert(unittest.TestCase):
             "evidence": [
                 {
                     "@odata.type": "#microsoft.graph.security.processEvidence",
+                    "detectionStatus": "detected",
+                    "remediationStatus": "none",
                     "imageFile": {"fileName": "cuckoo_agent.exe"},
                 },
             ],
@@ -139,4 +147,24 @@ class TestAlert(unittest.TestCase):
 
         for status in ["unknown", "new", "unknownFutureValue"]:
             alert.status = status
+            self.assertFalse(alert.is_prevented())
+
+        alert.status = "unknown"
+        for remediation_status in ["prevented", "blocked"]:
+            alert.evidence[0].remediation_status = remediation_status
+            self.assertTrue(alert.is_prevented())
+
+        for remediation_status in [
+            "none",
+            "notFound",
+            "remediated",
+            "unknownFutureValue",
+            "active",
+            "pendingApproval",
+            "declined",
+            "unremediated",
+            "running",
+            "partiallyRemediated",
+        ]:
+            alert.evidence[0].remediation_status = remediation_status
             self.assertFalse(alert.is_prevented())
