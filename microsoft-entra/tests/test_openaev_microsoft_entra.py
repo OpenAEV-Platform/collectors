@@ -63,6 +63,9 @@ def test_process_message_runs_create_groups_via_asyncio_run():
     create_groups through asyncio.run (not the deprecated
     get_event_loop()/run_until_complete() pattern), so it works
     correctly even when no event loop already exists on the thread."""
+    import asyncio
+
+    real_asyncio_run = asyncio.run
     collector = OpenAEVMicrosoftEntra.__new__(OpenAEVMicrosoftEntra)
     collector.logger = MagicMock()
     collector._configuration = MagicMock()
@@ -82,6 +85,7 @@ def test_process_message_runs_create_groups_via_asyncio_run():
     ):
         graph_client_instance = MagicMock()
         mock_graph_client.return_value = graph_client_instance
+        mock_asyncio_run.side_effect = real_asyncio_run
 
         collector._process_message()
 
@@ -97,7 +101,58 @@ def test_process_message_runs_create_groups_via_asyncio_run():
             ["https://graph.microsoft.com/.default"],
         )
         mock_asyncio_run.assert_called_once()
-        collector.create_groups.assert_called_once_with(graph_client_instance)
+        collector.create_groups.assert_awaited_once_with(graph_client_instance)
+
+
+def _run_process_message(create_groups):
+    """Run _process_message with client secret auth and a mocked async
+    credential; answer the credential and the error the run raised."""
+    collector = OpenAEVMicrosoftEntra.__new__(OpenAEVMicrosoftEntra)
+    collector.logger = MagicMock()
+    collector._configuration = MagicMock()
+    # Client secret auth: the certificate flag reads as false.
+    collector._configuration.get.side_effect = lambda key: (
+        None if key == "microsoft_entra_use_certificate_auth" else f"value-{key}"
+    )
+    collector.create_groups = create_groups
+    credential = MagicMock()
+    credential.__aenter__ = AsyncMock(return_value=credential)
+    credential.__aexit__ = AsyncMock(return_value=False)
+    with (
+        patch(
+            "microsoft_entra.openaev_microsoft_entra.ClientSecretCredential",
+            return_value=credential,
+        ),
+        patch("microsoft_entra.openaev_microsoft_entra.GraphServiceClient"),
+    ):
+        try:
+            collector._process_message()
+        except RuntimeError as error:
+            return credential, error
+    return credential, None
+
+
+def test_process_message_closes_the_credential_after_the_run():
+    """The async credential owns an aiohttp session: it is closed at the end
+    of the run, so asyncio does not log 'Unclosed client session' (#691)."""
+    create_groups = AsyncMock()
+    credential, error = _run_process_message(create_groups)
+
+    assert error is None
+    create_groups.assert_awaited_once()
+    credential.__aenter__.assert_awaited_once()
+    credential.__aexit__.assert_awaited_once()
+
+
+def test_process_message_closes_the_credential_when_the_run_fails():
+    """A failed run still closes the credential, and the error still reaches
+    the daemon, which logs it."""
+    create_groups = AsyncMock(side_effect=RuntimeError("graph error"))
+    credential, error = _run_process_message(create_groups)
+
+    assert str(error) == "graph error"
+    create_groups.assert_awaited_once()
+    credential.__aexit__.assert_awaited_once()
 
 
 def test_process_message_asyncio_run_works_without_existing_event_loop():

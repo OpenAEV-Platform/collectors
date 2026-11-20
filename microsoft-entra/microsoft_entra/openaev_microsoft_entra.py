@@ -131,6 +131,13 @@ class OpenAEVMicrosoftEntra(CollectorDaemon):
                 break
             groups = await graph_client.groups.with_url(groups.odata_next_link).get()
 
+    async def _collect(self, credential, graph_client):
+        # The async credential owns an aiohttp session (its token transport):
+        # close it on the run's event loop, also when the run fails, so asyncio
+        # does not report an "Unclosed client session" when the loop ends.
+        async with credential:
+            await self.create_groups(graph_client)
+
     def _process_message(self) -> None:
         # Auth
         scopes = ["https://graph.microsoft.com/.default"]
@@ -169,7 +176,7 @@ class OpenAEVMicrosoftEntra(CollectorDaemon):
         graph_client = GraphServiceClient(credential, scopes)  # type: ignore
 
         # Execute
-        asyncio.run(self.create_groups(graph_client))
+        asyncio.run(self._collect(credential, graph_client))
 
 
 def main():
