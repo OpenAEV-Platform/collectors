@@ -70,6 +70,21 @@ class TestLoggingTraceBuilder:
             "&earliest=1793605000&latest=1793612001"
         )
 
+    def test_link_uses_the_configured_splunk_web_url(self):
+        config = create_test_config()
+        config.splunk_es.web_base_url = "https://splunk-web.example.com"
+
+        trace = LoggingTraceBuilder(config).build(
+            _match(), _query(), "exp-1", "collector-1"
+        )
+
+        assert trace.inject_expectation_trace_alert_link.startswith(
+            "https://splunk-web.example.com/en-US/app/search/search?q="
+        )
+        assert trace.inject_expectation_trace_alert_link.endswith(
+            "&earliest=1793605000&latest=1793612001"
+        )
+
     def test_date_is_the_event_time_in_utc_to_the_second(self, monkeypatch):
         # A local timezone far from UTC must not shift the trace date.
         monkeypatch.setenv("TZ", "Pacific/Kiritimati")

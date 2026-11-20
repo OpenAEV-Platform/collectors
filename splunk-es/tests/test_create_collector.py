@@ -213,6 +213,9 @@ def _then_collector_created_successfully(capfd, mock_env, collector, data) -> No
     assert daemon_config.get("splunk_es_base_url") == data.get(  # noqa: S101
         "SPLUNKES_BASE_URL"
     )
+    assert daemon_config.get("splunk_es_web_base_url") == data.get(  # noqa: S101
+        "SPLUNKES_WEB_BASE_URL"
+    )
     assert daemon_config.get("splunk_es_username") == data.get(  # noqa: S101
         "SPLUNKES_USERNAME"
     )
