@@ -26,6 +26,8 @@ reached Splunk).
     - [Detection expectations](#detection-expectations)
     - [Logging expectations](#logging-expectations)
   - [Required permissions and API endpoints](#required-permissions-and-api-endpoints)
+    - [Least-privilege Splunk role and service account](#least-privilege-splunk-role-and-service-account)
+    - [Splunk authentication token](#splunk-authentication-token)
   - [Debugging](#debugging)
   - [Additional information](#additional-information)
 
@@ -44,7 +46,10 @@ enabled, LOGGING expectations; PREVENTION expectations are not supported.
 
 - OpenAEV Platform >= 1.19.0
 - A Splunk Enterprise Security instance with the REST API reachable (typically on management port 8089)
-- A Splunk user account with REST API search access and read access to the configured events index
+- A dedicated Splunk service account with a least-privilege role (search only, read access to the configured
+  indexes) and, preferably, a [Splunk authentication token](#splunk-authentication-token) for it (Splunk Enterprise
+  7.3+ or Splunk Cloud). Username/password authentication remains supported. See
+  [Required permissions](#required-permissions-and-api-endpoints).
 - For LOGGING expectations (optional): the Splunk indexes that receive the raw endpoint logs (for example Sysmon or
   Windows event logs), readable by the same Splunk user. The Enterprise Security app is not needed for Logging: a plain
   Splunk Enterprise instance works.
@@ -79,8 +84,9 @@ Docker deployment) or through a `config.yml` file (for a manual deployment). Cop
 | Parameter              | config.yml                         | Docker environment variable       | Default        | Mandatory               | Description                                                                                                                                                                                                                           |
 | ----------------       | ----------------------------       | -----------------------------     | -------------- | -----------             | -----------------------------------------------------------------------------------------                                                                                                                                             |
 | Base URL               | `splunk_es.base_url`               | `SPLUNK_ES_BASE_URL`               | /              | Yes                     | Splunk ES management URL (e.g. `https://splunk.company.com:8089`).                                                                                                                                                                    |
-| Username               | `splunk_es.username`               | `SPLUNK_ES_USERNAME`               | /              | Yes                     | Splunk username with REST API search permissions.                                                                                                                                                                                     |
-| Password               | `splunk_es.password`               | `SPLUNK_ES_PASSWORD`               | /              | Yes                     | Splunk user password.                                                                                                                                                                                                                 |
+| Token                  | `splunk_es.token`                  | `SPLUNK_ES_TOKEN`                  | /              | Conditional             | [Splunk authentication token](#splunk-authentication-token) of the service account (preferred), sent as a Bearer token. When set, the username and password are ignored.                                                              |
+| Username               | `splunk_es.username`               | `SPLUNK_ES_USERNAME`               | /              | Conditional             | Service account username for HTTP basic authentication (used when no token is set).                                                                                                                                                   |
+| Password               | `splunk_es.password`               | `SPLUNK_ES_PASSWORD`               | /              | Conditional             | Service account password for HTTP basic authentication (used when no token is set).                                                                                                                                                   |
 | Alerts Index           | `splunk_es.alerts_index`           | `SPLUNK_ES_ALERTS_INDEX`           | notable        | No                      | Splunk index to search for security alerts.                                                                                                                                                                                           |
 | Time Window            | `splunk_es.time_window`            | `SPLUNK_ES_TIME_WINDOW`            | PT1H           | No                      | Default search window when no date signatures are provided, as an ISO 8601 duration.                                                                                                                                                  |
 | Offset                 | `splunk_es.offset`                 | `SPLUNK_ES_OFFSET`                 | PT2M           | No                      | Delay between retry attempts to absorb alert ingestion latency, as an ISO 8601 duration.                                                                                                                                              |
@@ -91,6 +97,11 @@ Docker deployment) or through a `config.yml` file (for a manual deployment). Cop
 | Logging Indexes        | `splunk_es.logging_indexes`        | `SPLUNK_ES_LOGGING_INDEXES`        | /              | When Logging is enabled | Comma-separated raw-event indexes or patterns (e.g. `sysmon,wineventlog,net*`), written as is in `index IN (...)`. No default on purpose.                                                                                             |
 | Logging Query Template | `splunk_es.logging_query_template` | `SPLUNK_ES_LOGGING_QUERY_TEMPLATE` | *(built-in)*   | No                      | Custom SPL template of the Logging search (leave empty to use the built-in search, see [Logging search template](#logging-search-template)).                                                                                          |
 | Logging Max Interval   | `splunk_es.logging_max_interval`   | `SPLUNK_ES_LOGGING_MAX_INTERVAL`   | PT15M          | No                      | Longest wait between two searches of the same LOGGING expectation, as an ISO 8601 duration of at most `PT1H`.                                                                                                                         |
+
+Authentication is required: set `SPLUNK_ES_TOKEN` (preferred), or both `SPLUNK_ES_USERNAME` and `SPLUNK_ES_PASSWORD`.
+The collector fails to start when neither is complete. A blank value counts as unset, so the method you do not use can
+be left empty. When both are set, the token is used and the username and password are ignored; the startup log
+(`COLLECTOR_LOG_LEVEL=info`) says which method is in effect.
 
 With `SPLUNK_ES_LOGGING_ENABLED=true`, a missing index list or an invalid `SPLUNK_ES_LOGGING_MAX_INTERVAL` stops the
 collector at startup, so the mistake is seen at once. With Logging off, an invalid `SPLUNK_ES_LOGGING_MAX_INTERVAL` is
@@ -340,22 +351,94 @@ restart the collector to declare LOGGING again.
 
 ## Required permissions and API endpoints
 
-- Required permission: a Splunk user with REST API search access and read access to the configured events index
-  (e.g. `main`).
-- For LOGGING expectations: read access to every index of `SPLUNK_ES_LOGGING_INDEXES` (the role's allowed indexes).
-  An index the role cannot read is reported as missing at startup, since Splunk silently returns no event for it.
+The collector only runs searches: it never writes to Splunk. Run it with a **dedicated service account** that has a
+**least-privilege role**, and authenticate it with a **Splunk authentication token** (scoped to that account,
+expirable and revocable). Username/password authentication of the same service account remains supported for
+backwards compatibility and simple deployments, but a password is subject to rotation policies, MFA and account
+lifecycle events that can break the collector; never use a personal or `admin` account.
+
+- Required capability: `search` only. No other capability is needed, including no `edit_tokens_own`: the token is
+  created for the service account by an administrator.
+- Required index access: read access (the role's allowed indexes, `srchIndexesAllowed`) to `SPLUNK_ES_ALERTS_INDEX`
+  (`notable` by default) and, for LOGGING expectations, to every index of `SPLUNK_ES_LOGGING_INDEXES`. An index the role
+  cannot read is reported as missing at startup, since Splunk silently returns no event for it.
 - API endpoints used:
-  - `POST /services/search/jobs` (oneshot search via the Splunk REST API, authenticated with HTTP basic authentication),
-    used for the Detection searches, the Logging searches and the startup Logging index check (`| eventcount`)
-- Reference: [Splunk roles and capabilities](https://docs.splunk.com/Documentation/Splunk/latest/Security/Aboutusersandroles)
+  - `POST /services/search/jobs` (oneshot search via the Splunk REST API, authenticated with the
+    `Authorization: Bearer <token>` header, or with HTTP basic authentication when no token is set), used for the
+    Detection searches, the Logging searches and the startup Logging index check (`| eventcount`)
+- Reference: [Splunk roles and capabilities](https://docs.splunk.com/Documentation/Splunk/latest/Security/Aboutusersandroles),
+  [Splunk authentication tokens](https://docs.splunk.com/Documentation/Splunk/latest/Security/UseAuthTokens)
   and the [Splunk REST API reference](https://docs.splunk.com/Documentation/Splunk/latest/RESTREF/RESTsearch)
+
+### Least-privilege Splunk role and service account
+
+Create a role that can only search the indexes the collector reads, then a service account that has only that role.
+
+In Splunk Web:
+
+1. **Settings > Roles > New Role**, name it `openaev_collector`:
+   - *Inheritance*: none (do not inherit `user` or `power`, which grant many more capabilities).
+   - *Capabilities*: `search` only.
+   - *Indexes*: tick *Included* for the alerts index (`notable`) and, for Logging, the raw-event indexes (for example
+     `sysmon`, `wineventlog`). Leave *Default* empty: the collector always names the indexes it searches.
+   - *Resources* (optional): keep the default search quotas, or lower them; the collector runs one blocking search at
+     a time.
+2. **Settings > Users > New User**, name it `svc_openaev`, assign only the `openaev_collector` role, and give it a
+   strong random password (needed by Splunk even when the collector uses a token).
+
+Or with the REST API, as an administrator (replace the indexes with yours):
+
+```shell
+curl -k -u admin https://splunk.company.com:8089/services/authorization/roles \
+  -d name=openaev_collector -d capabilities=search \
+  -d srchIndexesAllowed=notable -d srchIndexesAllowed=sysmon -d srchIndexesAllowed=wineventlog
+
+curl -k -u admin https://splunk.company.com:8089/services/authentication/users \
+  -d name=svc_openaev -d roles=openaev_collector --data-urlencode 'password=<strong random password>'
+```
+
+This role can run the collector's searches on its indexes and nothing else: searches on other indexes return no event,
+`| eventcount` does not list them, and requests that change Splunk (creating an index, a token, ...) are refused with
+HTTP 403.
+
+### Splunk authentication token
+
+Token authentication must be enabled on the Splunk instance (**Settings > Tokens > Token Authentication**; it is
+disabled by default on older Splunk Enterprise versions). An administrator then creates a token **for the service
+account**:
+
+- In Splunk Web: **Settings > Tokens > New Token**, *User* `svc_openaev`, *Audience* `openaev-collector`, and an
+  *Expiration* that matches your rotation policy (for example `+90d`).
+- Or with the REST API:
+
+  ```shell
+  curl -k -u admin https://splunk.company.com:8089/services/authorization/tokens \
+    -d name=svc_openaev -d audience=openaev-collector --data-urlencode expires_on=+90d
+  ```
+
+  `--data-urlencode` matters for `expires_on`: with `-d`, the `+` is decoded as a space and Splunk rejects the date.
+
+The token is shown only once: put it in `SPLUNK_ES_TOKEN` and leave `SPLUNK_ES_USERNAME` and `SPLUNK_ES_PASSWORD` empty.
+The token carries the permissions of `svc_openaev`, so the role above still limits what it can read. To check it:
+
+```shell
+curl -k -H "Authorization: Bearer $SPLUNK_ES_TOKEN" \
+  https://splunk.company.com:8089/services/authentication/current-context?output_mode=json
+```
+
+An expired, revoked or disabled token, or token authentication turned off, makes Splunk answer HTTP 401: Detection
+searches fail with an authentication error and Logging stops until the collector restarts (see
+[Logging expectations](#logging-expectations)). Rotate the token before it expires: create a new one, update
+`SPLUNK_ES_TOKEN`, restart the collector, then delete the old token in **Settings > Tokens**.
 
 ## Debugging
 
 Set `COLLECTOR_LOG_LEVEL=debug` to get verbose logs, including the resolved SPL query, the search job issued, and the
 matching decisions. Common causes of "nothing detected" are the wrong `SPLUNK_ES_ALERTS_INDEX`, a `SPLUNK_ES_TIME_WINDOW`
 shorter than your ingestion latency, or a custom `SPLUNK_ES_QUERY_TEMPLATE` that omits `| table _time` (which breaks field
-extraction). Make sure `SPLUNK_ES_BASE_URL` targets the Splunk management port (typically 8089), not the web UI port.
+extraction). Make sure `SPLUNK_ES_BASE_URL` targets the Splunk management port (typically 8089), not the web UI port. An HTTP 401
+with a token usually means the token expired, was revoked or disabled, or token authentication is turned off on the
+instance (see [Splunk authentication token](#splunk-authentication-token)).
 
 For Logging, `COLLECTOR_LOG_LEVEL=info` prints the startup index check and one summary per run
 (`Logging pass completed: ... fetched, ... logged, ... no match, ... errors`); `debug` adds why each expectation was not

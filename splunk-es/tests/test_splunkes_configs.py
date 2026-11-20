@@ -345,3 +345,169 @@ def test_retry_window_defaults_to_20_minutes_and_is_configurable(
 
     # Assert
     assert config.retry_window == expected  # noqa: S101
+
+
+# --------------
+# Authentication
+# --------------
+
+
+@pytest.fixture()
+def no_credentials(monkeypatch):  # type: ignore
+    """Start from a Splunk base URL only, without any credential.
+
+    The settings also match the field names, so a generic ``$USERNAME``,
+    ``$PASSWORD`` or ``$TOKEN`` of the shell running the tests would otherwise
+    act as a credential.
+    """
+    monkeypatch.setenv("SPLUNKES_BASE_URL", "https://splunk.example.com:8089")
+    for name in (
+        "SPLUNKES_USERNAME",
+        "SPLUNKES_PASSWORD",
+        "SPLUNKES_TOKEN",
+        "username",
+        "USERNAME",
+        "password",
+        "PASSWORD",
+        "token",
+        "TOKEN",
+    ):
+        monkeypatch.delenv(name, raising=False)
+
+
+def test_token_alone_is_enough(monkeypatch, no_credentials):  # type: ignore
+    """A Splunk authentication token is a complete credential on its own."""
+    # Arrange
+    monkeypatch.setenv("SPLUNKES_TOKEN", "eyJraWQiOiJzcGx1bmsuc2VjcmV0In0.payload.sig")
+
+    # Act
+    config = _ConfigLoaderSplunkES()
+
+    # Assert
+    assert config.token is not None  # noqa: S101
+    assert (  # noqa: S101
+        config.token.get_secret_value() == "eyJraWQiOiJzcGx1bmsuc2VjcmV0In0.payload.sig"
+    )
+    assert config.username is None  # noqa: S101
+    assert config.password is None  # noqa: S101
+
+
+def test_token_is_never_shown(monkeypatch, no_credentials):  # type: ignore
+    """The token is a secret: it does not appear when the settings are printed."""
+    # Arrange
+    monkeypatch.setenv("SPLUNKES_TOKEN", "super-secret-token")
+
+    # Act
+    config = _ConfigLoaderSplunkES()
+
+    # Assert
+    assert "super-secret-token" not in repr(config)  # noqa: S101
+    assert "super-secret-token" not in str(config)  # noqa: S101
+
+
+def test_username_and_password_still_work(monkeypatch, no_credentials):  # type: ignore
+    """Username/password authentication stays supported without a token."""
+    # Arrange
+    monkeypatch.setenv("SPLUNKES_USERNAME", "svc_openaev")
+    monkeypatch.setenv("SPLUNKES_PASSWORD", "changeme")
+
+    # Act
+    config = _ConfigLoaderSplunkES()
+
+    # Assert
+    assert config.token is None  # noqa: S101
+    assert config.username == "svc_openaev"  # noqa: S101
+    assert config.password is not None  # noqa: S101
+    assert config.password.get_secret_value() == "changeme"  # noqa: S101
+
+
+@pytest.mark.parametrize(
+    "settings",
+    [
+        {},
+        {"SPLUNKES_USERNAME": "svc_openaev"},
+        {"SPLUNKES_PASSWORD": "changeme"},
+    ],
+    ids=["nothing", "username-only", "password-only"],
+)
+def test_missing_credentials_are_rejected(
+    monkeypatch, no_credentials, settings
+):  # type: ignore
+    """Without a token, both the username and the password are required."""
+    # Arrange
+    for name, value in settings.items():
+        monkeypatch.setenv(name, value)
+
+    # Act / Assert
+    with pytest.raises(ValidationError) as error:
+        _ConfigLoaderSplunkES()
+    message = str(error.value)
+    assert "SPLUNKES_TOKEN" in message  # noqa: S101
+    assert "SPLUNKES_USERNAME" in message  # noqa: S101
+    assert "SPLUNKES_PASSWORD" in message  # noqa: S101
+
+
+@pytest.mark.parametrize("blank", ["", "   "], ids=["empty", "whitespace"])
+def test_blank_credentials_of_the_unused_method_are_unset(
+    monkeypatch, no_credentials, blank
+):  # type: ignore
+    """The catalog form sends the unused authentication method as blank values."""
+    # Arrange
+    monkeypatch.setenv("SPLUNKES_TOKEN", "a-token")
+    monkeypatch.setenv("SPLUNKES_USERNAME", blank)
+    monkeypatch.setenv("SPLUNKES_PASSWORD", blank)
+
+    # Act
+    config = _ConfigLoaderSplunkES()
+
+    # Assert
+    assert config.username is None  # noqa: S101
+    assert config.password is None  # noqa: S101
+
+
+@pytest.mark.parametrize("blank", ["", "   "], ids=["empty", "whitespace"])
+def test_blank_token_falls_back_to_username_and_password(
+    monkeypatch, no_credentials, blank
+):  # type: ignore
+    """A blank token is unset: the username and password are used."""
+    # Arrange
+    monkeypatch.setenv("SPLUNKES_TOKEN", blank)
+    monkeypatch.setenv("SPLUNKES_USERNAME", "svc_openaev")
+    monkeypatch.setenv("SPLUNKES_PASSWORD", "changeme")
+
+    # Act
+    config = _ConfigLoaderSplunkES()
+
+    # Assert
+    assert config.token is None  # noqa: S101
+    assert config.username == "svc_openaev"  # noqa: S101
+
+
+def test_blank_token_without_username_and_password_is_rejected(
+    monkeypatch, no_credentials
+):  # type: ignore
+    """A blank token is not a credential."""
+    # Arrange
+    monkeypatch.setenv("SPLUNKES_TOKEN", "")
+
+    # Act / Assert
+    with pytest.raises(ValidationError, match="SPLUNKES_TOKEN"):
+        _ConfigLoaderSplunkES()
+
+
+def test_token_from_config_yml_is_accepted(no_credentials):  # type: ignore
+    """In config.yml the token is set as ``splunk_es.token``."""
+    # Arrange
+    settings = {
+        "base_url": "https://splunk.example.com:8089",
+        "token": "a-token",
+        "username": None,
+        "password": None,
+    }
+
+    # Act
+    config = _ConfigLoaderSplunkES.model_validate(settings)
+
+    # Assert
+    assert config.token is not None  # noqa: S101
+    assert config.token.get_secret_value() == "a-token"  # noqa: S101

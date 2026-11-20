@@ -8,6 +8,7 @@ from unittest.mock import Mock
 
 from polyfactory import Use
 from polyfactory.factories.pydantic_factory import ModelFactory
+from pydantic import SecretStr
 from src.collector.models import ExpectationResult, ExpectationTrace
 from src.models.configs.collector_configs import _ConfigLoaderOAEV
 from src.models.configs.config_loader import ConfigLoader, ConfigLoaderCollector
@@ -68,6 +69,11 @@ class ConfigLoaderSplunkESFactory(ModelFactory[_ConfigLoaderSplunkES]):
         # Logging template, or break the at-most-one-hour rule of the Logging
         # max interval.
         kwargs.setdefault("logging_enabled", False)
+        # Optional credentials would otherwise be random or None: use
+        # username/password, unless a test sets a token.
+        kwargs.setdefault("token", None)
+        kwargs.setdefault("username", "test-user")
+        kwargs.setdefault("password", SecretStr("test-password"))
         kwargs.setdefault("logging_indexes", None)
         kwargs.setdefault("logging_query_template", None)
         kwargs.setdefault("logging_max_interval", timedelta(minutes=15))
