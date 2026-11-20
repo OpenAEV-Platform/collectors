@@ -121,6 +121,23 @@ def _normalize_whitespace(template: str) -> str:
     return " ".join(template.split())
 
 
+class _SplunkTokenAuth(requests.auth.AuthBase):
+    """Authenticate with a Splunk authentication token, as a Bearer token.
+    """
+
+    def __init__(self, token: str) -> None:
+        self._token = token
+
+    def __call__(self, request: requests.PreparedRequest) -> requests.PreparedRequest:
+        """Add the Bearer token to the request."""
+        request.headers["Authorization"] = f"Bearer {self._token}"
+        return request
+
+    def __repr__(self) -> str:
+        """Never show the token."""
+        return f"{type(self).__name__}(token='**********')"
+
+
 class SplunkESClientAPI:
     """Splunk ES API client for fetching alerts and data."""
 
@@ -143,8 +160,11 @@ class SplunkESClientAPI:
 
         try:
             self.base_url = str(self.config.splunk_es.base_url).rstrip("/")
+            token = self.config.splunk_es.token
+            self.token = token.get_secret_value() if token else None
             self.username = self.config.splunk_es.username
-            self.password = self.config.splunk_es.password.get_secret_value()
+            password = self.config.splunk_es.password
+            self.password = password.get_secret_value() if password else None
             self.alerts_index = self.config.splunk_es.alerts_index or "_notable"
             self.offset = self.config.splunk_es.offset.total_seconds()
             self.max_retry = self.config.splunk_es.max_retry
@@ -249,6 +269,10 @@ class SplunkESClientAPI:
     def _create_session(self) -> requests.Session:
         """Create HTTP session with proper authentication.
 
+        A Splunk authentication token, when set, is sent as a Bearer token and
+        the username and password are ignored. Otherwise the session uses HTTP
+        basic authentication with the username and password.
+
         Returns:
             Configured requests.Session with authentication.
 
@@ -257,20 +281,38 @@ class SplunkESClientAPI:
             SplunkESSessionError: If session configuration fails.
 
         """
-        if not self.username or not self.password:
+        if not self.token and not (self.username and self.password):
             raise SplunkESValidationError(
-                "Username and password are required for session creation"
+                "A Splunk authentication token, or a username and password, are "
+                "required for session creation"
             )
 
         try:
             session = requests.Session()
-            session.auth = (self.username, self.password)
             session.headers.update(
                 {
                     "Content-Type": "application/x-www-form-urlencoded",
                     "Accept": "application/json",
                 }
             )
+            if self.token:
+                session.auth = _SplunkTokenAuth(self.token)
+                self.logger.info(
+                    f"{LOG_PREFIX} Authenticating to Splunk with an authentication "
+                    "token"
+                )
+                if self.username or self.password:
+                    self.logger.info(
+                        f"{LOG_PREFIX} SPLUNKES_TOKEN is set: SPLUNKES_USERNAME and "
+                        "SPLUNKES_PASSWORD are ignored"
+                    )
+            else:
+                session.auth = (self.username, self.password)  # type: ignore[assignment]
+                self.logger.info(
+                    f"{LOG_PREFIX} Authenticating to Splunk with a username and "
+                    "password; a Splunk authentication token (SPLUNKES_TOKEN) is "
+                    "preferred"
+                )
             session.timeout = REQUEST_TIMEOUT_SECONDS
             session.verify = False
             return session

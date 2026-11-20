@@ -162,9 +162,20 @@ class ConfigLoader(ConfigBaseSettings):
                 "collector_icon_filepath": {"data": self.collector.icon_filepath},
                 # SplunkES configuration (flattened)
                 "splunk_es_base_url": {"data": str(self.splunk_es.base_url)},
+                "splunk_es_token": {
+                    "data": (
+                        self.splunk_es.token.get_secret_value()
+                        if self.splunk_es.token
+                        else None
+                    )
+                },
                 "splunk_es_username": {"data": self.splunk_es.username},
                 "splunk_es_password": {
-                    "data": self.splunk_es.password.get_secret_value()
+                    "data": (
+                        self.splunk_es.password.get_secret_value()
+                        if self.splunk_es.password
+                        else None
+                    )
                 },
                 "splunk_es_alerts_index": {"data": self.splunk_es.alerts_index},
                 "splunk_es_time_window": {"data": self.splunk_es.time_window},

@@ -34,13 +34,23 @@ class _ConfigLoaderSplunkES(ConfigBaseSettings):
         alias="SPLUNKES_BASE_URL",
         description="Base URL for the Splunk ES instance (e.g., https://splunk.company.com:8089).",
     )
-    username: str = Field(
-        alias="SPLUNKES_USERNAME",
-        description="Username for Splunk ES authentication.",
+    token: Optional[SecretStr] = Field(
+        alias="SPLUNKES_TOKEN",
+        default=None,
+        description="Splunk authentication token (preferred), sent as a Bearer "
+        "token. When set, the username and password are ignored.",
     )
-    password: SecretStr = Field(
+    username: Optional[str] = Field(
+        alias="SPLUNKES_USERNAME",
+        default=None,
+        description="Username for Splunk ES basic authentication (used when no "
+        "token is set).",
+    )
+    password: Optional[SecretStr] = Field(
         alias="SPLUNKES_PASSWORD",
-        description="Password for Splunk ES authentication.",
+        default=None,
+        description="Password for Splunk ES basic authentication (used when no "
+        "token is set).",
     )
     alerts_index: Optional[str] = Field(
         alias="SPLUNKES_ALERTS_INDEX",
@@ -107,6 +117,9 @@ class _ConfigLoaderSplunkES(ConfigBaseSettings):
     )
 
     @field_validator(
+        "token",
+        "username",
+        "password",
         "alerts_index",
         "time_window",
         "query_template",
@@ -125,7 +138,9 @@ class _ConfigLoaderSplunkES(ConfigBaseSettings):
         natural way back to the built-in query, so an empty value must mean
         "unset": ``SPLUNKES_QUERY_TEMPLATE=`` uses the built-in query,
         ``SPLUNKES_ALERTS_INDEX=`` the ``notable`` index and
-        ``SPLUNKES_TIME_WINDOW=`` the one-hour window.
+        ``SPLUNKES_TIME_WINDOW=`` the one-hour window. The credentials of the
+        unused authentication method are sent blank too: a blank token means
+        username/password authentication, and vice versa.
         """
         if isinstance(value, str) and not value.strip():
             raise PydanticUseDefault()
@@ -141,6 +156,22 @@ class _ConfigLoaderSplunkES(ConfigBaseSettings):
                 f"most PT1H, got {value}"
             )
         return value
+
+    @model_validator(mode="after")
+    def _require_credentials(self) -> "_ConfigLoaderSplunkES":
+        """Require a token, or both a username and a password.
+
+        Raises:
+            ValueError: If neither credential is complete.
+
+        """
+        if not self.token and not (self.username and self.password):
+            raise ValueError(
+                "Splunk authentication requires either SPLUNKES_TOKEN (a Splunk "
+                "authentication token, preferred) or both SPLUNKES_USERNAME and "
+                "SPLUNKES_PASSWORD"
+            )
+        return self
 
     @model_validator(mode="after")
     def _require_logging_indexes(self) -> "_ConfigLoaderSplunkES":

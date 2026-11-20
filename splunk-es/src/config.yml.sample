@@ -16,8 +16,13 @@ splunk_es:
   # which returns HTTP 404 for search API calls). Splunk Cloud uses a dedicated
   # API host (e.g. https://<stack>.splunkcloud.com:8089).
   base_url: "https://splunk.company.com:8089"
-  username: "ChangeMe"
-  password: "ChangeMe"
+  # Authentication: a Splunk authentication token of a dedicated, least-privilege
+  # service account (preferred, see README "Required permissions"), sent as a
+  # Bearer token. When it is set, username/password are ignored.
+  token: "ChangeMe"
+  # Or, without a token, basic authentication of the same service account:
+  # username: "ChangeMe"
+  # password: "ChangeMe"
   alerts_index: "notable"
   max_retry: 5
   offset: 120
