@@ -63,6 +63,41 @@ def test_success_create_collector(capfd, collector_config):  # type: ignore
     _then_collector_created_successfully(capfd, mock_env, collector, data)
 
 
+# Scenario: Create a collector authenticated with a Splunk token only
+def test_create_collector_with_token_only(collector_config):  # type: ignore
+    """A collector configured with only a Splunk authentication token starts.
+
+    Args:
+        collector_config: Fixture providing valid collector configuration.
+
+    """
+    # Given a configuration with a token and no username/password
+    data = {**collector_config, "SPLUNKES_TOKEN": "fake-splunk-token"}
+    del data["SPLUNKES_USERNAME"]
+    del data["SPLUNKES_PASSWORD"]
+    mock_env = _given_setup_config(data)
+    for _k in (
+        "SPLUNKES_USERNAME",
+        "SPLUNKES_PASSWORD",
+        "username",
+        "USERNAME",
+        "password",
+        "PASSWORD",
+    ):
+        os_environ.pop(_k, None)
+
+    # When I create the collector
+    collector = _when_create_collector()
+
+    # Then the token reaches the daemon config, without username/password
+    daemon_config = collector.config_instance.to_daemon_config()
+    assert daemon_config.get("splunk_es_token") == "fake-splunk-token"  # noqa: S101
+    assert daemon_config.get("splunk_es_username") is None  # noqa: S101
+    assert daemon_config.get("splunk_es_password") is None  # noqa: S101
+
+    mock_env.stop()
+
+
 # Scenario: Create a collector with missing required config
 def test_collector_config_missing_required_values() -> None:
     """Test for the collector with missing required configuration values.
