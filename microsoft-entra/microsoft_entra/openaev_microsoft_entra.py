@@ -8,6 +8,13 @@ from msgraph import GraphServiceClient
 from pyoaev.configuration import Configuration
 from pyoaev.daemons import CollectorDaemon
 
+TAG_COLORS = {
+    "source": "#ef4444",  # Red
+    "user-type": "#10b981",  # Green
+    "department": "#8b5cf6",  # Purple
+    "job-title": "#f59e0b",  # Amber
+}
+
 
 class OpenAEVMicrosoftEntra(CollectorDaemon):
     def __init__(
@@ -34,190 +41,95 @@ class OpenAEVMicrosoftEntra(CollectorDaemon):
             self.logger.warning(f"Failed to upsert tag {tag_name}: {e}")
             return None
 
-    async def create_users(self, graph_client, group_id, openaev_team):
-        # Define tag colors
-        tag_colors = {
-            "source": "#ef4444",  # Red
-            "user-type": "#10b981",  # Green
-            "department": "#8b5cf6",  # Purple
-            "job-title": "#f59e0b",  # Amber
+    def _upsert_member(self, member, openaev_team):
+        """Upsert one group member as an OpenAEV user of the team."""
+        # Skip non-user objects (like Device objects)
+        if not hasattr(member, "mail") or member.odata_type != "#microsoft.graph.user":
+            return
+
+        if member.mail is None or not (
+            self.include_external is True
+            or (
+                self.include_external is False
+                and "#EXT#" not in member.user_principal_name
+            )
+        ):
+            return
+
+        # Prepare tag IDs list
+        tag_ids = []
+
+        # Add collector source tag
+        source_tag_id = self._create_or_get_tag(
+            "source:microsoft-entra", TAG_COLORS["source"]
+        )
+        if source_tag_id:
+            tag_ids.append(source_tag_id)
+
+        # Add external or internal user tag
+        if "#EXT#" in member.user_principal_name:
+            user_type_tag_name = "user-type:external"
+        else:
+            user_type_tag_name = "user-type:internal"
+        user_type_tag_id = self._create_or_get_tag(
+            user_type_tag_name, TAG_COLORS["user-type"]
+        )
+        if user_type_tag_id:
+            tag_ids.append(user_type_tag_id)
+
+        # Add department tag if available
+        if hasattr(member, "department") and member.department:
+            dept_tag_id = self._create_or_get_tag(
+                f"department:{member.department.lower()}", TAG_COLORS["department"]
+            )
+            if dept_tag_id:
+                tag_ids.append(dept_tag_id)
+
+        # Add job title tag if available
+        if hasattr(member, "job_title") and member.job_title:
+            job_tag_id = self._create_or_get_tag(
+                f"job-title:{member.job_title.lower()}", TAG_COLORS["job-title"]
+            )
+            if job_tag_id:
+                tag_ids.append(job_tag_id)
+
+        user = {
+            "user_email": member.mail,
+            "user_firstname": member.given_name,
+            "user_lastname": member.surname,
+            "user_teams": [openaev_team["team_id"]],
         }
 
-        members = await graph_client.groups.by_group_id(group_id).members.get()
-        if members:
-            for i in range(len(members.value)):
-                # Skip non-user objects (like Device objects)
-                member = members.value[i]
-                if (
-                    not hasattr(member, "mail")
-                    or member.odata_type != "#microsoft.graph.user"
-                ):
-                    continue
+        # Add tags if we have any
+        if tag_ids:
+            user["user_tags"] = tag_ids
 
-                if member.mail is not None and (
-                    self.include_external is True
-                    or (
-                        self.include_external is False
-                        and "#EXT#" not in member.user_principal_name
-                    )
-                ):
-                    # Prepare tag IDs list
-                    tag_ids = []
+        self.api.user.upsert(user)
 
-                    # Add collector source tag
-                    source_tag_name = "source:microsoft-entra"
-                    source_tag_id = self._create_or_get_tag(
-                        source_tag_name, tag_colors["source"]
-                    )
-                    if source_tag_id:
-                        tag_ids.append(source_tag_id)
-
-                    # Add external user tag if applicable
-                    if "#EXT#" in member.user_principal_name:
-                        ext_tag_name = "user-type:external"
-                        ext_tag_id = self._create_or_get_tag(
-                            ext_tag_name, tag_colors["user-type"]
-                        )
-                        if ext_tag_id:
-                            tag_ids.append(ext_tag_id)
-                    else:
-                        int_tag_name = "user-type:internal"
-                        int_tag_id = self._create_or_get_tag(
-                            int_tag_name, tag_colors["user-type"]
-                        )
-                        if int_tag_id:
-                            tag_ids.append(int_tag_id)
-
-                    # Add department tag if available
-                    if hasattr(member, "department") and member.department:
-                        dept_tag_name = f"department:{member.department.lower()}"
-                        dept_tag_id = self._create_or_get_tag(
-                            dept_tag_name, tag_colors["department"]
-                        )
-                        if dept_tag_id:
-                            tag_ids.append(dept_tag_id)
-
-                    # Add job title tag if available
-                    if hasattr(member, "job_title") and member.job_title:
-                        job_tag_name = f"job-title:{member.job_title.lower()}"
-                        job_tag_id = self._create_or_get_tag(
-                            job_tag_name, tag_colors["job-title"]
-                        )
-                        if job_tag_id:
-                            tag_ids.append(job_tag_id)
-
-                    user = {
-                        "user_email": member.mail,
-                        "user_firstname": member.given_name,
-                        "user_lastname": member.surname,
-                        "user_teams": [openaev_team["team_id"]],
-                    }
-
-                    # Add tags if we have any
-                    if tag_ids:
-                        user["user_tags"] = tag_ids
-
-                    self.api.user.upsert(user)
-
-        # iterate over result batches > 100 rows
-        while members is not None and members.odata_next_link is not None:
-            members = (
-                await graph_client.groups.by_group_id(group_id)
-                .members.with_url(members.odata_next_link)
-                .get()
-            )
-            if members:
-                for i in range(len(members.value)):
-                    # Skip non-user objects (like Device objects)
-                    member = members.value[i]
-                    if (
-                        not hasattr(member, "mail")
-                        or member.odata_type != "#microsoft.graph.user"
-                    ):
-                        continue
-
-                    if member.mail is not None and (
-                        self.include_external is True
-                        or (
-                            self.include_external is False
-                            and "#EXT#" not in member.user_principal_name
-                        )
-                    ):
-                        # Prepare tag IDs list
-                        tag_ids = []
-
-                        # Add collector source tag
-                        source_tag_name = "source:microsoft-entra"
-                        source_tag_id = self._create_or_get_tag(
-                            source_tag_name, tag_colors["source"]
-                        )
-                        if source_tag_id:
-                            tag_ids.append(source_tag_id)
-
-                        # Add external user tag if applicable
-                        if "#EXT#" in member.user_principal_name:
-                            ext_tag_name = "user-type:external"
-                            ext_tag_id = self._create_or_get_tag(
-                                ext_tag_name, tag_colors["user-type"]
-                            )
-                            if ext_tag_id:
-                                tag_ids.append(ext_tag_id)
-                        else:
-                            int_tag_name = "user-type:internal"
-                            int_tag_id = self._create_or_get_tag(
-                                int_tag_name, tag_colors["user-type"]
-                            )
-                            if int_tag_id:
-                                tag_ids.append(int_tag_id)
-
-                        # Add department tag if available
-                        if hasattr(member, "department") and member.department:
-                            dept_tag_name = f"department:{member.department.lower()}"
-                            dept_tag_id = self._create_or_get_tag(
-                                dept_tag_name, tag_colors["department"]
-                            )
-                            if dept_tag_id:
-                                tag_ids.append(dept_tag_id)
-
-                        # Add job title tag if available
-                        if hasattr(member, "job_title") and member.job_title:
-                            job_tag_name = f"job-title:{member.job_title.lower()}"
-                            job_tag_id = self._create_or_get_tag(
-                                job_tag_name, tag_colors["job-title"]
-                            )
-                            if job_tag_id:
-                                tag_ids.append(job_tag_id)
-
-                        user = {
-                            "user_email": member.mail,
-                            "user_firstname": member.given_name,
-                            "user_lastname": member.surname,
-                            "user_teams": [openaev_team["team_id"]],
-                        }
-
-                        # Add tags if we have any
-                        if tag_ids:
-                            user["user_tags"] = tag_ids
-
-                        self.api.user.upsert(user)
+    async def create_users(self, graph_client, group_id, openaev_team):
+        members_builder = graph_client.groups.by_group_id(group_id).members
+        members = await members_builder.get()
+        # Graph returns results in pages (100 rows by default): the first page
+        # and every next page go through the same handler.
+        while members is not None:
+            for member in members.value or []:
+                self._upsert_member(member, openaev_team)
+            if members.odata_next_link is None:
+                break
+            members = await members_builder.with_url(members.odata_next_link).get()
 
     async def create_groups(self, graph_client):
         groups = await graph_client.groups.get()
-        if groups:
-            for i in range(len(groups.value)):
-                team = {"team_name": groups.value[i].display_name}
+        # Graph returns results in pages (100 rows by default): the first page
+        # and every next page go through the same handler.
+        while groups is not None:
+            for group in groups.value or []:
+                team = {"team_name": group.display_name}
                 openaev_team = self.api.team.upsert(team)
-                await self.create_users(graph_client, groups.value[i].id, openaev_team)
-        # iterate over result batches > 100 rows
-        while groups is not None and groups.odata_next_link is not None:
-            groups = await graph_client.groups.with_url(groups.odata_next_link)
-            if groups:
-                for i in range(len(groups.value)):
-                    team = {"team_name": groups.value[i].display_name}
-                    openaev_team = self.api.team.upsert(team)
-                    await self.create_users(
-                        graph_client, groups.value[i].id, openaev_team
-                    )
+                await self.create_users(graph_client, group.id, openaev_team)
+            if groups.odata_next_link is None:
+                break
+            groups = await graph_client.groups.with_url(groups.odata_next_link).get()
 
     def _process_message(self) -> None:
         # Auth
