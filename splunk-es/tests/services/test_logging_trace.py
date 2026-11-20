@@ -72,14 +72,16 @@ class TestLoggingTraceBuilder:
 
     def test_date_is_the_event_time_in_utc_to_the_second(self, monkeypatch):
         # A local timezone far from UTC must not shift the trace date.
-        monkeypatch.setenv("TZ", "Pacific/Kiritimati")
-        time.tzset()
+        # On Windows, time.tzset() is not available.
+        if hasattr(time, "tzset"):
+            monkeypatch.setenv("TZ", "Pacific/Kiritimati")
+            time.tzset()
         try:
             trace = _build()
         finally:
-            monkeypatch.undo()
-            time.tzset()
-
+            if hasattr(time, "tzset"):
+                monkeypatch.undo()
+                time.tzset()
         assert trace.inject_expectation_trace_date == "2026-11-02T08:35:12Z"
 
     def test_date_is_truncated_not_rounded_up(self):
