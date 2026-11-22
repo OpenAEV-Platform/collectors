@@ -1,0 +1,28 @@
+openaev:
+  url: 'http://localhost:3001'
+  token: 'ChangeMe'
+  # only required for multi-tenancy (Enterprise Edition), keep commented otherwise
+  # tenant_id: 'ChangeMe'
+
+collector:
+  id: 'ChangeMe'
+  name: 'GitHub'
+  period: 'PT6H'
+  log_level: 'error'
+
+  # Read-only token (fine-grained: Metadata, Actions and Packages read)
+  github_token: 'ChangeMe'
+  # GitHub Enterprise Server: 'https://github.example.com/api/v3'
+  github_api_url: 'https://api.github.com'
+
+  # Owners to collect (at least one)
+  github_organizations: 'my-org'
+  # github_users: 'my-user'
+
+  # What to collect
+  github_include_archived: true
+  github_include_forks: false
+  github_collect_workflows: true
+  github_collect_packages: true
+  github_package_types: 'npm,maven,rubygems,nuget,container'
+  github_end_date_removed: true

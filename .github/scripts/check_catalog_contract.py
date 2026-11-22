@@ -48,6 +48,10 @@ DEFAULT_CATALOG = (
 CATALOG_ENV = "OPENAEV_CATALOG"
 CATALOG_FILE = "openaev-api/src/main/resources/catalog/catalog-integrators.json"
 FETCH_TIMEOUT_SECONDS = 30
+# Directories with a manifest that are not published in the catalog: the collector
+# template and the scenarios follower. Every other collector must have its entry, so a new
+# collector cannot ship without the catalog entry the platform deploys it from.
+NOT_IN_CATALOG = {"openaev_template", "openaev_scenarios"}
 FETCH_ATTEMPTS = 3
 
 # Settings that pyoaev's base models (or the platform) define for every collector: they
@@ -295,7 +299,15 @@ def check_collector(
     slug = json.loads(manifest.read_text(encoding="utf-8")).get("slug")
     contract = contracts.get(slug)
     if contract is None:
-        return [], [f"{collector.name}: no catalog entry for slug '{slug}', skipped"]
+        if slug in NOT_IN_CATALOG:
+            return [], [
+                f"{collector.name}: '{slug}' is not published in the catalog, skipped"
+            ]
+        return [
+            f"{collector.name}: no catalog entry for slug '{slug}': add it to openaev "
+            f"{CATALOG_FILE} (built from manifest-metadata.json) and merge it before "
+            "this collector"
+        ], []
 
     sources = analyse_collector(collector)
     properties = contract.get("config_schema", {}).get("properties", {})

@@ -127,12 +127,21 @@ class CheckCollectorTest(unittest.TestCase):
         self.assertEqual(errors, [])
         self.assertTrue(any("no ALLOWED_PLACEHOLDERS" in note for note in notes))
 
-    def test_collector_without_catalog_entry_is_skipped(self):
+    def test_collector_without_catalog_entry_is_an_error(self):
         with tempfile.TemporaryDirectory() as tmp:
             tree = CollectorTree(Path(tmp), slug="openaev_other", settings=SETTINGS)
             errors, notes = contract.check_collector(tree.path, {})
-        self.assertEqual(errors, [])
-        self.assertIn("no catalog entry", notes[0])
+        self.assertEqual(notes, [])
+        self.assertEqual(len(errors), 1)
+        self.assertIn("no catalog entry for slug 'openaev_other'", errors[0])
+
+    def test_directories_not_published_in_the_catalog_are_skipped(self):
+        for slug in sorted(contract.NOT_IN_CATALOG):
+            with tempfile.TemporaryDirectory() as tmp:
+                tree = CollectorTree(Path(tmp), slug=slug, settings=SETTINGS)
+                errors, notes = contract.check_collector(tree.path, {})
+            self.assertEqual(errors, [])
+            self.assertIn("not published in the catalog", notes[0])
 
     def test_test_sources_do_not_count_as_read_settings(self):
         with tempfile.TemporaryDirectory() as tmp:
