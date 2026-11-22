@@ -1,11 +1,10 @@
 """Load the configuration from config.yml and the environment for the daemon."""
 
-from pydantic import Field
-from pyoaev.configuration import ConfigLoaderOAEV, Configuration, SettingsLoader
-
 from github_collector.configuration.collector_config_override import (
     CollectorConfigOverride,
 )
+from pydantic import Field
+from pyoaev.configuration import ConfigLoaderOAEV, Configuration, SettingsLoader
 
 PLAIN_FIELDS = (
     "github_api_url",

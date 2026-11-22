@@ -3,10 +3,9 @@
 from datetime import timedelta
 from typing import Self
 
+from github_collector.inventory import ALLOWED_PACKAGE_TYPES, DEFAULT_PACKAGE_TYPES
 from pydantic import Field, SecretStr, field_validator, model_validator
 from pyoaev.configuration import ConfigLoaderCollector
-
-from github_collector.inventory import ALLOWED_PACKAGE_TYPES, DEFAULT_PACKAGE_TYPES
 
 
 class CollectorConfigOverride(ConfigLoaderCollector):  # type: ignore[misc]

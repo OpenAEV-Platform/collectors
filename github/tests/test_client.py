@@ -3,7 +3,6 @@
 from unittest.mock import MagicMock
 
 import pytest
-
 from github_collector.client import GitHubApiError, GitHubClient, next_page_url
 
 

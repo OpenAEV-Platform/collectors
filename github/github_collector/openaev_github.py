@@ -4,10 +4,6 @@ import os
 from datetime import UTC, datetime
 from typing import Any
 
-from pyoaev.apis.inputs.search import Filter, FilterGroup, SearchPaginationInput
-from pyoaev.configuration import Configuration
-from pyoaev.daemons import CollectorDaemon
-
 from github_collector.client import GITHUB_COM_API_URL, GitHubClient
 from github_collector.configuration.config_loader import ConfigLoader
 from github_collector.inventory import (
@@ -18,6 +14,9 @@ from github_collector.inventory import (
     InventorySettings,
     parse_list,
 )
+from pyoaev.apis.inputs.search import Filter, FilterGroup, SearchPaginationInput
+from pyoaev.configuration import Configuration
+from pyoaev.daemons import CollectorDaemon
 
 SOURCE_TAG = "source:github"
 DELETED_TAG = "github-state:deleted"

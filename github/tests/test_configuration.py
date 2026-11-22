@@ -3,8 +3,6 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from pydantic import ValidationError
-
 from github_collector import openaev_github
 from github_collector.configuration.collector_config_override import (
     CollectorConfigOverride,
@@ -12,6 +10,7 @@ from github_collector.configuration.collector_config_override import (
 from github_collector.configuration.config_loader import ConfigLoader
 from github_collector.inventory import repository_asset
 from github_collector.openaev_github import OpenAEVGitHub, build_asset, tag_color
+from pydantic import ValidationError
 from tests.fixtures import REPOSITORIES, FakeClient
 
 REQUIRED = {"github_token": "t", "github_organizations": "acme"}
