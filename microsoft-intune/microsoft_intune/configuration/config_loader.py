@@ -69,6 +69,8 @@ class ConfigLoader(SettingsLoader):
                 "microsoft_intune_device_groups": {
                     "data": self.collector.microsoft_intune_device_groups
                 },
+                "create_identities": {"data": self.collector.create_identities},
+                "create_identity_links": {"data": self.collector.create_identity_links},
             },
             config_base_model=self,
         )

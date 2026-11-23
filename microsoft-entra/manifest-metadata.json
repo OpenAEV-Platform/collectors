@@ -1,7 +1,7 @@
 {
   "title": "Microsoft Entra",
   "slug": "openaev_microsoft_entra",
-  "description": "Synchronize users and groups from Microsoft Entra ID (Azure AD) into OpenAEV as players and teams, so simulations can target your real organizational directory.",
+  "description": "Synchronize users and groups from Microsoft Entra ID (Azure AD) into OpenAEV as players and teams, so simulations can target your real organizational directory. Optionally creates identity assets for the users, imports Entra devices and links identities to devices.",
   "short_description": "Import users from Microsoft Entra ID as players",
   "use_cases": ["Player collection"],
   "verified": true,

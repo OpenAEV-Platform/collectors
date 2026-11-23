@@ -51,6 +51,18 @@ class CollectorConfigOverride(ConfigLoaderCollector):
         default=False,
         description="Include user with #EXT# in principal name.",
     )
+    create_identities: bool = Field(
+        default=False,
+        description="Also upsert an IDENTITY asset (user account) for each imported user, linked to its player (asset_linked_person) and keyed by its Entra object id, so the Entra and Intune collectors converge on one identity asset.",
+    )
+    import_devices: bool = Field(
+        default=False,
+        description="Also import Entra devices (/devices) as HOST or MOBILE_DEVICE assets. A device Intune manages lands on the asset the Intune collector writes. Needs Device.Read.All, and DeviceManagementManagedDevices.Read.All to match Intune devices.",
+    )
+    create_identity_links: bool = Field(
+        default=False,
+        description="With import_devices, link the identity of each registered user (LOGGED_ON) and registered owner (USES) to the device. Skipped with one log line when the OpenAEV has no asset links API (EXPLORATION_GRAPH preview feature off or older version).",
+    )
 
     @field_validator("microsoft_entra_client_cert_data", mode="before")
     @classmethod

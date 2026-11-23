@@ -20,3 +20,6 @@ collector:
   # microsoft_intune_client_cert_passphrase: ''
   microsoft_intune_device_filter: ''  # Optional OData filter e.g. "operatingSystem eq 'Windows'" or leave empty for all devices
   microsoft_intune_device_groups: ''  # Comma-separated list of device group names or IDs, leave empty for all devices
+  # Identity assets of the primary users and identity-device links (off by default)
+  create_identities: false
+  create_identity_links: false

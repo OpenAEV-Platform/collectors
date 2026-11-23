@@ -53,6 +53,14 @@ class CollectorConfigOverride(ConfigLoaderCollector):
     microsoft_intune_device_groups: str = Field(
         description="Comma-separated list of device group names or IDs",
     )
+    create_identities: bool = Field(
+        default=False,
+        description="Also upsert the IDENTITY asset (user account) of each device's primary user, keyed by its Entra object id like the Microsoft Entra collector, so both collectors converge on one identity asset, and store the Entra device id (azureADDeviceId) in the endpoint metadata.",
+    )
+    create_identity_links: bool = Field(
+        default=False,
+        description="Link the identity of each device's primary user to the device (LOGGED_ON). Skipped with one log line when the OpenAEV has no asset links API (EXPLORATION_GRAPH preview feature off or older version).",
+    )
 
     @field_validator("microsoft_intune_client_cert_data", mode="before")
     @classmethod

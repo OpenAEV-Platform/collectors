@@ -75,6 +75,9 @@ The collector is configured either through environment variables (recommended, r
 | Entra Client Certificate Thumbprint | `collector.microsoft_entra_client_cert_thumbprint` | `COLLECTOR_MICROSOFT_ENTRA_CLIENT_CERT_THUMBPRINT` | / | Only when `use_certificate_auth=true` | SHA-1 thumbprint of the uploaded Entra app certificate. |
 | Entra Client Certificate Passphrase | `collector.microsoft_entra_client_cert_passphrase` | `COLLECTOR_MICROSOFT_ENTRA_CLIENT_CERT_PASSPHRASE` | / | No | Passphrase for encrypted private keys. |
 | Include External    | `collector.include_external`              | `COLLECTOR_INCLUDE_EXTERNAL`              | false   | No        | Whether guest users (those with `#EXT#` in their user principal name) are imported.       |
+| Create Identities   | `collector.create_identities`             | `COLLECTOR_CREATE_IDENTITIES`             | false   | No        | Also upsert an `IDENTITY` asset (user account) per imported user, linked to its player and keyed by its Entra object id (shared with the Intune collector). |
+| Import Devices      | `collector.import_devices`                | `COLLECTOR_IMPORT_DEVICES`                | false   | No        | Also import Entra devices as `HOST` / `MOBILE_DEVICE` assets; a device Intune manages lands on the asset the Intune collector writes. |
+| Create Identity Links | `collector.create_identity_links`       | `COLLECTOR_CREATE_IDENTITY_LINKS`         | false   | No        | With `import_devices`: link each device's registered users (`LOGGED_ON`) and registered owners (`USES`) to it. Needs the asset links API (see below). |
 
 ## Deployment
 
@@ -180,6 +183,27 @@ On each run, the collector:
 5. Upserts each retained user as an OpenAEV player (email, first name, last name) attached to its team, and attaches tags
    derived from the directory data (source, user type internal/external, department and job title).
 
+### Identity assets, devices and links (optional, all off by default)
+
+With every option off, the collector makes exactly the calls described above.
+
+- `create_identities`: for each upserted player, upserts an `IDENTITY` asset (subcategory `USER_ACCOUNT`) named after
+  the user principal name, external reference `entra-user:<Entra object id>`, with the player's tags and
+  `asset_linked_person` set to the player. The Intune collector uses the same key, so both converge on one identity.
+- `import_devices`: lists `/devices` and upserts each device. A device Intune manages (matched through the Intune
+  `azureADDeviceId`) is written under the Intune device id, the key the Intune collector uses, with its name only, so
+  the Intune record stays the source of its details. Any other device is written as `entra-device:<deviceId>`.
+- `create_identity_links`: for each imported device, links the identity of each registered user (`LOGGED_ON`) and
+  registered owner (`USES`) to the device. A link is written once per collector process: a link removed by hand is not
+  written again until the collector restarts.
+
+Compatibility: an OpenAEV that refuses `asset_linked_person` gets the identity without it (one warning); one that does
+not know the `IDENTITY` category skips identities for the run (one warning). Links need the asset links API, an OpenAEV
+version that has it with the `EXPLORATION_GRAPH` preview feature on: the collector probes it once per run and, when it
+is missing, logs `asset links not available on this OpenAEV, skipped` and imports everything else. The end-of-run line
+`Microsoft Entra assets: ...` counts identities, devices and links per outcome. Owner links (`OWNED_BY`, `MANAGED_BY`)
+are not written yet: OpenAEV has no such link type.
+
 The synchronization is incremental from the platform's point of view: teams and players are created or updated
 (upserted), so a record seen in a previous run is refreshed rather than duplicated.
 
@@ -193,11 +217,17 @@ warning: that is what Microsoft Graph returns when the application lacks `User.R
   - Secret mode: tenant ID, application (client) ID and client secret
   - Certificate mode: tenant ID, application (client) ID, certificate and private key (PEM), and certificate thumbprint
 - Required Microsoft Graph application permission (admin consent required): `Directory.Read.All`, which allows reading
-  groups, group members and user profiles.
+  groups, group members and user profiles. With `import_devices`, `Device.Read.All` (included in
+  `Directory.Read.All`), and `DeviceManagementManagedDevices.Read.All` to match the devices Intune manages (without it,
+  every Entra device is keyed by its Entra device id).
 - API endpoints used:
   - `POST https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token` (OAuth2 client-credentials authentication)
   - `GET /groups` (list groups)
   - `GET /groups/{id}/members` (list group members)
+  - `GET /devices`, `GET /deviceManagement/managedDevices` (option `import_devices`)
+  - `GET /devices/{id}/registeredUsers`, `GET /devices/{id}/registeredOwners` (option `create_identity_links`)
+  - OpenAEV: `POST /api/endpoints/agentless/upsert` for identities and devices, `GET` and `POST
+    /api/assets/{id}/links` for links
 - Reference: [Microsoft Graph - List groups](https://learn.microsoft.com/en-us/graph/api/group-list)
 
 ## Debugging
