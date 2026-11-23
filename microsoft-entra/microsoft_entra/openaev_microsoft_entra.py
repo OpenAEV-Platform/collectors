@@ -5,6 +5,14 @@ from collections import Counter
 import requests
 from azure.identity.aio import CertificateCredential, ClientSecretCredential
 from kiota_abstractions.base_request_configuration import RequestConfiguration
+from microsoft_entra.asset_identities import (
+    DEVICES_FAILED,
+    DEVICES_UPSERTED,
+    LINK_LOGGED_ON,
+    LINK_USES,
+    AssetWriter,
+    device_external_reference,
+)
 from microsoft_entra.configuration.config_loader import ConfigLoader
 from msgraph import GraphServiceClient
 from msgraph.generated.groups.item.members.members_request_builder import (
@@ -54,6 +62,15 @@ class OpenAEVMicrosoftEntra(CollectorDaemon):
 
         # External
         self.include_external = self._configuration.get("include_external")
+
+        # Identity assets, Entra devices and asset links: off by default.
+        self.create_identities = self._configuration.get("create_identities") is True
+        self.import_devices = self._configuration.get("import_devices") is True
+        self.create_identity_links = (
+            self._configuration.get("create_identity_links") is True
+        )
+        self.assets = AssetWriter(self.api, self.logger)
+        self._identity_ids: dict[str, str | None] = {}
 
     def _create_or_get_tag(self, tag_name, tag_color="#6b7280"):
         """Create or get a tag and return its ID."""
@@ -137,8 +154,162 @@ class OpenAEVMicrosoftEntra(CollectorDaemon):
         if tag_ids:
             user["user_tags"] = tag_ids
 
-        self.api.user.upsert(user)
+        openaev_user = self.api.user.upsert(user)
+        if getattr(self, "create_identities", False):
+            self._upsert_identity(
+                getattr(member, "id", None),
+                member.user_principal_name,
+                tag_ids,
+                openaev_user.get("user_id") if isinstance(openaev_user, dict) else None,
+            )
         return UPSERTED
+
+    def _upsert_identity(
+        self, object_id, user_principal_name, tag_ids=None, user_id=None
+    ):
+        """Upsert the identity asset of an Entra user once per run and return
+        its asset id (None when it could not be written)."""
+        if object_id in self._identity_ids:
+            return self._identity_ids[object_id]
+        asset_id = self.assets.upsert_identity(
+            object_id, user_principal_name, tag_ids, linked_person=user_id
+        )
+        if object_id:
+            self._identity_ids[object_id] = asset_id
+        return asset_id
+
+    @staticmethod
+    def _device_platform(operating_system):
+        os_type = (operating_system or "").lower()
+        if "windows" in os_type:
+            return "Windows"
+        if "android" in os_type:
+            return "Android"
+        if any(name in os_type for name in ("ios", "ipad", "iphone")):
+            return "iOS"
+        if "mac" in os_type:
+            return "MacOS"
+        if "linux" in os_type:
+            return "Linux"
+        return "Generic"
+
+    async def _managed_device_ids(self, graph_client):
+        """Map the Entra deviceId of each Intune managed device to its Intune
+        id, the external reference the Intune collector writes, so a device
+        both collectors see lands on one asset. Empty when the application
+        cannot read Intune (no DeviceManagementManagedDevices.Read.All)."""
+        managed = {}
+        try:
+            builder = graph_client.device_management.managed_devices
+            page = await builder.get()
+            while page is not None:
+                for device in page.value or []:
+                    azure_ad_device_id = getattr(device, "azure_a_d_device_id", None)
+                    if azure_ad_device_id and device.id:
+                        managed[azure_ad_device_id.lower()] = device.id
+                if page.odata_next_link is None:
+                    break
+                page = await builder.with_url(page.odata_next_link).get()
+        except Exception as error:
+            self.logger.info(
+                "Microsoft Entra: Intune managed devices not readable "
+                f"({error}); Entra devices are keyed by their Entra device id."
+            )
+            return {}
+        return managed
+
+    async def _device_users(self, builder):
+        """Every user of a device's registeredUsers or registeredOwners."""
+        users = []
+        page = await builder.get()
+        while page is not None:
+            for user in page.value or []:
+                if getattr(user, "odata_type", None) == "#microsoft.graph.user":
+                    users.append(user)
+            if page.odata_next_link is None:
+                break
+            page = await builder.with_url(page.odata_next_link).get()
+        return users
+
+    async def _link_device_users(self, graph_client, device, device_asset_id):
+        """Link each registered user (LOGGED_ON) and registered owner (USES)
+        of an Entra device to the device asset."""
+        device_builder = graph_client.devices.by_device_id(device.id)
+        for relation, link_type in (
+            ("registered_users", LINK_LOGGED_ON),
+            ("registered_owners", LINK_USES),
+        ):
+            try:
+                users = await self._device_users(getattr(device_builder, relation))
+            except Exception as error:
+                self.logger.warning(
+                    f"Failed to read the {relation} of device {device.display_name}: {error}"
+                )
+                continue
+            for user in users:
+                identity_id = self._upsert_identity(user.id, user.user_principal_name)
+                self.assets.link(identity_id, device_asset_id, link_type)
+
+    async def import_entra_devices(self, graph_client):
+        """Upsert every Entra device as a HOST or MOBILE_DEVICE asset, keyed
+        like the Intune collector for a device Intune manages."""
+        managed = await self._managed_device_ids(graph_client)
+        source_tag_id = self._create_or_get_tag(
+            "source:microsoft-entra", TAG_COLORS["source"]
+        )
+        builder = graph_client.devices
+        page = await builder.get()
+        while page is not None:
+            for device in page.value or []:
+                await self._import_device(graph_client, device, managed, source_tag_id)
+            if page.odata_next_link is None:
+                break
+            page = await builder.with_url(page.odata_next_link).get()
+
+    async def _import_device(self, graph_client, device, managed, source_tag_id):
+        entra_device_id = (getattr(device, "device_id", None) or "").lower()
+        name = device.display_name or entra_device_id or device.id
+        intune_id = managed.get(entra_device_id)
+        if intune_id:
+            # The Intune collector owns this asset: name and key only, so its
+            # platform, description and tags are left as Intune writes them.
+            endpoint = {
+                "asset_name": name,
+                "asset_external_reference": intune_id,
+                "asset_hostname": name,
+            }
+        else:
+            platform = self._device_platform(device.operating_system)
+            description = ["Microsoft Entra device"]
+            if device.operating_system:
+                description.append(
+                    f"OS: {device.operating_system} {device.operating_system_version or ''}".strip()
+                )
+            if getattr(device, "trust_type", None):
+                description.append(f"Join type: {device.trust_type}")
+            endpoint = {
+                "asset_name": name,
+                "asset_external_reference": device_external_reference(
+                    entra_device_id or device.id
+                ),
+                "asset_hostname": name,
+                "endpoint_platform": platform,
+                "asset_category": (
+                    "MOBILE_DEVICE" if platform in ("iOS", "Android") else "HOST"
+                ),
+                "asset_description": ", ".join(description),
+            }
+        if source_tag_id:
+            endpoint["asset_tags"] = [source_tag_id]
+        try:
+            device_asset_id = self.assets.upsert_endpoint(endpoint)
+        except Exception as error:
+            self.assets.counts[DEVICES_FAILED] += 1
+            self.logger.warning(f"Failed to upsert the Entra device {name}: {error}")
+            return
+        self.assets.counts[DEVICES_UPSERTED] += 1
+        if self.create_identity_links:
+            await self._link_device_users(graph_client, device, device_asset_id)
 
     async def create_users(self, graph_client, group_id, openaev_team):
         """Upsert the direct members of a group (nested groups are not
@@ -206,10 +377,30 @@ class OpenAEVMicrosoftEntra(CollectorDaemon):
         # The async credential owns an aiohttp session (its token transport):
         # close it on the run's event loop, also when the run fails, so asyncio
         # does not report an "Unclosed client session" when the loop ends.
+        extended = self._extended_options_on()
+        if extended:
+            self.assets.start_run()
+            self._identity_ids = {}
         async with credential:
             totals = await self.create_groups(graph_client)
+            if extended and self.import_devices:
+                await self.import_entra_devices(graph_client)
         if isinstance(totals, Counter):
             self._log_run_summary(totals)
+        if extended:
+            self.logger.info(f"Microsoft Entra assets: {self.assets.summary()}")
+
+    def _extended_options_on(self):
+        """Whether an identity, device or link option is on (all off by
+        default, and then the run is exactly the players and teams import)."""
+        return any(
+            getattr(self, option, False) is True
+            for option in (
+                "create_identities",
+                "import_devices",
+                "create_identity_links",
+            )
+        )
 
     def _process_message(self) -> None:
         # Auth
@@ -258,6 +449,9 @@ def main():
         "MICROSOFT_ENTRA_CLIENT_ID",
         "MICROSOFT_ENTRA_CLIENT_SECRET",
         "INCLUDE_EXTERNAL",
+        "CREATE_IDENTITIES",
+        "IMPORT_DEVICES",
+        "CREATE_IDENTITY_LINKS",
     ]:
         if not os.environ.get(f"COLLECTOR_{key}") and os.environ.get(key):
             os.environ[f"COLLECTOR_{key}"] = os.environ.get(key)

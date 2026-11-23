@@ -1,6 +1,7 @@
 import os
 
 import requests
+from microsoft_intune.asset_identities import LINK_LOGGED_ON, AssetWriter
 from microsoft_intune.configuration.config_loader import ConfigLoader
 from pyoaev.configuration import Configuration
 from pyoaev.daemons import CollectorDaemon
@@ -48,6 +49,33 @@ class OpenAEVMicrosoftIntune(CollectorDaemon):
         self.graph_url = "https://graph.microsoft.com/v1.0"
 
         self.access_token = None
+
+        # Identity assets and asset links: off by default.
+        self.create_identities = self._configuration.get("create_identities") is True
+        self.create_identity_links = (
+            self._configuration.get("create_identity_links") is True
+        )
+        self.assets = AssetWriter(self.api, self.logger)
+        self._identity_ids: dict[str, str | None] = {}
+
+    def _extended_options_on(self):
+        """Whether an identity or link option is on (both off by default, and
+        then the run is exactly the devices import)."""
+        return getattr(self, "create_identities", False) is True or (
+            getattr(self, "create_identity_links", False) is True
+        )
+
+    def _primary_user_identity(self, device):
+        """Upsert the identity asset of the device's primary user once per run
+        and return its asset id (None when it has none or it failed)."""
+        user_id = device.get("userId")
+        if not user_id:
+            return None
+        if user_id not in self._identity_ids:
+            self._identity_ids[user_id] = self.assets.upsert_identity(
+                user_id, device.get("userPrincipalName")
+            )
+        return self._identity_ids[user_id]
 
     def _get_access_token(self):
         """Get Microsoft Graph access token using client credentials."""
@@ -235,6 +263,9 @@ class OpenAEVMicrosoftIntune(CollectorDaemon):
                 "wiFiMacAddress,ethernetMacAddress"
             )
         }
+        if self._extended_options_on():
+            # The primary user's Entra object id keys its identity asset.
+            params["$select"] += ",userId"
         if self.device_filter:
             params["$filter"] = self.device_filter
 
@@ -342,6 +373,10 @@ class OpenAEVMicrosoftIntune(CollectorDaemon):
         """Process message to collect devices and upsert them as endpoints."""
         try:
             self.logger.info("Starting Microsoft Intune device collection...")
+            extended = self._extended_options_on()
+            if extended:
+                self.assets.start_run()
+                self._identity_ids = {}
 
             # Get all managed devices
             devices = self._get_managed_devices()
@@ -518,16 +553,42 @@ class OpenAEVMicrosoftIntune(CollectorDaemon):
                 if tag_ids:
                     endpoint["asset_tags"] = tag_ids
 
-                # Upsert endpoint
+                if not extended:
+                    # Upsert endpoint
+                    try:
+                        self.api.endpoint.upsert(endpoint)
+                        self.logger.info(
+                            f"Successfully upserted endpoint: {device_name}"
+                        )
+                    except Exception as e:
+                        self.logger.error(
+                            f"Failed to upsert endpoint {device_name}: {str(e)}"
+                        )
+                    continue
+
+                # The Entra device id lets the Microsoft Entra collector land
+                # its record of this device on this asset.
+                if device.get("azureADDeviceId"):
+                    endpoint["asset_metadata"] = {
+                        "azure_ad_device_id": device.get("azureADDeviceId")
+                    }
                 try:
-                    self.api.endpoint.upsert(endpoint)
+                    device_asset_id = self.assets.upsert_endpoint(
+                        endpoint, ("asset_metadata",)
+                    )
                     self.logger.info(f"Successfully upserted endpoint: {device_name}")
                 except Exception as e:
                     self.logger.error(
                         f"Failed to upsert endpoint {device_name}: {str(e)}"
                     )
+                    continue
+                identity_id = self._primary_user_identity(device)
+                if self.create_identity_links and device.get("userId"):
+                    self.assets.link(identity_id, device_asset_id, LINK_LOGGED_ON)
 
             self.logger.info("Microsoft Intune device collection completed")
+            if extended:
+                self.logger.info(f"Microsoft Intune assets: {self.assets.summary()}")
 
         except Exception as e:
             self.logger.error(f"Error during device collection: {str(e)}")
@@ -540,6 +601,8 @@ def main():
         "MICROSOFT_INTUNE_CLIENT_SECRET",
         "MICROSOFT_INTUNE_DEVICE_FILTER",
         "MICROSOFT_INTUNE_DEVICE_GROUPS",
+        "CREATE_IDENTITIES",
+        "CREATE_IDENTITY_LINKS",
     ]:
         if not os.environ.get(f"COLLECTOR_{key}") and os.environ.get(key):
             os.environ[f"COLLECTOR_{key}"] = os.environ.get(key)

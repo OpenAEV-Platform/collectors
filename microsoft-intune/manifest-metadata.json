@@ -1,7 +1,7 @@
 {
   "title": "Microsoft Intune",
   "slug": "openaev_microsoft_intune",
-  "description": "Register agentless endpoints managed by Microsoft Intune in OpenAEV, so managed devices can be targeted by simulations without deploying an agent.",
+  "description": "Register agentless endpoints managed by Microsoft Intune in OpenAEV, so managed devices can be targeted by simulations without deploying an agent. Optionally creates the identity assets of the devices' primary users and links them to the devices.",
   "short_description": "Register Microsoft Intune managed devices as agentless endpoints",
   "use_cases": ["Asset collection"],
   "verified": true,

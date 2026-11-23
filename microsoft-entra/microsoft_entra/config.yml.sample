@@ -19,3 +19,7 @@ collector:
   # optional, when the private key is encrypted
   # microsoft_entra_client_cert_passphrase: ''
   include_external: false
+  # Identity assets, Entra devices and identity-device links (all off by default)
+  create_identities: false
+  import_devices: false
+  create_identity_links: false
