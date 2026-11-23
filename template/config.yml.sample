@@ -15,3 +15,4 @@ source:
   key: "value"  # template example of a key:value configuration
 #  time_window: "PT1H"  # default search time window (ISO 8601 format)
 #  expectation_batch_size: 50  # number of expectations in batching-based process mode
+#  retry_window: "PT10M"  # time after the recorded end date before invalidating an expectation (ISO 8601 format) - if the end date is not available, the start date is used with a factor 1.5 on the retry window (until the end date is available)
