@@ -1,4 +1,5 @@
 from collections import defaultdict
+from datetime import datetime
 from ipaddress import IPv4Address, IPv6Address
 from typing import Annotated, Literal, Union
 
@@ -8,23 +9,31 @@ from pyoaev.signatures.types import SignatureTypes
 
 
 class BaseEvidence(BaseModel):
-    remediation_status: Literal[
-        "none",
-        "remediated",
-        "prevented",
-        "blocked",
-        "notFound",
-        "unknownFutureValue",
-        "active",
-        "pendingApproval",
-        "declined",
-        "unremediated",
-        "running",
-        "partiallyRemediated",
-    ] | None = Field(
+    remediation_status: (
+        Literal[
+            "none",
+            "remediated",
+            "prevented",
+            "blocked",
+            "notFound",
+            "unknownFutureValue",
+            "active",
+            "pendingApproval",
+            "declined",
+            "unremediated",
+            "running",
+            "partiallyRemediated",
+        ]
+        | None
+    ) = Field(
         None,
         alias="remediationStatus",
         description="Status of the remediation action taken.",
+    )
+    created_date_time: datetime = Field(
+        ...,
+        alias="createdDateTime",
+        description="Time when Microsoft 365 Defender created the alert.",
     )
 
     def is_prevented(self) -> bool:
@@ -42,9 +51,9 @@ class processEvidence(BaseEvidence):
     odata_type: Literal["#microsoft.graph.security.processEvidence"] = Field(
         ..., alias="@odata.type"
     )
-    detection_status: Literal[
-        "detected", "blocked", "prevented", "unknownFutureValue"
-    ] | None = Field(None, alias="detectionStatus", description="Status of the detection")
+    detection_status: (
+        Literal["detected", "blocked", "prevented", "unknownFutureValue"] | None
+    ) = Field(None, alias="detectionStatus", description="Status of the detection")
     image_file: imageFile | None = Field(None, alias="imageFile")
     parent_process_image_file: imageFile | None = Field(
         None, alias="parentProcessImageFile"
@@ -140,9 +149,9 @@ class fileEvidence(BaseEvidence):
     odata_type: Literal["#microsoft.graph.security.fileEvidence"] = Field(
         ..., alias="@odata.type"
     )
-    detection_status: Literal[
-        "detected", "blocked", "prevented", "unknownFutureValue"
-    ] | None = Field(None, alias="detectionStatus", description="Status of the detection")
+    detection_status: (
+        Literal["detected", "blocked", "prevented", "unknownFutureValue"] | None
+    ) = Field(None, alias="detectionStatus", description="Status of the detection")
     file_details: fileDetails | None = Field(None, alias="fileDetails")
 
     def is_prevented(self) -> bool:

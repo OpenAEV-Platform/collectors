@@ -11,6 +11,7 @@ class TestEvidence(unittest.TestCase):
     def test_process_evidence(self):
         process_data = {
             "@odata.type": "#microsoft.graph.security.processEvidence",
+            "createdDateTime": "2026-11-13T13:05:43.1533333Z",
             "detectionStatus": "detected",
             "remediationStatus": "active",
             "imageFile": {"fileName": "deadbeef.exe"},
@@ -68,6 +69,7 @@ class TestEvidence(unittest.TestCase):
     def test_device_evidence(self):
         device_data = {
             "@odata.type": "#microsoft.graph.security.deviceEvidence",
+            "createdDateTime": "2026-11-16T12:20:11.16Z",
             "remediationStatus": "active",
             "deviceDnsName": "me.here",
             "hostName": "me",
@@ -107,6 +109,7 @@ class TestEvidence(unittest.TestCase):
     def test_file_evidence(self):
         file_data = {
             "@odata.type": "#microsoft.graph.security.fileEvidence",
+            "createdDateTime": "2026-11-16T12:39:43.2633333Z",
             "detectionStatus": "blocked",
             "remediationStatus": "prevented",
             "fileDetails": {
@@ -152,6 +155,7 @@ class TestEvidence(unittest.TestCase):
     def test_ip_evidence_ipv4(self):
         ip_data = {
             "@odata.type": "#microsoft.graph.security.ipEvidence",
+            "createdDateTime": "2026-11-16T12:21:15.5033333Z",
             "remediationStatus": "none",
             "ipAddress": "1.2.3.4",
         }
@@ -179,6 +183,7 @@ class TestEvidence(unittest.TestCase):
     def test_ip_evidence_ipv6(self):
         ip_data = {
             "@odata.type": "#microsoft.graph.security.ipEvidence",
+            "createdDateTime": "2026-11-16T11:09:57.7433333Z",
             "remediationStatus": "none",
             "ipAddress": "2001:db8::1",
         }
@@ -206,6 +211,7 @@ class TestEvidence(unittest.TestCase):
     def test_generic_evidence(self):
         generic_data = {
             "@odata.type": "#microsoft.graph.security.userEvidence",
+            "createdDateTime": "2026-11-13T12:39:32.2466667Z",
             "remediationStatus": "none",
             "key": "value",
         }

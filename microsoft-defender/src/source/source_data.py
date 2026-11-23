@@ -1,5 +1,5 @@
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, Literal
 
 from pydantic import AnyHttpUrl, BaseModel, Field, model_validator
@@ -72,6 +72,13 @@ class Alert(BaseModel):
         # first, check if any relevant evidence has been prevented
         if any(el.is_prevented() for el in self.evidence):
             return True
+        #for evidence in self.evidence:
+        #    if (
+        #        evidence.created_date_time
+        #        > (self.last_update_date_time - timedelta(minutes=10))
+        #        and evidence.is_prevented()
+        #    ):
+        #        return True
         # if not, check if the overall alert has been resolved
         if self.status in ["inProgress", "resolved"]:
             return True
