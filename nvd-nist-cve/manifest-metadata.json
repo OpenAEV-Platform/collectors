@@ -10,7 +10,7 @@
   "max_confidence_level": 80,
   "support_version": "",
   "subscription_link": "https://nvd.nist.gov/vuln",
-  "source_code": "",
+  "source_code": "https://github.com/OpenAEV-Platform/collectors/tree/main/nvd-nist-cve",
   "manager_supported": true,
   "container_version": "rolling",
   "container_image": "openaev/collector-nvd-nist-cve",
