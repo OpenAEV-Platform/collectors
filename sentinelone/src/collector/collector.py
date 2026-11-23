@@ -17,6 +17,9 @@ from .expectation_handler import GenericExpectationHandler
 from .expectation_manager import GenericExpectationManager
 
 LOG_PREFIX = "[Collector]"
+# PREVENTION stays declared so the platform's view of the collector is unchanged.
+ALERT_EXPECTATION_TYPES = ["DETECTION", "PREVENTION"]
+LOGGING_EXPECTATION_TYPE = "LOGGING"
 
 
 class Collector(CollectorDaemon):  # type: ignore[misc]
@@ -35,11 +38,16 @@ class Collector(CollectorDaemon):  # type: ignore[misc]
         try:
             self.config = SentinelOneConfig()
             self.config_instance = self.config.load
+            # "is True": a mocked config must not turn Logging on.
+            self.logging_enabled = (
+                self.config_instance.sentinelone.logging_enabled is True
+            )
 
             super().__init__(
                 configuration=self.config_instance.to_daemon_config(),
                 callback=self._process_callback,
                 collector_type="openaev_sentinelone",
+                supported_expectation_types=self._declared_expectation_types(),
             )
 
             self.logger.info(  # type: ignore[has-type]
@@ -140,3 +148,14 @@ class Collector(CollectorDaemon):  # type: ignore[misc]
         except Exception as e:
             self.logger.error(f"{LOG_PREFIX} Error during processing cycle: {str(e)}")
             raise CollectorProcessingError(f"Processing error: {str(e)}") from e
+
+    def _declared_expectation_types(self) -> list[str]:
+        """List the expectation types declared to the platform.
+
+        Returns:
+            DETECTION and PREVENTION, plus LOGGING when Logging is enabled.
+
+        """
+        if self.logging_enabled:
+            return [*ALERT_EXPECTATION_TYPES, LOGGING_EXPECTATION_TYPE]
+        return list(ALERT_EXPECTATION_TYPES)

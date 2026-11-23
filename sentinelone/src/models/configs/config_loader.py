@@ -179,6 +179,12 @@ class ConfigLoader(ConfigBaseSettings):
                 "sentinelone_disable_strict_end_date": {
                     "data": self.sentinelone.disable_strict_end_date
                 },
+                "sentinelone_logging_enabled": {
+                    "data": self.sentinelone.logging_enabled
+                },
+                "sentinelone_logging_max_interval": {
+                    "data": self.sentinelone.logging_max_interval
+                },
             },
             config_base_model=self,
         )
