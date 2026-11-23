@@ -43,7 +43,9 @@ def test_logging_enabled_with_deep_visibility_search_is_kept(
     assert config.enable_deep_visibility_search is True  # noqa: S101
 
 
-@pytest.mark.parametrize("search", [None, "false"], ids=["search-unset", "search-false"])
+@pytest.mark.parametrize(
+    "search", [None, "false"], ids=["search-unset", "search-false"]
+)
 def test_logging_enabled_without_deep_visibility_search_fails(
     monkeypatch, required_env, search
 ):  # type: ignore
