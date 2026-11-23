@@ -10,6 +10,7 @@ from pyoaev.signatures.types import MatchTypes, SignatureTypes
 
 from crowdstrike.configuration.config_loader import ConfigLoader
 from crowdstrike.crowdstrike_api_handler import CrowdstrikeApiHandler
+from crowdstrike.crowdstrike_credentials import CrowdstrikeCredentials
 from crowdstrike.query_strategy.alert import Alert, Item
 from crowdstrike.query_strategy.base import Base
 
@@ -30,8 +31,16 @@ class OpenAEVCrowdStrike(CollectorDaemon):
         self.strategy = strategy or Alert(
             api_handler=CrowdstrikeApiHandler(
                 logger=self.logger,
-                client_id=self._configuration.get("crowdstrike_client_id"),
-                client_secret=self._configuration.get("crowdstrike_client_secret"),
+                credentials=CrowdstrikeCredentials(
+                    client_id=self._configuration.get("crowdstrike_client_id"),
+                    client_secret=self._configuration.get("crowdstrike_client_secret"),
+                    client_id_file=self._configuration.get(
+                        "crowdstrike_client_id_file"
+                    ),
+                    client_secret_file=self._configuration.get(
+                        "crowdstrike_client_secret_file"
+                    ),
+                ),
                 base_url=self._configuration.get("crowdstrike_api_base_url"),
             )
         )

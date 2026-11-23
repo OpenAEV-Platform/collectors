@@ -15,6 +15,7 @@ alerts with the related injects to confirm whether the activity was detected and
     - [OpenAEV environment variables](#openaev-environment-variables)
     - [Base collector environment variables](#base-collector-environment-variables)
     - [CrowdStrike collector environment variables](#crowdstrike-collector-environment-variables)
+    - [Credentials from a secrets store](#credentials-from-a-secrets-store)
   - [Deployment](#deployment)
     - [Docker Deployment](#docker-deployment)
     - [Manual Deployment](#manual-deployment)
@@ -70,11 +71,34 @@ The collector is configured either through environment variables (recommended, r
 |---------------|-----------------------------|-----------------------------|---------------------------------------|-----------|-------------------------------------------------------------------------|
 | API Base URL  | `crowdstrike.api_base_url`  | `CROWDSTRIKE_API_BASE_URL`  | `https://api.us-2.crowdstrike.com`    | No        | The region-specific base URL of the CrowdStrike Falcon API.             |
 | UI Base URL   | `crowdstrike.ui_base_url`   | `CROWDSTRIKE_UI_BASE_URL`   | `https://falcon.us-2.crowdstrike.com` | No        | The Falcon console base URL, used to build the alert links in traces.   |
-| Client ID     | `crowdstrike.client_id`     | `CROWDSTRIKE_CLIENT_ID`     | /                                     | Yes       | The CrowdStrike Falcon API client ID.                                   |
-| Client Secret | `crowdstrike.client_secret` | `CROWDSTRIKE_CLIENT_SECRET` | /                                     | Yes       | The CrowdStrike Falcon API client secret.                              |
+| Client ID     | `crowdstrike.client_id`     | `CROWDSTRIKE_CLIENT_ID`     | /                                     | Yes (1)   | The CrowdStrike Falcon API client ID.                                   |
+| Client Secret | `crowdstrike.client_secret` | `CROWDSTRIKE_CLIENT_SECRET` | /                                     | Yes (1)   | The CrowdStrike Falcon API client secret.                              |
+| Client ID file     | `crowdstrike.client_id_file`     | `CROWDSTRIKE_CLIENT_ID_FILE`     | /                          | Yes (1)   | Path to a file holding the client ID, read again on every run.          |
+| Client Secret file | `crowdstrike.client_secret_file` | `CROWDSTRIKE_CLIENT_SECRET_FILE` | /                          | Yes (1)   | Path to a file holding the client secret, read again on every run.      |
+
+> (1) Give each credential either as a value or as a file, not both. See
+> [Credentials from a secrets store](#credentials-from-a-secrets-store).
 
 > Note: select the `api_base_url` and `ui_base_url` that match your Falcon cloud region (US-1, US-2, EU-1, US-GOV-1).
 > The defaults above target the US-2 cloud.
+
+### Credentials from a secrets store
+
+Instead of passing the client ID and secret as values, the collector can read them from files written by a secrets
+store, for example [Vault Agent](https://developer.hashicorp.com/vault/docs/agent-and-proxy/agent/template), a mounted
+Kubernetes secret, the [Secrets Store CSI driver](https://secrets-store-csi-driver.sigs.k8s.io/) (Vault, AWS Secrets
+Manager, Azure Key Vault, Google Secret Manager) or Docker secrets:
+
+```shell
+CROWDSTRIKE_CLIENT_ID_FILE=/run/secrets/crowdstrike_client_id
+CROWDSTRIKE_CLIENT_SECRET_FILE=/run/secrets/crowdstrike_client_secret
+```
+
+Surrounding whitespace and newlines are ignored. The files are read again at the start of every run: when their content
+changes, the collector authenticates again with the new credentials, so they can be rotated without restarting it. If
+Falcon refuses the credentials (HTTP 401) and the files changed in the meantime, the query is retried once with the new
+ones. If a file cannot be read during a run (for example while the secrets store replaces it), the collector logs a
+warning and keeps the credentials it already has. At startup, a missing or empty file stops the collector.
 
 ## Deployment
 
@@ -177,12 +201,13 @@ Expectations that remain unmatched after the 45-minute window are marked as fail
 
 ## Required permissions and API endpoints
 
-- Required permission: a Falcon API client with the **`Alerts: Read`** scope.
+- Required permission: a Falcon API client with the **`Alerts: Read`** scope. The collector never writes to Falcon,
+  so no write scope is needed.
   Create it in the Falcon console under **Support and resources > API clients and keys**.
 - API endpoints used:
   - `POST /oauth2/token` (OAuth2 client-credentials authentication)
   - `GET /alerts/queries/alerts/v2` (list alert IDs in the time window)
-  - `GET /alerts/entities/alerts/v2` (fetch alert details)
+  - `POST /alerts/entities/alerts/v2` (fetch alert details; a read operation, covered by `Alerts: Read`)
 - Reference: [CrowdStrike FalconPy Alerts service collection](https://falconpy.io/Service-Collections/Alerts.html)
 
 ## Debugging

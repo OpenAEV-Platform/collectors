@@ -1,8 +1,14 @@
+from pathlib import Path
+
 from pydantic import Field
 from pyoaev.configuration import ConfigLoaderOAEV, Configuration, SettingsLoader
 
 from crowdstrike.configuration.collector_config_override import CollectorConfigOverride
 from crowdstrike.configuration.crowdstrike_settings import CrowdstrikeSettings
+
+
+def _path_or_none(path: Path | None) -> str | None:
+    return str(path) if path is not None else None
 
 
 class ConfigLoader(SettingsLoader):
@@ -41,10 +47,20 @@ class ConfigLoader(SettingsLoader):
                     "is_number": True,
                 },
                 "collector_icon_filepath": {"data": self.collector.icon_filepath},
-                # SplunkES configuration (flattened)
-                "crowdstrike_client_id": {"data": str(self.crowdstrike.client_id)},
+                # CrowdStrike configuration (flattened)
+                "crowdstrike_client_id": {"data": self.crowdstrike.client_id},
                 "crowdstrike_client_secret": {
-                    "data": self.crowdstrike.client_secret.get_secret_value()
+                    "data": (
+                        self.crowdstrike.client_secret.get_secret_value()
+                        if self.crowdstrike.client_secret
+                        else None
+                    )
+                },
+                "crowdstrike_client_id_file": {
+                    "data": _path_or_none(self.crowdstrike.client_id_file)
+                },
+                "crowdstrike_client_secret_file": {
+                    "data": _path_or_none(self.crowdstrike.client_secret_file)
                 },
                 "crowdstrike_api_base_url": {"data": self.crowdstrike.api_base_url},
                 "crowdstrike_ui_base_url": {"data": self.crowdstrike.ui_base_url},
