@@ -196,6 +196,13 @@ class TestCrowdstrikeSettings(unittest.TestCase):
                 client_secret_file="/run/secrets/secret",
             )
 
+    def test_config_schema_requires_the_values_and_hides_the_files(self):
+        schema = CrowdstrikeSettings.model_json_schema()
+
+        self.assertEqual(["client_id", "client_secret"], schema["required"])
+        self.assertNotIn("client_id_file", schema["properties"])
+        self.assertNotIn("client_secret_file", schema["properties"])
+
     def test_empty_values_count_as_unset(self):
         settings = CrowdstrikeSettings(
             client_id="",

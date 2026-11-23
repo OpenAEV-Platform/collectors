@@ -1,13 +1,19 @@
 from pathlib import Path
 
 from pydantic import Field, SecretStr, field_validator, model_validator
+from pydantic.json_schema import SkipJsonSchema
 from pydantic_settings import BaseSettings
 
 
 class CrowdstrikeSettings(BaseSettings):
     """CrowdStrike API configuration settings."""
 
-    model_config = {"frozen": False}
+    # The config schema feeds the OpenAEV catalog, whose deployments only pass environment
+    # variables: it keeps the values required and leaves out the credential files.
+    model_config = {
+        "frozen": False,
+        "json_schema_extra": {"required": ["client_id", "client_secret"]},
+    }
 
     client_id: str | None = Field(
         default=None,
@@ -17,7 +23,7 @@ class CrowdstrikeSettings(BaseSettings):
         default=None,
         description="The CrowdStrike API client secret. Required unless client_secret_file is set.",
     )
-    client_id_file: Path | None = Field(
+    client_id_file: SkipJsonSchema[Path | None] = Field(
         default=None,
         description=(
             "Path to a file holding the CrowdStrike API client ID, for example written by a "
@@ -25,7 +31,7 @@ class CrowdstrikeSettings(BaseSettings):
             "without restarting the collector."
         ),
     )
-    client_secret_file: Path | None = Field(
+    client_secret_file: SkipJsonSchema[Path | None] = Field(
         default=None,
         description=(
             "Path to a file holding the CrowdStrike API client secret, for example written by "
