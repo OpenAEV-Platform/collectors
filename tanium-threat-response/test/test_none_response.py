@@ -2,7 +2,7 @@ import sys
 import types
 from types import SimpleNamespace
 from unittest import TestCase
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from pydantic import BaseModel
 
@@ -50,12 +50,12 @@ def _install_pyoaev_stub():
     sys.modules["pyoaev.helpers"] = helpers
 
 
-_install_pyoaev_stub()
-
-from tanium_threat_response.api_handler import TaniumApiHandler
-from tanium_threat_response.openaev_tanium_threat_response import (
-    OpenAEVTaniumThreatResponse,
-)
+with patch.dict(sys.modules):
+    _install_pyoaev_stub()
+    from tanium_threat_response import api_handler
+    from tanium_threat_response.openaev_tanium_threat_response import (
+        OpenAEVTaniumThreatResponse,
+    )
 
 
 class _Logger:
@@ -160,7 +160,9 @@ class NoneResponseTest(TestCase):
 
     def test_query_without_data_returns_none(self):
         logger = _Logger()
-        handler = TaniumApiHandler(logger, "https://tanium.example", "token")
+        handler = api_handler.TaniumApiHandler(
+            logger, "https://tanium.example", "token"
+        )
         response = MagicMock()
         response.status_code = 200
         response.json.return_value = {"data": None}
@@ -168,8 +170,6 @@ class NoneResponseTest(TestCase):
 
         def fake_get(*args, **kwargs):
             return response
-
-        import tanium_threat_response.api_handler as api_handler
 
         original = api_handler.requests.get
         api_handler.requests.get = fake_get
