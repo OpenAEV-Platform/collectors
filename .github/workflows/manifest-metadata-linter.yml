@@ -1,0 +1,28 @@
+name: Manifest Metadata Linter
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  manifest-metadata-jq-check:
+    name: manifest metadata - jq check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup jq
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+
+      - name: check source_code values
+        run: |
+          jq 'if .source_code == "" then error("missing source_code") else .source_code end' */manifest-metadata.json
