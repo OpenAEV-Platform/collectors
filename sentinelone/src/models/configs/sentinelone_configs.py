@@ -84,11 +84,6 @@ class _ConfigLoaderSentinelOne(ConfigBaseSettings):
             "Visibility retention (30/90/180/365 days)."
         ),
     )
-    disable_strict_end_date: bool = Field(
-        alias="SENTINELONE_DISABLE_STRICT_END_DATE",
-        default=False,
-        description="Disable ignoring OpenAEV expectations without a proper end dates.",
-    )
     logging_enabled: bool = Field(
         alias="SENTINELONE_LOGGING_ENABLED",
         default=False,

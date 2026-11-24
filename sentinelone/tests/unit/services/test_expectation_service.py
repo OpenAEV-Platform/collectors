@@ -31,9 +31,7 @@ class TestSentinelOneExpectationService(unittest.TestCase):
             service.enable_deep_visibility_search,
             config.sentinelone.enable_deep_visibility_search,
         )
-        self.assertEqual(
-            service.disable_strict_end_date, config.sentinelone.disable_strict_end_date
-        )
+        self.assertFalse(hasattr(service, "disable_strict_end_date"))
         self.assertEqual(service.threat_fetcher, m_fetcher_threat.return_value)
         self.assertEqual(
             service.threat_events_fetcher, m_fetcher_threat_events.return_value
@@ -149,7 +147,6 @@ class TestSentinelOneExpectationService(unittest.TestCase):
         config = MagicMock()
 
         service = module.SentinelOneExpectationService(config=config)
-        service.disable_strict_end_date = False
 
         expectation_zero = MagicMock()
         expectations = [expectation_zero]
@@ -161,6 +158,25 @@ class TestSentinelOneExpectationService(unittest.TestCase):
             [expectation_zero]
         )
         self.assertEqual(batches, [[expectation_zero]])
+
+    @patch.object(module, "SignatureExtractor")
+    def test_missing_end_date_is_skipped_even_if_strict_check_was_disabled(
+        self, m_signature_extractor, *_
+    ):
+        """End-date filtering stays on; the old disable flag must not bypass it."""
+        config = MagicMock()
+
+        service = module.SentinelOneExpectationService(config=config)
+        service.disable_strict_end_date = True
+
+        expectation = MagicMock()
+        m_signature_extractor.extract_end_date.return_value = None
+
+        batches, skipped_count = service._create_expectation_batches([expectation])
+
+        m_signature_extractor.extract_end_date.assert_called_once_with([expectation])
+        self.assertEqual(batches, [])
+        self.assertEqual(skipped_count, 1)
 
     @patch.object(module, "SignatureExtractor")
     def test_get_fetch_time_window_with_start_date(self, m_signature_extractor, *_):
