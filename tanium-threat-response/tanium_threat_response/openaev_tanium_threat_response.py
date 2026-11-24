@@ -255,11 +255,15 @@ class OpenAEVTaniumThreatResponse(CollectorDaemon):
         )
 
         # Retrieve alerts
-        alerts = self.tanium_api_handler._query(
-            "get",
-            "/plugin/products/threat-response/api/v1/alerts",
-            {"sort": "-createdAt"},
-        )
+        try:
+            alerts = self.tanium_api_handler._query(
+                "get",
+                "/plugin/products/threat-response/api/v1/alerts",
+                {"sort": "-createdAt"},
+                raise_http_errors=True,
+            )
+        except requests.exceptions.HTTPError:
+            return
         if not isinstance(alerts, list):
             alerts = []
         self.logger.info("Found " + str(len(alerts)) + " alerts (taking first 200)")

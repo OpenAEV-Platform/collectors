@@ -29,6 +29,8 @@ class TaniumApiHandler:
         payload=None,
         content_type="application/json",
         type=None,
+        *,
+        raise_http_errors=False,
     ):
         self.logger.info("Query " + method + " on " + uri)
         headers = {"session": self.token}
@@ -138,4 +140,6 @@ class TaniumApiHandler:
                 + ": "
                 + r.text
             )
+            if raise_http_errors:
+                r.raise_for_status()
             return None

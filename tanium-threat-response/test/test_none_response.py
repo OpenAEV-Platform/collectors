@@ -138,6 +138,28 @@ class NoneResponseTest(TestCase):
         )
         self.assertEqual(traces, [{"expectation_traces": []}])
 
+    def test_alerts_http_503_leaves_expired_expectation_pending(self):
+        collector, updates, traces = _collector(None)
+        collector.tanium_api_handler = api_handler.TaniumApiHandler(
+            collector.logger, "https://tanium.example", "token"
+        )
+        unavailable = api_handler.requests.Response()
+        unavailable.status_code = 503
+        recovered = api_handler.requests.Response()
+        recovered.status_code = 200
+        recovered.json = lambda: {"data": []}
+
+        with patch.object(
+            api_handler.requests, "get", side_effect=[unavailable, recovered]
+        ):
+            collector._process_message()
+            self.assertEqual(updates, [])
+            self.assertEqual(traces, [])
+            self.assertIn("503", collector.logger.errors[0])
+
+            collector._process_message()
+            self.assertEqual(updates[0][1]["result"], "Not Detected")
+
     def test_missing_intel_keeps_alert_guid(self):
         collector, _, _ = _collector(None)
 
