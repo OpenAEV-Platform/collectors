@@ -116,6 +116,27 @@ class SentinelOneExpectationService:
             SignatureTypes.SIG_TYPE_END_DATE,
         ]
 
+    def get_logging_signatures(self) -> list[SignatureTypes]:
+        """Get the signature types the Logging search reads.
+
+        This list is separate from get_supported_signatures on purpose:
+        Detection needs every one of its signature types to match, so adding
+        the IP types there would make Detection fail.
+
+        Returns:
+            List of SignatureTypes enum values used by Logging.
+
+        """
+        return [
+            SignatureTypes.SIG_TYPE_PARENT_PROCESS_NAME,
+            SignatureTypes.SIG_TYPE_SOURCE_IPV4_ADDRESS,
+            SignatureTypes.SIG_TYPE_SOURCE_IPV6_ADDRESS,
+            SignatureTypes.SIG_TYPE_TARGET_IPV4_ADDRESS,
+            SignatureTypes.SIG_TYPE_TARGET_IPV6_ADDRESS,
+            SignatureTypes.SIG_TYPE_START_DATE,
+            SignatureTypes.SIG_TYPE_END_DATE,
+        ]
+
     def handle_batch_expectations(
         self,
         expectations: list[DetectionExpectation | PreventionExpectation],

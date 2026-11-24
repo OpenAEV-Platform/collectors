@@ -11,14 +11,10 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Iterable, Mapping
 
+from pyoaev.signatures.types import SignatureTypes
+
 from .fetcher_sdl import S1QL_BASE_FILTER
 from .utils.s1ql import dv_list, dv_string, s1ql_list, s1ql_string
-
-MARKER_SIGNATURE_TYPE = "parent_process_name"
-SOURCE_IP_SIGNATURE_TYPES = ("source_ipv4_address", "source_ipv6_address")
-TARGET_IP_SIGNATURE_TYPES = ("target_ipv4_address", "target_ipv6_address")
-START_DATE_SIGNATURE_TYPE = "start_date"
-END_DATE_SIGNATURE_TYPE = "end_date"
 
 # Fields that can hold the implant's name: the process itself, the process that
 # started an event (e.g. a child or a network connection), or its parent.
@@ -95,10 +91,10 @@ def build_logging_query(
         if value:
             by_type.setdefault(str(signature.get("type")), []).append(value)
 
-    end_dates = by_type.get(END_DATE_SIGNATURE_TYPE, [])
+    end_dates = by_type.get(SignatureTypes.SIG_TYPE_END_DATE.value, [])
     if not end_dates:
         return Unqueryable("no end_date")
-    start_dates = by_type.get(START_DATE_SIGNATURE_TYPE, [])
+    start_dates = by_type.get(SignatureTypes.SIG_TYPE_START_DATE.value, [])
     if not start_dates:
         return Unqueryable("no start_date")
     # Round the window outwards: it can only grow by under a second, never
@@ -110,12 +106,16 @@ def build_logging_query(
     if start > end:
         return Unqueryable("start_date is after end_date")
 
-    markers = _unique(by_type.get(MARKER_SIGNATURE_TYPE, []))
+    markers = _unique(
+        by_type.get(SignatureTypes.SIG_TYPE_PARENT_PROCESS_NAME.value, [])
+    )
     source_ips = _unique(
-        ip for kind in SOURCE_IP_SIGNATURE_TYPES for ip in by_type.get(kind, [])
+        by_type.get(SignatureTypes.SIG_TYPE_SOURCE_IPV4_ADDRESS.value, [])
+        + by_type.get(SignatureTypes.SIG_TYPE_SOURCE_IPV6_ADDRESS.value, [])
     )
     target_ips = _unique(
-        ip for kind in TARGET_IP_SIGNATURE_TYPES for ip in by_type.get(kind, [])
+        by_type.get(SignatureTypes.SIG_TYPE_TARGET_IPV4_ADDRESS.value, [])
+        + by_type.get(SignatureTypes.SIG_TYPE_TARGET_IPV6_ADDRESS.value, [])
     )
     if not markers and not source_ips and not target_ips:
         # Never search without a signal: it would match every event.
