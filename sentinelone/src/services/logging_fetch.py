@@ -7,45 +7,20 @@ error can never be mistaken for "no event found".
 """
 
 import logging
-import re
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from .exception import SentinelOneAPIError, SentinelOneNetworkError
 from .fetcher_deep_visibility import FetcherDeepVisibility
 from .fetcher_sdl import FetcherSDL
 from .logging_query import LoggingQuery
+from .utils.dates import read_iso_date
 
 LOG_PREFIX = "[SentinelOneLoggingFetch]"
 AUTH_ERROR_STATUS_CODES = (401, 403)
 
-# Where each value is in an SDL row (S1QL 2.0 field names).
-SDL_FIELDS = {
-    "time": ("event.time",),
-    "type": ("event.type",),
-    "endpoint": ("endpoint.name",),
-    "id": ("event.id",),
-    "tgt_process": ("tgt.process.name",),
-    "src_process": ("src.process.name",),
-    "src_parent_process": ("src.process.parent.name",),
-    "src_ip": ("src.ip.address",),
-    "dst_ip": ("dst.ip.address",),
-}
-# Where each value is in a Deep Visibility event. Only processName and
-# parentProcessName are used by Detection today: the other names are not
-# checked on a self-hosted console yet, so the likely spellings are all tried.
-DV_FIELDS = {
-    "time": ("eventTime", "createdAt"),
-    "type": ("eventType",),
-    "endpoint": ("agentName", "agentComputerName", "endpointName"),
-    "id": ("id", "eventId"),
-    "tgt_process": ("tgtProcName", "targetProcessName"),
-    "src_process": ("processName", "srcProcName"),
-    "src_parent_process": ("parentProcessName", "srcProcParentName"),
-    "src_ip": ("srcIp", "srcIP"),
-    "dst_ip": ("dstIp", "dstIP"),
-}
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -104,7 +79,7 @@ class LoggingAuthError:
     """
 
     status_code: int
-    message: str = field(default="")
+    message: str = ""
 
 
 @dataclass(frozen=True)
@@ -127,6 +102,9 @@ def fetch_logging_events(
 ) -> LoggingFetchResult:
     """Run the Logging search of one expectation and read its events.
 
+    A row needs a readable event time. A row without it is skipped and
+    counted, so one bad row does not hide the others.
+
     Args:
         fetcher: The event search of the console: ``FetcherSDL`` on SaaS,
             ``FetcherDeepVisibility`` on self-hosted. It must match the S1QL
@@ -137,7 +115,6 @@ def fetch_logging_events(
         The events, ``LoggingEmpty`` when none was found, or the error.
 
     """
-    logger = logging.getLogger(__name__)
     try:
         rows = fetcher.fetch_rows(query.filter, query.start, query.end)
     except SentinelOneAPIError as e:
@@ -149,75 +126,46 @@ def fetch_logging_events(
 
     if not rows:
         return LoggingEmpty()
-    fields = DV_FIELDS if isinstance(fetcher, FetcherDeepVisibility) else SDL_FIELDS
-    events, skipped = parse_logging_rows(rows, fields)
+    events = [
+        event
+        for event in (_parse_row(row, fetcher.LOGGING_FIELDS) for row in rows)
+        if event is not None
+    ]
+    skipped = len(rows) - len(events)
     if skipped:
         logger.debug(f"{LOG_PREFIX} Skipped {skipped} unreadable Logging rows")
     return LoggingRows(events=events, skipped=skipped)
 
 
-def parse_logging_rows(
-    rows: list[Any], fields: dict[str, tuple[str, ...]]
-) -> tuple[list[LoggingEvent], int]:
-    """Turn the rows of a Logging search into events.
-
-    A row needs a readable event time. A row without it is skipped and
-    counted, so one bad row does not hide the others.
+def _parse_row(row: Any, fields: dict[str, str]) -> LoggingEvent | None:
+    """Build one event from a row, or None when the row has no readable time.
 
     Args:
-        rows: The raw rows. An SDL row holds its fields under ``values``.
-        fields: ``SDL_FIELDS`` or ``DV_FIELDS``.
+        row: The event fields by name, as returned by ``fetch_rows``.
+        fields: The fetcher's ``LOGGING_FIELDS``: where each event value is.
 
     Returns:
-        The events, and the number of skipped rows.
+        The event, or None.
 
     """
-    events: list[LoggingEvent] = []
-    skipped = 0
-    for row in rows:
-        event = _parse_row(row, fields)
-        if event is None:
-            skipped += 1
-        else:
-            events.append(event)
-    return events, skipped
-
-
-def _parse_row(row: Any, fields: dict[str, tuple[str, ...]]) -> LoggingEvent | None:
-    """Build one event from a row, or None when the row cannot be read."""
     if not isinstance(row, dict):
         return None
-    values = row.get("values") if isinstance(row.get("values"), dict) else row
-    event_time = _parse_event_time(_first(values, fields["time"]))
+    event_time = _parse_event_time(row.get(fields["event_time"]))
     if event_time is None:
         return None
     return LoggingEvent(
         event_time=event_time,
-        event_type=_text(_first(values, fields["type"])),
-        endpoint_name=_text(_first(values, fields["endpoint"])),
-        event_id=_text(_first(values, fields["id"])),
-        tgt_process_name=_text(_first(values, fields["tgt_process"])),
-        src_process_name=_text(_first(values, fields["src_process"])),
-        src_parent_process_name=_text(_first(values, fields["src_parent_process"])),
-        src_ip=_text(_first(values, fields["src_ip"])),
-        dst_ip=_text(_first(values, fields["dst_ip"])),
+        **{
+            attribute: _text(row.get(name))
+            for attribute, name in fields.items()
+            if attribute != "event_time"
+        },
     )
-
-
-def _first(values: dict, names: tuple[str, ...]) -> Any:
-    """Return the value of the first of these fields that is set."""
-    for name in names:
-        value = values.get(name)
-        if value not in (None, ""):
-            return value
-    return None
 
 
 def _text(value: Any) -> str | None:
     """Keep a value as text, or None when it is empty."""
-    if value is None:
-        return None
-    text = str(value).strip()
+    text = "" if value is None else str(value).strip()
     return text or None
 
 
@@ -231,31 +179,20 @@ def _parse_event_time(value: Any) -> datetime | None:
         value: The event time as found in the row.
 
     Returns:
-        The time in UTC, or None if it cannot be read.
+        The time in UTC, to the microsecond, or None if it cannot be read.
 
     """
     if value is None or isinstance(value, bool):
         return None
-    if isinstance(value, (int, float)):
-        return _from_milliseconds(value)
-    text = str(value).strip()
     try:
-        return _from_milliseconds(float(text))
-    except ValueError:
-        pass
-    # datetime.fromisoformat reads at most 6 fraction digits (no nanoseconds).
-    text = re.sub(r"(\.\d{6})\d+", r"\1", text.replace("Z", "+00:00"))
-    try:
-        date = datetime.fromisoformat(text)
-    except ValueError:
-        return None
-    if date.tzinfo is None:
-        date = date.replace(tzinfo=timezone.utc)
-    return date.astimezone(timezone.utc)
-
-
-def _from_milliseconds(milliseconds: float) -> datetime | None:
-    """Turn milliseconds since 1970 into a UTC datetime."""
+        milliseconds = float(value)
+    except TypeError, ValueError:
+        date = read_iso_date(str(value).strip())
+        if date is None:
+            return None
+        whole_seconds, fraction = date
+        # A datetime holds microseconds: digits after the sixth are dropped.
+        return whole_seconds + timedelta(microseconds=int(fraction[:6].ljust(6, "0")))
     try:
         return datetime.fromtimestamp(milliseconds / 1000, tz=timezone.utc)
     except OverflowError, OSError, ValueError:

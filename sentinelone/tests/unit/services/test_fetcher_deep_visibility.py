@@ -167,6 +167,61 @@ class TestFetcherDeepVisibility(unittest.TestCase):
             )
             m_parse_error_response.assert_called_with(response)
 
+    @patch.object(module.FetcherDeepVisibility, "_launch_query")
+    def test_init_dv_query_writes_the_sha1_query(self, m_launch_query):
+        fetcher = module.FetcherDeepVisibility(MagicMock())
+        start = module.datetime(2026, 11, 24, 8, tzinfo=module.timezone.utc)
+        end = module.datetime(2026, 11, 24, 9, tzinfo=module.timezone.utc)
+
+        single = fetcher._init_dv_query(["sha-one"], start, end)
+        fetcher._init_dv_query(["sha-one", 'sha"two'], start, end)
+
+        self.assertEqual(single, m_launch_query.return_value)
+        self.assertEqual(
+            [call.args for call in m_launch_query.call_args_list],
+            [
+                ('tgtFileSha1 = "sha-one"', start, end),
+                ('tgtFileSha1 in ("sha-one","sha\\"two")', start, end),
+            ],
+        )
+
+    @patch.object(module.time, "sleep")
+    @patch.object(module.FetcherDeepVisibility, "_launch_query")
+    def test_init_dv_query_shortens_the_window_to_the_retention(
+        self, m_launch_query, m_sleep
+    ):
+        fetcher = module.FetcherDeepVisibility(MagicMock())
+        start = module.datetime(2026, 11, 1, tzinfo=module.timezone.utc)
+        end = module.datetime(2026, 11, 24, tzinfo=module.timezone.utc)
+        m_launch_query.side_effect = [
+            module.SentinelOneAPIError(
+                "DV init query failed with status 400: Code 4000: "
+                "Account retains data for 14 days",
+                status_code=400,
+            ),
+            "query-id",
+        ]
+
+        query_id = fetcher._init_dv_query(["sha-one"], start, end)
+
+        self.assertEqual(query_id, "query-id")
+        m_sleep.assert_called_once_with(60)
+        self.assertEqual(
+            m_launch_query.call_args.args,
+            ('tgtFileSha1 = "sha-one"', end - module.timedelta(days=13), end),
+        )
+
+    @patch.object(module.FetcherDeepVisibility, "_launch_query")
+    def test_init_dv_query_raises_other_errors(self, m_launch_query):
+        fetcher = module.FetcherDeepVisibility(MagicMock())
+        m_launch_query.side_effect = module.SentinelOneAPIError(
+            "forbidden", status_code=403
+        )
+
+        with self.assertRaises(module.SentinelOneAPIError):
+            fetcher._init_dv_query(["sha-one"])
+        m_launch_query.assert_called_once()
+
     def test_format_timestamp_for_api(self):
         client_api = MagicMock()
         fetcher = module.FetcherDeepVisibility(client_api)

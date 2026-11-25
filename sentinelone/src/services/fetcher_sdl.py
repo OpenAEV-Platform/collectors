@@ -28,6 +28,20 @@ S1QL_BASE_FILTER = "dataSource.name='SentinelOne' dataSource.category='security'
 class FetcherSDL:
     """Fetcher for SentinelOne SDL v2 deep-search (SaaS) events by file SHA1."""
 
+    # Where each Logging event value is in a row from fetch_rows (S1QL 2.0
+    # field names), keyed by LoggingEvent attribute.
+    LOGGING_FIELDS = {
+        "event_time": "event.time",
+        "event_type": "event.type",
+        "endpoint_name": "endpoint.name",
+        "event_id": "event.id",
+        "tgt_process_name": "tgt.process.name",
+        "src_process_name": "src.process.name",
+        "src_parent_process_name": "src.process.parent.name",
+        "src_ip": "src.ip.address",
+        "dst_ip": "dst.ip.address",
+    }
+
     def __init__(self, client_api: SentinelOneClientAPI):
         """Initialize the SDL v2 fetcher.
 
@@ -165,8 +179,8 @@ class FetcherSDL:
     ) -> list[dict[str, Any]]:
         """Fetch every row matching an S1QL 2.0 filter inside a time window.
 
-        Used by Logging, which builds its own filter. Each row is returned as
-        SentinelOne sent it, with its fields under ``values``.
+        Used by Logging, which builds its own filter. Each row is the
+        ``values`` block SentinelOne sent: the event fields by name.
 
         Args:
             s1ql_filter: S1QL 2.0 filter expression.
@@ -174,7 +188,8 @@ class FetcherSDL:
             end_time: Window end.
 
         Returns:
-            The unique raw rows, in fetch order.
+            The fields of each unique row, in fetch order. None for a row
+            without fields.
 
         Raises:
             SentinelOneAPIError: If the API call fails. ``status_code`` holds
@@ -183,7 +198,8 @@ class FetcherSDL:
 
         """
         self.logger.debug(f"{LOG_PREFIX} S1QL filter: {s1ql_filter}")
-        return self._fetch_all_rows(s1ql_filter, start_time, end_time)
+        rows = self._fetch_all_rows(s1ql_filter, start_time, end_time)
+        return [row.get("values") for row in rows]
 
     def _resolve_time_window(
         self, start_time: datetime | None, end_time: datetime | None

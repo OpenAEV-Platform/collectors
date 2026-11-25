@@ -7,7 +7,6 @@ window, and the matcher uses the marker and the IPs to pick the event.
 """
 
 import math
-import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -16,6 +15,7 @@ from typing import Iterable, Mapping
 from pyoaev.signatures.types import SignatureTypes
 
 from .fetcher_sdl import S1QL_BASE_FILTER
+from .utils.dates import read_iso_date
 from .utils.s1ql import dv_list, dv_string, s1ql_list, s1ql_string
 
 # Fields that can hold the implant's name: the process itself, the process that
@@ -176,23 +176,13 @@ def _parse_instant(value: str) -> Decimal | None:
         date cannot be read.
 
     """
-    # The fraction of a second is read apart: datetime.fromisoformat reads at
-    # most 6 digits, and the platform can send 9 (nanoseconds). Decimal keeps
-    # every digit, so two close dates are never seen as equal.
-    text = value.replace("Z", "+00:00")
-    fraction = re.search(r"\.(\d+)", text)
-    if fraction:
-        text = text[: fraction.start()] + text[fraction.end() :]
-    try:
-        date = datetime.fromisoformat(text)
-    except ValueError:
+    date = read_iso_date(value)
+    if date is None:
         return None
-    if date.tzinfo is None:
-        date = date.replace(tzinfo=timezone.utc)
-    seconds = Decimal(int(date.timestamp()))
-    if fraction:
-        seconds += Decimal(f"0.{fraction.group(1)}")
-    return seconds
+    whole_seconds, fraction = date
+    # Decimal keeps every fraction digit, so two close dates are never seen as
+    # equal.
+    return Decimal(int(whole_seconds.timestamp())) + Decimal(f"0.{fraction or 0}")
 
 
 def _to_second(instant: Decimal, round_up: bool) -> datetime:

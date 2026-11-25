@@ -37,6 +37,7 @@ def _query(search_filter: str = "the-filter") -> LoggingQuery:
 def _fetcher(kind: type, rows=None, error: Exception | None = None) -> Mock:
     """Build a fake fetcher of this kind returning rows or raising an error."""
     fetcher = Mock(spec=kind)
+    fetcher.LOGGING_FIELDS = kind.LOGGING_FIELDS
     if error is not None:
         fetcher.fetch_rows.side_effect = error
     else:
@@ -68,22 +69,19 @@ def _client() -> Mock:
 
 
 def test_sdl_rows_become_events():
-    """SDL rows are read from their values, with the time in milliseconds."""
+    """SDL rows use dotted names, with the time in milliseconds."""
     # Arrange
     rows = [
         {
-            "cursor": "c1",
-            "values": {
-                "event.time": 1795507200500,
-                "event.type": "Process Creation",
-                "endpoint.name": "meereen",
-                "event.id": "e1",
-                "tgt.process.name": MARKER,
-                "src.process.name": "agent.exe",
-                "src.process.parent.name": "services.exe",
-                "src.ip.address": "10.66.30.12",
-                "dst.ip.address": "10.66.40.50",
-            },
+            "event.time": 1795507200500,
+            "event.type": "Process Creation",
+            "endpoint.name": "meereen",
+            "event.id": "e1",
+            "tgt.process.name": MARKER,
+            "src.process.name": "agent.exe",
+            "src.process.parent.name": "services.exe",
+            "src.ip.address": "10.66.30.12",
+            "dst.ip.address": "10.66.40.50",
         }
     ]
     fetcher = _fetcher(FetcherSDL, rows)
@@ -145,10 +143,10 @@ def test_rows_without_a_readable_time_are_skipped_and_counted():
     """One bad row does not hide the others."""
     # Arrange
     rows = [
-        {"values": {"event.time": "1795507200000", "event.type": "File Creation"}},
-        {"values": {"event.type": "no time"}},
-        {"values": {"event.time": "soon"}},
-        "not a row",
+        {"event.time": "1795507200000", "event.type": "File Creation"},
+        {"event.type": "no time"},
+        {"event.time": "soon"},
+        None,
     ]
 
     # Act
@@ -165,7 +163,7 @@ def test_only_unreadable_rows_give_no_event_but_are_not_empty():
     """Rows came back but none could be read: not the same as no event."""
     # Act
     result = fetch_logging_events(
-        _fetcher(FetcherSDL, [{"values": {"event.type": "no time"}}]), _query()
+        _fetcher(FetcherSDL, [{"event.type": "no time"}]), _query()
     )
 
     # Assert
@@ -227,7 +225,7 @@ def test_network_error_is_an_api_error_without_status():
 
 
 def test_sdl_fetch_rows_sends_the_logging_filter_and_window():
-    """The Logging filter and window are sent as given, rows come back raw."""
+    """The Logging filter and window are sent as given, rows come back flat."""
     # Arrange
     client = _client()
     row = {"cursor": "c1", "values": {"event.time": 1}}
@@ -245,7 +243,7 @@ def test_sdl_fetch_rows_sends_the_logging_filter_and_window():
     rows = FetcherSDL(client).fetch_rows("my filter", START, END)
 
     # Assert
-    assert rows == [row]  # noqa: S101
+    assert rows == [row["values"]]  # noqa: S101
     body = client.session.post.call_args.kwargs["json"]
     assert body["log"]["filter"] == "my filter"  # noqa: S101
     assert body["startTime"] == "2026-11-24T08:00:00Z"  # noqa: S101
