@@ -182,6 +182,28 @@ def test_window_with_offset_or_no_time_zone_is_read_as_utc():
     )  # noqa: S101
 
 
+def test_window_with_equal_start_and_end_is_kept():
+    """A start equal to the end is a valid window, rounded outwards."""
+    # Act
+    query = build_logging_query(
+        _signatures(
+            parent_process_name=MARKER,
+            start_date="2026-11-24T08:00:00.500Z",
+            end_date="2026-11-24T08:00:00.500Z",
+        ),
+        self_hosted=False,
+    )
+
+    # Assert
+    assert isinstance(query, LoggingQuery)  # noqa: S101
+    assert query.start == datetime(  # noqa: S101
+        2026, 11, 24, 8, 0, 0, tzinfo=timezone.utc
+    )
+    assert query.end == datetime(  # noqa: S101
+        2026, 11, 24, 8, 0, 1, tzinfo=timezone.utc
+    )
+
+
 @pytest.mark.parametrize(
     ("signatures", "reason"),
     [
@@ -211,9 +233,33 @@ def test_window_with_offset_or_no_time_zone_is_read_as_utc():
             ),
             "start_date is after end_date",
         ),
+        (
+            _signatures(
+                parent_process_name=MARKER,
+                start_date="2026-11-24T08:00:00.900Z",
+                end_date="2026-11-24T08:00:00.100Z",
+            ),
+            "start_date is after end_date",
+        ),
+        (
+            _signatures(
+                parent_process_name=MARKER,
+                start_date="2026-11-24T08:00:00.9000001Z",
+                end_date="2026-11-24T08:00:00.9000000Z",
+            ),
+            "start_date is after end_date",
+        ),
         (_signatures(), "no marker and no IP"),
     ],
-    ids=["no-end", "no-start", "invalid-date", "start-after-end", "no-signal"],
+    ids=[
+        "no-end",
+        "no-start",
+        "invalid-date",
+        "start-after-end",
+        "start-after-end-in-the-same-second",
+        "start-after-end-by-100-nanoseconds",
+        "no-signal",
+    ],
 )
 def test_unsearchable_expectation_gives_the_reason(signatures, reason):
     """An expectation that cannot be searched gives a reason, never a filter."""

@@ -6,9 +6,11 @@ it from the expectation's signatures. The fetcher runs the filter inside the
 window, and the matcher uses the marker and the IPs to pick the event.
 """
 
+import math
 import re
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
+from decimal import Decimal
 from typing import Iterable, Mapping
 
 from pyoaev.signatures.types import SignatureTypes
@@ -97,12 +99,12 @@ def build_logging_query(
     start_dates = by_type.get(SignatureTypes.SIG_TYPE_START_DATE.value, [])
     if not start_dates:
         return Unqueryable("no start_date")
-    # Round the window outwards: it can only grow by under a second, never
-    # lose the end of the inject.
-    start = _parse_date(start_dates[0], round_up=False)
-    end = _parse_date(end_dates[0], round_up=True)
+    start = _parse_instant(start_dates[0])
+    end = _parse_instant(end_dates[0])
     if start is None or end is None:
         return Unqueryable("start_date or end_date is not a valid date")
+    # Compare the exact instants: rounding first could hide a reversed window
+    # that fits inside one second.
     if start > end:
         return Unqueryable("start_date is after end_date")
 
@@ -131,8 +133,10 @@ def build_logging_query(
         markers=markers,
         source_ips=source_ips,
         target_ips=target_ips,
-        start=start,
-        end=end,
+        # Round the valid window outwards: it can only grow by under a second,
+        # never lose the end of the inject.
+        start=_to_second(start, round_up=False),
+        end=_to_second(end, round_up=True),
     )
 
 
@@ -160,22 +164,21 @@ def _dv_filter(markers: list[str], ips: list[str]) -> str:
     return " OR ".join(conditions)
 
 
-def _parse_date(value: str, round_up: bool) -> datetime | None:
-    """Read an ISO-8601 signature date as a UTC datetime, to the second.
+def _parse_instant(value: str) -> Decimal | None:
+    """Read an ISO-8601 signature date as exact Unix seconds.
 
     Args:
         value: The date, e.g. ``2026-11-24T08:00:00.123456789Z``. A date
             without a time zone is read as UTC.
-        round_up: True to round up to the next second (window end), False to
-            round down (window start).
 
     Returns:
-        The date in UTC without fraction of a second, or None if it cannot be
-        read.
+        The seconds since 1970-01-01 UTC, fraction included, or None if the
+        date cannot be read.
 
     """
     # The fraction of a second is read apart: datetime.fromisoformat reads at
-    # most 6 digits, and cutting nanoseconds could lose the end of the window.
+    # most 6 digits, and the platform can send 9 (nanoseconds). Decimal keeps
+    # every digit, so two close dates are never seen as equal.
     text = value.replace("Z", "+00:00")
     fraction = re.search(r"\.(\d+)", text)
     if fraction:
@@ -186,9 +189,26 @@ def _parse_date(value: str, round_up: bool) -> datetime | None:
         return None
     if date.tzinfo is None:
         date = date.replace(tzinfo=timezone.utc)
-    if round_up and fraction and fraction.group(1).strip("0"):
-        date += timedelta(seconds=1)
-    return date.astimezone(timezone.utc)
+    seconds = Decimal(int(date.timestamp()))
+    if fraction:
+        seconds += Decimal(f"0.{fraction.group(1)}")
+    return seconds
+
+
+def _to_second(instant: Decimal, round_up: bool) -> datetime:
+    """Round an instant to the second, as a UTC datetime.
+
+    Args:
+        instant: Exact Unix seconds, as read by ``_parse_instant``.
+        round_up: True to round up (window end), False to round down (window
+            start).
+
+    Returns:
+        The rounded instant in UTC.
+
+    """
+    seconds = math.ceil(instant) if round_up else math.floor(instant)
+    return datetime.fromtimestamp(seconds, tz=timezone.utc)
 
 
 def _unique(values: Iterable[str]) -> list[str]:
