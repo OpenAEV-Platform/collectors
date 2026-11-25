@@ -22,9 +22,11 @@ class TestExpectationUploader(unittest.TestCase):
         result1 = MagicMock()
         result1.expectation_id = "1"
         result1.expectation = MagicMock()
+        result1.error_message = None
         result2 = MagicMock()
         result2.expectation_id = "2"
         result2.expectation = MagicMock()
+        result2.error_message = None
         results = [result1, result2]
 
         bulked_data, skipped_count = (
@@ -55,6 +57,7 @@ class TestExpectationUploader(unittest.TestCase):
         result2 = MagicMock()
         result2.expectation_id = "2"
         result2.expectation = MagicMock()
+        result2.error_message = None
         results = [result1, result2]
 
         bulked_data, skipped_count = (

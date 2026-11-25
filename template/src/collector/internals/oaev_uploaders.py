@@ -50,6 +50,16 @@ class ExpectationUploader(ResilientUploader):
                     )
                     continue
 
+                # skipping result carrying an error: an error is not a verdict,
+                # never upload it as "Not Detected" / "Not Prevented"
+                if getattr(result, "error_message", None):
+                    skipped_count += 1
+                    self.logger.info(
+                        f"{LOG_PREFIX} Skipping result {result.expectation_id} "
+                        f"carrying an error: {result.error_message}"
+                    )
+                    continue
+
                 bulk_data[result.expectation_id] = {
                     "collector_id": self.collector_id,
                     "result": result.to_result_text(),

@@ -12,9 +12,9 @@ from tests.conftest import (
     _given_non_matching_alert_data,
     _given_prevention_expectation_with_supported_sigs,
     _then_all_results_invalid,
-    _then_expectation_result_has_error,
     _then_expectation_result_is_valid_with_traces,
     _then_expectation_result_not_valid_no_traces,
+    _then_no_results,
     _then_only_supported_sigs_retained,
     _when_engine_processes_batch,
     _when_source_handler_filters_sigs,
@@ -103,9 +103,9 @@ def test_empty_fetched_data_produces_invalid():
     _then_all_results_invalid(results)
 
 
-# Scenario: Data fetch error produces ExpectationResult.from_error per expectation
-def test_data_fetch_error_produces_error_result():
-    """Scenario: Data fetch error produces ExpectationResult.from_error per expectation."""
+# Scenario: Data fetch error produces no result, so nothing is written as Not Detected
+def test_data_fetch_error_produces_no_result():
+    """Scenario: Data fetch error produces no result (collectors#723)."""
     # Given: expectations exist
     expectation1 = _given_detection_expectation_with_supported_sigs()
     expectation2 = _given_detection_expectation_with_supported_sigs("exp-002")
@@ -116,6 +116,5 @@ def test_data_fetch_error_produces_error_result():
     # When: the engine processes the batch
     results = _when_engine_processes_batch([expectation1, expectation2], [])
 
-    # Then: each expectation gets an ExpectationResult with is_valid=False and error_message
-    for result in results:
-        _then_expectation_result_has_error(result)
+    # Then: no ExpectationResult is produced, the next cycle re-evaluates them
+    _then_no_results(results)

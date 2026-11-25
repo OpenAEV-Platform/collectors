@@ -193,18 +193,18 @@ class BasicCollectorEngine:
                 )
             )
         except Exception as err:  # per batch
-            batch_results = [
-                ExpectationResult.from_error(
-                    ExpectationProcessingError(
-                        f"Batch processing error during data fetching: {err}"
-                    ),
-                    expectation,
-                )
-                for expectation in batch
-            ]
+            # A failed fetch says nothing about the expectations: never turn it
+            # into a "Not Detected" / "Not Prevented" verdict (collectors#723).
             self.logger.error(
                 f"{LOG_PREFIX} Error processing batch during data fetching: {err}"
             )
+            for expectation in batch:
+                self._log_error_decision(
+                    expectation,
+                    ExpectationProcessingError(
+                        f"Batch processing error during data fetching: {err}"
+                    ),
+                )
             return batch_results
 
         error_count = 0
@@ -259,9 +259,10 @@ class BasicCollectorEngine:
 
                 result = None
                 if matched or time_window_over(expectation, self.config.retry_window):
-                    self.logger.debug(
-                        f"{LOG_PREFIX} Creating expectation result for expectation "
-                        f"{expectation.inject_expectation_id} with match at {matched}."
+                    decision = "matched" if matched else "final miss, retry window over"
+                    self.logger.info(
+                        f"{LOG_PREFIX} Expectation {expectation.inject_expectation_id}: "
+                        f"{decision}"
                     )
                     # (8) create results from step 7 + tracedata (6)
                     result = ExpectationResult(
@@ -270,12 +271,18 @@ class BasicCollectorEngine:
                         expectation=expectation,
                         matched_alerts=traces,
                     )
+                else:
+                    self.logger.info(
+                        f"{LOG_PREFIX} Expectation {expectation.inject_expectation_id}: "
+                        f"no match yet, postponed to the next cycle"
+                    )
             except Exception as err:
-                result = ExpectationResult.from_error(
-                    ExpectationProcessingError(f"Processing error: {err}"),
-                    expectation,
-                )
+                # An error is not a miss: no result is produced (collectors#723).
+                result = None
                 self.logger.error(f"{LOG_PREFIX} Processing batch: {err}")
+                self._log_error_decision(
+                    expectation, ExpectationProcessingError(f"Processing error: {err}")
+                )
                 error_count += 1
 
             if result:
@@ -283,10 +290,35 @@ class BasicCollectorEngine:
                 batch_results.append(result)
 
         self.logger.info(
-            f"{LOG_PREFIX} Batch processed: {len(batch_results)} results (including {error_count} errors, excluding {len(batch)-len(batch_results)} postponed expectations))"
+            f"{LOG_PREFIX} Batch processed: {len(batch_results)} results "
+            f"(excluding {error_count} errors and "
+            f"{len(batch) - len(batch_results) - error_count} postponed expectations)"
         )
 
         return batch_results
+
+    def _log_error_decision(
+        self,
+        expectation: DetectionExpectation | PreventionExpectation,
+        error: Exception,
+    ) -> None:
+        """
+        Log what happens to an expectation whose processing failed.
+        No result is ever produced for an error: inside the retry window the
+        expectation is re-evaluated on the next cycle; past it, nothing is
+        uploaded and the platform's own expiration decides (collectors#723).
+        """
+        if time_window_over(expectation, self.config.retry_window):
+            self.logger.info(
+                f"{LOG_PREFIX} Expectation {expectation.inject_expectation_id}: "
+                f"error past the retry window, no result uploaded "
+                f"(left to the platform expiration): {error}"
+            )
+        else:
+            self.logger.info(
+                f"{LOG_PREFIX} Expectation {expectation.inject_expectation_id}: "
+                f"error inside the retry window, postponed to the next cycle: {error}"
+            )
 
     def run_engine(self) -> None:
         """Process the callback for expectation processing.
