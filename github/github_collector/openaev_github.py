@@ -11,6 +11,7 @@ from github_collector.inventory import (
     REFERENCE_PREFIX,
     GitHubAsset,
     Inventory,
+    InventoryResult,
     InventorySettings,
     parse_list,
 )
@@ -33,6 +34,29 @@ TAG_COLORS = {
 }
 DEFAULT_TAG_COLOR = "#6b7280"
 SEARCH_PAGE_SIZE = 200
+# The fields of an asset overview the endpoint update (PUT /endpoints/{id}) reads back: the
+# update replaces the whole asset, so every one of them is sent as it is stored.
+UPDATE_FIELDS = (
+    "asset_name",
+    "asset_description",
+    "asset_external_reference",
+    "asset_hostname",
+    "asset_url",
+    "asset_ips",
+    "asset_mac_addresses",
+    "asset_category",
+    "asset_subcategory",
+    "asset_criticality",
+    "asset_internet_facing",
+    "asset_cloud_provider",
+    "asset_cloud_native_type",
+    "asset_cloud_region",
+    "asset_linked_person",
+    "asset_metadata",
+    "endpoint_platform",
+    "endpoint_arch",
+    "endpoint_is_eol",
+)
 
 ENV_KEYS = [
     "GITHUB_TOKEN",
@@ -76,6 +100,24 @@ def build_asset(asset: GitHubAsset, tag_ids: list[str]) -> dict[str, Any]:
 def owner_of(asset_name: str) -> str:
     """Return the GitHub owner of an asset this collector named ``owner/...``."""
     return asset_name.split("/", 1)[0].lower()
+
+
+def kind_of(external_reference: str) -> str:
+    """Return the kind of a ``github:<kind>:<id>`` external reference."""
+    parts = external_reference.split(":", 2)
+    return parts[1] if len(parts) == 3 else ""
+
+
+def normalized(external_reference: Any) -> str:
+    """Return an external reference as OpenAEV matches it (trimmed, blank read as none)."""
+    return str(external_reference or "").strip()
+
+
+def update_input(overview: dict[str, Any], tag_ids: list[str]) -> dict[str, Any]:
+    """Build the full update of an asset from its overview, with its tags replaced."""
+    payload = {key: overview[key] for key in UPDATE_FIELDS if key in overview}
+    payload["asset_tags"] = tag_ids
+    return payload
 
 
 class OpenAEVGitHub(CollectorDaemon):  # type: ignore[misc]
@@ -161,23 +203,68 @@ class OpenAEVGitHub(CollectorDaemon):  # type: ignore[misc]
                 return assets
             page += 1
 
-    def _end_date_removed(self, seen: set[str], complete_owners: set[str]) -> None:
-        """End-date the assets of a complete owner that GitHub no longer returns.
+    def _restore_seen(self, known_assets: list[dict[str, Any]], seen: set[str]) -> None:
+        """Drop ``github-state:deleted`` from the assets GitHub returned again in this run.
+
+        The upsert merges tags (it never removes one), so an asset end-dated by an earlier
+        run keeps the tag after it is seen again; its metadata is already reset by the upsert
+        (``github_state`` back from GitHub, no ``github_end_date``). The tag is removed with
+        a full update of the asset, every other field and tag kept as stored.
+        """
+        deleted_tag_id = None
+        for known in known_assets:
+            if normalized(known.get("asset_external_reference")) not in seen:
+                continue
+            tags = list(known.get("asset_tags") or [])
+            if not tags:
+                continue
+            deleted_tag_id = deleted_tag_id or self._tag_id(DELETED_TAG)
+            if not deleted_tag_id or deleted_tag_id not in tags:
+                continue
+            name = known.get("asset_name") or ""
+            try:
+                overview = self.api.http_get(f"/assets/{known['asset_id']}")
+                kept = [
+                    tag_id
+                    for tag_id in overview.get("asset_tags") or tags
+                    if tag_id != deleted_tag_id
+                ]
+                self.api.http_put(
+                    f"/endpoints/{known['asset_id']}",
+                    post_data=update_input(overview, kept),
+                )
+                self.logger.info(f"Restored {name}: back on GitHub")
+            except Exception as err:
+                self.logger.error(f"Failed to restore {name}: {err}")
+
+    def _end_date_removed(
+        self,
+        known_assets: list[dict[str, Any]],
+        seen: set[str],
+        result: InventoryResult,
+    ) -> None:
+        """End-date the assets whose complete listing in this run no longer returns them.
 
         The asset is kept (never deleted): its metadata gets ``github_state: deleted`` and
-        ``github_end_date``, and it is tagged ``github-state:deleted``. An owner whose listing
-        failed in this run is left untouched.
+        ``github_end_date``, and it is tagged ``github-state:deleted`` on top of its tags (the
+        upsert merges tags). An asset whose listing did not complete in this run (its owner,
+        the workflows of its repository, the packages of its type) is left untouched.
         """
         now = datetime.now(UTC).isoformat()
-        for known in self._known_assets():
-            reference = known.get("asset_external_reference")
+        for known in known_assets:
+            reference = normalized(known.get("asset_external_reference"))
             name = known.get("asset_name") or ""
-            if reference in seen or owner_of(name) not in complete_owners:
+            if not reference or reference in seen:
+                continue
+            if owner_of(name) not in result.complete_owners:
                 continue
             try:
                 overview = self.api.http_get(f"/assets/{known['asset_id']}")
                 metadata = dict(overview.get("asset_metadata") or {})
                 if metadata.get("github_state") == "deleted":
+                    continue
+                owner = str(metadata.get("github_owner") or owner_of(name))
+                if not result.removable(kind_of(reference), owner, metadata):
                     continue
                 metadata["github_state"] = "deleted"
                 metadata["github_end_date"] = now
@@ -206,7 +293,7 @@ class OpenAEVGitHub(CollectorDaemon):  # type: ignore[misc]
                 tag_ids = self._tag_ids([SOURCE_TAG, *asset.tags])
                 try:
                     self.api.endpoint.upsert(build_asset(asset, tag_ids))
-                    seen.add(asset.external_reference)
+                    seen.add(normalized(asset.external_reference))
                     self.logger.debug(
                         f"Upserted {asset.name} ({asset.external_reference})"
                     )
@@ -214,8 +301,11 @@ class OpenAEVGitHub(CollectorDaemon):  # type: ignore[misc]
                     # Not seen: never end-dated in this run either, the owner is not complete.
                     result.complete_owners.discard(asset.owner.lower())
                     self.logger.error(f"Failed to upsert {asset.name}: {err}")
-            if self.end_date_removed and result.complete_owners:
-                self._end_date_removed(seen, result.complete_owners)
+            if seen or (self.end_date_removed and result.complete_owners):
+                known_assets = self._known_assets()
+                self._restore_seen(known_assets, seen)
+                if self.end_date_removed and result.complete_owners:
+                    self._end_date_removed(known_assets, seen, result)
             self.logger.info("GitHub collection completed")
         except Exception as err:
             self.logger.error(f"Error during GitHub collection: {err}")

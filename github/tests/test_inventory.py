@@ -94,6 +94,32 @@ def test_unreadable_packages_do_not_stop_the_owner():
     assert result.complete_owners == {"acme"}
 
 
+def test_complete_listings_are_recorded_per_repository_and_package_type():
+    result = _collect()
+    assert result.listed_repositories == {
+        "github:repository:R_api",
+        "github:repository:R_legacy",
+    }
+    # acme/legacy answers 404 on its workflows: its listing is not complete.
+    assert result.complete_workflow_repositories == {"github:repository:R_api"}
+    assert result.complete_package_types == {("acme", "npm")}
+
+
+def test_removable_needs_the_listing_that_would_have_returned_the_asset():
+    result = _collect()
+    api = {"github_repository_external_reference": "github:repository:R_api"}
+    legacy = {"github_repository_external_reference": "github:repository:R_legacy"}
+    gone = {"github_repository_external_reference": "github:repository:R_gone"}
+    assert result.removable("repository", "ACME", {})
+    assert result.removable("workflow", "acme", api)
+    assert not result.removable("workflow", "acme", legacy)
+    assert result.removable("workflow", "acme", gone)
+    assert not result.removable("workflow", "acme", {})
+    assert result.removable("package", "acme", {"github_package_type": "npm"})
+    assert not result.removable("package", "acme", {"github_package_type": "maven"})
+    assert not result.removable("repository", "other", {})
+
+
 def test_a_failing_owner_is_skipped_and_never_complete():
     result = _collect(
         client=FakeClient(fail_owner="acme"), users=["someone"], collect_packages=False
