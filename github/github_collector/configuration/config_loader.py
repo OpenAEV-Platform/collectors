@@ -13,6 +13,7 @@ PLAIN_FIELDS = (
     "github_include_archived",
     "github_include_forks",
     "github_collect_workflows",
+    "github_collect_dynamic_workflows",
     "github_collect_packages",
     "github_package_types",
     "github_end_date_removed",

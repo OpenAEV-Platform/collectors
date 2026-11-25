@@ -71,7 +71,8 @@ winning.
 | Users            | `collector.github_users`            | `COLLECTOR_GITHUB_USERS`               | /                                     | Comma-separated user logins (their own repositories).                                        |
 | Include archived | `collector.github_include_archived` | `COLLECTOR_GITHUB_INCLUDE_ARCHIVED`    | true                                  | Collect archived repositories, flagged `github-state:archived`.                              |
 | Include forks    | `collector.github_include_forks`    | `COLLECTOR_GITHUB_INCLUDE_FORKS`       | false                                 | Collect forked repositories.                                                                 |
-| Workflows        | `collector.github_collect_workflows`| `COLLECTOR_GITHUB_COLLECT_WORKFLOWS`   | true                                  | Register each GitHub Actions workflow as a CI/CD pipeline asset linked to its repository.    |
+| Workflows        | `collector.github_collect_workflows`| `COLLECTOR_GITHUB_COLLECT_WORKFLOWS`   | true                                  | Register each GitHub Actions workflow as a CI/CD pipeline asset linked to its repository. Off: only repositories and packages are collected (large estates). |
+| Dynamic workflows | `collector.github_collect_dynamic_workflows` | `COLLECTOR_GITHUB_COLLECT_DYNAMIC_WORKFLOWS` | false                      | Also register the GitHub-managed `dynamic/...` workflows (Copilot, Dependabot, code scanning), which are not repository files. |
 | Packages         | `collector.github_collect_packages` | `COLLECTOR_GITHUB_COLLECT_PACKAGES`    | true                                  | Register GitHub Packages as software package assets when the token can read them.            |
 | Package types    | `collector.github_package_types`    | `COLLECTOR_GITHUB_PACKAGE_TYPES`       | `npm,maven,rubygems,nuget,container`  | Package types read (`npm`, `maven`, `rubygems`, `docker`, `nuget`, `container`).             |
 | End-date removed | `collector.github_end_date_removed` | `COLLECTOR_GITHUB_END_DATE_REMOVED`    | true                                  | Act on the assets of objects GitHub no longer returns (or archived ones not collected).      |
@@ -84,6 +85,7 @@ to the organizations collected, with **read-only** repository permissions:
 
 - **Metadata: read** (repositories, topics, visibility; always granted),
 - **Actions: read** (workflows),
+- **Contents: read** (the workflow files, to skip workflows whose file was deleted or renamed; optional),
 - **Packages: read** for GitHub Packages (a classic token needs `read:packages`).
 
 A classic token works too with `repo` (private repositories) or no scope (public only), plus `read:packages`. No write
@@ -121,7 +123,11 @@ On each run the collector:
 1. Lists the repositories of every configured organization (`type=all`) and user (`type=owner`).
 2. Drops forks (unless `github_include_forks`) and archived repositories (when `github_include_archived` is false).
 3. Lists the GitHub Actions workflows of every kept repository (a repository with Actions disabled or not readable
-   keeps its own asset).
+   keeps its own asset). GitHub keeps listing a workflow whose file was deleted or renamed: a workflow under
+   `.github/` is kept only when its file is in `.github/workflows` on the default branch (one read per repository),
+   so a stale workflow goes through the removal action below. GitHub-managed `dynamic/...` workflows are skipped
+   unless `github_collect_dynamic_workflows` is on. Two workflows of one repository sharing a name get their file
+   appended to the asset name. A workflow inherits its repository's exposure and `visibility:` tag.
 4. Lists the GitHub Packages of each owner for the configured types (skipped silently when the token cannot read
    packages).
 5. Upserts one OpenAEV asset per object, keyed on its stable GitHub id (a renamed or transferred repository keeps its
@@ -145,9 +151,9 @@ On each run the collector:
 | `asset_category`           | `SOURCE_CODE`                           | `SOURCE_CODE`                               | `SOURCE_CODE`                            |
 | `asset_subcategory`        | `CODE_REPOSITORY`                       | `CI_CD_PIPELINE`                            | `SOFTWARE_PACKAGE`                       |
 | `asset_external_reference` | `github:repository:<node id>`           | `github:workflow:<node id>`                 | `github:package:<id>`                    |
-| `asset_name`               | `<owner>/<name>`                        | `<owner>/<name>: <workflow name>`           | `<owner>/<package> (<type>)`             |
+| `asset_name`               | `<owner>/<name>`                        | `<owner>/<name>: <workflow name>` (` (<file>)` appended when two share a name) | `<owner>/<package> (<type>)`             |
 | `asset_url`                | Repository page                         | Workflow file page                          | Package page                             |
-| `asset_internet_facing`    | true when public                        | /                                           | true when public                         |
+| `asset_internet_facing`    | true when public                        | its repository's (true when public)         | true when public                         |
 | `asset_metadata`           | visibility, default branch, archived, fork, last push, language, topics | path, state, repository and its external reference | type, visibility, versions, repository |
 
 Archived repositories carry `github_archived: true`, `github_state: archived` and the tag `github-state:archived`.
@@ -169,6 +175,7 @@ The collector stays within the GitHub rate limits:
 | `GET /orgs/{org}/repos`                    | Organization repositories    | Metadata: read       |
 | `GET /users/{user}/repos`                  | User repositories            | Metadata: read       |
 | `GET /repos/{owner}/{repo}/actions/workflows` | Workflows                 | Actions: read        |
+| `GET /repos/{owner}/{repo}/contents/.github/workflows` | Workflow files on the default branch (stale workflows) | Contents: read (without it, stale workflows are kept) |
 | `GET /orgs/{org}/packages`, `GET /users/{user}/packages` | Packages       | Packages: read       |
 
 ## Debugging

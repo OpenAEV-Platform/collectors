@@ -23,6 +23,7 @@ collector:
   github_include_archived: true
   github_include_forks: false
   github_collect_workflows: true
+  github_collect_dynamic_workflows: false
   github_collect_packages: true
   github_package_types: 'npm,maven,rubygems,nuget,container'
   github_end_date_removed: true

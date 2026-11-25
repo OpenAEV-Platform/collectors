@@ -214,6 +214,14 @@ class GitHubClient:
             f"/repos/{full_name}/actions/workflows", items_key="workflows"
         )
 
+    def directory_entries(
+        self, full_name: str, path: str, ref: str | None = None
+    ) -> list[dict[str, Any]]:
+        """List the entries of one directory of a repository (one contents read)."""
+        params = {"ref": ref} if ref else None
+        body = self.get(f"/repos/{full_name}/contents/{path}", params)
+        return body if isinstance(body, list) else []
+
     def owner_packages(
         self, owner: str, package_type: str, is_org: bool
     ) -> Iterator[dict[str, Any]]:

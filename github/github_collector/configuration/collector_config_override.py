@@ -57,7 +57,13 @@ class CollectorConfigOverride(ConfigLoaderCollector):  # type: ignore[misc]
     )
     github_collect_workflows: bool = Field(
         default=True,
-        description="Register each GitHub Actions workflow as a CI/CD pipeline asset.",
+        description="Register each GitHub Actions workflow as a CI/CD pipeline asset. Off: "
+        "only repositories and packages are collected.",
+    )
+    github_collect_dynamic_workflows: bool = Field(
+        default=False,
+        description="Also register the GitHub-managed dynamic workflows (Copilot, Dependabot, "
+        "code scanning), which are not files of the repository.",
     )
     github_collect_packages: bool = Field(
         default=True,

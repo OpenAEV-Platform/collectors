@@ -149,6 +149,7 @@ class OpenAEVGitHub(CollectorDaemon):  # type: ignore[misc]
             include_archived=bool(get("github_include_archived")),
             include_forks=bool(get("github_include_forks")),
             collect_workflows=bool(get("github_collect_workflows")),
+            collect_dynamic_workflows=bool(get("github_collect_dynamic_workflows")),
             collect_packages=bool(get("github_collect_packages")),
             package_types=parse_list(get("github_package_types")),
             host=self._host(self.api_url),

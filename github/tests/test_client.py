@@ -41,6 +41,18 @@ def test_next_page_url_reads_the_link_header():
     assert next_page_url(None) is None
 
 
+def test_directory_entries_reads_one_directory_on_a_ref():
+    entries = [{"type": "file", "path": ".github/workflows/ci.yml"}]
+    client, session, _ = _client([_response(200, entries), _response(200, {"a": 1})])
+    assert client.directory_entries("acme/api", ".github/workflows", "main") == entries
+    url = session.get.call_args_list[0].args[0]
+    assert url == (
+        "https://api.github.com/repos/acme/api/contents/.github/workflows?ref=main"
+    )
+    # A file instead of a directory answers an object: no entry.
+    assert client.directory_entries("acme/api", ".github/workflows") == []
+
+
 def test_headers_are_read_only_and_versioned():
     client, session, _ = _client([])
     assert session.headers["Authorization"] == "Bearer t"

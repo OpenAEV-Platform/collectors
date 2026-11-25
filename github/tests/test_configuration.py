@@ -12,7 +12,7 @@ from github_collector.configuration.config_loader import ConfigLoader
 from github_collector.inventory import repository_asset
 from github_collector.openaev_github import OpenAEVGitHub, build_asset, tag_color
 from pydantic import ValidationError
-from tests.fixtures import REPOSITORIES, FakeClient
+from tests.fixtures import REPOSITORIES, FakeClient, workflow
 
 REQUIRED = {"github_token": "t", "github_organizations": "acme"}
 
@@ -25,6 +25,7 @@ def test_defaults():
     assert config.github_include_archived is True
     assert config.github_include_forks is False
     assert config.github_collect_workflows is True
+    assert config.github_collect_dynamic_workflows is False
     assert config.github_collect_packages is True
     assert config.github_end_date_removed is True
     assert config.github_removed_action == "end_date"
@@ -61,6 +62,7 @@ def test_environment_variables_reach_the_daemon_configuration(monkeypatch, tmp_p
         "COLLECTOR_GITHUB_TOKEN": "ghp",
         "COLLECTOR_GITHUB_USERS": "octocat",
         "COLLECTOR_GITHUB_INCLUDE_FORKS": "true",
+        "COLLECTOR_GITHUB_COLLECT_DYNAMIC_WORKFLOWS": "true",
     }.items():
         monkeypatch.setenv(name, value)
     configuration = ConfigLoader().to_daemon_config()
@@ -69,6 +71,7 @@ def test_environment_variables_reach_the_daemon_configuration(monkeypatch, tmp_p
     # pyoaev's Configuration returns booleans as 0 / 1.
     assert bool(configuration.get("github_include_forks")) is True
     assert bool(configuration.get("github_collect_workflows")) is True
+    assert bool(configuration.get("github_collect_dynamic_workflows")) is True
 
 
 def test_build_asset_payload():
@@ -339,6 +342,33 @@ def test_a_workflow_really_removed_is_end_dated_and_keeps_its_tags():
     assert ended["asset_tags"] == ["id-github-state:deleted"]
     assert "github_end_date" in ended["asset_metadata"]
     assert not daemon.api.http_put.called
+
+
+def test_a_workflow_whose_file_was_deleted_is_end_dated():
+    # GitHub still lists W_stale (state active) but its file left the default branch.
+    known = [_workflow("W_stale", "CI")]
+    overviews = {"/assets/id-W_stale": _overview()}
+    daemon = _daemon(BASE, known=known, overviews=overviews)
+    daemon.client = FakeClient(
+        workflows={
+            "acme/api": [
+                workflow("W_ci", "CI", ".github/workflows/ci.yml"),
+                workflow("W_stale", "CI", ".github/workflows/old-ci.yml"),
+            ]
+        }
+    )
+    daemon._process_message()
+    # Its only upsert is the end-dating one: it is never upserted as an active asset.
+    assert _upserted(daemon).count("github:workflow:W_stale") == 1
+    [ended] = _end_dated(daemon)
+    assert ended["asset_external_reference"] == "github:workflow:W_stale"
+    ci = next(
+        c.args[0]
+        for c in daemon.api.endpoint.upsert.call_args_list
+        if c.args[0]["asset_external_reference"] == "github:workflow:W_ci"
+    )
+    assert ci["asset_name"] == "acme/api: CI"
+    assert ci["asset_internet_facing"] is True
 
 
 def test_a_workflow_of_a_repository_gone_is_end_dated():

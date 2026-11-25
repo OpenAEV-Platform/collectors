@@ -9,7 +9,7 @@ from github_collector.inventory import (
     parse_list,
     repository_asset,
 )
-from tests.fixtures import PACKAGES, REPOSITORIES, FakeClient
+from tests.fixtures import PACKAGES, REPOSITORIES, FakeClient, repo, workflow
 
 
 def _collect(client=None, **settings):
@@ -70,6 +70,135 @@ def test_workflows_are_linked_to_their_repository():
         "github:repository:R_api"
     )
     assert workflow.name == "acme/api: CI"
+
+
+def _connectors_workflows():
+    return {
+        "acme/api": [
+            workflow(
+                "W_old", "Tests Connectors", ".github/workflows/tests-connectors.yml"
+            ),
+            workflow("W_new", "Tests Connectors", ".github/workflows/ci-tests.yml"),
+            workflow("W_lint", "Lint", ".github/workflows/lint.yml"),
+            workflow("W_claude", "Claude", "dynamic/agents/claude"),
+            workflow("W_codeql", "CodeQL", "dynamic/github-code-scanning/codeql"),
+        ]
+    }
+
+
+def _workflows_of(result):
+    return {a.external_reference: a for a in result.assets if a.kind == "workflow"}
+
+
+def test_workflows_sharing_a_name_get_their_file_in_the_name():
+    files = {
+        "acme/api": [
+            ".github/workflows/tests-connectors.yml",
+            ".github/workflows/ci-tests.yml",
+            ".github/workflows/lint.yml",
+        ]
+    }
+    client = FakeClient(workflows=_connectors_workflows(), workflow_files=files)
+    workflows = _workflows_of(_collect(client=client))
+    old = workflows["github:workflow:W_old"].name
+    new = workflows["github:workflow:W_new"].name
+    assert old != new
+    assert old == "acme/api: Tests Connectors (tests-connectors.yml)"
+    assert new == "acme/api: Tests Connectors (ci-tests.yml)"
+    # A unique name stays as it was, so existing assets keep their name.
+    assert workflows["github:workflow:W_lint"].name == "acme/api: Lint"
+
+
+def test_a_workflow_whose_file_left_the_default_branch_is_not_emitted():
+    files = {
+        "acme/api": [".github/workflows/ci-tests.yml", ".github/workflows/lint.yml"]
+    }
+    client = FakeClient(workflows=_connectors_workflows(), workflow_files=files)
+    result = _collect(client=client)
+    workflows = _workflows_of(result)
+    assert set(workflows) == {"github:workflow:W_new", "github:workflow:W_lint"}
+    # Once the stale one is gone, the remaining name is unique again.
+    assert workflows["github:workflow:W_new"].name == "acme/api: Tests Connectors"
+    # The listing still completed: an asset registered for the stale workflow is removable.
+    assert "github:repository:R_api" in result.complete_workflow_repositories
+    assert result.removable(
+        "workflow",
+        "acme",
+        {"github_repository_external_reference": "github:repository:R_api"},
+    )
+    # One contents read per repository, on its default branch.
+    contents = [c for c in client.calls if c[0] == "contents"]
+    assert contents == [("contents", "acme/api", ".github/workflows", "main")]
+
+
+def test_a_repository_without_workflow_directory_emits_no_file_workflow():
+    client = FakeClient(workflows=_connectors_workflows(), workflow_files={})
+    result = _collect(client=client)
+    assert _workflows_of(result) == {}
+    assert "github:repository:R_api" in result.complete_workflow_repositories
+
+
+def test_unreadable_workflow_files_keep_every_listed_workflow():
+    client = FakeClient(workflows=_connectors_workflows(), contents_status=403)
+    result = _collect(client=client)
+    assert set(_workflows_of(result)) == {
+        "github:workflow:W_old",
+        "github:workflow:W_new",
+        "github:workflow:W_lint",
+    }
+    assert "github:repository:R_api" in result.complete_workflow_repositories
+
+
+def test_dynamic_workflows_are_skipped_by_default_and_collected_on_demand():
+    files = {"acme/api": [".github/workflows/lint.yml"]}
+    client = FakeClient(workflows=_connectors_workflows(), workflow_files=files)
+    assert set(_workflows_of(_collect(client=client))) == {"github:workflow:W_lint"}
+    client = FakeClient(workflows=_connectors_workflows(), workflow_files=files)
+    workflows = _workflows_of(_collect(client=client, collect_dynamic_workflows=True))
+    assert set(workflows) == {
+        "github:workflow:W_lint",
+        "github:workflow:W_claude",
+        "github:workflow:W_codeql",
+    }
+    assert workflows["github:workflow:W_claude"].name == "acme/api: Claude"
+
+
+def test_dynamic_workflows_alone_need_no_contents_read():
+    client = FakeClient(
+        workflows={"acme/api": [workflow("W_d", "Claude", "dynamic/agents/claude")]},
+        contents_status=500,
+    )
+    assert _workflows_of(_collect(client=client)) == {}
+    assert not [c for c in client.calls if c[0] == "contents"]
+
+
+def test_a_workflow_takes_the_exposure_and_visibility_of_its_repository():
+    repositories = [
+        repo("api", "R_api"),
+        repo("internal", "R_internal", visibility="internal", private=True),
+        repo("secret", "R_secret", visibility="private", private=True),
+    ]
+    ci = ".github/workflows/ci.yml"
+    workflows = {
+        "acme/api": [workflow("W_pub", "CI", ci)],
+        "acme/internal": [workflow("W_int", "CI", ci)],
+        "acme/secret": [workflow("W_priv", "CI", ci)],
+    }
+    files = {name: [ci] for name in workflows}
+    client = FakeClient(
+        repositories=repositories, workflows=workflows, workflow_files=files
+    )
+    found = _workflows_of(_collect(client=client))
+    public = found["github:workflow:W_pub"]
+    assert public.internet_facing is True
+    assert "visibility:public" in public.tags
+    assert public.metadata["github_visibility"] == "public"
+    internal = found["github:workflow:W_int"]
+    assert internal.internet_facing is False
+    assert "visibility:internal" in internal.tags
+    private = found["github:workflow:W_priv"]
+    assert private.internet_facing is False
+    assert "visibility:private" in private.tags
 
 
 def test_workflows_toggle_off():
