@@ -11,9 +11,11 @@ from requests import ConnectionError, RequestException, Timeout
 from .client_api import REQUEST_TIMEOUT_SECONDS, SentinelOneClientAPI
 from .exception import (
     SentinelOneAPIError,
+    SentinelOneDeadlineError,
     SentinelOneNetworkError,
     SentinelOneValidationError,
 )
+from .utils.dates import is_past
 from .utils.s1ql import dv_list, dv_string
 
 LOG_PREFIX = "[FetcherDeepVisibility]"
@@ -163,7 +165,11 @@ class FetcherDeepVisibility:
             ) from e
 
     def fetch_rows(
-        self, query: str, start_time: datetime, end_time: datetime
+        self,
+        query: str,
+        start_time: datetime,
+        end_time: datetime,
+        deadline: datetime | None = None,
     ) -> list[dict[str, Any]]:
         """Fetch the events matching an S1QL 1.0 query inside a time window.
 
@@ -175,6 +181,8 @@ class FetcherDeepVisibility:
             query: S1QL 1.0 query.
             start_time: Window start.
             end_time: Window end.
+            deadline: When to stop waiting for the query. None for no
+                deadline.
 
         Returns:
             The raw events.
@@ -183,9 +191,13 @@ class FetcherDeepVisibility:
             SentinelOneAPIError: If the API call fails. ``status_code`` holds
                 the HTTP status when SentinelOne answered with an error.
             SentinelOneNetworkError: If a network error occurs.
+            SentinelOneDeadlineError: If the query was not complete when the
+                deadline passed.
 
         """
-        return self._execute_query(self._launch_query(query, start_time, end_time))
+        return self._execute_query(
+            self._launch_query(query, start_time, end_time), deadline
+        )
 
     def _launch_query(
         self, query: str, start_time: datetime, end_time: datetime
@@ -298,11 +310,14 @@ class FetcherDeepVisibility:
         # refusal means something else is wrong, and looping would never end.
         return self._launch_query(query_string, adjusted_start_time, end_time)
 
-    def _execute_query(self, query_id: str) -> list[dict[str, Any]]:
+    def _execute_query(
+        self, query_id: str, deadline: datetime | None = None
+    ) -> list[dict[str, Any]]:
         """Wait for a started Deep Visibility query, then read its events.
 
         Args:
             query_id: Id of the started query.
+            deadline: When to stop waiting. None for no deadline.
 
         Returns:
             List of event dictionaries.
@@ -317,7 +332,7 @@ class FetcherDeepVisibility:
         try:
             self.logger.debug(f"{LOG_PREFIX} Executing DV query with ID: {query_id}")
 
-            self._wait_for_query_completion(query_id)
+            self._wait_for_query_completion(query_id, deadline)
 
             return self._make_real_events_query(query_id)
 
@@ -325,20 +340,26 @@ class FetcherDeepVisibility:
             SentinelOneValidationError,
             SentinelOneAPIError,
             SentinelOneNetworkError,
+            SentinelOneDeadlineError,
         ):
             raise
         except Exception as e:
             raise SentinelOneAPIError(f"Error executing DV query: {e}") from e
 
-    def _wait_for_query_completion(self, query_id: str) -> None:
+    def _wait_for_query_completion(
+        self, query_id: str, deadline: datetime | None = None
+    ) -> None:
         """Wait for DV query to complete processing.
 
         Args:
             query_id: Query identifier to check status for.
+            deadline: When to stop waiting. None for no deadline.
 
         Raises:
             SentinelOneAPIError: If API call fails.
             SentinelOneNetworkError: If network error occurs.
+            SentinelOneDeadlineError: If the query was not complete when the
+                deadline passed.
 
         """
         if not query_id:
@@ -346,6 +367,11 @@ class FetcherDeepVisibility:
 
         attempt = 0
         while attempt < MAX_STATUS_POLL_ATTEMPTS:
+            # Checked between status checks, after the first one.
+            if attempt and is_past(deadline):
+                raise SentinelOneDeadlineError(
+                    f"DV query {query_id} was not complete at the deadline"
+                )
             try:
                 endpoint = f"{self.client_api.base_url}/web/api/v2.1/dv/query-status"
                 params = {"queryId": query_id}

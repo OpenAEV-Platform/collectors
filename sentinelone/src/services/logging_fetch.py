@@ -1,6 +1,6 @@
 """SentinelOne Logging search results.
 
-The Logging search can end in five ways, and the Logging pass reacts
+The Logging search can end in six ways, and the Logging pass reacts
 differently to each: match the events, try again on a later cycle, or stop
 Logging until the collector restarts. Each outcome is its own type, so that an
 error can never be mistaken for "no event found".
@@ -12,7 +12,11 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
-from .exception import SentinelOneAPIError, SentinelOneNetworkError
+from .exception import (
+    SentinelOneAPIError,
+    SentinelOneDeadlineError,
+    SentinelOneNetworkError,
+)
 from .fetcher_deep_visibility import FetcherDeepVisibility
 from .fetcher_sdl import FetcherSDL
 from .logging_query import LoggingQuery
@@ -107,13 +111,28 @@ class LoggingMalformed:
     message: str
 
 
+@dataclass(frozen=True)
+class LoggingDeferred:
+    """The search was not done when the time budget of the pass ran out.
+
+    Nothing is known yet: the search runs again on the next cycle.
+    """
+
+
 LoggingFetchResult = (
-    LoggingRows | LoggingEmpty | LoggingAuthError | LoggingApiError | LoggingMalformed
+    LoggingRows
+    | LoggingEmpty
+    | LoggingAuthError
+    | LoggingApiError
+    | LoggingMalformed
+    | LoggingDeferred
 )
 
 
 def fetch_logging_events(
-    fetcher: FetcherSDL | FetcherDeepVisibility, query: LoggingQuery
+    fetcher: FetcherSDL | FetcherDeepVisibility,
+    query: LoggingQuery,
+    deadline: datetime | None = None,
 ) -> LoggingFetchResult:
     """Run the Logging search of one expectation and read its events.
 
@@ -126,14 +145,22 @@ def fetch_logging_events(
             ``FetcherDeepVisibility`` on self-hosted. It must match the S1QL
             version of ``query.filter``.
         query: The search built by ``build_logging_query``.
+        deadline: When the search must stop. On SDL, rows read before it are
+            still used. None for no deadline.
 
     Returns:
         The events, ``LoggingEmpty`` when none was found,
-        ``LoggingMalformed`` when no returned row could be read, or the error.
+        ``LoggingMalformed`` when no returned row could be read,
+        ``LoggingDeferred`` when the deadline passed before any row was
+        ready, or the error.
 
     """
     try:
-        rows = fetcher.fetch_rows(query.filter, query.start, query.end)
+        rows = fetcher.fetch_rows(
+            query.filter, query.start, query.end, deadline=deadline
+        )
+    except SentinelOneDeadlineError:
+        return LoggingDeferred()
     except SentinelOneAPIError as e:
         if e.status_code in AUTH_ERROR_STATUS_CODES:
             return LoggingAuthError(status_code=e.status_code, message=str(e))

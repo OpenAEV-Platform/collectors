@@ -244,7 +244,9 @@ class Collector(CollectorDaemon):  # type: ignore[misc]
             build_query=lambda expectation: build_logging_query(
                 _signature_dicts(expectation), self_hosted
             ),
-            fetch_events=lambda query: fetch_logging_events(fetcher, query),
+            fetch_events=lambda query, deadline: fetch_logging_events(
+                fetcher, query, deadline
+            ),
             build_trace=lambda match, query, expectation_id, collector_id: (
                 build_logging_trace(
                     match,

@@ -11,9 +11,11 @@ from requests import ConnectionError, RequestException, Timeout
 from .client_api import REQUEST_TIMEOUT_SECONDS, SentinelOneClientAPI
 from .exception import (
     SentinelOneAPIError,
+    SentinelOneDeadlineError,
     SentinelOneNetworkError,
     SentinelOneValidationError,
 )
+from .utils.dates import is_past
 
 LOG_PREFIX = "[FetcherSDL]"
 PAGE_LIMIT = 100
@@ -175,7 +177,11 @@ class FetcherSDL:
             ) from e
 
     def fetch_rows(
-        self, s1ql_filter: str, start_time: datetime, end_time: datetime
+        self,
+        s1ql_filter: str,
+        start_time: datetime,
+        end_time: datetime,
+        deadline: datetime | None = None,
     ) -> list[dict[str, Any] | None]:
         """Fetch every row matching an S1QL 2.0 filter inside a time window.
 
@@ -188,6 +194,8 @@ class FetcherSDL:
             s1ql_filter: S1QL 2.0 filter expression.
             start_time: Window start.
             end_time: Window end.
+            deadline: When to stop. Once it passes, no new page is read and
+                the rows already read are returned. None for no deadline.
 
         Returns:
             The fields of each unique row, in fetch order. None for a row
@@ -197,10 +205,12 @@ class FetcherSDL:
             SentinelOneAPIError: If the API call fails. ``status_code`` holds
                 the HTTP status when SentinelOne answered with an error.
             SentinelOneNetworkError: If a network error occurs.
+            SentinelOneDeadlineError: If the deadline passed before the first
+                page was ready.
 
         """
         self.logger.debug(f"{LOG_PREFIX} S1QL filter: {s1ql_filter}")
-        rows = self._fetch_all_rows(s1ql_filter, start_time, end_time)
+        rows = self._fetch_all_rows(s1ql_filter, start_time, end_time, deadline)
         return [row.get("values") for row in rows]
 
     def _resolve_time_window(
@@ -293,6 +303,7 @@ class FetcherSDL:
         s1ql_filter: str,
         start_time: datetime,
         end_time: datetime,
+        deadline: datetime | None = None,
     ) -> list[dict[str, Any]]:
         """Fetch all matching rows by paging the SDL v2 query.
 
@@ -307,6 +318,8 @@ class FetcherSDL:
             s1ql_filter: S1QL 2.0 filter expression.
             start_time: Resolved window start.
             end_time: Resolved window end.
+            deadline: When to stop paging and return the rows read so far.
+                None for no deadline.
 
         Returns:
             List of unique raw row dictionaries in fetch order.
@@ -314,6 +327,8 @@ class FetcherSDL:
         Raises:
             SentinelOneAPIError: If any launch or poll fails.
             SentinelOneNetworkError: If a network error occurs.
+            SentinelOneDeadlineError: If the deadline passed before the first
+                page was ready.
 
         """
         unique_rows: list[dict[str, Any]] = []
@@ -322,9 +337,21 @@ class FetcherSDL:
         cursor: str | None = None
 
         for page_number in range(1, MAX_PAGES + 1):
+            if page_number > 1 and is_past(deadline):
+                self._log_cut_by_deadline(page_number - 1, len(unique_rows))
+                break
             body = self._build_launch_body(s1ql_filter, start_time, end_time, cursor)
             query_id, forward_tag = self._launch_query(body)
-            final_body = self._poll_query_to_completion(query_id, forward_tag)
+            try:
+                final_body = self._poll_query_to_completion(
+                    query_id, forward_tag, deadline
+                )
+            except SentinelOneDeadlineError:
+                # Rows already read are still evidence: keep them.
+                if page_number == 1:
+                    raise
+                self._log_cut_by_deadline(page_number - 1, len(unique_rows))
+                break
 
             data = self._extract_page_data(final_body)
             page_est = data.get("estimatedMatchCount")
@@ -350,6 +377,13 @@ class FetcherSDL:
             )
 
         return unique_rows
+
+    def _log_cut_by_deadline(self, pages: int, rows: int) -> None:
+        """Log that paging stopped at the deadline, with what was read."""
+        self.logger.info(
+            f"{LOG_PREFIX} Deadline reached: returning the {rows} rows of the "
+            f"first {pages} pages"
+        )
 
     def _collect_new_rows(self, rows: list, seen_keys: set) -> list:
         """Filter out rows already seen, keying on cursor then event.id.
@@ -490,7 +524,9 @@ class FetcherSDL:
 
         return query_id, self._extract_forward_tag(response)
 
-    def _poll_query_to_completion(self, query_id: str, forward_tag: str | None) -> dict:
+    def _poll_query_to_completion(
+        self, query_id: str, forward_tag: str | None, deadline: datetime | None = None
+    ) -> dict:
         """Poll a SDL v2 query until it reports all steps completed.
 
         Every poll GETs /sdl/v2/api/queries/{id} with lastStepSeen set to
@@ -500,6 +536,7 @@ class FetcherSDL:
         Args:
             query_id: Identifier returned by the launch call.
             forward_tag: Query forward tag to echo on every poll.
+            deadline: When to stop waiting. None for no deadline.
 
         Returns:
             Final query response body (dict).
@@ -508,6 +545,8 @@ class FetcherSDL:
             SentinelOneAPIError: If polling fails, the query expired, or
                 it did not complete within MAX_POLL_ATTEMPTS polls.
             SentinelOneNetworkError: If a network error occurs.
+            SentinelOneDeadlineError: If the query was not complete when the
+                deadline passed.
 
         """
         endpoint = f"{self.client_api.base_url}/sdl/v2/api/queries/{query_id}"
@@ -554,6 +593,10 @@ class FetcherSDL:
                 )
                 return json_data
 
+            if is_past(deadline):
+                raise SentinelOneDeadlineError(
+                    f"SDL query {query_id} was not complete at the deadline"
+                )
             time.sleep(POLL_INTERVAL_SECONDS)
 
         raise SentinelOneAPIError(

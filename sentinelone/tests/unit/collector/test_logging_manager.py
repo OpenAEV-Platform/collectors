@@ -9,13 +9,13 @@ import requests
 from pyoaev.apis.inject_expectation.model import LoggingExpectation
 from pyoaev.apis.inject_expectation_trace import TraceMatchType
 from pyoaev.exceptions import OpenAEVListError, OpenAEVParsingError
-from src.collector.exception import TraceSubmissionError
 from src.collector.logging_manager import LoggingManager, _Backoff
 from src.collector.models import ExpectationTrace
 from src.services.exception import SentinelOneDataConversionError
 from src.services.logging_fetch import (
     LoggingApiError,
     LoggingAuthError,
+    LoggingDeferred,
     LoggingEmpty,
     LoggingEvent,
     LoggingMalformed,
@@ -35,6 +35,8 @@ QUERY = LoggingQuery(
     target_ips=[],
     start=START,
     end=START + timedelta(hours=1),
+    inject_start=START,
+    inject_end=START + timedelta(hours=1),
 )
 EVENT = LoggingEvent(
     event_time=START + timedelta(minutes=1), src_process_name="oaev-implant.exe"
@@ -113,8 +115,15 @@ class Harness:
             match_events=self.match_events,
             now=self.clock,
         )
-        self.submit_traces = MagicMock()
-        self.manager.trace_manager._submit_traces = self.submit_traces
+        self.submit_traces = self.api.inject_expectation_trace.bulk_create
+
+    def bulk_traces(self) -> list[dict]:
+        """The traces sent in bulk, as API payloads, in sending order."""
+        return [
+            trace
+            for c in self.submit_traces.call_args_list
+            for trace in c.kwargs["payload"]["expectation_traces"]
+        ]
 
     def _fetch_expectations(self, **_) -> list[LoggingExpectation]:
         # As in pyoaev, the models update themselves through the same API:
@@ -172,11 +181,11 @@ class TestLoggingManagerResults:
                 }
             }
         ]
-        traces = harness.submit_traces.call_args.args[0]
-        assert [t.inject_expectation_trace_expectation for t in traces] == [
+        traces = harness.bulk_traces()
+        assert [t["inject_expectation_trace_expectation"] for t in traces] == [
             _id(expectation)
         ]
-        assert traces[0].inject_expectation_trace_match_type == TraceMatchType.MARKER
+        assert traces[0]["inject_expectation_trace_match_type"] == "marker"
         assert summary.fetched == 1
         assert summary.logged == 1
         assert summary.errors == 0
@@ -404,8 +413,8 @@ class TestLoggingManagerUpdates:
 
         summary = harness.process()
 
-        traces = harness.submit_traces.call_args.args[0]
-        assert [t.inject_expectation_trace_expectation for t in traces] == [
+        traces = harness.bulk_traces()
+        assert [t["inject_expectation_trace_expectation"] for t in traces] == [
             _id(updated)
         ]
         assert summary.logged == 1
@@ -434,14 +443,63 @@ class TestLoggingManagerUpdates:
         assert summary.logged == 0
         assert summary.errors == 1
 
-    def test_trace_submission_failure_is_counted(self):
-        harness = Harness([_expectation()])
-        harness.submit_traces.side_effect = TraceSubmissionError("bulk failed")
+    def test_bulk_trace_failure_falls_back_to_one_by_one(self):
+        first, second = _expectation(), _expectation()
+        harness = Harness([first, second])
+        harness.submit_traces.side_effect = RuntimeError("500")
 
         summary = harness.process()
 
-        assert summary.logged == 1
+        created = [
+            c.args[0]["inject_expectation_trace_expectation"]
+            for c in harness.api.inject_expectation_trace.create.call_args_list
+        ]
+        assert created == [_id(first), _id(second)]
+        assert summary.logged == 2
+        assert summary.errors == 0
+        assert harness.manager._pending_traces == []
+
+    def test_failed_trace_is_kept_and_sent_again_next_pass(self):
+        # The platform no longer returns a Logged expectation: the kept trace
+        # is the only way to send its evidence again.
+        sent, failed = _expectation(), _expectation()
+        harness = Harness([sent, failed])
+        traces = harness.api.inject_expectation_trace
+        traces.bulk_create.side_effect = RuntimeError("500")
+        traces.create.side_effect = [None, RuntimeError("500")]
+
+        summary = harness.process()
+
+        assert summary.logged == 2
         assert summary.errors == 1
+        assert [
+            t.inject_expectation_trace_expectation
+            for t in harness.manager._pending_traces
+        ] == [_id(failed)]
+
+        traces.bulk_create.side_effect = None
+        harness.expectations = []
+        harness.process()
+
+        assert [
+            t["inject_expectation_trace_expectation"] for t in harness.bulk_traces()
+        ][-1:] == [_id(failed)]
+        assert harness.manager._pending_traces == []
+
+    def test_kept_traces_are_sent_even_when_logging_is_suspended(self):
+        harness = Harness([_expectation()])
+        traces = harness.api.inject_expectation_trace
+        traces.bulk_create.side_effect = RuntimeError("500")
+        traces.create.side_effect = RuntimeError("500")
+        harness.process()
+        traces.bulk_create.side_effect = None
+        harness.manager.suspended = True
+
+        summary = harness.process()
+
+        assert summary.suspended is True
+        assert harness.manager._pending_traces == []
+        assert traces.bulk_create.call_count == 2
 
     def test_no_code_path_sends_a_failure(self):
         expectations = [_expectation() for _ in range(6)]
@@ -585,7 +643,7 @@ def _slow_harness(count: int, search_seconds: int) -> Harness:
     harness = Harness([_expectation() for _ in range(count)])
     harness.match_events.return_value = NoMatch()
 
-    def slow_search(query):
+    def slow_search(query, deadline):
         harness.clock.advance(timedelta(seconds=search_seconds))
         return LoggingRows(events=[EVENT])
 
@@ -767,7 +825,7 @@ class TestLoggingManagerBackoff:
         harness = self._no_match_harness()
         harness.expectations = [first, second]
 
-        def slow_search(query):
+        def slow_search(query, deadline):
             harness.clock.advance(timedelta(seconds=30))
             return LoggingRows(events=[EVENT])
 
@@ -926,3 +984,49 @@ class TestLoggingManagerRateLimit:
         assert harness.fetch_events.call_count == 2
         assert summary.rate_limited is False
         assert summary.logged == 1
+
+
+class TestLoggingManagerDeadline:
+    """Each search gets the pass deadline, and a cut search waits its turn."""
+
+    def test_search_gets_the_pass_deadline(self):
+        harness = Harness([_expectation()])
+
+        harness.process()
+
+        harness.fetch_events.assert_called_once_with(QUERY, START + PERIOD)
+
+    def test_deferred_search_is_over_budget_and_not_backed_off(self):
+        expectation = _expectation()
+        harness = Harness([expectation])
+        harness.fetch_events.return_value = LoggingDeferred()
+
+        summary = harness.process()
+
+        harness.api.inject_expectation.bulk_update.assert_not_called()
+        assert summary.over_budget == 1
+        assert summary.errors == 0
+        assert _id(expectation) not in harness.manager._backoff
+
+    def test_deferred_search_goes_first_next_cycle(self):
+        deferred, other = _expectation(), _expectation()
+        harness = Harness([other, deferred])
+        harness.manager._backoff[_id(other)] = _Backoff(
+            next_search=START, interval=PERIOD
+        )
+        # Never searched, the deferred one goes first and is cut.
+        harness.fetch_events.side_effect = [
+            LoggingDeferred(),
+            LoggingRows(events=[EVENT]),
+        ]
+        harness.match_events.return_value = NoMatch()
+        harness.process()
+        harness.fetch_events.side_effect = None
+        harness.fetch_events.return_value = LoggingRows(events=[EVENT])
+        harness.build_query.reset_mock()
+        harness.clock.advance(PERIOD)
+
+        harness.process()
+
+        searched = [c.args[0] for c in harness.build_query.call_args_list]
+        assert _id(searched[0]) == _id(deferred)
