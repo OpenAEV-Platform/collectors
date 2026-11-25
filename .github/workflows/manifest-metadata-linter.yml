@@ -31,5 +31,5 @@ jobs:
         run: |
           for k in */manifest-metadata.json; do
           echo "Checking ${{ matrix.key }} for $(dirname "$k")"
-          jq 'if .${{ matrix.key }} == "" then error("Error: empty ${{ matrix.key }}") else .${{ matrix.key }} end' $k
+          jq 'if .${{ matrix.key }} == "" or .${{ matrix.key }} == null then error("Error: empty ${{ matrix.key }}") else .${{ matrix.key }} end' $k
           done
