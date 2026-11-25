@@ -145,6 +145,83 @@ class FetcherDeepVisibility:
                 f"Unexpected error fetching DV events for batch SHA1s: {e}"
             ) from e
 
+    def fetch_rows(
+        self, query: str, start_time: datetime, end_time: datetime
+    ) -> list[dict[str, Any]]:
+        """Fetch the events matching an S1QL 1.0 query inside a time window.
+
+        Used by Logging, which builds its own query. Each event is returned as
+        Deep Visibility sent it. Like the SHA1 search, only the first page of
+        events is read.
+
+        Args:
+            query: S1QL 1.0 query.
+            start_time: Window start.
+            end_time: Window end.
+
+        Returns:
+            The raw events.
+
+        Raises:
+            SentinelOneAPIError: If the API call fails. ``status_code`` holds
+                the HTTP status when SentinelOne answered with an error.
+            SentinelOneNetworkError: If a network error occurs.
+
+        """
+        self.logger.debug(f"{LOG_PREFIX} DV Query: {query}")
+        query_id = self._launch_query(query, start_time, end_time)
+        self._wait_for_query_completion(query_id)
+        return self._make_real_events_query(query_id)
+
+    def _launch_query(
+        self, query: str, start_time: datetime, end_time: datetime
+    ) -> str:
+        """Start a Deep Visibility query and return its id.
+
+        Args:
+            query: S1QL 1.0 query.
+            start_time: Window start.
+            end_time: Window end.
+
+        Returns:
+            The query id.
+
+        Raises:
+            SentinelOneAPIError: If the call fails or returns no query id.
+            SentinelOneNetworkError: If a network error occurs.
+
+        """
+        endpoint = f"{self.client_api.base_url}/web/api/v2.1/dv/init-query"
+        body = {
+            "query": query,
+            "fromDate": self._format_timestamp_for_api(start_time),
+            "toDate": self._format_timestamp_for_api(end_time),
+        }
+        try:
+            response = self.client_api.session.post(
+                endpoint, json=body, timeout=REQUEST_TIMEOUT_SECONDS
+            )
+        except (ConnectionError, Timeout) as e:
+            raise SentinelOneNetworkError(
+                f"Network error making DV init query: {e}"
+            ) from e
+        except RequestException as e:
+            raise SentinelOneAPIError(
+                f"HTTP request failed for DV init query: {e}"
+            ) from e
+
+        if response.status_code != 200:
+            raise SentinelOneAPIError(
+                f"DV init query failed with status {response.status_code}: "
+                f"{self._parse_error_response(response)}",
+                status_code=response.status_code,
+            )
+        data = response.json().get("data") or {}
+        query_id = data.get("queryId") if isinstance(data, dict) else None
+        if not query_id:
+            raise SentinelOneAPIError("DV init query response is missing queryId")
+        return query_id
+
     def _init_dv_query(
         self,
         sha1_list: list[str],
@@ -344,7 +421,8 @@ class FetcherDeepVisibility:
                 else:
                     error_detail = self._parse_error_response(response)
                     raise SentinelOneAPIError(
-                        f"Query status check failed with status {response.status_code}: {error_detail}"
+                        f"Query status check failed with status {response.status_code}: {error_detail}",
+                        status_code=response.status_code,
                     )
 
             except SentinelOneValidationError, SentinelOneAPIError:
@@ -434,7 +512,8 @@ class FetcherDeepVisibility:
             else:
                 error_detail = self._parse_error_response(response)
                 raise SentinelOneAPIError(
-                    f"DV events query failed with status {response.status_code}: {error_detail}"
+                    f"DV events query failed with status {response.status_code}: {error_detail}",
+                    status_code=response.status_code,
                 )
 
         except SentinelOneValidationError, SentinelOneAPIError:
