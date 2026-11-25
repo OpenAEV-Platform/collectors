@@ -27,6 +27,7 @@ def test_defaults():
     assert config.github_collect_workflows is True
     assert config.github_collect_packages is True
     assert config.github_end_date_removed is True
+    assert config.github_removed_action == "end_date"
 
 
 @pytest.mark.parametrize(
@@ -36,6 +37,7 @@ def test_defaults():
         ({"github_token": "t"}, "at least one owner"),
         ({**REQUIRED, "github_api_url": "github.example.com"}, "http"),
         ({**REQUIRED, "github_package_types": "npm,pypi"}, "unknown GitHub package"),
+        ({**REQUIRED, "github_removed_action": "purge"}, "github_removed_action"),
     ],
 )
 def test_invalid_configuration_is_refused(values, message):
@@ -401,3 +403,152 @@ def test_packages_of_an_unreadable_type_are_never_end_dated():
     daemon.client = FakeClient(packages_status=403)
     daemon._process_message()
     assert _end_dated(daemon) == []
+
+
+class LegacyPackage(FakeClient):
+    """An npm package published from the archived acme/legacy repository."""
+
+    def owner_packages(self, owner, package_type, is_org):
+        return iter(
+            [
+                {
+                    "id": 88,
+                    "name": "legacy-sdk",
+                    "package_type": "npm",
+                    "visibility": "private",
+                    "repository": {"full_name": "acme/legacy", "node_id": "R_legacy"},
+                }
+            ]
+        )
+
+
+def _legacy_known():
+    known = [
+        {
+            "asset_id": "r-legacy",
+            "asset_name": "acme/legacy",
+            "asset_external_reference": "github:repository:R_legacy",
+        },
+        {
+            "asset_id": "w-legacy",
+            "asset_name": "acme/legacy: CI",
+            "asset_external_reference": "github:workflow:W_legacy",
+        },
+        {
+            "asset_id": "p-legacy",
+            "asset_name": "acme/legacy-sdk (npm)",
+            "asset_external_reference": "github:package:88",
+        },
+    ]
+    overviews = {
+        "/assets/r-legacy": {
+            "asset_metadata": {"github_owner": "acme", "github_state": "archived"},
+            "asset_tags": ["id-source:github"],
+        },
+        "/assets/w-legacy": _overview(repository="github:repository:R_legacy"),
+        "/assets/p-legacy": {
+            "asset_metadata": {
+                "github_owner": "acme",
+                "github_package_type": "npm",
+                "github_state": "active",
+                "github_repository_external_reference": "github:repository:R_legacy",
+            }
+        },
+    }
+    return known, overviews
+
+
+def _deleted(daemon):
+    return [c.args[0] for c in daemon.api.http_delete.call_args_list]
+
+
+def test_delete_removes_an_archived_repository_and_its_workflows_and_packages():
+    # Archived repositories not collected, action delete: the repository, its workflow and
+    # its package leave OpenAEV, whatever their tags; the active repository stays.
+    known, overviews = _legacy_known()
+    daemon = _daemon(
+        {**BASE, "github_include_archived": False, "github_removed_action": "delete"},
+        known=known,
+        overviews=overviews,
+    )
+    daemon.client = LegacyPackage()
+    daemon._process_message()
+    assert sorted(_deleted(daemon)) == [
+        "/assets/p-legacy",
+        "/assets/r-legacy",
+        "/assets/w-legacy",
+    ]
+    assert "github:package:88" not in _upserted(daemon)
+    assert "github:repository:R_api" in _upserted(daemon)
+    assert _end_dated(daemon) == []
+
+
+def test_delete_never_keys_on_the_deleted_tag():
+    # A live workflow wrongly tagged github-state:deleted by an older run is never deleted:
+    # only this run's listings decide.
+    known = [
+        {
+            "asset_id": "id-W_ci",
+            "asset_name": "acme/api: CI",
+            "asset_external_reference": "github:workflow:W_ci",
+            "asset_tags": ["id-source:github", "id-github-state:deleted"],
+        }
+    ]
+    overviews = {
+        "/assets/id-W_ci": _overview(
+            asset_tags=["id-source:github", "id-github-state:deleted"],
+            github_state="deleted",
+        )
+    }
+    daemon = _daemon(
+        {**BASE, "github_removed_action": "delete"}, known=known, overviews=overviews
+    )
+    daemon._process_message()
+    assert _deleted(daemon) == []
+
+
+def test_delete_leaves_an_incomplete_listing_alone():
+    known, overviews = _legacy_known()
+    daemon = _daemon(
+        {**BASE, "github_include_archived": False, "github_removed_action": "delete"},
+        known=known,
+        overviews=overviews,
+    )
+    daemon.client = FakeClient(fail_owner="acme")
+    daemon._process_message()
+    assert _deleted(daemon) == []
+
+
+def test_end_date_applies_to_an_archived_repository_dropped_by_the_settings():
+    known, overviews = _legacy_known()
+    daemon = _daemon(
+        {**BASE, "github_include_archived": False}, known=known, overviews=overviews
+    )
+    daemon.client = LegacyPackage()
+    daemon._process_message()
+    assert sorted(e["asset_external_reference"] for e in _end_dated(daemon)) == [
+        "github:package:88",
+        "github:repository:R_legacy",
+        "github:workflow:W_legacy",
+    ]
+    assert _deleted(daemon) == []
+
+
+def test_tag_only_adds_the_deleted_tag():
+    known, overviews = _legacy_known()
+    daemon = _daemon(
+        {**BASE, "github_include_archived": False, "github_removed_action": "tag"},
+        known=known,
+        overviews=overviews,
+    )
+    daemon.client = LegacyPackage()
+    daemon._process_message()
+    tagged = [
+        c.args[0]
+        for c in daemon.api.endpoint.upsert.call_args_list
+        if c.args[0]["asset_external_reference"] == "github:repository:R_legacy"
+    ]
+    assert [t["asset_tags"] for t in tagged] == [["id-github-state:deleted"]]
+    assert "github_end_date" not in tagged[0]["asset_metadata"]
+    assert _end_dated(daemon) == []
+    assert _deleted(daemon) == []

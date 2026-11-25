@@ -86,7 +86,10 @@ class InventoryResult:
     - ``complete_workflow_repositories``: external references of the repositories whose
       workflow listing completed;
     - ``complete_package_types``: ``(owner, package_type)`` pairs whose package listing
-      completed.
+      completed;
+    - ``archived_repositories_dropped``: external references of the archived repositories
+      GitHub returned but the settings drop (``include_archived`` off): their packages are
+      dropped with them, so the removal action applies to the whole repository.
     """
 
     assets: list[GitHubAsset] = field(default_factory=list)
@@ -94,6 +97,7 @@ class InventoryResult:
     listed_repositories: set[str] = field(default_factory=set)
     complete_workflow_repositories: set[str] = field(default_factory=set)
     complete_package_types: set[tuple[str, str]] = field(default_factory=set)
+    archived_repositories_dropped: set[str] = field(default_factory=set)
 
     def removable(self, kind: str, owner: str, metadata: dict[str, Any]) -> bool:
         """Whether an asset this run did not see may be end-dated as removed from GitHub.
@@ -278,6 +282,10 @@ class Inventory:
         assets: list[GitHubAsset] = []
         for repo in repositories:
             if not self._keep(repo):
+                if repo.get("archived") and repo.get("node_id"):
+                    result.archived_repositories_dropped.add(
+                        reference(KIND_REPOSITORY, repo["node_id"])
+                    )
                 continue
             repository = repository_asset(repo, host)
             assets.append(repository)
@@ -330,7 +338,13 @@ class Inventory:
                     )
                     return assets
                 raise
-            assets.extend(found)
+            # A package of an archived repository the settings drop is dropped with it.
+            assets.extend(
+                asset
+                for asset in found
+                if asset.metadata.get("github_repository_external_reference")
+                not in result.archived_repositories_dropped
+            )
             result.complete_package_types.add((owner.lower(), package_type))
         return assets
 

@@ -21,6 +21,10 @@ from pyoaev.daemons import CollectorDaemon
 
 SOURCE_TAG = "source:github"
 DELETED_TAG = "github-state:deleted"
+ACTION_TAG = "tag"
+ACTION_END_DATE = "end_date"
+ACTION_DELETE = "delete"
+REMOVED_ACTIONS = (ACTION_TAG, ACTION_END_DATE, ACTION_DELETE)
 TAG_COLORS = {
     "source": "#24292f",
     "github-owner": "#8b5cf6",
@@ -137,6 +141,8 @@ class OpenAEVGitHub(CollectorDaemon):  # type: ignore[misc]
         self.token = get("github_token")
         self.api_url = get("github_api_url") or GITHUB_COM_API_URL
         self.end_date_removed = bool(get("github_end_date_removed"))
+        action = str(get("github_removed_action") or ACTION_END_DATE).strip().lower()
+        self.removed_action = action if action in REMOVED_ACTIONS else ACTION_END_DATE
         self.settings = InventorySettings(
             organizations=parse_list(get("github_organizations")),
             users=parse_list(get("github_users")),
@@ -243,12 +249,20 @@ class OpenAEVGitHub(CollectorDaemon):  # type: ignore[misc]
         seen: set[str],
         result: InventoryResult,
     ) -> None:
-        """End-date the assets whose complete listing in this run no longer returns them.
+        """Act on the assets whose complete listing in this run no longer returns them.
 
-        The asset is kept (never deleted): its metadata gets ``github_state: deleted`` and
-        ``github_end_date``, and it is tagged ``github-state:deleted`` on top of its tags (the
-        upsert merges tags). An asset whose listing did not complete in this run (its owner,
-        the workflows of its repository, the packages of its type) is left untouched.
+        A repository GitHub no longer returns, or an archived one the settings drop
+        (``github_include_archived`` off), and its workflows and packages, are acted on with
+        ``github_removed_action``:
+
+        - ``tag``: tagged ``github-state:deleted`` on top of its tags (the upsert merges tags);
+        - ``end_date`` (default): also ``github_state: deleted`` and ``github_end_date`` in its
+          metadata;
+        - ``delete``: the asset is deleted from OpenAEV.
+
+        The decision is read from this run's listings, never from the ``github-state:deleted``
+        tag. An asset whose listing did not complete in this run (its owner, the workflows of
+        its repository, the packages of its type) is left untouched.
         """
         now = datetime.now(UTC).isoformat()
         for known in known_assets:
@@ -261,24 +275,38 @@ class OpenAEVGitHub(CollectorDaemon):  # type: ignore[misc]
             try:
                 overview = self.api.http_get(f"/assets/{known['asset_id']}")
                 metadata = dict(overview.get("asset_metadata") or {})
-                if metadata.get("github_state") == "deleted":
-                    continue
                 owner = str(metadata.get("github_owner") or owner_of(name))
                 if not result.removable(kind_of(reference), owner, metadata):
                     continue
-                metadata["github_state"] = "deleted"
-                metadata["github_end_date"] = now
+                if self.removed_action == ACTION_DELETE:
+                    self.api.http_delete(f"/assets/{known['asset_id']}")
+                    self.logger.info(f"Deleted {name}: no longer collected from GitHub")
+                    continue
+                if metadata.get("github_state") == "deleted":
+                    continue
+                deleted_tag_ids = self._tag_ids([DELETED_TAG])
+                if self.removed_action == ACTION_TAG and set(deleted_tag_ids) <= set(
+                    overview.get("asset_tags") or []
+                ):
+                    continue
+                if self.removed_action == ACTION_END_DATE:
+                    metadata["github_state"] = "deleted"
+                    metadata["github_end_date"] = now
                 self.api.endpoint.upsert(
                     {
                         "asset_name": name,
                         "asset_external_reference": reference,
                         "asset_metadata": metadata,
-                        "asset_tags": self._tag_ids([DELETED_TAG]),
+                        "asset_tags": deleted_tag_ids,
                     }
                 )
-                self.logger.info(f"End-dated {name}: no longer on GitHub")
+                self.logger.info(
+                    f"Marked {name} ({self.removed_action}): no longer on GitHub"
+                )
             except Exception as err:
-                self.logger.error(f"Failed to end-date {name}: {err}")
+                self.logger.error(
+                    f"Failed to act on {name} ({self.removed_action}): {err}"
+                )
 
     def _process_message(self) -> None:
         """Collect the configured GitHub owners and upsert their source-code assets."""

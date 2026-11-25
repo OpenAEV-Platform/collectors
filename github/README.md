@@ -74,7 +74,8 @@ winning.
 | Workflows        | `collector.github_collect_workflows`| `COLLECTOR_GITHUB_COLLECT_WORKFLOWS`   | true                                  | Register each GitHub Actions workflow as a CI/CD pipeline asset linked to its repository.    |
 | Packages         | `collector.github_collect_packages` | `COLLECTOR_GITHUB_COLLECT_PACKAGES`    | true                                  | Register GitHub Packages as software package assets when the token can read them.            |
 | Package types    | `collector.github_package_types`    | `COLLECTOR_GITHUB_PACKAGE_TYPES`       | `npm,maven,rubygems,nuget,container`  | Package types read (`npm`, `maven`, `rubygems`, `docker`, `nuget`, `container`).             |
-| End-date removed | `collector.github_end_date_removed` | `COLLECTOR_GITHUB_END_DATE_REMOVED`    | true                                  | End-date (never delete) the assets of objects GitHub no longer returns.                      |
+| End-date removed | `collector.github_end_date_removed` | `COLLECTOR_GITHUB_END_DATE_REMOVED`    | true                                  | Act on the assets of objects GitHub no longer returns (or archived ones not collected).      |
+| Removed action   | `collector.github_removed_action`   | `COLLECTOR_GITHUB_REMOVED_ACTION`      | `end_date`                            | `tag`, `end_date` or `delete`: what happens to those assets (see Behavior).                  |
 
 ## Creating the token
 
@@ -126,10 +127,16 @@ On each run the collector:
 5. Upserts one OpenAEV asset per object, keyed on its stable GitHub id (a renamed or transferred repository keeps its
    asset), and creates the tags `source:github`, `github-owner:<owner>`, `visibility:<visibility>`,
    `language:<language>`, `topic:<topic>`, `github-repo:<owner/name>` and `package-type:<type>`.
-6. When `github_end_date_removed` is on, reads the source-code assets it registered earlier and end-dates those GitHub
-   no longer returns: their metadata gets `github_state: deleted` and `github_end_date`, and they are tagged
-   `github-state:deleted`. Assets are **never deleted**. An owner whose listing failed in this run is left untouched,
-   so an API outage never end-dates a whole organization.
+6. When `github_end_date_removed` is on, reads the source-code assets it registered earlier and acts on those this
+   run no longer collects: a repository GitHub no longer returns, an archived repository when
+   `github_include_archived` is false, and the workflows and packages of either. `github_removed_action` says how:
+   - `tag`: tagged `github-state:deleted`;
+   - `end_date` (default): also `github_state: deleted` and `github_end_date` in the metadata;
+   - `delete`: the asset is deleted from OpenAEV (it leaves every product that syncs OpenAEV assets).
+
+   The decision comes from this run's listings, never from the `github-state:deleted` tag. An owner whose listing
+   failed in this run, a repository whose workflow listing failed and a package type the token cannot read are left
+   untouched, so an API outage never removes a whole organization.
 
 ## Asset mapping
 

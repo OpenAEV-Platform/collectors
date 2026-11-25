@@ -26,3 +26,4 @@ collector:
   github_collect_packages: true
   github_package_types: 'npm,maven,rubygems,nuget,container'
   github_end_date_removed: true
+  github_removed_action: 'end_date'  # tag | end_date | delete

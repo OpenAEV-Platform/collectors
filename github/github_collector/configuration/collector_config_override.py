@@ -1,7 +1,7 @@
 """Settings of the GitHub collector, validated at start."""
 
 from datetime import timedelta
-from typing import Self
+from typing import Literal, Self
 
 from github_collector.inventory import ALLOWED_PACKAGE_TYPES, DEFAULT_PACKAGE_TYPES
 from pydantic import Field, SecretStr, field_validator, model_validator
@@ -71,8 +71,16 @@ class CollectorConfigOverride(ConfigLoaderCollector):  # type: ignore[misc]
     )
     github_end_date_removed: bool = Field(
         default=True,
-        description="End-date (never delete) the assets of a repository, workflow or package "
-        "no longer returned by GitHub.",
+        description="Act on the assets of a repository, workflow or package no longer returned "
+        "by GitHub (or dropped by the settings, such as an archived repository when archived "
+        "repositories are not collected), with github_removed_action. Off: such assets are "
+        "left as they are.",
+    )
+    github_removed_action: Literal["tag", "end_date", "delete"] = Field(
+        default="end_date",
+        description="What happens to those assets: tag (tagged github-state:deleted), end_date "
+        "(also github_state deleted and github_end_date in the metadata) or delete (the asset "
+        "is deleted from OpenAEV).",
     )
 
     @field_validator("github_api_url")
