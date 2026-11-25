@@ -26,6 +26,11 @@ KIND_REPOSITORY = "repository"
 KIND_WORKFLOW = "workflow"
 KIND_PACKAGE = "package"
 
+WORKFLOWS_DIRECTORY = ".github/workflows"
+# GitHub-managed workflows (Copilot, Dependabot, code scanning...) are listed by the
+# Actions API under this prefix but are not files of the repository.
+DYNAMIC_WORKFLOW_PREFIX = "dynamic/"
+
 DEFAULT_PACKAGE_TYPES = ("npm", "maven", "rubygems", "nuget", "container")
 ALLOWED_PACKAGE_TYPES = {"npm", "maven", "rubygems", "docker", "nuget", "container"}
 
@@ -67,6 +72,7 @@ class InventorySettings:
     include_archived: bool = True
     include_forks: bool = False
     collect_workflows: bool = True
+    collect_dynamic_workflows: bool = False
     collect_packages: bool = True
     package_types: list[str] = field(
         default_factory=lambda: list(DEFAULT_PACKAGE_TYPES)
@@ -173,23 +179,49 @@ def repository_asset(repo: dict[str, Any], host: str) -> GitHubAsset:
     )
 
 
+def workflow_label(workflow: dict[str, Any]) -> str:
+    """Return the display name of a workflow, its path when it has none."""
+    return str(workflow.get("name") or workflow.get("path") or workflow.get("id"))
+
+
+def workflow_file(workflow: dict[str, Any]) -> str:
+    """Return the path of a workflow relative to .github/workflows (dynamic ones whole)."""
+    path = str(workflow.get("path") or "")
+    prefix = f"{WORKFLOWS_DIRECTORY}/"
+    return path[len(prefix) :] if path.startswith(prefix) else path
+
+
 def workflow_asset(
-    workflow: dict[str, Any], repository: GitHubAsset, host: str
+    workflow: dict[str, Any],
+    repository: GitHubAsset,
+    host: str,
+    with_file: bool = False,
 ) -> GitHubAsset:
-    """Map a GitHub Actions workflow to an asset linked to its repository."""
+    """Map a GitHub Actions workflow to an asset linked to its repository.
+
+    Workflow names are not unique in a repository: ``with_file`` appends the workflow file
+    to the name, so two workflows sharing a name get two names. The exposure and the
+    ``visibility:`` tag are the repository's: a workflow is as readable as its repository.
+    """
     full_name = repository.metadata["github_full_name"]
+    name = f"{full_name}: {workflow_label(workflow)}"
+    if with_file and workflow_file(workflow):
+        name = f"{name} ({workflow_file(workflow)})"
+    tags = [
+        f"github-owner:{repository.owner.lower()}",
+        f"github-repo:{full_name.lower()}",
+    ]
+    tags.extend(tag for tag in repository.tags if tag.startswith("visibility:"))
     return GitHubAsset(
         kind=KIND_WORKFLOW,
-        name=f"{full_name}: {workflow.get('name') or workflow.get('path')}",
+        name=name,
         external_reference=reference(KIND_WORKFLOW, workflow["node_id"]),
         subcategory=SUBCATEGORY_PIPELINE,
         owner=repository.owner,
         url=workflow.get("html_url"),
         description=f"GitHub Actions workflow {workflow.get('path')} of {full_name}",
-        tags=[
-            f"github-owner:{repository.owner.lower()}",
-            f"github-repo:{full_name.lower()}",
-        ],
+        internet_facing=repository.internet_facing,
+        tags=tags,
         metadata={
             "provider": "github",
             "github_host": host,
@@ -199,6 +231,7 @@ def workflow_asset(
             "github_id": workflow.get("id"),
             "github_path": workflow.get("path"),
             "github_workflow_state": workflow.get("state"),
+            "github_visibility": repository.metadata.get("github_visibility"),
             "github_repository": full_name,
             "github_repository_external_reference": repository.external_reference,
             "github_updated_at": workflow.get("updated_at"),
@@ -301,21 +334,84 @@ class Inventory:
             assets.extend(self._packages(owner, is_org, result))
         return assets
 
-    def _workflows(self, repository: GitHubAsset) -> list[GitHubAsset] | None:
-        """List the workflows of a repository; None when the listing did not complete."""
+    def _workflow_files(self, repository: GitHubAsset) -> set[str] | None:
+        """Return the paths of the workflow files on the default branch (one read).
+
+        A repository without a .github/workflows directory answers 404: no file. A token
+        without "contents: read" answers 403: None, the files are unknown and every listed
+        workflow is kept, as before this check. Any other error is raised.
+        """
         full_name = repository.metadata["github_full_name"]
         try:
-            return [
-                workflow_asset(workflow, repository, self.settings.host)
-                for workflow in self.client.repository_workflows(full_name)
-            ]
+            entries = self.client.directory_entries(
+                repository.metadata["github_full_name"],
+                WORKFLOWS_DIRECTORY,
+                repository.metadata.get("github_default_branch"),
+            )
         except GitHubApiError as err:
-            # Actions disabled, or no "actions: read" permission: the repository itself stays,
-            # and its known workflows are left as they are (never read as removed).
+            if err.status_code == 404:
+                return set()
+            if err.status_code == 403:
+                self.logger.info(
+                    f"Workflow files of {full_name} not readable, stale workflows kept: "
+                    f"{err}"
+                )
+                return None
+            raise
+        return {
+            str(entry["path"])
+            for entry in entries
+            if entry.get("type") == "file" and entry.get("path")
+        }
+
+    def _workflows(self, repository: GitHubAsset) -> list[GitHubAsset] | None:
+        """List the workflows of a repository; None when the listing did not complete.
+
+        The Actions API keeps listing a workflow whose file was deleted or renamed (state
+        still active) and lists GitHub-managed ``dynamic/`` workflows: a workflow is kept
+        only when its file is on the default branch, and a dynamic one only when
+        ``collect_dynamic_workflows`` is on. A stale workflow is not emitted, so an asset
+        registered for it earlier goes through the removal action like any removed one.
+        """
+        full_name = repository.metadata["github_full_name"]
+        try:
+            listed = list(self.client.repository_workflows(full_name))
+            kept: list[dict[str, Any]] = []
+            files: set[str] | None = None
+            files_read = False
+            for workflow in listed:
+                path = str(workflow.get("path") or "")
+                if path.startswith(DYNAMIC_WORKFLOW_PREFIX):
+                    if self.settings.collect_dynamic_workflows:
+                        kept.append(workflow)
+                    continue
+                if path.startswith(".github/"):
+                    if not files_read:
+                        files = self._workflow_files(repository)
+                        files_read = True
+                    if files is not None and path not in files:
+                        self.logger.debug(f"Stale workflow {path} of {full_name}")
+                        continue
+                kept.append(workflow)
+        except GitHubApiError as err:
+            # Actions disabled, or no "actions: read" permission: the repository itself
+            # stays, and its known workflows are left as they are (never read as removed).
             if err.status_code in (403, 404):
                 self.logger.info(f"No readable workflows for {full_name}: {err}")
                 return None
             raise
+        names: dict[str, int] = {}
+        for workflow in kept:
+            names[workflow_label(workflow)] = names.get(workflow_label(workflow), 0) + 1
+        return [
+            workflow_asset(
+                workflow,
+                repository,
+                self.settings.host,
+                with_file=names[workflow_label(workflow)] > 1,
+            )
+            for workflow in kept
+        ]
 
     def _packages(
         self, owner: str, is_org: bool, result: InventoryResult

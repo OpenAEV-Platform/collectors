@@ -45,6 +45,24 @@ WORKFLOWS = {
     ],
 }
 
+# Files of .github/workflows on the default branch, per repository.
+WORKFLOW_FILES = {"acme/api": [".github/workflows/ci.yml"]}
+
+
+def workflow(node_id, name, path, **overrides):
+    values = {
+        "id": abs(hash(node_id)) % 10_000_000,
+        "node_id": node_id,
+        "name": name,
+        "path": path,
+        "state": "active",
+        "html_url": f"https://github.com/acme/api/blob/main/{path}",
+        "updated_at": "2026-11-01T00:00:00Z",
+    }
+    values.update(overrides)
+    return values
+
+
 PACKAGES = {
     "npm": [
         {
@@ -64,10 +82,23 @@ PACKAGES = {
 class FakeClient:
     """Answers like GitHubClient from the data above."""
 
-    def __init__(self, repositories=None, fail_owner=None, packages_status=None):
+    def __init__(
+        self,
+        repositories=None,
+        fail_owner=None,
+        packages_status=None,
+        workflows=None,
+        workflow_files=None,
+        contents_status=None,
+    ):
         self.repositories = REPOSITORIES if repositories is None else repositories
         self.fail_owner = fail_owner
         self.packages_status = packages_status
+        self.workflows = WORKFLOWS if workflows is None else workflows
+        self.workflow_files = (
+            WORKFLOW_FILES if workflow_files is None else workflow_files
+        )
+        self.contents_status = contents_status
         self.calls = []
 
     def organization_repositories(self, org):
@@ -85,7 +116,18 @@ class FakeClient:
     def repository_workflows(self, full_name):
         if full_name == "acme/legacy":
             raise GitHubApiError("Actions disabled", 404)
-        return iter(WORKFLOWS.get(full_name, []))
+        return iter(self.workflows.get(full_name, []))
+
+    def directory_entries(self, full_name, path, ref=None):
+        self.calls.append(("contents", full_name, path, ref))
+        if self.contents_status:
+            raise GitHubApiError("contents", self.contents_status)
+        if full_name not in self.workflow_files:
+            raise GitHubApiError("Not Found", 404)
+        return [
+            {"type": "file", "path": file, "name": file.rsplit("/", 1)[-1]}
+            for file in self.workflow_files[full_name]
+        ]
 
     def owner_packages(self, owner, package_type, is_org):
         if self.packages_status:
