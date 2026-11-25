@@ -218,9 +218,31 @@ class TestFetcherDeepVisibility(unittest.TestCase):
             "forbidden", status_code=403
         )
 
+        start = module.datetime(2026, 11, 24, 8, tzinfo=module.timezone.utc)
+        end = module.datetime(2026, 11, 24, 9, tzinfo=module.timezone.utc)
+
         with self.assertRaises(module.SentinelOneAPIError):
-            fetcher._init_dv_query(["sha-one"])
+            fetcher._init_dv_query(["sha-one"], start, end)
         m_launch_query.assert_called_once()
+
+    @patch.object(module.time, "sleep")
+    @patch.object(module.FetcherDeepVisibility, "_launch_query")
+    def test_init_dv_query_retries_the_retention_only_once(
+        self, m_launch_query, m_sleep
+    ):
+        fetcher = module.FetcherDeepVisibility(MagicMock())
+        start = module.datetime(2026, 11, 1, tzinfo=module.timezone.utc)
+        end = module.datetime(2026, 11, 24, tzinfo=module.timezone.utc)
+        m_launch_query.side_effect = module.SentinelOneAPIError(
+            "DV init query failed with status 400: Code 4000: "
+            "Account retains data for 14 days",
+            status_code=400,
+        )
+
+        with self.assertRaises(module.SentinelOneAPIError):
+            fetcher._init_dv_query(["sha-one"], start, end)
+        self.assertEqual(m_launch_query.call_count, 2)
+        m_sleep.assert_called_once_with(60)
 
     def test_format_timestamp_for_api(self):
         client_api = MagicMock()

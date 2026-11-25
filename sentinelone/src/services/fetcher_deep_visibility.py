@@ -250,7 +250,8 @@ class FetcherDeepVisibility:
 
         When Deep Visibility refuses the window because it is older than its
         retention, the window is shortened to the retention and the query is
-        started again, after a pause for the rate limit.
+        started again once, after a pause for the rate limit. If that second
+        try fails too, its error is raised.
 
         Args:
             sha1_list: List of SHA1 hashes to search for.
@@ -293,7 +294,9 @@ class FetcherDeepVisibility:
         self.logger.debug(
             f"{LOG_PREFIX} Retrying with adjusted time window: {adjusted_start_time} to {end_time}"
         )
-        return self._init_dv_query(sha1_list, adjusted_start_time, end_time)
+        # One retry only: the shortened window fits the retention, so a second
+        # refusal means something else is wrong, and looping would never end.
+        return self._launch_query(query_string, adjusted_start_time, end_time)
 
     def _execute_query(self, query_id: str) -> list[dict[str, Any]]:
         """Wait for a started Deep Visibility query, then read its events.

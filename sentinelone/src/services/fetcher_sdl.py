@@ -176,11 +176,13 @@ class FetcherSDL:
 
     def fetch_rows(
         self, s1ql_filter: str, start_time: datetime, end_time: datetime
-    ) -> list[dict[str, Any]]:
+    ) -> list[dict[str, Any] | None]:
         """Fetch every row matching an S1QL 2.0 filter inside a time window.
 
         Used by Logging, which builds its own filter. Each row is the
-        ``values`` block SentinelOne sent: the event fields by name.
+        ``values`` block SentinelOne sent: the event fields by name. A row
+        without fields is kept as None, so that Logging counts it as
+        unreadable instead of losing it.
 
         Args:
             s1ql_filter: S1QL 2.0 filter expression.

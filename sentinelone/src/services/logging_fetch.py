@@ -9,6 +9,7 @@ error can never be mistaken for "no event found".
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from .exception import SentinelOneAPIError, SentinelOneNetworkError
@@ -19,6 +20,7 @@ from .utils.dates import read_iso_date
 
 LOG_PREFIX = "[SentinelOneLoggingFetch]"
 AUTH_ERROR_STATUS_CODES = (401, 403)
+EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
 
 logger = logging.getLogger(__name__)
 
@@ -201,16 +203,19 @@ def _parse_event_time(value: Any) -> datetime | None:
     """
     if value is None or isinstance(value, bool):
         return None
+    text = str(value).strip()
     try:
-        milliseconds = float(value)
-    except TypeError, ValueError:
-        date = read_iso_date(str(value).strip())
+        # Decimal reads the number exactly, with no float rounding.
+        milliseconds = Decimal(text)
+    except InvalidOperation:
+        date = read_iso_date(text)
         if date is None:
             return None
         whole_seconds, fraction = date
         # A datetime holds microseconds: digits after the sixth are dropped.
         return whole_seconds + timedelta(microseconds=int(fraction[:6].ljust(6, "0")))
     try:
-        return datetime.fromtimestamp(milliseconds / 1000, tz=timezone.utc)
-    except OverflowError, OSError, ValueError:
+        return EPOCH + timedelta(microseconds=int(milliseconds * 1000))
+    # ValueError and OverflowError cover NaN, infinity and out-of-range times.
+    except OverflowError, ValueError:
         return None

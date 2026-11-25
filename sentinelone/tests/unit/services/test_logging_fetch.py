@@ -160,6 +160,24 @@ def test_rows_without_a_readable_time_are_skipped_and_counted():
     assert result.skipped == 3  # noqa: S101
 
 
+@pytest.mark.parametrize(
+    ("event_time", "microsecond"),
+    [(1795371220662, 662000), ("1795371220662", 662000), ("1795371220662.5", 662500)],
+)
+def test_millisecond_times_are_read_exactly(event_time, microsecond):
+    """Milliseconds are read with no float rounding, as a number or a string."""
+    # Act
+    result = fetch_logging_events(
+        _fetcher(FetcherSDL, [{"event.time": event_time}]), _query()
+    )
+
+    # Assert
+    (event,) = result.events
+    assert event.event_time == datetime(  # noqa: S101
+        2026, 11, 22, 18, 13, 40, microsecond, tzinfo=timezone.utc
+    )
+
+
 def test_only_unreadable_rows_are_malformed():
     """Rows came back but none could be read: an error, not "no event"."""
     # Act
