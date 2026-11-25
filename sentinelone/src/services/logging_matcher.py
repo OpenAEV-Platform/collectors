@@ -82,7 +82,9 @@ def match_logging_events(
     best: Match | None = None
     outside_window = 0
     for event in events:
-        if not query.start <= event.event_time <= query.end:
+        # The exact inject window, not the search one: the search is rounded
+        # to whole seconds, and its extra part is outside the inject.
+        if not query.inject_start <= event.event_time <= query.inject_end:
             outside_window += 1
             continue
         match_type = _strongest_signal(event, markers, source_ips, target_ips)

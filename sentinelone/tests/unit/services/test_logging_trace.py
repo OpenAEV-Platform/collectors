@@ -20,7 +20,14 @@ CONSOLE = "https://usea1-partners.sentinelone.net/"
 def _query() -> LoggingQuery:
     """Build a Logging query with a fixed window."""
     return LoggingQuery(
-        filter=FILTER, markers=[], source_ips=[], target_ips=[], start=START, end=END
+        filter=FILTER,
+        markers=[],
+        source_ips=[],
+        target_ips=[],
+        start=START,
+        end=END,
+        inject_start=START,
+        inject_end=END,
     )
 
 

@@ -1,11 +1,11 @@
 """Tests for the Logging matcher: window, signals and ranking."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 
 from pyoaev.apis.inject_expectation_trace import TraceMatchType
 from src.services.logging_fetch import LoggingEvent
 from src.services.logging_matcher import Match, NoMatch, match_logging_events
-from src.services.logging_query import LoggingQuery
+from src.services.logging_query import LoggingQuery, build_logging_query
 
 START = datetime(2026, 11, 24, 8, 0, 0, tzinfo=timezone.utc)
 END = datetime(2026, 11, 24, 9, 0, 0, tzinfo=timezone.utc)
@@ -23,6 +23,8 @@ def _query(markers=(MARKER,), source_ips=(SOURCE_IP,), target_ips=(TARGET_IP,)):
         target_ips=list(target_ips),
         start=START,
         end=END,
+        inject_start=START,
+        inject_end=END,
     )
 
 
@@ -137,3 +139,57 @@ def test_events_without_any_signal_give_no_match():
 def test_no_events_give_no_match():
     """An empty list is no match."""
     assert match_logging_events(_query(), []) == NoMatch()  # noqa: S101
+
+
+def _fractional_window_query() -> LoggingQuery:
+    """Build the query of an inject from 08:00:00.500 to 08:00:42.300."""
+    return build_logging_query(
+        [
+            {"type": "parent_process_name", "value": MARKER},
+            {"type": "start_date", "value": "2026-11-24T08:00:00.500Z"},
+            {"type": "end_date", "value": "2026-11-24T08:00:42.300Z"},
+        ],
+        self_hosted=False,
+    )
+
+
+def _marker_event_at(second: int, microsecond: int) -> LoggingEvent:
+    """Build a marker event at 08:00:<second>.<microsecond>."""
+    return LoggingEvent(
+        event_time=datetime(2026, 11, 24, 8, 0, second, microsecond, tzinfo=UTC),
+        src_process_name=f"{MARKER}.exe",
+    )
+
+
+def test_event_before_a_fractional_start_is_not_evidence():
+    """The search starts at 08:00:00, but the inject only at 08:00:00.500."""
+    # Arrange
+    query = _fractional_window_query()
+    before = _marker_event_at(0, 100000)
+    on_start = _marker_event_at(0, 500000)
+
+    # Act
+    result_before = match_logging_events(query, [before])
+    result_on_start = match_logging_events(query, [on_start])
+
+    # Assert
+    assert query.start <= before.event_time  # noqa: S101
+    assert result_before == NoMatch()  # noqa: S101
+    assert result_on_start == Match(TraceMatchType.MARKER, on_start)  # noqa: S101
+
+
+def test_event_after_a_fractional_end_is_not_evidence():
+    """The search ends at 08:00:43, but the inject at 08:00:42.300."""
+    # Arrange
+    query = _fractional_window_query()
+    after = _marker_event_at(42, 800000)
+    on_end = _marker_event_at(42, 300000)
+
+    # Act
+    result_after = match_logging_events(query, [after])
+    result_on_end = match_logging_events(query, [on_end])
+
+    # Assert
+    assert after.event_time <= query.end  # noqa: S101
+    assert result_after == NoMatch()  # noqa: S101
+    assert result_on_end == Match(TraceMatchType.MARKER, on_end)  # noqa: S101
