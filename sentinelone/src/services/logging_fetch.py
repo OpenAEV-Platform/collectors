@@ -1,6 +1,6 @@
 """SentinelOne Logging search results.
 
-The Logging search can end in four ways, and the Logging pass reacts
+The Logging search can end in five ways, and the Logging pass reacts
 differently to each: match the events, try again on a later cycle, or stop
 Logging until the collector restarts. Each outcome is its own type, so that an
 error can never be mistaken for "no event found".
@@ -94,7 +94,20 @@ class LoggingApiError:
     status_code: int | None = None
 
 
-LoggingFetchResult = LoggingRows | LoggingEmpty | LoggingAuthError | LoggingApiError
+@dataclass(frozen=True)
+class LoggingMalformed:
+    """SentinelOne returned rows, but none of them could be read.
+
+    This usually means a field name or a date format is not the expected one,
+    so it is reported as an error instead of "no event found".
+    """
+
+    message: str
+
+
+LoggingFetchResult = (
+    LoggingRows | LoggingEmpty | LoggingAuthError | LoggingApiError | LoggingMalformed
+)
 
 
 def fetch_logging_events(
@@ -103,7 +116,8 @@ def fetch_logging_events(
     """Run the Logging search of one expectation and read its events.
 
     A row needs a readable event time. A row without it is skipped and
-    counted, so one bad row does not hide the others.
+    counted, so one bad row does not hide the others. When no row at all can
+    be read, the result is ``LoggingMalformed``.
 
     Args:
         fetcher: The event search of the console: ``FetcherSDL`` on SaaS,
@@ -112,7 +126,8 @@ def fetch_logging_events(
         query: The search built by ``build_logging_query``.
 
     Returns:
-        The events, ``LoggingEmpty`` when none was found, or the error.
+        The events, ``LoggingEmpty`` when none was found,
+        ``LoggingMalformed`` when no returned row could be read, or the error.
 
     """
     try:
@@ -131,6 +146,8 @@ def fetch_logging_events(
         for event in (_parse_row(row, fetcher.LOGGING_FIELDS) for row in rows)
         if event is not None
     ]
+    if not events:
+        return LoggingMalformed(message=f"None of the {len(rows)} rows could be read")
     skipped = len(rows) - len(events)
     if skipped:
         logger.debug(f"{LOG_PREFIX} Skipped {skipped} unreadable Logging rows")

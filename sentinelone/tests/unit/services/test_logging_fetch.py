@@ -12,6 +12,7 @@ from src.services.logging_fetch import (
     LoggingAuthError,
     LoggingEmpty,
     LoggingEvent,
+    LoggingMalformed,
     LoggingRows,
     fetch_logging_events,
 )
@@ -159,15 +160,17 @@ def test_rows_without_a_readable_time_are_skipped_and_counted():
     assert result.skipped == 3  # noqa: S101
 
 
-def test_only_unreadable_rows_give_no_event_but_are_not_empty():
-    """Rows came back but none could be read: not the same as no event."""
+def test_only_unreadable_rows_are_malformed():
+    """Rows came back but none could be read: an error, not "no event"."""
     # Act
     result = fetch_logging_events(
-        _fetcher(FetcherSDL, [{"event.type": "no time"}]), _query()
+        _fetcher(FetcherSDL, [{"event.type": "no time"}, None]), _query()
     )
 
     # Assert
-    assert result == LoggingRows(events=[], skipped=1)  # noqa: S101
+    assert result == LoggingMalformed(  # noqa: S101
+        message="None of the 2 rows could be read"
+    )
 
 
 def test_no_row_is_empty():
