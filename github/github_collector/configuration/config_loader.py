@@ -16,6 +16,7 @@ PLAIN_FIELDS = (
     "github_collect_packages",
     "github_package_types",
     "github_end_date_removed",
+    "github_removed_action",
 )
 
 
