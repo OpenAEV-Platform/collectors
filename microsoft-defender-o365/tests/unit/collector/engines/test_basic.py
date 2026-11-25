@@ -345,9 +345,7 @@ class TestBasicCollectorEngine(unittest.TestCase):
         batch = [expectation1, expectation2, expectation3]
         result1 = MagicMock()
         result2 = MagicMock()
-        result3 = MagicMock()
         m_expectation_result.side_effect = [result1, result2]
-        m_expectation_result.from_error.return_value = result3
         m_expectation_processing_error.return_value = sentinel.exp_pro_error
 
         collector_engine = module.BasicCollectorEngine(
@@ -426,10 +424,9 @@ class TestBasicCollectorEngine(unittest.TestCase):
             ],
         )
         m_expectation_processing_error.assert_called_with("Processing error: Nope")
-        m_expectation_result.from_error.assert_called_with(
-            sentinel.exp_pro_error, expectation3
-        )
-        self.assertEqual(batch_results, [result1, result2, result3])
+        # an error is never turned into a result (collectors#723)
+        m_expectation_result.from_error.assert_not_called()
+        self.assertEqual(batch_results, [result1, result2])
 
     @patch.object(module, "TraceUploader")
     @patch.object(module, "ExpectationUploader")
