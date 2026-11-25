@@ -434,6 +434,35 @@ class TestBasicCollectorEngine(unittest.TestCase):
         m_expectation_result.from_error.assert_not_called()
         self.assertEqual(batch_results, [result1, result2])
 
+    @patch.object(module, "ExpectationResult")
+    @patch.object(module.BasicCollectorEngine, "_reset_summary")
+    def test_process_batch_fetch_error_produces_no_result(
+        self, _m_reset_summary, m_expectation_result
+    ):
+        """A failed fetch is never turned into a verdict (collectors#723)."""
+        source = MagicMock(spec=module.Source)
+        source.signatures = [MagicMock(value="parent process name")]
+        source.data_fetcher_model = MagicMock()
+        source_handler = MagicMock(spec=SourceHandler)
+        source_handler.config = MagicMock()
+        source_handler.get_source_data.side_effect = ConnectionError("graph 503")
+
+        collector_engine = module.BasicCollectorEngine(
+            name="my name is",
+            collector_id="1234abcd",
+            source=source,
+            source_handler=source_handler,
+            oaev_api=MagicMock(spec_set=module.OpenAEV),
+        )
+        collector_engine.configure_engine(MagicMock())
+
+        batch_results = collector_engine._process_batch([MagicMock(), MagicMock()])
+
+        self.assertEqual(batch_results, [])
+        source_handler.match_expectation_and_sourcedata.assert_not_called()
+        m_expectation_result.assert_not_called()
+        m_expectation_result.from_error.assert_not_called()
+
     @patch.object(module, "TraceUploader")
     @patch.object(module, "ExpectationUploader")
     @patch.object(module.BasicCollectorEngine, "_process_batch")
