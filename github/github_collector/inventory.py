@@ -76,14 +76,50 @@ class InventorySettings:
 
 @dataclass
 class InventoryResult:
-    """The assets found and the owners whose listing completed without error.
+    """The assets found and the listings that completed without error.
 
-    Only a complete owner may have its missing assets end-dated: a listing cut by an API
-    error must never be read as "every repository was deleted".
+    Only a complete listing may have its missing assets end-dated: a listing cut by an API
+    error (or a permission the token lacks) must never be read as "every object was deleted".
+
+    - ``complete_owners``: owners (lower case) whose repository listing completed;
+    - ``listed_repositories``: external references of the repositories returned and kept;
+    - ``complete_workflow_repositories``: external references of the repositories whose
+      workflow listing completed;
+    - ``complete_package_types``: ``(owner, package_type)`` pairs whose package listing
+      completed.
     """
 
     assets: list[GitHubAsset] = field(default_factory=list)
     complete_owners: set[str] = field(default_factory=set)
+    listed_repositories: set[str] = field(default_factory=set)
+    complete_workflow_repositories: set[str] = field(default_factory=set)
+    complete_package_types: set[tuple[str, str]] = field(default_factory=set)
+
+    def removable(self, kind: str, owner: str, metadata: dict[str, Any]) -> bool:
+        """Whether an asset this run did not see may be end-dated as removed from GitHub.
+
+        A repository: its owner's listing completed. A workflow: its owner's listing
+        completed and either its repository's workflow listing completed or its repository
+        is no longer listed. A package: the listing of its owner and type completed.
+        Anything else, or an asset whose metadata lacks the needed key, is kept.
+        """
+        owner = owner.lower()
+        if owner not in self.complete_owners:
+            return False
+        if kind == KIND_REPOSITORY:
+            return True
+        if kind == KIND_WORKFLOW:
+            repository_reference = metadata.get("github_repository_external_reference")
+            if not repository_reference:
+                return False
+            return (
+                repository_reference in self.complete_workflow_repositories
+                or repository_reference not in self.listed_repositories
+            )
+        if kind == KIND_PACKAGE:
+            package_type = metadata.get("github_package_type")
+            return (owner, package_type) in self.complete_package_types
+        return False
 
 
 def repository_asset(repo: dict[str, Any], host: str) -> GitHubAsset:
@@ -225,8 +261,14 @@ class Inventory:
             return False
         return True
 
-    def _owner_assets(self, owner: str, is_org: bool) -> list[GitHubAsset]:
-        """List every asset of one owner; raise GitHubApiError when the listing fails."""
+    def _owner_assets(
+        self, owner: str, is_org: bool, result: InventoryResult
+    ) -> list[GitHubAsset]:
+        """List every asset of one owner; raise GitHubApiError when the listing fails.
+
+        The repositories and package types whose listing completed are recorded on
+        ``result``; the owner itself is recorded complete by the caller.
+        """
         host = self.settings.host
         repositories = (
             self.client.organization_repositories(owner)
@@ -239,13 +281,20 @@ class Inventory:
                 continue
             repository = repository_asset(repo, host)
             assets.append(repository)
+            result.listed_repositories.add(repository.external_reference)
             if self.settings.collect_workflows:
-                assets.extend(self._workflows(repository))
+                workflows = self._workflows(repository)
+                if workflows is not None:
+                    assets.extend(workflows)
+                    result.complete_workflow_repositories.add(
+                        repository.external_reference
+                    )
         if self.settings.collect_packages:
-            assets.extend(self._packages(owner, is_org))
+            assets.extend(self._packages(owner, is_org, result))
         return assets
 
-    def _workflows(self, repository: GitHubAsset) -> list[GitHubAsset]:
+    def _workflows(self, repository: GitHubAsset) -> list[GitHubAsset] | None:
+        """List the workflows of a repository; None when the listing did not complete."""
         full_name = repository.metadata["github_full_name"]
         try:
             return [
@@ -253,18 +302,25 @@ class Inventory:
                 for workflow in self.client.repository_workflows(full_name)
             ]
         except GitHubApiError as err:
-            # Actions disabled, or no "actions: read" permission: the repository itself stays.
+            # Actions disabled, or no "actions: read" permission: the repository itself stays,
+            # and its known workflows are left as they are (never read as removed).
             if err.status_code in (403, 404):
                 self.logger.info(f"No readable workflows for {full_name}: {err}")
-                return []
+                return None
             raise
 
-    def _packages(self, owner: str, is_org: bool) -> list[GitHubAsset]:
+    def _packages(
+        self, owner: str, is_org: bool, result: InventoryResult
+    ) -> list[GitHubAsset]:
         assets: list[GitHubAsset] = []
         for package_type in self.settings.package_types:
             try:
-                for package in self.client.owner_packages(owner, package_type, is_org):
-                    assets.append(package_asset(package, owner, self.settings.host))
+                found = [
+                    package_asset(package, owner, self.settings.host)
+                    for package in self.client.owner_packages(
+                        owner, package_type, is_org
+                    )
+                ]
             except GitHubApiError as err:
                 # Packages need a token with read:packages: without it the rest still runs.
                 if err.status_code in (401, 403, 404):
@@ -274,6 +330,8 @@ class Inventory:
                     )
                     return assets
                 raise
+            assets.extend(found)
+            result.complete_package_types.add((owner.lower(), package_type))
         return assets
 
     def collect(self) -> InventoryResult:
@@ -284,7 +342,7 @@ class Inventory:
         ]
         for owner, is_org in owners:
             try:
-                assets = self._owner_assets(owner, is_org)
+                assets = self._owner_assets(owner, is_org, result)
             except GitHubApiError as err:
                 self.logger.error(f"Failed to list the repositories of {owner}: {err}")
                 continue
