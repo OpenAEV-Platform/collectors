@@ -14,6 +14,7 @@ from .exception import (
     SentinelOneNetworkError,
     SentinelOneValidationError,
 )
+from .utils.s1ql import dv_list, dv_string
 
 LOG_PREFIX = "[FetcherDeepVisibility]"
 MAX_STATUS_POLL_ATTEMPTS = 30
@@ -21,6 +22,22 @@ MAX_STATUS_POLL_ATTEMPTS = 30
 
 class FetcherDeepVisibility:
     """Fetcher for SentinelOne Deep Visibility data for threats."""
+
+    # Where each Logging event value is in an event from fetch_rows, keyed by
+    # LoggingEvent attribute. Only processName and parentProcessName are used
+    # by Detection today: the other names are not checked on a self-hosted
+    # console yet.
+    LOGGING_FIELDS = {
+        "event_time": "createdAt",
+        "event_type": "eventType",
+        "endpoint_name": "agentName",
+        "event_id": "id",
+        "tgt_process_name": "tgtProcName",
+        "src_process_name": "processName",
+        "src_parent_process_name": "parentProcessName",
+        "src_ip": "srcIp",
+        "dst_ip": "dstIp",
+    }
 
     def __init__(self, client_api: SentinelOneClientAPI):
         """Initialize the Deep Visibility fetcher.
@@ -57,9 +74,9 @@ class FetcherDeepVisibility:
         try:
             self.logger.debug(f"{LOG_PREFIX} Fetching DV events for SHA1: {sha1}")
 
-            query_response = self._init_dv_query([sha1], start_time, end_time)
+            query_id = self._init_dv_query([sha1], start_time, end_time)
 
-            all_events = self._execute_query(query_response)
+            all_events = self._execute_query(query_id)
 
             events = [event for event in all_events if event.get("fileSha1") == sha1]
 
@@ -115,9 +132,9 @@ class FetcherDeepVisibility:
                 f"{LOG_PREFIX} Fetching DV events for {len(valid_sha1s)} SHA1s in batch"
             )
 
-            query_response = self._init_dv_query(valid_sha1s, start_time, end_time)
+            query_id = self._init_dv_query(valid_sha1s, start_time, end_time)
 
-            all_events = self._execute_query(query_response)
+            all_events = self._execute_query(query_id)
 
             sha1_to_events = {}
             for sha1 in valid_sha1s:
@@ -145,100 +162,60 @@ class FetcherDeepVisibility:
                 f"Unexpected error fetching DV events for batch SHA1s: {e}"
             ) from e
 
-    def _init_dv_query(
-        self,
-        sha1_list: list[str],
-        start_time: datetime = None,
-        end_time: datetime = None,
-    ) -> Any:
-        """Initialize Deep Visibility query for SHA1s.
+    def fetch_rows(
+        self, query: str, start_time: datetime, end_time: datetime
+    ) -> list[dict[str, Any]]:
+        """Fetch the events matching an S1QL 1.0 query inside a time window.
+
+        Used by Logging, which builds its own query. Each event is returned as
+        Deep Visibility sent it. Like the SHA1 search, only the first page of
+        events is read.
 
         Args:
-            sha1_list: List of SHA1 hashes to search for.
-            start_time: Start time for the search (optional).
-            end_time: End time for the search (optional).
+            query: S1QL 1.0 query.
+            start_time: Window start.
+            end_time: Window end.
 
         Returns:
-            Query response object.
+            The raw events.
 
         Raises:
-            SentinelOneAPIError: If API call fails.
-            SentinelOneNetworkError: If network error occurs.
+            SentinelOneAPIError: If the API call fails. ``status_code`` holds
+                the HTTP status when SentinelOne answered with an error.
+            SentinelOneNetworkError: If a network error occurs.
 
         """
+        return self._execute_query(self._launch_query(query, start_time, end_time))
+
+    def _launch_query(
+        self, query: str, start_time: datetime, end_time: datetime
+    ) -> str:
+        """Start a Deep Visibility query and return its id.
+
+        Args:
+            query: S1QL 1.0 query.
+            start_time: Window start.
+            end_time: Window end.
+
+        Returns:
+            The query id.
+
+        Raises:
+            SentinelOneAPIError: If the call fails or returns no query id.
+            SentinelOneNetworkError: If a network error occurs.
+
+        """
+        endpoint = f"{self.client_api.base_url}/web/api/v2.1/dv/init-query"
+        self.logger.debug(f"{LOG_PREFIX} DV Query: {query}")
+        body = {
+            "query": query,
+            "fromDate": self._format_timestamp_for_api(start_time),
+            "toDate": self._format_timestamp_for_api(end_time),
+        }
         try:
-            endpoint = f"{self.client_api.base_url}/web/api/v2.1/dv/init-query"
-
-            if len(sha1_list) == 1:
-                query_string = f'tgtFileSha1 = "{sha1_list[0]}"'
-            else:
-                sha1_values = '","'.join(sha1_list)
-                query_string = f'tgtFileSha1 in ("{sha1_values}")'
-
-            if end_time is None:
-                end_time = datetime.now(timezone.utc)
-            if start_time is None:
-                start_time = end_time - self.client_api.time_window
-
-            body = {
-                "query": query_string,
-                "fromDate": self._format_timestamp_for_api(start_time),
-                "toDate": self._format_timestamp_for_api(end_time),
-            }
-
-            self.logger.debug(f"{LOG_PREFIX} Making POST request to: {endpoint}")
-            self.logger.debug(f"{LOG_PREFIX} DV Query: {query_string}")
-            self.logger.debug(f"{LOG_PREFIX} Full body payload: {body}")
-
             response = self.client_api.session.post(
                 endpoint, json=body, timeout=REQUEST_TIMEOUT_SECONDS
             )
-
-            if response.status_code == 200:
-                json_data = response.json()
-
-                class InitQueryResponse:
-                    def __init__(self, data: dict):
-                        self.data = InitData(data.get("data", {}))
-
-                class InitData:
-                    def __init__(self, data: dict):
-                        self.query_id = data.get("queryId")
-
-                return InitQueryResponse(json_data)
-            else:
-                error_detail = self._parse_error_response(response)
-
-                retention_days = self._extract_retention_days(error_detail)
-                if retention_days and len(sha1_list) > 0:
-                    self.logger.warning(
-                        f"{LOG_PREFIX} DV retention limit ({retention_days} days) exceeded. Adjusting time window and retrying..."
-                    )
-
-                    self.logger.info(
-                        f"{LOG_PREFIX} Waiting 60 seconds due to DV API rate limit before retry..."
-                    )
-                    time.sleep(60)
-
-                    adjusted_end_time = end_time or datetime.now(timezone.utc)
-                    adjusted_start_time = adjusted_end_time - timedelta(
-                        days=retention_days - 1
-                    )
-
-                    self.logger.debug(
-                        f"{LOG_PREFIX} Retrying with adjusted time window: {adjusted_start_time} to {adjusted_end_time}"
-                    )
-
-                    return self._init_dv_query(
-                        sha1_list, adjusted_start_time, adjusted_end_time
-                    )
-
-                raise SentinelOneAPIError(
-                    f"DV init query failed with status {response.status_code}: {error_detail}"
-                )
-
-        except SentinelOneAPIError:
-            raise
         except (ConnectionError, Timeout) as e:
             raise SentinelOneNetworkError(
                 f"Network error making DV init query: {e}"
@@ -247,28 +224,93 @@ class FetcherDeepVisibility:
             raise SentinelOneAPIError(
                 f"HTTP request failed for DV init query: {e}"
             ) from e
-        except Exception as e:
-            raise SentinelOneAPIError(
-                f"Unexpected error making DV init query: {e}"
-            ) from e
 
-    def _execute_query(self, query_response: Any) -> list[dict[str, Any]]:
-        """Execute the Deep Visibility query.
+        if response.status_code != 200:
+            raise SentinelOneAPIError(
+                f"DV init query failed with status {response.status_code}: "
+                f"{self._parse_error_response(response)}",
+                status_code=response.status_code,
+            )
+        try:
+            data = response.json().get("data") or {}
+        except (AttributeError, ValueError) as e:
+            raise SentinelOneAPIError(f"DV init query returned no JSON: {e}") from e
+        query_id = data.get("queryId") if isinstance(data, dict) else None
+        if not query_id:
+            raise SentinelOneAPIError("DV init query response is missing queryId")
+        return query_id
+
+    def _init_dv_query(
+        self,
+        sha1_list: list[str],
+        start_time: datetime = None,
+        end_time: datetime = None,
+    ) -> str:
+        """Start a Deep Visibility query for SHA1s and return its id.
+
+        When Deep Visibility refuses the window because it is older than its
+        retention, the window is shortened to the retention and the query is
+        started again once, after a pause for the rate limit. If that second
+        try fails too, its error is raised.
 
         Args:
-            query_response: Response from query initialization.
+            sha1_list: List of SHA1 hashes to search for.
+            start_time: Start time for the search (optional).
+            end_time: End time for the search (optional).
+
+        Returns:
+            The query id.
+
+        Raises:
+            SentinelOneAPIError: If API call fails.
+            SentinelOneNetworkError: If network error occurs.
+
+        """
+        if end_time is None:
+            end_time = datetime.now(timezone.utc)
+        if start_time is None:
+            start_time = end_time - self.client_api.time_window
+
+        if len(sha1_list) == 1:
+            query_string = f"tgtFileSha1 = {dv_string(sha1_list[0])}"
+        else:
+            query_string = f"tgtFileSha1 in ({dv_list(sha1_list)})"
+
+        try:
+            return self._launch_query(query_string, start_time, end_time)
+        except SentinelOneAPIError as e:
+            retention_days = self._extract_retention_days(str(e))
+            if not retention_days:
+                raise
+
+        self.logger.warning(
+            f"{LOG_PREFIX} DV retention limit ({retention_days} days) exceeded. Adjusting time window and retrying..."
+        )
+        self.logger.info(
+            f"{LOG_PREFIX} Waiting 60 seconds due to DV API rate limit before retry..."
+        )
+        time.sleep(60)
+        adjusted_start_time = end_time - timedelta(days=retention_days - 1)
+        self.logger.debug(
+            f"{LOG_PREFIX} Retrying with adjusted time window: {adjusted_start_time} to {end_time}"
+        )
+        # One retry only: the shortened window fits the retention, so a second
+        # refusal means something else is wrong, and looping would never end.
+        return self._launch_query(query_string, adjusted_start_time, end_time)
+
+    def _execute_query(self, query_id: str) -> list[dict[str, Any]]:
+        """Wait for a started Deep Visibility query, then read its events.
+
+        Args:
+            query_id: Id of the started query.
 
         Returns:
             List of event dictionaries.
 
         Raises:
-            SentinelOneValidationError: If query response is invalid.
+            SentinelOneValidationError: If there is no query id.
 
         """
-        if not query_response or not hasattr(query_response, "data"):
-            raise SentinelOneValidationError("Invalid query response, cannot execute")
-
-        query_id = query_response.data.query_id
         if not query_id:
             raise SentinelOneValidationError("No query ID available, cannot execute")
 
@@ -344,7 +386,8 @@ class FetcherDeepVisibility:
                 else:
                     error_detail = self._parse_error_response(response)
                     raise SentinelOneAPIError(
-                        f"Query status check failed with status {response.status_code}: {error_detail}"
+                        f"Query status check failed with status {response.status_code}: {error_detail}",
+                        status_code=response.status_code,
                     )
 
             except SentinelOneValidationError, SentinelOneAPIError:
@@ -434,7 +477,8 @@ class FetcherDeepVisibility:
             else:
                 error_detail = self._parse_error_response(response)
                 raise SentinelOneAPIError(
-                    f"DV events query failed with status {response.status_code}: {error_detail}"
+                    f"DV events query failed with status {response.status_code}: {error_detail}",
+                    status_code=response.status_code,
                 )
 
         except SentinelOneValidationError, SentinelOneAPIError:

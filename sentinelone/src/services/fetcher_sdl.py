@@ -28,6 +28,20 @@ S1QL_BASE_FILTER = "dataSource.name='SentinelOne' dataSource.category='security'
 class FetcherSDL:
     """Fetcher for SentinelOne SDL v2 deep-search (SaaS) events by file SHA1."""
 
+    # Where each Logging event value is in a row from fetch_rows (S1QL 2.0
+    # field names), keyed by LoggingEvent attribute.
+    LOGGING_FIELDS = {
+        "event_time": "event.time",
+        "event_type": "event.type",
+        "endpoint_name": "endpoint.name",
+        "event_id": "event.id",
+        "tgt_process_name": "tgt.process.name",
+        "src_process_name": "src.process.name",
+        "src_parent_process_name": "src.process.parent.name",
+        "src_ip": "src.ip.address",
+        "dst_ip": "dst.ip.address",
+    }
+
     def __init__(self, client_api: SentinelOneClientAPI):
         """Initialize the SDL v2 fetcher.
 
@@ -159,6 +173,35 @@ class FetcherSDL:
             raise SentinelOneAPIError(
                 f"Unexpected error fetching SDL events for batch SHA1s: {e}"
             ) from e
+
+    def fetch_rows(
+        self, s1ql_filter: str, start_time: datetime, end_time: datetime
+    ) -> list[dict[str, Any] | None]:
+        """Fetch every row matching an S1QL 2.0 filter inside a time window.
+
+        Used by Logging, which builds its own filter. Each row is the
+        ``values`` block SentinelOne sent: the event fields by name. A row
+        without fields is kept as None, so that Logging counts it as
+        unreadable instead of losing it.
+
+        Args:
+            s1ql_filter: S1QL 2.0 filter expression.
+            start_time: Window start.
+            end_time: Window end.
+
+        Returns:
+            The fields of each unique row, in fetch order. None for a row
+            without fields.
+
+        Raises:
+            SentinelOneAPIError: If the API call fails. ``status_code`` holds
+                the HTTP status when SentinelOne answered with an error.
+            SentinelOneNetworkError: If a network error occurs.
+
+        """
+        self.logger.debug(f"{LOG_PREFIX} S1QL filter: {s1ql_filter}")
+        rows = self._fetch_all_rows(s1ql_filter, start_time, end_time)
+        return [row.get("values") for row in rows]
 
     def _resolve_time_window(
         self, start_time: datetime | None, end_time: datetime | None
@@ -489,7 +532,8 @@ class FetcherSDL:
                 if response.status_code == 404:
                     raise SentinelOneAPIError(
                         f"SDL query {query_id} expired (HTTP 404): "
-                        f"{self._parse_error_response(response)}"
+                        f"{self._parse_error_response(response)}",
+                        status_code=404,
                     )
                 self._raise_for_error_response(response, "SDL query poll")
 
@@ -638,7 +682,8 @@ class FetcherSDL:
             if attempt > MAX_RATE_LIMIT_RETRIES:
                 raise SentinelOneAPIError(
                     f"SDL request rate limited (HTTP 429) after "
-                    f"{MAX_RATE_LIMIT_RETRIES} retries: {method} {endpoint}"
+                    f"{MAX_RATE_LIMIT_RETRIES} retries: {method} {endpoint}",
+                    status_code=429,
                 )
 
             backoff = self._rate_limit_backoff_seconds(attempt)
@@ -669,11 +714,15 @@ class FetcherSDL:
 
         Raises:
             SentinelOneAPIError: Always, with the status and parsed details.
+                ``status_code`` holds the status, so a caller can tell a
+                refused token (401/403) from other errors.
 
         """
         status = response.status_code
         detail = self._parse_error_response(response)
-        raise SentinelOneAPIError(f"{context} failed with status {status}: {detail}")
+        raise SentinelOneAPIError(
+            f"{context} failed with status {status}: {detail}", status_code=status
+        )
 
     def _parse_error_response(self, response: Any) -> str:
         """Parse an SDL error body into a compact detail string.

@@ -1,8 +1,8 @@
 {
   "title": "SentinelOne",
   "slug": "openaev_sentinelone",
-  "description": "Validate OpenAEV detection and prevention expectations against SentinelOne Singularity by collecting the threats and alerts its EDR raises in response to simulated attacks.",
-  "short_description": "Collect detections from SentinelOne EDR",
+  "description": "Validate OpenAEV detection, prevention and logging expectations against SentinelOne Singularity by collecting the threats and alerts its EDR raises and the raw events its agents record in response to simulated attacks.",
+  "short_description": "Collect detections and raw events from SentinelOne EDR",
   "use_cases": ["Security response"],
   "verified": true,
   "last_verified_date": "",
