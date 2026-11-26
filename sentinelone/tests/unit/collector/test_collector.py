@@ -332,13 +332,13 @@ class TestCollectorLoggingPass(unittest.TestCase):
                 _setup(collector, self_hosted=self_hosted)
                 manager = collector.logging_manager
                 fetcher = collector.sentinelone_service.deep_visibility_fetcher
-                query, deadline = MagicMock(), MagicMock()
+                query = MagicMock()
 
                 with patch.object(module, "fetch_logging_events") as fetch:
-                    manager.fetch_events(query, deadline)
+                    manager.fetch_events(query)
 
                 self.assertIsInstance(manager, LoggingManager)
-                fetch.assert_called_once_with(fetcher, query, deadline)
+                fetch.assert_called_once_with(fetcher, query)
                 self.assertEqual(manager.period, timedelta(minutes=2))
                 self.assertEqual(manager.max_interval, timedelta(minutes=30))
                 self.assertEqual(manager.collector_id, "collector-1")

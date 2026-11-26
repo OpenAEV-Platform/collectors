@@ -106,7 +106,7 @@ class LoggingManager:
         oaev_api: OpenAEV,
         collector_id: str,
         build_query: Callable[[LoggingExpectation], LoggingQuery | Unqueryable],
-        fetch_events: Callable[[LoggingQuery, datetime], LoggingFetchResult],
+        fetch_events: Callable[[LoggingQuery], LoggingFetchResult],
         build_trace: Callable[[Match, LoggingQuery, str, str], ExpectationTrace],
         period: timedelta,
         max_interval: timedelta,
@@ -122,8 +122,7 @@ class LoggingManager:
             oaev_api: OpenAEV API client.
             collector_id: ID of the collector.
             build_query: Builds the Logging search of an expectation.
-            fetch_events: Runs a Logging search in SentinelOne, stopping at
-                the deadline it is given.
+            fetch_events: Runs a Logging search in SentinelOne.
             build_trace: Builds the trace of a match, from the match, the
                 search, the expectation ID and the collector ID.
             period: Collector period, the first search interval.
@@ -189,8 +188,8 @@ class LoggingManager:
         # One time for the whole pass, so that the next cycle, one period
         # later, reaches the next search time.
         now = self.now()
-        # Searches stop after one period, so that the next cycle, and its
-        # Detection pass, is never delayed by much more than a period.
+        # Searches stop after one period, so that Detection, which runs after
+        # this pass, is never delayed by much more than a period.
         deadline = now + self.period
         traces: dict[str, ExpectationTrace] = {}
         for expectation in self._most_overdue_first(expectations):
@@ -299,7 +298,7 @@ class LoggingManager:
             summary.unqueryable += 1
             return None
 
-        events = self._search(query, expectation_id, now, deadline, summary)
+        events = self._search(query, expectation_id, now, summary)
         if events is None:
             return None
 
@@ -358,7 +357,6 @@ class LoggingManager:
         query: LoggingQuery,
         expectation_id: str,
         now: datetime,
-        deadline: datetime,
         summary: LoggingSummary,
     ) -> list[LoggingEvent] | None:
         """Run the Logging search of one expectation.
@@ -367,14 +365,13 @@ class LoggingManager:
             query: The Logging search.
             expectation_id: ID of the expectation.
             now: Time of the pass.
-            deadline: Time after which the search stops.
             summary: Counts of the pass, updated here.
 
         Returns:
             The returned events, or None when there is nothing to match.
 
         """
-        result = self.fetch_events(query, deadline)
+        result = self.fetch_events(query)
         if isinstance(result, LoggingAuthError):
             self._suspend(result)
             return None

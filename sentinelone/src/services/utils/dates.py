@@ -31,16 +31,3 @@ def read_iso_date(value: str) -> tuple[datetime, str] | None:
     if date.tzinfo is None:
         date = date.replace(tzinfo=timezone.utc)
     return date.astimezone(timezone.utc), fraction.group(1) if fraction else ""
-
-
-def is_past(deadline: datetime | None) -> bool:
-    """Tell whether a deadline has passed.
-
-    Args:
-        deadline: The deadline, or None for no deadline.
-
-    Returns:
-        True when there is a deadline and it is now or earlier.
-
-    """
-    return deadline is not None and datetime.now(timezone.utc) >= deadline

@@ -4,11 +4,7 @@ from datetime import datetime, timedelta, timezone
 from unittest.mock import Mock, patch
 
 import pytest
-from src.services.exception import (
-    SentinelOneAPIError,
-    SentinelOneDeadlineError,
-    SentinelOneNetworkError,
-)
+from src.services.exception import SentinelOneAPIError, SentinelOneNetworkError
 from src.services.fetcher_deep_visibility import FetcherDeepVisibility
 from src.services.fetcher_sdl import FetcherSDL
 from src.services.logging_fetch import (
@@ -112,7 +108,7 @@ def test_sdl_rows_become_events():
             )
         ]
     )
-    fetcher.fetch_rows.assert_called_once_with("the-filter", START, END, deadline=None)
+    fetcher.fetch_rows.assert_called_once_with("the-filter", START, END)
 
 
 def test_deep_visibility_events_are_read_with_their_own_names():
@@ -373,99 +369,3 @@ def test_deep_visibility_init_without_query_id_is_an_error():
     # Act / Assert
     with pytest.raises(SentinelOneAPIError, match="missing queryId"):
         FetcherDeepVisibility(client).fetch_rows("q", START, END)
-
-
-# -- Deadline --
-
-PAST = datetime(2000, 1, 1, tzinfo=timezone.utc)
-
-
-def _sdl_page(rows: list[dict], estimate: int, complete: bool = True) -> Mock:
-    """Build an SDL poll answer: one page of rows, complete or not."""
-    return _response(
-        200,
-        {
-            "stepsCompleted": 1 if complete else 0,
-            "stepsTotal": 1,
-            "data": {"estimatedMatchCount": estimate, "matches": rows},
-        },
-    )
-
-
-def test_search_cut_by_the_deadline_is_an_api_error():
-    """A cut search is an API error, like a timeout: retried later."""
-    # Act
-    result = fetch_logging_events(
-        _fetcher(FetcherSDL, error=SentinelOneDeadlineError("not done")),
-        _query(),
-        deadline=PAST,
-    )
-
-    # Assert
-    assert result == LoggingApiError(message="not done")  # noqa: S101
-
-
-def test_sdl_deadline_before_the_first_page_stops_polling():
-    """Polling stops at the deadline instead of using all its attempts."""
-    # Arrange
-    client = _client()
-    client.session.post.return_value = _response(200, {"id": "q1"})
-    client.session.get.return_value = _sdl_page([], 0, complete=False)
-
-    # Act / Assert
-    with patch("time.sleep") as sleep, pytest.raises(SentinelOneDeadlineError):
-        FetcherSDL(client).fetch_rows("f", START, END, deadline=PAST)
-    assert client.session.get.call_count == 1  # noqa: S101
-    sleep.assert_not_called()
-
-
-def test_sdl_deadline_between_pages_keeps_the_rows_read():
-    """Rows of the pages read before the deadline are still returned."""
-    # Arrange
-    client = _client()
-    row = {"cursor": "c1", "values": {"event.time": 1}}
-    client.session.post.return_value = _response(200, {"id": "q1"})
-    client.session.get.return_value = _sdl_page([row], estimate=500)
-
-    # Act
-    with patch("src.services.fetcher_sdl.is_past", return_value=True):
-        rows = FetcherSDL(client).fetch_rows("f", START, END, deadline=PAST)
-
-    # Assert
-    assert rows == [row["values"]]  # noqa: S101
-    assert client.session.post.call_count == 1  # noqa: S101
-
-
-def test_sdl_search_without_deadline_is_not_cut():
-    """Without a deadline (e.g. Detection), polling goes on as before."""
-    # Arrange
-    client = _client()
-    row = {"cursor": "c1", "values": {"event.time": 1}}
-    client.session.post.return_value = _response(200, {"id": "q1"})
-    client.session.get.side_effect = [
-        _sdl_page([], 0, complete=False),
-        _sdl_page([row], estimate=1),
-    ]
-
-    # Act
-    with patch("time.sleep"):
-        rows = FetcherSDL(client).fetch_rows("f", START, END)
-
-    # Assert
-    assert rows == [row["values"]]  # noqa: S101
-
-
-def test_deep_visibility_deadline_stops_waiting_for_the_query():
-    """Deep Visibility status checks stop at the deadline."""
-    # Arrange
-    client = _client()
-    client.session.post.return_value = _response(200, {"data": {"queryId": "q1"}})
-    client.session.get.return_value = _response(
-        200, {"data": {"responseState": "RUNNING", "progressStatus": 10}}
-    )
-
-    # Act / Assert
-    with patch("time.sleep"), pytest.raises(SentinelOneDeadlineError):
-        FetcherDeepVisibility(client).fetch_rows("q", START, END, deadline=PAST)
-    # One status check, then the deadline: no events call.
-    assert client.session.get.call_count == 1  # noqa: S101

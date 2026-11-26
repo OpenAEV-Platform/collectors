@@ -113,9 +113,7 @@ LoggingFetchResult = (
 
 
 def fetch_logging_events(
-    fetcher: FetcherSDL | FetcherDeepVisibility,
-    query: LoggingQuery,
-    deadline: datetime | None = None,
+    fetcher: FetcherSDL | FetcherDeepVisibility, query: LoggingQuery
 ) -> LoggingFetchResult:
     """Run the Logging search of one expectation and read its events.
 
@@ -128,8 +126,6 @@ def fetch_logging_events(
             ``FetcherDeepVisibility`` on self-hosted. It must match the S1QL
             version of ``query.filter``.
         query: The search built by ``build_logging_query``.
-        deadline: When the search must stop. A search cut by it is an API
-            error, like a timeout. None for no deadline.
 
     Returns:
         The events, ``LoggingEmpty`` when none was found,
@@ -137,9 +133,7 @@ def fetch_logging_events(
 
     """
     try:
-        rows = fetcher.fetch_rows(
-            query.filter, query.start, query.end, deadline=deadline
-        )
+        rows = fetcher.fetch_rows(query.filter, query.start, query.end)
     except SentinelOneAPIError as e:
         if e.status_code in AUTH_ERROR_STATUS_CODES:
             return LoggingAuthError(status_code=e.status_code, message=str(e))

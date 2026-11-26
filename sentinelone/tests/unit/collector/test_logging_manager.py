@@ -590,7 +590,7 @@ def _slow_harness(count: int, search_seconds: int) -> Harness:
     harness = Harness([_expectation() for _ in range(count)])
     harness.match_events.return_value = NoMatch()
 
-    def slow_search(query, deadline):
+    def slow_search(query):
         harness.clock.advance(timedelta(seconds=search_seconds))
         return LoggingRows(events=[EVENT])
 
@@ -772,7 +772,7 @@ class TestLoggingManagerBackoff:
         harness = self._no_match_harness()
         harness.expectations = [first, second]
 
-        def slow_search(query, deadline):
+        def slow_search(query):
             harness.clock.advance(timedelta(seconds=30))
             return LoggingRows(events=[EVENT])
 
@@ -931,28 +931,3 @@ class TestLoggingManagerRateLimit:
         assert harness.fetch_events.call_count == 2
         assert summary.rate_limited is False
         assert summary.logged == 1
-
-
-class TestLoggingManagerDeadline:
-    """Each search gets the pass deadline, so it stops with the pass."""
-
-    def test_search_gets_the_pass_deadline(self):
-        harness = Harness([_expectation()])
-
-        harness.process()
-
-        harness.fetch_events.assert_called_once_with(QUERY, START + PERIOD)
-
-    def test_search_cut_by_the_deadline_is_retried_later(self):
-        # A cut search is an API error, like a timeout: warning and backoff.
-        harness = Harness([_expectation()])
-        harness.fetch_events.return_value = LoggingApiError(
-            "SDL query q1 was not complete at the deadline"
-        )
-
-        with patch.object(harness.manager.logger, "warning") as warning:
-            summary = harness.process()
-
-        assert summary.errors == 1
-        assert "not complete at the deadline" in warning.call_args.args[0]
-        assert len(harness.manager._backoff) == 1

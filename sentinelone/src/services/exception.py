@@ -33,15 +33,6 @@ class SentinelOneAPIError(SentinelOneServiceError):
         self.status_code = status_code
 
 
-class SentinelOneDeadlineError(SentinelOneAPIError):
-    """Raised when a search did not finish before the caller's deadline.
-
-    An API error like a timeout: the search runs again later.
-    """
-
-    pass
-
-
 class SentinelOneNetworkError(SentinelOneServiceError):
     """Raised when there's a network connectivity error."""
 
