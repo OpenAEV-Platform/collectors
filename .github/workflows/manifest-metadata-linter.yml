@@ -22,11 +22,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Setup jq
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y jq
-
       - name: check ${{ matrix.key }} values
         run: |
           for k in */manifest-metadata.json; do
