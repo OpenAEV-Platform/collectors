@@ -171,6 +171,10 @@ On each run, the collector:
    private and public IP addresses from the instance and its network interfaces.
 6. Upserts each instance as an OpenAEV agentless endpoint, using the AWS instance ID as the external reference and
    setting the asset category to `HOST`, cloud provider `AWS`, cloud native type `ec2_instance` and the cloud region.
+   `asset_internet_facing` is `true` when the instance holds a public address (`PublicIpAddress` or an ENI association
+   `PublicIp`, public by AWS declaration; an undeclared address is classified by its range), `false` when all its
+   addresses are private, and is not sent when no usable address is known (loopback, link-local, multicast,
+   unspecified and shared ranges are ignored), so a run never erases a value set by hand.
 7. Creates and attaches tags derived from the instance metadata (source, region, instance type, availability zone,
    state and the instance's native AWS tags).
 
