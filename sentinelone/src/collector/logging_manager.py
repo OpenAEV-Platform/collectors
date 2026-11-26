@@ -26,7 +26,6 @@ from src.services.exception import SentinelOneDataConversionError
 from src.services.logging_fetch import (
     LoggingApiError,
     LoggingAuthError,
-    LoggingDeferred,
     LoggingEmpty,
     LoggingEvent,
     LoggingFetchResult,
@@ -41,7 +40,9 @@ from src.services.logging_matcher import (
 )
 from src.services.logging_query import LoggingQuery, Unqueryable
 
+from .exception import TraceSubmissionError
 from .models import ExpectationTrace
+from .trace_manager import TraceManager
 
 LOG_PREFIX = "[CollectorLoggingManager]"
 
@@ -151,12 +152,9 @@ class LoggingManager:
         self.on_suspend = on_suspend
         self.match_events = match_events or match_logging_events
         self.now = now or (lambda: datetime.now(timezone.utc))
+        self.trace_manager = TraceManager(oaev_api, collector_id)
         self.suspended = False
         self._backoff: dict[str, _Backoff] = {}
-        # Traces of Logged expectations that OpenAEV did not accept yet. The
-        # platform no longer returns these expectations, so this list is the
-        # only way to send their traces again. It is lost on restart.
-        self._pending_traces: list[ExpectationTrace] = []
 
     def process(self) -> LoggingSummary:
         """Run one Logging pass.
@@ -166,10 +164,6 @@ class LoggingManager:
 
         """
         summary = LoggingSummary(suspended=self.suspended)
-        # Even when suspended: the traces go to OpenAEV, not to SentinelOne.
-        if self._pending_traces:
-            pending, self._pending_traces = self._pending_traces, []
-            summary.errors += self._submit_traces(pending)
         if self.suspended:
             return summary
 
@@ -384,14 +378,6 @@ class LoggingManager:
         if isinstance(result, LoggingAuthError):
             self._suspend(result)
             return None
-        if isinstance(result, LoggingDeferred):
-            # Not searched yet: no backoff, so it goes first on the next cycle.
-            self.logger.debug(
-                f"{LOG_PREFIX} Logging search of expectation {expectation_id} was "
-                "not done at the end of the time budget, retrying next cycle"
-            )
-            summary.over_budget += 1
-            return None
         if isinstance(result, LoggingEmpty):
             self.logger.debug(
                 f"{LOG_PREFIX} Logging search found no event for expectation "
@@ -563,46 +549,25 @@ class LoggingManager:
         }
 
     def _submit_traces(self, traces: list[ExpectationTrace]) -> int:
-        """Send the traces of Logged expectations, and keep the failed ones.
-
-        The traces are sent in bulk, then one by one if the bulk call fails.
-        Each trace that is still not created is kept and sent again on the
-        next pass, so a short OpenAEV outage does not lose the evidence.
+        """Submit the traces of the updated expectations.
 
         Args:
-            traces: The traces to send.
+            traces: The traces to submit.
 
         Returns:
-            The number of traces kept for the next pass.
+            1 if the bulk submission failed, otherwise 0.
 
         """
-        if not traces:
-            return 0
         try:
-            self.oaev_api.inject_expectation_trace.bulk_create(
-                payload={"expectation_traces": [t.to_api_dict() for t in traces]}
-            )
+            self.trace_manager._submit_traces(traces)
             return 0
-        except Exception as e:
-            self.logger.warning(
-                f"{LOG_PREFIX} Bulk creation of {len(traces)} Logging traces "
-                f"failed, sending them one by one: {e}"
+        except TraceSubmissionError as e:
+            # Raised even when the individual fallback created some traces.
+            # The expectations are Logged and no longer returned by the
+            # platform: name them, so a missing trace can be found.
+            expectation_ids = [t.inject_expectation_trace_expectation for t in traces]
+            self.logger.error(
+                f"{LOG_PREFIX} Bulk submission of Logging traces failed, some may "
+                f"be missing for expectations {expectation_ids}: {e}"
             )
-
-        failed = []
-        for trace in traces:
-            try:
-                self.oaev_api.inject_expectation_trace.create(trace.to_api_dict())
-            except Exception as e:
-                self.logger.error(
-                    f"{LOG_PREFIX} Failed to create the Logging trace of "
-                    f"expectation {trace.inject_expectation_trace_expectation}: {e}"
-                )
-                failed.append(trace)
-        if failed:
-            self.logger.warning(
-                f"{LOG_PREFIX} {len(failed)} Logging traces kept to send again "
-                "on the next pass"
-            )
-        self._pending_traces.extend(failed)
-        return len(failed)
+            return 1

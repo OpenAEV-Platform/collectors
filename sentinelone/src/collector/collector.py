@@ -72,6 +72,7 @@ class Collector(CollectorDaemon):  # type: ignore[misc]
                 collector_type="openaev_sentinelone",
                 supported_expectation_types=self._declared_expectation_types(),
             )
+            self.logging_manager: LoggingManager | None = None
 
             self.logger.info(  # type: ignore[has-type]
                 f"{LOG_PREFIX} SentinelOne Collector initialized successfully"
@@ -268,7 +269,7 @@ class Collector(CollectorDaemon):  # type: ignore[misc]
 
     def _run_logging_pass(self) -> None:
         """Run the Logging pass, which must never stop the Detection pass."""
-        if getattr(self, "logging_manager", None) is None:
+        if self.logging_manager is None:
             return
         try:
             summary = self.logging_manager.process()

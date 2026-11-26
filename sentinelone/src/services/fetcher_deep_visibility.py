@@ -340,7 +340,6 @@ class FetcherDeepVisibility:
             SentinelOneValidationError,
             SentinelOneAPIError,
             SentinelOneNetworkError,
-            SentinelOneDeadlineError,
         ):
             raise
         except Exception as e:

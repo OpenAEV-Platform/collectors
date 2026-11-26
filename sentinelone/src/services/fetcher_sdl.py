@@ -205,8 +205,8 @@ class FetcherSDL:
             SentinelOneAPIError: If the API call fails. ``status_code`` holds
                 the HTTP status when SentinelOne answered with an error.
             SentinelOneNetworkError: If a network error occurs.
-            SentinelOneDeadlineError: If the deadline passed before the first
-                page was ready.
+            SentinelOneDeadlineError: If the deadline passed while a page was
+                still being prepared.
 
         """
         self.logger.debug(f"{LOG_PREFIX} S1QL filter: {s1ql_filter}")
@@ -327,8 +327,8 @@ class FetcherSDL:
         Raises:
             SentinelOneAPIError: If any launch or poll fails.
             SentinelOneNetworkError: If a network error occurs.
-            SentinelOneDeadlineError: If the deadline passed before the first
-                page was ready.
+            SentinelOneDeadlineError: If the deadline passed while a page was
+                still being prepared.
 
         """
         unique_rows: list[dict[str, Any]] = []
@@ -337,21 +337,16 @@ class FetcherSDL:
         cursor: str | None = None
 
         for page_number in range(1, MAX_PAGES + 1):
+            # Rows already read are still evidence: keep them, start no page.
             if page_number > 1 and is_past(deadline):
-                self._log_cut_by_deadline(page_number - 1, len(unique_rows))
+                self.logger.info(
+                    f"{LOG_PREFIX} Deadline reached: returning the "
+                    f"{len(unique_rows)} rows of the first {page_number - 1} pages"
+                )
                 break
             body = self._build_launch_body(s1ql_filter, start_time, end_time, cursor)
             query_id, forward_tag = self._launch_query(body)
-            try:
-                final_body = self._poll_query_to_completion(
-                    query_id, forward_tag, deadline
-                )
-            except SentinelOneDeadlineError:
-                # Rows already read are still evidence: keep them.
-                if page_number == 1:
-                    raise
-                self._log_cut_by_deadline(page_number - 1, len(unique_rows))
-                break
+            final_body = self._poll_query_to_completion(query_id, forward_tag, deadline)
 
             data = self._extract_page_data(final_body)
             page_est = data.get("estimatedMatchCount")
@@ -377,13 +372,6 @@ class FetcherSDL:
             )
 
         return unique_rows
-
-    def _log_cut_by_deadline(self, pages: int, rows: int) -> None:
-        """Log that paging stopped at the deadline, with what was read."""
-        self.logger.info(
-            f"{LOG_PREFIX} Deadline reached: returning the {rows} rows of the "
-            f"first {pages} pages"
-        )
 
     def _collect_new_rows(self, rows: list, seen_keys: set) -> list:
         """Filter out rows already seen, keying on cursor then event.id.

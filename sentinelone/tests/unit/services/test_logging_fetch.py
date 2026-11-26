@@ -14,7 +14,6 @@ from src.services.fetcher_sdl import FetcherSDL
 from src.services.logging_fetch import (
     LoggingApiError,
     LoggingAuthError,
-    LoggingDeferred,
     LoggingEmpty,
     LoggingEvent,
     LoggingMalformed,
@@ -393,8 +392,8 @@ def _sdl_page(rows: list[dict], estimate: int, complete: bool = True) -> Mock:
     )
 
 
-def test_deadline_before_any_row_is_deferred():
-    """A search cut before any row is ready is deferred, not an error."""
+def test_search_cut_by_the_deadline_is_an_api_error():
+    """A cut search is an API error, like a timeout: retried later."""
     # Act
     result = fetch_logging_events(
         _fetcher(FetcherSDL, error=SentinelOneDeadlineError("not done")),
@@ -403,7 +402,7 @@ def test_deadline_before_any_row_is_deferred():
     )
 
     # Assert
-    assert result == LoggingDeferred()  # noqa: S101
+    assert result == LoggingApiError(message="not done")  # noqa: S101
 
 
 def test_sdl_deadline_before_the_first_page_stops_polling():
@@ -435,27 +434,6 @@ def test_sdl_deadline_between_pages_keeps_the_rows_read():
     # Assert
     assert rows == [row["values"]]  # noqa: S101
     assert client.session.post.call_count == 1  # noqa: S101
-
-
-def test_sdl_deadline_while_polling_a_later_page_keeps_the_rows_read():
-    """A later page cut while polling does not lose the earlier pages."""
-    # Arrange
-    client = _client()
-    row = {"cursor": "c1", "values": {"event.time": 1}}
-    client.session.post.return_value = _response(200, {"id": "q1"})
-    client.session.get.side_effect = [
-        _sdl_page([row], estimate=500),
-        _sdl_page([], estimate=500, complete=False),
-    ]
-
-    # Act
-    # Not past before page 2 starts, past while it is polled.
-    with patch("src.services.fetcher_sdl.is_past", side_effect=[False, True]):
-        rows = FetcherSDL(client).fetch_rows("f", START, END, deadline=PAST)
-
-    # Assert
-    assert rows == [row["values"]]  # noqa: S101
-    assert client.session.post.call_count == 2  # noqa: S101
 
 
 def test_sdl_search_without_deadline_is_not_cut():
