@@ -1,0 +1,30 @@
+name: Manifest Metadata Linter
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  manifest-metadata-jq-check:
+    name: manifest metadata - jq check
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        key: [title, slug, description, short_description, source_code, container_version, container_image]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: check ${{ matrix.key }} values
+        run: |
+          for k in */manifest-metadata.json; do
+          echo "Checking ${{ matrix.key }} for $(dirname "$k")"
+          jq 'if .${{ matrix.key }} == "" or .${{ matrix.key }} == null then error("Error: empty ${{ matrix.key }}") else .${{ matrix.key }} end' $k
+          done

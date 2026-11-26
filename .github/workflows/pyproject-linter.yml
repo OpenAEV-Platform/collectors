@@ -1,0 +1,36 @@
+name: pyproject.toml Linter
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  pyproject-toml-yq-check:
+    name: pyproject toml - yq check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: check icon-path exists
+        run: |
+          for k in */pyproject.toml; do
+            echo "Checking icon path for $(dirname "$k")"
+            if  [[ $(yq '.tool.cmw.icon-path' "$k") == null ]]; then
+              echo "Missing icon path definition in pyproject.toml for $(dirname "$k")"
+              break -1
+            fi
+            iconpath=$(dirname "$k")/$(yq '.tool.cmw.icon-path' "$k")
+            if [ ! -f "$iconpath" ]; then
+              echo "Invalid icon-path in pyproject.toml found for $(dirname "$k")"
+              break -1
+            else
+              echo "Valid icon-path in pyproject.toml for $(dirname "$k")"
+            fi
+          done

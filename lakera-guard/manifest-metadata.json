@@ -10,7 +10,7 @@
   "max_confidence_level": 80,
   "support_version": "",
   "subscription_link": "https://www.lakera.ai/",
-  "source_code": "",
+  "source_code": "https://github.com/OpenAEV-Platform/collectors/tree/main/lakera-guard",
   "manager_supported": true,
   "container_version": "rolling",
   "container_image": "openaev/collector-lakera-guard",

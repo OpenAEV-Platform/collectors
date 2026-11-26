@@ -139,4 +139,4 @@ plugins = [
 [tool.cmw]
 install-command = "poetry install"
 config-dump-command = "poetry run python -m mitre_atlas --dump-config-schema"
-icon-path = "mitre_atlas/img/icon-mitre_atlas.png"
+icon-path = "mitre_atlas/img/icon-mitre-atlas.png"
