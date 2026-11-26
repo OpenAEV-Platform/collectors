@@ -8,7 +8,7 @@ window, and the matcher uses the marker and the IPs to pick the event.
 
 import math
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Iterable, Mapping
 
@@ -26,6 +26,7 @@ SDL_IP_FIELDS = ("src.ip.address", "dst.ip.address")
 # console yet: the collector only used tgtFileSha1 before.
 DV_MARKER_FIELDS = ("TgtProcName", "SrcProcName", "SrcProcParentName")
 DV_IP_FIELDS = ("SrcIP", "DstIP")
+EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
 
 
 @dataclass(frozen=True)
@@ -40,8 +41,12 @@ class LoggingQuery:
             expectation has no marker.
         source_ips: Source IPv4 and IPv6 signature values.
         target_ips: Target IPv4 and IPv6 signature values.
-        start: Start of the inject window, UTC, rounded down to the second.
-        end: End of the inject window, UTC, rounded up to the second.
+        start: Start of the search, UTC: the inject start rounded down to the
+            second, as SentinelOne searches whole seconds.
+        end: End of the search, UTC: the inject end rounded up to the second.
+        inject_start: Exact start of the inject, UTC, to the microsecond. The
+            matcher only accepts events from here, not from ``start``.
+        inject_end: Exact end of the inject, UTC, to the microsecond.
 
     """
 
@@ -51,6 +56,8 @@ class LoggingQuery:
     target_ips: list[str]
     start: datetime
     end: datetime
+    inject_start: datetime
+    inject_end: datetime
 
 
 @dataclass(frozen=True)
@@ -133,10 +140,14 @@ def build_logging_query(
         markers=markers,
         source_ips=source_ips,
         target_ips=target_ips,
-        # Round the valid window outwards: it can only grow by under a second,
-        # never lose the end of the inject.
+        # Round the search outwards: it can only grow by under a second, never
+        # lose the end of the inject.
         start=_to_second(start, round_up=False),
         end=_to_second(end, round_up=True),
+        # The exact window, kept apart so that the extra part of the search
+        # is never taken as evidence.
+        inject_start=_to_microsecond(start),
+        inject_end=_to_microsecond(end),
     )
 
 
@@ -199,6 +210,22 @@ def _to_second(instant: Decimal, round_up: bool) -> datetime:
     """
     seconds = math.ceil(instant) if round_up else math.floor(instant)
     return datetime.fromtimestamp(seconds, tz=timezone.utc)
+
+
+def _to_microsecond(instant: Decimal) -> datetime:
+    """Turn an exact instant into a UTC datetime, to the microsecond.
+
+    A datetime holds microseconds, so the digits after them are dropped. Event
+    times are cut the same way, so an event inside the window stays inside.
+
+    Args:
+        instant: Exact Unix seconds, as read by ``_parse_instant``.
+
+    Returns:
+        The instant in UTC.
+
+    """
+    return EPOCH + timedelta(microseconds=math.floor(instant * 1_000_000))
 
 
 def _unique(values: Iterable[str]) -> list[str]:

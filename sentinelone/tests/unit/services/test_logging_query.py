@@ -161,6 +161,27 @@ def test_window_is_rounded_outwards_to_the_second():
     )  # noqa: S101
 
 
+def test_exact_inject_window_is_kept_apart_from_the_search_window():
+    """The inject bounds keep their fraction, cut to the microsecond."""
+    # Act
+    query = build_logging_query(
+        _signatures(
+            parent_process_name=MARKER,
+            start_date="2026-11-24T08:00:00.987654321Z",
+            end_date="2026-11-24T09:00:00.000000001Z",
+        ),
+        self_hosted=False,
+    )
+
+    # Assert
+    assert query.inject_start == datetime(  # noqa: S101
+        2026, 11, 24, 8, 0, 0, 987654, tzinfo=timezone.utc
+    )
+    assert query.inject_end == datetime(  # noqa: S101
+        2026, 11, 24, 9, 0, 0, tzinfo=timezone.utc
+    )
+
+
 def test_window_with_offset_or_no_time_zone_is_read_as_utc():
     """An offset is converted to UTC; a date without time zone is UTC."""
     # Act

@@ -32,6 +32,8 @@ def _query(search_filter: str = "the-filter") -> LoggingQuery:
         target_ips=[],
         start=START,
         end=END,
+        inject_start=START,
+        inject_end=END,
     )
 
 
