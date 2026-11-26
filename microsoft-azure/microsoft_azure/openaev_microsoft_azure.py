@@ -2,6 +2,7 @@ import os
 
 import requests
 from microsoft_azure.configuration.config_loader import ConfigLoader
+from microsoft_azure.network_exposure import PRIVATE, PUBLIC, internet_facing
 from pyoaev.configuration import Configuration
 from pyoaev.daemons import CollectorDaemon
 
@@ -169,7 +170,16 @@ class OpenAEVMicrosoftAzure(CollectorDaemon):
         return []
 
     def _get_vm_network_profile(self, vm):
-        """Extract network information from VM."""
+        """Extract the addresses of a VM, each with the type Azure declares for it.
+
+        A NIC ``privateIPAddress`` is private; an address read from a
+        ``publicIPAddresses`` resource is public. A public IP lookup that fails adds
+        nothing, so it never makes the VM look internet facing by guess.
+
+        Returns:
+            A list of ``(address, declared_type)`` pairs, in reading order.
+
+        """
         ips = []
         try:
             if "networkProfile" in vm.get("properties", {}):
@@ -196,7 +206,7 @@ class OpenAEVMicrosoftAzure(CollectorDaemon):
                                                 "privateIPAddress"
                                             )
                                             if private_ip:
-                                                ips.append(private_ip)
+                                                ips.append((private_ip, PRIVATE))
 
                                             # Check for public IP
                                             if (
@@ -230,7 +240,10 @@ class OpenAEVMicrosoftAzure(CollectorDaemon):
                                                                 ].get("ipAddress")
                                                                 if public_ip:
                                                                     ips.append(
-                                                                        public_ip
+                                                                        (
+                                                                            public_ip,
+                                                                            PUBLIC,
+                                                                        )
                                                                     )
                                                     except Exception as e:
                                                         self.logger.debug(
@@ -321,7 +334,8 @@ class OpenAEVMicrosoftAzure(CollectorDaemon):
                 platform = self._determine_platform(vm)
 
                 # Get network information
-                ips = self._get_vm_network_profile(vm)
+                addresses = self._get_vm_network_profile(vm)
+                ips = [address for address, _ in addresses]
 
                 # If no IPs were retrieved
                 if not ips:
@@ -345,6 +359,11 @@ class OpenAEVMicrosoftAzure(CollectorDaemon):
                     "asset_ips": ips,
                     "asset_description": f"Azure VM - Size: {vm_size}, Location: {vm_location}",
                 }
+
+                # Sent only with evidence, so a run never erases a value set by hand
+                facing = internet_facing(ips, [declared for _, declared in addresses])
+                if facing is not None:
+                    endpoint["asset_internet_facing"] = facing
 
                 # Prepare tag IDs list for OpenAEV tags
                 tag_ids = []
