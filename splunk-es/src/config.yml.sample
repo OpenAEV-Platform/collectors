@@ -16,6 +16,10 @@ splunk_es:
   # which returns HTTP 404 for search API calls). Splunk Cloud uses a dedicated
   # API host (e.g. https://<stack>.splunkcloud.com:8089).
   base_url: "https://splunk.company.com:8089"
+  # Optional: Splunk Web URL used in the trace links. When unset, base_url with
+  # port 8089 replaced by 8000. Set it when Splunk Web is behind a proxy, on 443,
+  # on another port or on another host.
+  # web_base_url: "https://splunk.company.com"
   username: "ChangeMe"
   password: "ChangeMe"
   alerts_index: "notable"

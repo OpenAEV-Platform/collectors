@@ -3,6 +3,7 @@
 import logging
 from datetime import timedelta
 from typing import Optional
+from urllib.parse import urlparse
 
 from pydantic import (
     Field,
@@ -33,6 +34,13 @@ class _ConfigLoaderSplunkES(ConfigBaseSettings):
     base_url: str = Field(
         alias="SPLUNKES_BASE_URL",
         description="Base URL for the Splunk ES instance (e.g., https://splunk.company.com:8089).",
+    )
+    web_base_url: Optional[str] = Field(
+        alias="SPLUNKES_WEB_BASE_URL",
+        default=None,
+        description="Splunk Web base URL used in the trace links (e.g. "
+        "https://splunk.company.com or https://proxy.company.com/splunk). "
+        "Leave empty to use SPLUNKES_BASE_URL with port 8089 replaced by 8000.",
     )
     username: str = Field(
         alias="SPLUNKES_USERNAME",
@@ -116,6 +124,7 @@ class _ConfigLoaderSplunkES(ConfigBaseSettings):
     )
 
     @field_validator(
+        "web_base_url",
         "alerts_index",
         "time_window",
         "retry_window",
@@ -140,6 +149,25 @@ class _ConfigLoaderSplunkES(ConfigBaseSettings):
         if isinstance(value, str) and not value.strip():
             raise PydanticUseDefault()
         return value
+
+    @field_validator("web_base_url")
+    @classmethod
+    def _check_web_base_url(cls, value: Optional[str]) -> Optional[str]:
+        """Require an http(s) URL with a host, so the trace links open in a browser.
+
+        Raises:
+            ValueError: If the URL has no http(s) scheme or no host.
+
+        """
+        if value is None:
+            return value
+        parsed = urlparse(value.strip())
+        if parsed.scheme not in ("http", "https") or not parsed.netloc:
+            raise ValueError(
+                "SPLUNKES_WEB_BASE_URL must be an http(s) URL with a host, e.g. "
+                f"https://splunk.company.com, got {value!r}"
+            )
+        return value.strip()
 
     @field_validator("logging_max_interval")
     @classmethod
