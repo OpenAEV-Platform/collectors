@@ -138,12 +138,16 @@ class OpenAEVTaniumThreatResponse(CollectorDaemon):
         alert_name = alert["guid"]
         if "intel_id" in alert_details:
             intel_id = alert_details["intel_id"]
-            intel = self.tanium_api_handler._query(
-                "get",
-                "/plugin/products/threat-response/api/v1/intels/" + str(intel_id),
-                {"sort": "-createdAt"},
+            intel = (
+                self.tanium_api_handler._query(
+                    "get",
+                    "/plugin/products/threat-response/api/v1/intels/" + str(intel_id),
+                    {"sort": "-createdAt"},
+                )
+                or {}
             )
-            alert_name = intel["type"]
+            if isinstance(intel, dict) and intel.get("type"):
+                alert_name = intel["type"]
         return alert_name
 
     def _extract_alert_detection_date(self, alert_details) -> str:
@@ -251,11 +255,17 @@ class OpenAEVTaniumThreatResponse(CollectorDaemon):
         )
 
         # Retrieve alerts
-        alerts = self.tanium_api_handler._query(
-            "get",
-            "/plugin/products/threat-response/api/v1/alerts",
-            {"sort": "-createdAt"},
-        )
+        try:
+            alerts = self.tanium_api_handler._query(
+                "get",
+                "/plugin/products/threat-response/api/v1/alerts",
+                {"sort": "-createdAt"},
+                raise_http_errors=True,
+            )
+        except requests.exceptions.HTTPError:
+            return
+        if not isinstance(alerts, list):
+            alerts = []
         self.logger.info("Found " + str(len(alerts)) + " alerts (taking first 200)")
 
         # For each expectation, try to find the proper alert to assign a detection or prevention result

@@ -29,6 +29,8 @@ class TaniumApiHandler:
         payload=None,
         content_type="application/json",
         type=None,
+        *,
+        raise_http_errors=False,
     ):
         self.logger.info("Query " + method + " on " + uri)
         headers = {"session": self.token}
@@ -121,10 +123,23 @@ class TaniumApiHandler:
             raise ValueError("Unsupported method")
         if r.status_code == 200:
             try:
-                return r.json()["data"]
+                body = r.json()
             except requests.exceptions.JSONDecodeError:
                 return r.text
+            data = body.get("data") if isinstance(body, dict) else None
+            if data is None:
+                self.logger.error("Tanium response has no data: " + r.text)
+                return None
+            return data
         elif r.status_code == 401:
             raise ValueError("Query failed, permission denied")
         else:
-            self.logger.info(r.text)
+            self.logger.error(
+                "Tanium query failed with status "
+                + str(r.status_code)
+                + ": "
+                + r.text
+            )
+            if raise_http_errors:
+                r.raise_for_status()
+            return None
