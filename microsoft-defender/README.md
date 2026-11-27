@@ -192,9 +192,13 @@ Expectations that remain unmatched after the 45-minute window are marked as fail
 
 - Required permission: an Entra ID (Azure AD) application with the Microsoft Graph **`SecurityAlert.Read.All`**
   application permission, with admin consent granted.
+- Optional permission: **`ThreatHunting.Read.All`** (application, admin consent) enables the drill-down below; without
+  it the drill-down is skipped (one warning per fetch) and matching works on the alert evidences alone.
 - API endpoints used:
   - `POST https://login.microsoftonline.com/<tenant_id>/oauth2/v2.0/token` (OAuth2 client-credentials authentication)
   - `GET /security/alerts_v2` (Microsoft Graph Security Alerts v2)
+  - `POST /security/runHuntingQuery` (advanced hunting drill-down, only for alerts whose process evidences name a child
+    tool and no implant)
 - Reference: [Microsoft Graph permissions reference](https://learn.microsoft.com/en-us/graph/permissions-reference) and
   [alerts v2](https://learn.microsoft.com/en-us/graph/api/resources/security-alert).
 
@@ -208,5 +212,12 @@ graph query, and the matching decisions. A common cause of "nothing detected" is
 - The collector only reads recent activity (a 45-minute sliding window); it is designed to validate expectations shortly
   after an inject runs, not to back-fill historical data.
 - Only `File` and `Process` evidence types are considered when correlating alerts with the implant process tree.
+- Process evidences of one alert are chained by device, `processId` / `parentProcessId` and the parent creation time:
+  a child tool (`reg.exe`, `cmd.exe`) whose ancestor is the implant matches the implant's `parent_process_name`. A file
+  evidence whose name or path contains the implant name counts as a process-name hit. When an alert carries only
+  child-tool process evidence, the collector reads its ancestry with one advanced hunting query on `DeviceProcessEvents`
+  (same device and process id, a 4-minute window around the process creation, at most 50 queries per fetch). A failed
+  drill-down postpones the expectations to the next cycle, never a "Not Detected" verdict. Hostname and IP addresses
+  alone never match.
 - The required Microsoft permissions and endpoints reflect the current implementation. Microsoft may change its API over
   time, so always confirm against the official documentation before deploying.
