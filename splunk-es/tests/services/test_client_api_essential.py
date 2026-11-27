@@ -1,13 +1,35 @@
 """Essential tests for Splunk ES Client API service."""
 
+import base64
 from unittest.mock import Mock, patch
 
 import pytest
-from requests import Session
+from pydantic import SecretStr
+from requests import Request, Response, Session
+from requests.adapters import HTTPAdapter
 from src.services.client_api import SplunkESClientAPI
 from src.services.exception import SplunkESAPIError, SplunkESAuthenticationError
 from src.services.utils.epoch import to_epoch
-from tests.services.fixtures.factories import TestDataFactory, create_test_config
+from tests.services.fixtures.factories import (
+    ConfigLoaderSplunkESFactory,
+    TestDataFactory,
+    create_test_config,
+)
+
+
+def _config_with_splunk_es(splunk_es):
+    """Return a test config using the given Splunk ES settings.
+
+    ``ConfigLoader`` reads only its settings sources (env, .env, config.yml),
+    not keyword arguments, so the Splunk ES settings are swapped in afterwards.
+    """
+    return create_test_config().model_copy(update={"splunk_es": splunk_es})
+
+
+def _authorization_sent(client):
+    """Return the Authorization header the client's session would send to Splunk."""
+    request = Request("POST", "https://splunk.example.com:8089/services/search/jobs")
+    return client.session.prepare_request(request).headers.get("Authorization")
 
 
 class TestSplunkESClientAPIEssential:
@@ -55,6 +77,79 @@ class TestSplunkESClientAPIEssential:
         assert (  # noqa: S101
             client.session.headers["Content-Type"]
             == "application/x-www-form-urlencoded"
+        )
+
+    def test_create_session_with_token(self):
+        """A Splunk authentication token is sent as a Bearer token."""
+        config = _config_with_splunk_es(
+            ConfigLoaderSplunkESFactory.build(
+                token=SecretStr("splunk-token"), username=None, password=None
+            )
+        )
+
+        client = SplunkESClientAPI(config=config)
+
+        assert _authorization_sent(client) == "Bearer splunk-token"  # noqa: S101
+
+    def test_token_takes_precedence_over_username_and_password(self):
+        """With a token and a username/password, only the token is sent."""
+        config = _config_with_splunk_es(
+            ConfigLoaderSplunkESFactory.build(
+                token=SecretStr("splunk-token"),
+                username="svc_openaev",
+                password=SecretStr("changeme"),
+            )
+        )
+
+        client = SplunkESClientAPI(config=config)
+
+        assert _authorization_sent(client) == "Bearer splunk-token"  # noqa: S101
+
+    @pytest.mark.parametrize(
+        ("splunk_es", "expected_authorization"),
+        [
+            (
+                {
+                    "token": SecretStr("splunk-token"),
+                    "username": None,
+                    "password": None,
+                },
+                "Bearer splunk-token",
+            ),
+            (
+                {
+                    "token": None,
+                    "username": "svc_openaev",
+                    "password": SecretStr("changeme"),
+                },
+                "Basic " + base64.b64encode(b"svc_openaev:changeme").decode(),
+            ),
+        ],
+        ids=["token", "username-password"],
+    )
+    def test_search_request_carries_the_credential(
+        self, splunk_es, expected_authorization
+    ):
+        """The search sent to Splunk carries the configured credential, and only it."""
+        config = _config_with_splunk_es(
+            ConfigLoaderSplunkESFactory.build(
+                base_url="https://splunk.example.com:8089", **splunk_es
+            )
+        )
+        client = SplunkESClientAPI(config=config)
+        response = Response()
+        response.status_code = 200
+        response._content = b'{"results": []}'
+
+        with patch.object(HTTPAdapter, "send", return_value=response) as send:
+            client.fetch_logging_events(
+                Mock(spl="search index=sysmon earliest=0 latest=1")
+            )
+
+        sent = send.call_args.args[0]
+        assert sent.headers["Authorization"] == expected_authorization  # noqa: S101
+        assert (  # noqa: S101
+            sent.url == "https://splunk.example.com:8089/services/search/jobs"
         )
 
     @patch("requests.Session.post")
