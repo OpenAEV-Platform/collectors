@@ -236,6 +236,60 @@ class AttackPatternBatchingTest(TestCase):
         )
 
 
+# Enterprise ATT&CK matrix, left to right. The platform sorts kill chain phases by
+# phase_order and breaks ties alphabetically, so a missing order renders Collection
+# before Reconnaissance.
+ATTACK_MATRIX_ORDER = [
+    "reconnaissance",
+    "resource-development",
+    "initial-access",
+    "execution",
+    "persistence",
+    "privilege-escalation",
+    "defense-evasion",
+    "credential-access",
+    "discovery",
+    "lateral-movement",
+    "collection",
+    "command-and-control",
+    "exfiltration",
+    "impact",
+]
+
+
+def _tactic(shortname):
+    return {
+        "type": "x-mitre-tactic",
+        "id": f"x-mitre-tactic--{shortname}",
+        "name": shortname,
+        "x_mitre_shortname": shortname,
+        "description": "",
+        "external_references": _external_references("TA0000"),
+    }
+
+
+class KillChainPhaseOrderTest(TestCase):
+    def test_tactics_are_upserted_in_the_canonical_matrix_order(self):
+        # -- PREPARE --
+        # Reverse of the matrix, plus a tactic the map does not know yet.
+        shortnames = list(reversed(ATTACK_MATRIX_ORDER)) + ["not-in-the-matrix"]
+        collector = _collector(
+            bundle={"objects": [_tactic(name) for name in shortnames]}
+        )
+
+        # -- EXECUTE --
+        collector._process_message()
+
+        # -- ASSERT --
+        phases = collector.api.kill_chain_phase.upsert.call_args.args[0]
+        order = {phase["phase_shortname"]: phase["phase_order"] for phase in phases}
+        self.assertEqual(
+            {name: index for index, name in enumerate(ATTACK_MATRIX_ORDER)},
+            {name: order[name] for name in ATTACK_MATRIX_ORDER},
+        )
+        self.assertGreater(order["not-in-the-matrix"], order["impact"])
+
+
 class BatchFailureTest(TestCase):
 
     def test_a_failing_batch_stops_the_import(self):

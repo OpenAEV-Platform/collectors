@@ -9,6 +9,28 @@ from pyoaev.exceptions import OpenAEVUpdateError
 ENTERPRISE_ATTACK_URI = (
     "https://github.com/mitre/cti/raw/master/enterprise-attack/enterprise-attack.json"
 )
+# Canonical Enterprise ATT&CK matrix order, keyed by tactic short name. Sent as
+# phase_order so the platform renders tactics left-to-right instead of breaking
+# the phase_order=0 tie alphabetically.
+ATTACK_TACTIC_ORDER = {
+    "reconnaissance": 0,
+    "resource-development": 1,
+    "initial-access": 2,
+    "execution": 3,
+    "persistence": 4,
+    "privilege-escalation": 5,
+    "defense-evasion": 6,
+    "credential-access": 7,
+    "discovery": 8,
+    "lateral-movement": 9,
+    "collection": 10,
+    "command-and-control": 11,
+    "exfiltration": 12,
+    "impact": 13,
+}
+# Tactics absent from ATTACK_TACTIC_ORDER are ordered after the known matrix
+# instead of at the front (order 0).
+UNKNOWN_TACTIC_ORDER = max(ATTACK_TACTIC_ORDER.values()) + 1
 # The platform answers 409 while another attack pattern upsert runs for the tenant
 CONFLICT_MAX_ATTEMPTS = 5
 # Doubled after each attempt: 10, 20, 40 then 80 seconds
@@ -47,6 +69,9 @@ class OpenAEVMitre(CollectorDaemon):
                 "phase_shortname": phase_shortname,
                 "phase_name": phase_name,
                 "phase_description": phase_description,
+                "phase_order": ATTACK_TACTIC_ORDER.get(
+                    phase_shortname, UNKNOWN_TACTIC_ORDER
+                ),
             }
             kill_chain_phases.append(kill_chain_phase)
         result = self.api.kill_chain_phase.upsert(kill_chain_phases)
