@@ -6,19 +6,37 @@ transient error handling.
 """
 
 import logging
+import re
+from datetime import timedelta
+from typing import Any
 from urllib.parse import urljoin, urlsplit
 
 from pydantic import HttpUrl, ValidationError
-from requests import Session
+from pyoaev.signatures.types import SignatureTypes
+from requests import RequestException, Session
 from requests.adapters import HTTPAdapter
 from src.auth.ms_graph_auth_client import MSGraphAuthClient
 from src.collector.protocols.data_fetcher import FetchParamsHook
 from src.collector.types.collector import SourceConfig
+from src.source.models.evidences import processEvidence
 from src.source.source_data import Alert
 from urllib3.util import Retry
 
 LOG_PREFIX = "[DefenderDataFetcher]"
 logger = logging.getLogger(__name__)
+
+# Name every OpenAEV implant executable carries: an alert whose evidences already
+# name it needs no drill-down (collectors#611).
+IMPLANT_NAME_MARKER = "oaev-implant-"
+# Bounds of the hunting drill-down: half-width of the time window around the
+# creation of the process looked up, and number of lookups per fetch.
+DRILLDOWN_HALF_WINDOW = timedelta(minutes=2)
+MAX_DRILLDOWNS_PER_FETCH = 50
+DEVICE_ID_PATTERN = re.compile(r"^[A-Za-z0-9-]{1,128}$")
+
+
+class DrilldownError(Exception):
+    """A hunting drill-down failed: the fetch says nothing about the alerts."""
 
 
 class DefenderDataFetcher:
@@ -47,6 +65,7 @@ class DefenderDataFetcher:
         self.config = config
         self.auth_client = MSGraphAuthClient(config)
         self._fetch_params_hook = fetch_params_hook
+        self._drilldown_available = True
         self._build_session()
 
     def _build_session(self) -> None:
@@ -201,4 +220,128 @@ class DefenderDataFetcher:
             f"{LOG_PREFIX} Total: {len(all_alerts)} alerts across {page_count} pages"
         )
 
+        self.drill_down(all_alerts)
+
         return all_alerts
+
+    @staticmethod
+    def needs_drilldown(alert: Alert) -> bool:
+        """Whether the alert carries process evidence but no name of an implant.
+
+        Such an alert holds only child-tool evidence (reg.exe, cmd.exe): the
+        ancestry missing from its evidences is read through advanced hunting.
+        """
+        if not alert.process_evidences():
+            return False
+        names = (
+            alert.to_oaev_data()
+            .model_dump()
+            .get(SignatureTypes.SIG_TYPE_PARENT_PROCESS_NAME.value, [])
+        )
+        return not any(IMPLANT_NAME_MARKER in str(name).lower() for name in names)
+
+    @staticmethod
+    def build_hunting_query(process: processEvidence) -> str | None:
+        """KQL reading the ancestry of one process on its device, in a bounded window.
+
+        Returns None when the evidence lacks the device, the process id or the
+        creation time that bound the query.
+        """
+        if (
+            process.mde_device_id is None
+            or process.process_id is None
+            or process.process_creation_date_time is None
+            or not DEVICE_ID_PATTERN.match(process.mde_device_id)
+        ):
+            return None
+        start = process.process_creation_date_time - DRILLDOWN_HALF_WINDOW
+        end = process.process_creation_date_time + DRILLDOWN_HALF_WINDOW
+        return (
+            "DeviceProcessEvents"
+            f" | where Timestamp between (datetime({start.isoformat()})"
+            f" .. datetime({end.isoformat()}))"
+            f' | where DeviceId == "{process.mde_device_id}"'
+            f" and ProcessId == {int(process.process_id)}"
+            " | project FileName, InitiatingProcessFileName,"
+            " InitiatingProcessParentFileName"
+            " | take 20"
+        )
+
+    def drill_down(self, alerts: list[Alert]) -> None:
+        """Add to each alert with only child-tool evidence its ancestors' names.
+
+        Runs /security/runHuntingQuery on DeviceProcessEvents for the root of
+        each process chain of the alert. A missing permission (HTTP 403) turns
+        the drill-down off for this fetch and keeps today's matching; any other
+        failure raises DrilldownError, so the batch is postponed and never
+        scored "Not Detected" (collectors#723).
+        """
+        lookups = 0
+        for alert in alerts:
+            if not self._drilldown_available:
+                return
+            if not self.needs_drilldown(alert):
+                continue
+            names: set[str] = set()
+            for root in alert.chain_roots():
+                query = self.build_hunting_query(root)
+                if query is None:
+                    continue
+                if lookups >= MAX_DRILLDOWNS_PER_FETCH:
+                    logger.info(
+                        f"{LOG_PREFIX} Drill-down cap of {MAX_DRILLDOWNS_PER_FETCH} "
+                        "lookups reached for this fetch"
+                    )
+                    return
+                lookups += 1
+                rows = self._run_hunting_query(query)
+                if rows is None:
+                    return
+                for row in rows:
+                    for column in (
+                        "InitiatingProcessFileName",
+                        "InitiatingProcessParentFileName",
+                    ):
+                        value = row.get(column)
+                        if isinstance(value, str) and value:
+                            names.add(value)
+            if names:
+                alert.drilldown_process_names = sorted(names)
+                logger.info(
+                    f"{LOG_PREFIX} Drill-down on alert id={alert.id}: "
+                    f"ancestors {alert.drilldown_process_names}"
+                )
+
+    def _run_hunting_query(self, query: str) -> list[dict[str, Any]] | None:
+        """Run one advanced hunting query; None when the permission is missing."""
+        url = self._build_url("security/runHuntingQuery")
+        token = self.auth_client.get_access_token()
+        try:
+            response = self.session.post(
+                url,
+                headers={"Authorization": f"Bearer {token}"},
+                json={"Query": query},
+            )
+            if response.status_code == 401:
+                token = self.auth_client.get_access_token()
+                response = self.session.post(
+                    url,
+                    headers={"Authorization": f"Bearer {token}"},
+                    json={"Query": query},
+                )
+            if response.status_code == 403:
+                logger.warning(
+                    f"{LOG_PREFIX} Drill-down skipped: the application lacks the "
+                    "ThreatHunting.Read.All permission"
+                )
+                self._drilldown_available = False
+                return None
+            response.raise_for_status()
+            data = response.json()
+        except (RequestException, ValueError) as err:
+            raise DrilldownError(f"Hunting drill-down failed: {err}") from err
+
+        results = data.get("results") if isinstance(data, dict) else None
+        if not isinstance(results, list):
+            raise DrilldownError("Hunting response 'results' must be a list")
+        return [row for row in results if isinstance(row, dict)]
