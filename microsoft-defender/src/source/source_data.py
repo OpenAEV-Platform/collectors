@@ -81,23 +81,35 @@ class Alert(BaseModel):
         is never taken for the parent. Each ancestor brings its image name and the
         name of its own parent image.
         """
-        processes = self.process_evidences()
+        by_key = self._process_index()
+        names: set[str] = set()
+        for process in self.process_evidences():
+            names.update(self._ancestor_names(process, by_key))
+        return names
+
+    def _process_index(self) -> dict[ProcessKey, list[processEvidence]]:
         by_key: dict[ProcessKey, list[processEvidence]] = defaultdict(list)
-        for process in processes:
+        for process in self.process_evidences():
             if process.process_id is not None:
                 by_key[(process.mde_device_id, process.process_id)].append(process)
+        return by_key
 
+    def _ancestor_names(
+        self,
+        process: processEvidence,
+        by_key: dict[ProcessKey, list[processEvidence]],
+    ) -> set[str]:
+        """Image names of the ancestors of one process evidence in the alert."""
         names: set[str] = set()
-        for process in processes:
-            current = process
-            seen: set[int] = {id(current)}
-            for _ in range(MAX_PROCESS_CHAIN_DEPTH):
-                parent = self._find_parent(current, by_key)
-                if parent is None or id(parent) in seen:
-                    break
-                seen.add(id(parent))
-                names.update(self._image_names(parent))
-                current = parent
+        current = process
+        seen: set[int] = {id(current)}
+        for _ in range(MAX_PROCESS_CHAIN_DEPTH):
+            parent = self._find_parent(current, by_key)
+            if parent is None or id(parent) in seen:
+                break
+            seen.add(id(parent))
+            names.update(self._image_names(parent))
+            current = parent
         return names
 
     @staticmethod
@@ -135,22 +147,56 @@ class Alert(BaseModel):
 
     def chain_roots(self) -> list[processEvidence]:
         """Process evidences whose parent is not among the alert's evidences."""
-        processes = self.process_evidences()
-        by_key: dict[ProcessKey, list[processEvidence]] = defaultdict(list)
-        for process in processes:
-            if process.process_id is not None:
-                by_key[(process.mde_device_id, process.process_id)].append(process)
+        by_key = self._process_index()
         return [
             process
-            for process in processes
+            for process in self.process_evidences()
             if self._find_parent(process, by_key) is None
         ]
 
+    def prevented_evidences_data(
+        self,
+    ) -> list[defaultdict[SignatureTypes, set[str]]]:
+        """Signature data of each evidence Defender blocked or prevented.
+
+        Each entry holds the elements of ONE prevented evidence, so a prevention
+        expectation is validated only by a blocked evidence that itself matches
+        the expected process or implant (collectors#675): a blocked process
+        carries the names of its ancestors in the alert's process chain, and the
+        drill-down ancestors when the alert was drilled down (collectors#611).
+        """
+        by_key = self._process_index()
+        prevented: list[defaultdict[SignatureTypes, set[str]]] = []
+        for el in self.evidence:
+            if not el.is_prevented():
+                continue
+            data: defaultdict[SignatureTypes, set[str]] = defaultdict(set)
+            for key, value in el.extract_evidences().items():
+                data[key].update(value)
+            if isinstance(el, processEvidence):
+                inherited = self._ancestor_names(el, by_key) | set(
+                    self.drilldown_process_names
+                )
+                if inherited:
+                    data[SignatureTypes.SIG_TYPE_PROCESS_NAME].update(inherited)
+                    data[SignatureTypes.SIG_TYPE_PARENT_PROCESS_NAME].update(inherited)
+            if data:
+                prevented.append(data)
+        return prevented
+
     def to_oaev_data(self) -> OAEVData:
         """Serialize the evidence data as an OAEVData object."""
-        data = self._extract_evidences()
-        data = {sig_type.value: evidences for sig_type, evidences in data.items()}
-        return OAEVData(**data)
+        return self._as_oaev_data(self._extract_evidences())
+
+    @staticmethod
+    def _as_oaev_data(data: dict[SignatureTypes, set[str]]) -> OAEVData:
+        return OAEVData(
+            **{sig_type.value: evidences for sig_type, evidences in data.items()}
+        )
+
+    def prevented_evidences_oaev_data(self) -> list[OAEVData]:
+        """The OAEVData of each prevented evidence, matched one by one."""
+        return [self._as_oaev_data(data) for data in self.prevented_evidences_data()]
 
     def to_traces_data(self) -> TraceData:
         """Serialize metadata from the alert into a TraceData object."""
@@ -161,7 +207,11 @@ class Alert(BaseModel):
         )
 
     def is_prevented(self) -> bool:
-        """Determine if the threat is/has been prevented."""
+        """Determine if the threat is/has been prevented as a whole.
+
+        A prevented evidence is not enough here: it must be correlated with the
+        expectation first (prevented_evidences_oaev_data, collectors#675).
+        """
         return self.status in ["inProgress", "resolved"]
 
     def is_detected(self) -> bool:

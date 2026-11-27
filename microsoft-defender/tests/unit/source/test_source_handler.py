@@ -210,5 +210,117 @@ class TestDefenderSourceHandler(unittest.TestCase):
         oaev_detection_helper.assert_not_called()
 
 
+def _alert(status, evidence):
+    from src.source.source_data import Alert
+
+    return Alert(
+        id="my-id",
+        title="this is a title",
+        status=status,
+        serviceSource="microsoftDefenderForEndpoint",
+        alertWebUrl="http://endpoint.tld",
+        lastActivityDateTime="1987-06-05T04:02:55.1",
+        lastUpdateDateTime="1987-06-05T04:03:02.1",
+        evidence=evidence,
+    )
+
+
+def _process(name, status, **extra):
+    return {
+        "@odata.type": "#microsoft.graph.security.processEvidence",
+        "detectionStatus": status,
+        "imageFile": {"fileName": name},
+        **extra,
+    }
+
+
+class TestDefenderPreventionMatching(unittest.TestCase):
+    """Prevention is validated only by evidence correlated to the implant (#675)."""
+
+    IMPLANT = "oaev-implant-4f46361a-agent-294c2457"
+
+    def _expectation(self, expectation_type=None):
+        expectation_type = expectation_type or module.PreventionExpectation
+        signature = MagicMock(
+            type=module.SignatureTypes.SIG_TYPE_PARENT_PROCESS_NAME,
+            value=self.IMPLANT,
+        )
+        return MagicMock(
+            spec=expectation_type, inject_expectation_signatures=[signature]
+        )
+
+    def _match(self, alert, expectation=None):
+        return module.DefenderSourceHandler.match_expectation_and_sourcedata(
+            expectation or self._expectation(), alert
+        )
+
+    def test_unrelated_process_blocked_is_not_prevented(self):
+        alert = _alert(
+            "new",
+            [
+                _process(f"{self.IMPLANT}.exe", "detected", remediationStatus="active"),
+                _process("unrelated.exe", "blocked", remediationStatus="blocked"),
+            ],
+        )
+        self.assertEqual(self._match(alert), (False, False))
+
+    def test_expected_process_blocked_is_prevented(self):
+        alert = _alert(
+            "new",
+            [
+                _process(f"{self.IMPLANT}.exe", "blocked"),
+                _process("unrelated.exe", "detected"),
+            ],
+        )
+        self.assertEqual(self._match(alert), (True, True))
+
+    def test_blocked_child_of_the_implant_is_prevented(self):
+        alert = _alert(
+            "new",
+            [
+                _process(
+                    f"{self.IMPLANT}.exe", "detected", processId=10, mdeDeviceId="d"
+                ),
+                _process(
+                    "reg.exe",
+                    "detected",
+                    remediationStatus="prevented",
+                    processId=11,
+                    parentProcessId=10,
+                    mdeDeviceId="d",
+                ),
+            ],
+        )
+        self.assertEqual(self._match(alert), (True, True))
+
+    def test_blocked_file_of_the_implant_is_prevented(self):
+        alert = _alert(
+            "new",
+            [
+                {
+                    "@odata.type": "#microsoft.graph.security.fileEvidence",
+                    "detectionStatus": "prevented",
+                    "fileDetails": {"fileName": f"{self.IMPLANT}.exe"},
+                },
+            ],
+        )
+        self.assertEqual(self._match(alert), (True, True))
+
+    def test_nothing_blocked_is_not_prevented(self):
+        alert = _alert("new", [_process(f"{self.IMPLANT}.exe", "detected")])
+        self.assertEqual(self._match(alert), (False, False))
+
+    def test_handled_alert_stays_prevented(self):
+        alert = _alert("resolved", [_process(f"{self.IMPLANT}.exe", "detected")])
+        self.assertEqual(self._match(alert), (True, True))
+
+    def test_detection_is_unchanged(self):
+        alert = _alert("new", [_process("unrelated.exe", "blocked")])
+        self.assertEqual(
+            self._match(alert, self._expectation(module.DetectionExpectation)),
+            (True, False),
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
