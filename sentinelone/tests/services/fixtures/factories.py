@@ -2,6 +2,7 @@
 
 import os
 import uuid
+from datetime import timedelta
 from typing import Any
 from unittest.mock import Mock
 
@@ -64,6 +65,10 @@ class ConfigLoaderSentinelOneFactory(ModelFactory[_ConfigLoaderSentinelOne]):
         """
         os.environ["SENTINELONE_API_KEY"] = "test-sentinelone-api-key"
         os.environ["SENTINELONE_BASE_URL"] = "https://test-sentinelone.example.com"
+        # Random values would enable Logging without raw-event search, or break
+        # the at-most-one-hour rule of the Logging max interval.
+        kwargs.setdefault("logging_enabled", False)
+        kwargs.setdefault("logging_max_interval", timedelta(minutes=15))
         return super().build(**kwargs)
 
 

@@ -14,3 +14,10 @@ collector:
 sentinelone:
   base_url: "http://change.me"
   api_key: "ChangeMe"
+  # LOGGING expectations: search raw events for the inject's activity.
+  # Off by default. Needs enable_deep_visibility_search: true too.
+  # enable_deep_visibility_search: true
+  # logging_enabled: true
+  # Longest time between two Logging searches of the same expectation (at most
+  # PT1H). Searches start every collector period and back off while nothing is found.
+  # logging_max_interval: 'PT15M'

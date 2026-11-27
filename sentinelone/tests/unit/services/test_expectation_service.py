@@ -63,6 +63,24 @@ class TestSentinelOneExpectationService(unittest.TestCase):
             ],
         )
 
+    def test_get_logging_signatures(self, *_):
+        config = MagicMock()
+
+        service = module.SentinelOneExpectationService(config=config)
+
+        self.assertEqual(
+            service.get_logging_signatures(),
+            [
+                module.SignatureTypes.SIG_TYPE_PARENT_PROCESS_NAME,
+                module.SignatureTypes.SIG_TYPE_SOURCE_IPV4_ADDRESS,
+                module.SignatureTypes.SIG_TYPE_SOURCE_IPV6_ADDRESS,
+                module.SignatureTypes.SIG_TYPE_TARGET_IPV4_ADDRESS,
+                module.SignatureTypes.SIG_TYPE_TARGET_IPV6_ADDRESS,
+                module.SignatureTypes.SIG_TYPE_START_DATE,
+                module.SignatureTypes.SIG_TYPE_END_DATE,
+            ],
+        )
+
     def test_expectation_does_not_match_when_signature_data_is_missing(
         self,
         _m_api,
