@@ -7,6 +7,7 @@ from pyoaev.signatures.signature_type import SignatureType
 from pyoaev.signatures.types import MatchTypes, SignatureTypes
 
 from crowdstrike.crowdstrike_api_handler import CrowdstrikeApiHandler
+from crowdstrike.crowdstrike_credentials import CrowdstrikeCredentials
 from crowdstrike.openaev_crowdstrike import OpenAEVCrowdStrike
 from crowdstrike.query_strategy.base import Base
 
@@ -73,8 +74,10 @@ def get_default_api_handler(
 ) -> CrowdstrikeApiHandler:
     return CrowdstrikeApiHandler(
         logger=logger,
-        client_id=configuration.get("crowdstrike_client_id"),
-        client_secret=configuration.get("crowdstrike_client_secret"),
+        credentials=CrowdstrikeCredentials(
+            client_id=configuration.get("crowdstrike_client_id"),
+            client_secret=configuration.get("crowdstrike_client_secret"),
+        ),
         base_url=configuration.get("crowdstrike_api_base_url"),
     )
 

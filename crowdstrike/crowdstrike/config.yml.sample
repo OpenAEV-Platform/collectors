@@ -16,3 +16,6 @@ crowdstrike:
   ui_base_url: 'https://falcon.us-2.crowdstrike.com'
   client_id: 'ChangeMe'
   client_secret: 'ChangeMe'
+  # or read the credentials from files written by a secrets store (see README)
+  # client_id_file: '/run/secrets/crowdstrike_client_id'
+  # client_secret_file: '/run/secrets/crowdstrike_client_secret'
