@@ -153,10 +153,18 @@ class TestAlert(unittest.TestCase):
             alert.status = status
             self.assertFalse(alert.is_prevented())
 
+        # a blocked evidence alone never makes the whole alert prevented: it is
+        # correlated with the expectation first (prevented_evidences_data)
         alert.status = "unknown"
         for remediation_status in ["prevented", "blocked"]:
             alert.evidence[0].remediation_status = remediation_status
-            self.assertTrue(alert.is_prevented())
+            self.assertFalse(alert.is_prevented())
+            prevented = alert.prevented_evidences_data()
+            self.assertEqual(len(prevented), 1)
+            self.assertEqual(
+                prevented[0][module.SignatureTypes.SIG_TYPE_PROCESS_NAME],
+                {"cuckoo_agent.exe"},
+            )
 
         for remediation_status in [
             "none",
@@ -172,3 +180,44 @@ class TestAlert(unittest.TestCase):
         ]:
             alert.evidence[0].remediation_status = remediation_status
             self.assertFalse(alert.is_prevented())
+            self.assertEqual(alert.prevented_evidences_data(), [])
+
+    def test_prevented_evidence_carries_its_chain(self):
+        """A blocked child tool carries the implant that started its chain."""
+        alert = module.Alert(
+            **{
+                "id": "my-id",
+                "title": "this is a title",
+                "status": "new",
+                "serviceSource": "microsoftDefenderForEndpoint",
+                "alertWebUrl": "http://endpoint.tld",
+                "lastActivityDateTime": "1987-06-05T04:02:55.1",
+                "lastUpdateDateTime": "1987-06-05T04:03:02.1",
+                "evidence": [
+                    {
+                        "@odata.type": "#microsoft.graph.security.processEvidence",
+                        "processId": 10,
+                        "mdeDeviceId": "dev",
+                        "detectionStatus": "detected",
+                        "remediationStatus": "active",
+                        "imageFile": {"fileName": "oaev-implant-1.exe"},
+                    },
+                    {
+                        "@odata.type": "#microsoft.graph.security.processEvidence",
+                        "processId": 11,
+                        "parentProcessId": 10,
+                        "mdeDeviceId": "dev",
+                        "detectionStatus": "blocked",
+                        "imageFile": {"fileName": "reg.exe"},
+                    },
+                ],
+            }
+        )
+
+        prevented = alert.prevented_evidences_data()
+
+        self.assertEqual(len(prevented), 1)
+        self.assertEqual(
+            prevented[0][module.SignatureTypes.SIG_TYPE_PARENT_PROCESS_NAME],
+            {"reg.exe", "oaev-implant-1.exe"},
+        )

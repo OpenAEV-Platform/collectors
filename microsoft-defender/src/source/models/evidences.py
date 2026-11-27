@@ -7,6 +7,8 @@ from pydantic import BaseModel, Discriminator, Field, Tag
 from pydantic.networks import IPvAnyAddress
 from pyoaev.signatures.types import SignatureTypes
 
+PREVENTED_STATUSES = ("prevented", "blocked")
+
 
 class BaseEvidence(BaseModel):
     remediation_status: (
@@ -30,14 +32,14 @@ class BaseEvidence(BaseModel):
         alias="remediationStatus",
         description="Status of the remediation action taken.",
     )
-    created_date_time: datetime = Field(
-        ...,
+    created_date_time: datetime | None = Field(
+        None,
         alias="createdDateTime",
-        description="Time when Microsoft 365 Defender created the alert.",
+        description="Time when Microsoft 365 Defender created the evidence.",
     )
 
     def is_prevented(self) -> bool:
-        return self.remediation_status in ["prevented", "blocked"]
+        return self.remediation_status in PREVENTED_STATUSES
 
     def extract_evidences(self) -> dict[SignatureTypes, list[str]]:
         return {}
@@ -71,7 +73,7 @@ class processEvidence(BaseEvidence):
     mde_device_id: str | None = Field(None, alias="mdeDeviceId")
 
     def is_prevented(self) -> bool:
-        if self.detection_status in ["prevented", "blocked"]:
+        if self.detection_status in PREVENTED_STATUSES:
             return True
         return super().is_prevented()
 
@@ -165,7 +167,7 @@ class fileEvidence(BaseEvidence):
     file_details: fileDetails | None = Field(None, alias="fileDetails")
 
     def is_prevented(self) -> bool:
-        if self.detection_status in ["prevented", "blocked"]:
+        if self.detection_status in PREVENTED_STATUSES:
             return True
         return super().is_prevented()
 

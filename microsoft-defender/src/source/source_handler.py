@@ -1,11 +1,17 @@
 from datetime import datetime
 
+from pyoaev.apis.inject_expectation.model.expectation import (  # type: ignore[import-untyped]
+    DetectionExpectation,
+    PreventionExpectation,
+)
 from pyoaev.helpers import OpenAEVDetectionHelper
 from pyoaev.signatures.types import SignatureTypes
 from src.collector.models.source import SourceHandler
 from src.collector.protocols.data_fetcher import FetchParamsHook
+from src.collector.protocols.source_data import SourceDataProtocol
 from src.collector.types.collector import AlertData, ExpectationsList, SignatureGroups
 from src.collector.utils.expectation_utils import extract_date_with_fallback
+from src.source.signatures import SUPPORTED_SIGNATURES
 
 
 class DefenderSourceHandler(SourceHandler):
@@ -87,3 +93,38 @@ class DefenderSourceHandler(SourceHandler):
                     score += weights.get(key, 1 / 3)
 
         return score >= 0.99
+
+    @classmethod
+    def match_expectation_and_sourcedata(
+        cls,
+        expectation: DetectionExpectation | PreventionExpectation,
+        data: SourceDataProtocol,
+    ) -> tuple[bool, bool]:
+        """Detection: any matched alert. Prevention: the alert is handled
+        (inProgress, resolved), or one evidence Defender blocked or prevented
+        matches the expectation by itself (collectors#675): a blocked process
+        unrelated to the expected implant never validates the prevention.
+        """
+        matchflag, breakflag = super().match_expectation_and_sourcedata(
+            expectation, data
+        )
+        if matchflag or not isinstance(expectation, PreventionExpectation):
+            return matchflag, breakflag
+
+        prevented_evidences = getattr(data, "prevented_evidences_oaev_data", None)
+        if prevented_evidences is None:
+            return matchflag, breakflag
+
+        signature_groups = cls.get_expectation_signature_groups(
+            SUPPORTED_SIGNATURES, expectation
+        )
+        for oaev_data in prevented_evidences():
+            alert_data = cls.get_alert_data_from_oaev_data(
+                SUPPORTED_SIGNATURES, oaev_data
+            )
+            # the weighted matcher above does not use the detection helper
+            if cls.match_signature_groups_and_alert_data(
+                signature_groups, alert_data, None
+            ):
+                return True, True
+        return matchflag, breakflag
