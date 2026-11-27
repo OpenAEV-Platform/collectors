@@ -59,6 +59,16 @@ class processEvidence(BaseEvidence):
         None, alias="parentProcessImageFile"
     )
     process_command_line: str | None = Field(None, alias="processCommandLine")
+    # identifiers used to chain the process evidences of one alert (collectors#611)
+    process_id: int | None = Field(None, alias="processId")
+    parent_process_id: int | None = Field(None, alias="parentProcessId")
+    process_creation_date_time: datetime | None = Field(
+        None, alias="processCreationDateTime"
+    )
+    parent_process_creation_date_time: datetime | None = Field(
+        None, alias="parentProcessCreationDateTime"
+    )
+    mde_device_id: str | None = Field(None, alias="mdeDeviceId")
 
     def is_prevented(self) -> bool:
         if self.detection_status in ["prevented", "blocked"]:
@@ -170,6 +180,11 @@ class fileEvidence(BaseEvidence):
         extract = {}
         if file_names:
             extract[SignatureTypes.SIG_TYPE_FILE_NAME] = file_names
+            # a file evidence naming the implant counts as a process-name hit:
+            # a detection expectation carries no file name signature, and the
+            # process name types are matched as a relaxed substring (collectors#611)
+            extract[SignatureTypes.SIG_TYPE_PROCESS_NAME] = file_names
+            extract[SignatureTypes.SIG_TYPE_PARENT_PROCESS_NAME] = file_names
 
         return extract
 

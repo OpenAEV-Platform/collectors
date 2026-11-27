@@ -1,0 +1,18 @@
+{
+  "title": "GitHub",
+  "slug": "openaev_github",
+  "description": "Register the repositories of your GitHub organizations and users in OpenAEV as source-code assets, with their GitHub Actions workflows as CI/CD pipelines and their GitHub Packages as software packages, so your code estate is in the asset inventory and in scope. Read-only on GitHub, github.com and GitHub Enterprise Server.",
+  "short_description": "Register GitHub repositories, workflows and packages as source-code assets",
+  "use_cases": ["Asset collection", "Supply chain security"],
+  "verified": true,
+  "last_verified_date": "",
+  "playbook_supported": false,
+  "max_confidence_level": 80,
+  "support_version": "",
+  "subscription_link": "https://github.com/",
+  "source_code": "https://github.com/OpenAEV-Platform/collectors/tree/main/github",
+  "manager_supported": true,
+  "container_version": "rolling",
+  "container_image": "openaev/collector-github",
+  "container_type": "COLLECTOR"
+}

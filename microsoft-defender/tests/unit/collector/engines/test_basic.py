@@ -400,12 +400,12 @@ class TestBasicCollectorEngine(unittest.TestCase):
         expectation4 = MagicMock()
         batch = [expectation1, expectation2, expectation3, expectation4]
         m_detect_correct_date.return_value = True
-        m_time_window_over.side_effect = [True, False]
+        # expectation2: window over, expectation3: inside window,
+        # expectation4: raises, window checked for the error log only
+        m_time_window_over.side_effect = [True, False, False]
         result1 = MagicMock()
         result2 = MagicMock()
-        result3 = MagicMock()
         m_expectation_result.side_effect = [result1, result2]
-        m_expectation_result.from_error.return_value = result3
         m_expectation_processing_error.return_value = sentinel.exp_pro_error
 
         collector_engine = module.BasicCollectorEngine(
@@ -476,8 +476,11 @@ class TestBasicCollectorEngine(unittest.TestCase):
         m_time_window_over.assert_any_call(
             expectation2, collector_engine.config.retry_window
         )
-        m_time_window_over.assert_called_with(
+        m_time_window_over.assert_any_call(
             expectation3, collector_engine.config.retry_window
+        )
+        m_time_window_over.assert_called_with(
+            expectation4, collector_engine.config.retry_window
         )
 
         m_expectation_result.assert_any_call(
@@ -497,11 +500,9 @@ class TestBasicCollectorEngine(unittest.TestCase):
             ],
         )
         m_expectation_processing_error.assert_called_with("Processing error: Nope")
-        m_expectation_result.from_error.assert_called_with(
-            sentinel.exp_pro_error, expectation4
-        )
-        self.assertEqual(batch_results, [result1, result2, result3])
-        self.assertEqual(result3, m_expectation_result.from_error.return_value)
+        # an error is never turned into a result (collectors#723)
+        m_expectation_result.from_error.assert_not_called()
+        self.assertEqual(batch_results, [result1, result2])
 
     @patch.object(module, "TraceUploader")
     @patch.object(module, "ExpectationUploader")

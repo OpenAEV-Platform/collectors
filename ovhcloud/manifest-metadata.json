@@ -1,0 +1,18 @@
+{
+  "title": "OVHcloud",
+  "slug": "openaev_ovhcloud",
+  "description": "Register agentless endpoints from OVHcloud dedicated servers (bare metal), Public Cloud instances, VPS and Hosted Private Cloud virtual machines in OpenAEV, so these assets can be targeted by simulations without deploying an agent. What is collected is configurable per resource type, with region, name, IAM tag and IP filters.",
+  "short_description": "Register OVHcloud servers and instances as agentless endpoints",
+  "use_cases": ["Asset collection", "Cloud security"],
+  "verified": true,
+  "last_verified_date": "",
+  "playbook_supported": false,
+  "max_confidence_level": 80,
+  "support_version": "",
+  "subscription_link": "https://www.ovhcloud.com/",
+  "source_code": "https://github.com/OpenAEV-Platform/collectors/tree/main/ovhcloud",
+  "manager_supported": true,
+  "container_version": "rolling",
+  "container_image": "openaev/collector-ovhcloud",
+  "container_type": "COLLECTOR"
+}

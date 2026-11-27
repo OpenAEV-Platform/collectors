@@ -1,0 +1,462 @@
+"""Turn the GitHub inventory of the configured owners into OpenAEV source-code assets.
+
+Every asset is keyed on a stable GitHub identifier carried in ``asset_external_reference``:
+
+- a repository on its GraphQL node id: ``github:repository:<node_id>``;
+- a GitHub Actions workflow on its node id: ``github:workflow:<node_id>``;
+- a GitHub Packages package on its id: ``github:package:<id>``.
+
+The names can change (a repository renamed or transferred keeps its node id), so the upsert
+never creates a second asset for the same object.
+"""
+
+import logging
+from dataclasses import dataclass, field
+from typing import Any
+
+from github_collector.client import GitHubApiError, GitHubClient
+
+CATEGORY = "SOURCE_CODE"
+SUBCATEGORY_REPOSITORY = "CODE_REPOSITORY"
+SUBCATEGORY_PIPELINE = "CI_CD_PIPELINE"
+SUBCATEGORY_PACKAGE = "SOFTWARE_PACKAGE"
+
+REFERENCE_PREFIX = "github:"
+KIND_REPOSITORY = "repository"
+KIND_WORKFLOW = "workflow"
+KIND_PACKAGE = "package"
+
+WORKFLOWS_DIRECTORY = ".github/workflows"
+# GitHub-managed workflows (Copilot, Dependabot, code scanning...) are listed by the
+# Actions API under this prefix but are not files of the repository.
+DYNAMIC_WORKFLOW_PREFIX = "dynamic/"
+
+DEFAULT_PACKAGE_TYPES = ("npm", "maven", "rubygems", "nuget", "container")
+ALLOWED_PACKAGE_TYPES = {"npm", "maven", "rubygems", "docker", "nuget", "container"}
+
+
+def parse_list(value: str | None) -> list[str]:
+    """Split a comma-separated setting, dropping blanks."""
+    if not value:
+        return []
+    return [item.strip() for item in value.split(",") if item.strip()]
+
+
+def reference(kind: str, identifier: Any) -> str:
+    """Return the external reference of a GitHub object."""
+    return f"{REFERENCE_PREFIX}{kind}:{identifier}"
+
+
+@dataclass
+class GitHubAsset:
+    """One source-code asset, ready to be sent to OpenAEV."""
+
+    kind: str
+    name: str
+    external_reference: str
+    subcategory: str
+    owner: str
+    url: str | None = None
+    description: str | None = None
+    internet_facing: bool | None = None
+    tags: list[str] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class InventorySettings:
+    """What to collect."""
+
+    organizations: list[str] = field(default_factory=list)
+    users: list[str] = field(default_factory=list)
+    include_archived: bool = True
+    include_forks: bool = False
+    collect_workflows: bool = True
+    collect_dynamic_workflows: bool = False
+    collect_packages: bool = True
+    package_types: list[str] = field(
+        default_factory=lambda: list(DEFAULT_PACKAGE_TYPES)
+    )
+    host: str = "github.com"
+
+
+@dataclass
+class InventoryResult:
+    """The assets found and the listings that completed without error.
+
+    Only a complete listing may have its missing assets end-dated: a listing cut by an API
+    error (or a permission the token lacks) must never be read as "every object was deleted".
+
+    - ``complete_owners``: owners (lower case) whose repository listing completed;
+    - ``listed_repositories``: external references of the repositories returned and kept;
+    - ``complete_workflow_repositories``: external references of the repositories whose
+      workflow listing completed;
+    - ``complete_package_types``: ``(owner, package_type)`` pairs whose package listing
+      completed;
+    - ``archived_repositories_dropped``: external references of the archived repositories
+      GitHub returned but the settings drop (``include_archived`` off): their packages are
+      dropped with them, so the removal action applies to the whole repository.
+    """
+
+    assets: list[GitHubAsset] = field(default_factory=list)
+    complete_owners: set[str] = field(default_factory=set)
+    listed_repositories: set[str] = field(default_factory=set)
+    complete_workflow_repositories: set[str] = field(default_factory=set)
+    complete_package_types: set[tuple[str, str]] = field(default_factory=set)
+    archived_repositories_dropped: set[str] = field(default_factory=set)
+
+    def removable(self, kind: str, owner: str, metadata: dict[str, Any]) -> bool:
+        """Whether an asset this run did not see may be end-dated as removed from GitHub.
+
+        A repository: its owner's listing completed. A workflow: its owner's listing
+        completed and either its repository's workflow listing completed or its repository
+        is no longer listed. A package: the listing of its owner and type completed.
+        Anything else, or an asset whose metadata lacks the needed key, is kept.
+        """
+        owner = owner.lower()
+        if owner not in self.complete_owners:
+            return False
+        if kind == KIND_REPOSITORY:
+            return True
+        if kind == KIND_WORKFLOW:
+            repository_reference = metadata.get("github_repository_external_reference")
+            if not repository_reference:
+                return False
+            return (
+                repository_reference in self.complete_workflow_repositories
+                or repository_reference not in self.listed_repositories
+            )
+        if kind == KIND_PACKAGE:
+            package_type = metadata.get("github_package_type")
+            return (owner, package_type) in self.complete_package_types
+        return False
+
+
+def repository_asset(repo: dict[str, Any], host: str) -> GitHubAsset:
+    """Map a repository of the REST API to an asset."""
+    owner = (repo.get("owner") or {}).get("login") or repo["full_name"].split("/")[0]
+    visibility = repo.get("visibility") or (
+        "private" if repo.get("private") else "public"
+    )
+    archived = bool(repo.get("archived"))
+    tags = [f"github-owner:{owner.lower()}", f"visibility:{visibility}"]
+    if repo.get("language"):
+        tags.append(f"language:{repo['language'].lower()}")
+    tags.extend(f"topic:{topic.lower()}" for topic in repo.get("topics") or [])
+    if archived:
+        tags.append("github-state:archived")
+    if repo.get("fork"):
+        tags.append("github-fork")
+    return GitHubAsset(
+        kind=KIND_REPOSITORY,
+        name=repo["full_name"],
+        external_reference=reference(KIND_REPOSITORY, repo["node_id"]),
+        subcategory=SUBCATEGORY_REPOSITORY,
+        owner=owner,
+        url=repo.get("html_url"),
+        description=repo.get("description"),
+        # A public repository is readable from the Internet; a private or internal one is not.
+        internet_facing=visibility == "public",
+        tags=tags,
+        metadata={
+            "provider": "github",
+            "github_host": host,
+            "github_kind": KIND_REPOSITORY,
+            "github_owner": owner,
+            "github_name": repo.get("name"),
+            "github_full_name": repo["full_name"],
+            "github_node_id": repo["node_id"],
+            "github_id": repo.get("id"),
+            "github_visibility": visibility,
+            "github_default_branch": repo.get("default_branch"),
+            "github_archived": archived,
+            "github_fork": bool(repo.get("fork")),
+            "github_pushed_at": repo.get("pushed_at"),
+            "github_language": repo.get("language"),
+            "github_topics": repo.get("topics") or [],
+            "github_state": "archived" if archived else "active",
+        },
+    )
+
+
+def workflow_label(workflow: dict[str, Any]) -> str:
+    """Return the display name of a workflow, its path when it has none."""
+    return str(workflow.get("name") or workflow.get("path") or workflow.get("id"))
+
+
+def workflow_file(workflow: dict[str, Any]) -> str:
+    """Return the path of a workflow relative to .github/workflows (dynamic ones whole)."""
+    path = str(workflow.get("path") or "")
+    prefix = f"{WORKFLOWS_DIRECTORY}/"
+    return path[len(prefix) :] if path.startswith(prefix) else path
+
+
+def workflow_asset(
+    workflow: dict[str, Any],
+    repository: GitHubAsset,
+    host: str,
+    with_file: bool = False,
+) -> GitHubAsset:
+    """Map a GitHub Actions workflow to an asset linked to its repository.
+
+    Workflow names are not unique in a repository: ``with_file`` appends the workflow file
+    to the name, so two workflows sharing a name get two names. The exposure and the
+    ``visibility:`` tag are the repository's: a workflow is as readable as its repository.
+    """
+    full_name = repository.metadata["github_full_name"]
+    name = f"{full_name}: {workflow_label(workflow)}"
+    if with_file and workflow_file(workflow):
+        name = f"{name} ({workflow_file(workflow)})"
+    tags = [
+        f"github-owner:{repository.owner.lower()}",
+        f"github-repo:{full_name.lower()}",
+    ]
+    tags.extend(tag for tag in repository.tags if tag.startswith("visibility:"))
+    return GitHubAsset(
+        kind=KIND_WORKFLOW,
+        name=name,
+        external_reference=reference(KIND_WORKFLOW, workflow["node_id"]),
+        subcategory=SUBCATEGORY_PIPELINE,
+        owner=repository.owner,
+        url=workflow.get("html_url"),
+        description=f"GitHub Actions workflow {workflow.get('path')} of {full_name}",
+        internet_facing=repository.internet_facing,
+        tags=tags,
+        metadata={
+            "provider": "github",
+            "github_host": host,
+            "github_kind": KIND_WORKFLOW,
+            "github_owner": repository.owner,
+            "github_node_id": workflow["node_id"],
+            "github_id": workflow.get("id"),
+            "github_path": workflow.get("path"),
+            "github_workflow_state": workflow.get("state"),
+            "github_visibility": repository.metadata.get("github_visibility"),
+            "github_repository": full_name,
+            "github_repository_external_reference": repository.external_reference,
+            "github_updated_at": workflow.get("updated_at"),
+            "github_state": "active",
+        },
+    )
+
+
+def package_asset(package: dict[str, Any], owner: str, host: str) -> GitHubAsset:
+    """Map a GitHub Packages package to an asset."""
+    package_type = package.get("package_type") or "unknown"
+    repo = package.get("repository") or {}
+    metadata: dict[str, Any] = {
+        "provider": "github",
+        "github_host": host,
+        "github_kind": KIND_PACKAGE,
+        "github_owner": owner,
+        "github_id": package["id"],
+        "github_package_type": package_type,
+        "github_visibility": package.get("visibility"),
+        "github_version_count": package.get("version_count"),
+        "github_updated_at": package.get("updated_at"),
+        "github_state": "active",
+    }
+    tags = [f"github-owner:{owner.lower()}", f"package-type:{package_type}"]
+    if repo.get("full_name"):
+        metadata["github_repository"] = repo["full_name"]
+        if repo.get("node_id"):
+            metadata["github_repository_external_reference"] = reference(
+                KIND_REPOSITORY, repo["node_id"]
+            )
+        tags.append(f"github-repo:{repo['full_name'].lower()}")
+    return GitHubAsset(
+        kind=KIND_PACKAGE,
+        name=f"{owner}/{package['name']} ({package_type})",
+        external_reference=reference(KIND_PACKAGE, package["id"]),
+        subcategory=SUBCATEGORY_PACKAGE,
+        owner=owner,
+        url=package.get("html_url"),
+        internet_facing=package.get("visibility") == "public",
+        tags=tags,
+        metadata=metadata,
+    )
+
+
+class Inventory:
+    """Read the configured owners on GitHub and build their assets."""
+
+    def __init__(
+        self,
+        client: GitHubClient,
+        settings: InventorySettings,
+        logger: logging.Logger | Any,
+    ) -> None:
+        """Keep the client, the settings and the logger."""
+        self.client = client
+        self.settings = settings
+        self.logger = logger
+
+    def _keep(self, repo: dict[str, Any]) -> bool:
+        if repo.get("archived") and not self.settings.include_archived:
+            return False
+        if repo.get("fork") and not self.settings.include_forks:
+            return False
+        return True
+
+    def _owner_assets(
+        self, owner: str, is_org: bool, result: InventoryResult
+    ) -> list[GitHubAsset]:
+        """List every asset of one owner; raise GitHubApiError when the listing fails.
+
+        The repositories and package types whose listing completed are recorded on
+        ``result``; the owner itself is recorded complete by the caller.
+        """
+        host = self.settings.host
+        repositories = (
+            self.client.organization_repositories(owner)
+            if is_org
+            else self.client.user_repositories(owner)
+        )
+        assets: list[GitHubAsset] = []
+        for repo in repositories:
+            if not self._keep(repo):
+                if repo.get("archived") and repo.get("node_id"):
+                    result.archived_repositories_dropped.add(
+                        reference(KIND_REPOSITORY, repo["node_id"])
+                    )
+                continue
+            repository = repository_asset(repo, host)
+            assets.append(repository)
+            result.listed_repositories.add(repository.external_reference)
+            if self.settings.collect_workflows:
+                workflows = self._workflows(repository)
+                if workflows is not None:
+                    assets.extend(workflows)
+                    result.complete_workflow_repositories.add(
+                        repository.external_reference
+                    )
+        if self.settings.collect_packages:
+            assets.extend(self._packages(owner, is_org, result))
+        return assets
+
+    def _workflow_files(self, repository: GitHubAsset) -> set[str] | None:
+        """Return the paths of the workflow files on the default branch (one read).
+
+        A repository without a .github/workflows directory answers 404: no file. A token
+        without "contents: read" answers 403: None, the files are unknown and every listed
+        workflow is kept, as before this check. Any other error is raised.
+        """
+        full_name = repository.metadata["github_full_name"]
+        try:
+            entries = self.client.directory_entries(
+                repository.metadata["github_full_name"],
+                WORKFLOWS_DIRECTORY,
+                repository.metadata.get("github_default_branch"),
+            )
+        except GitHubApiError as err:
+            if err.status_code == 404:
+                return set()
+            if err.status_code == 403:
+                self.logger.info(
+                    f"Workflow files of {full_name} not readable, stale workflows kept: "
+                    f"{err}"
+                )
+                return None
+            raise
+        return {
+            str(entry["path"])
+            for entry in entries
+            if entry.get("type") == "file" and entry.get("path")
+        }
+
+    def _workflows(self, repository: GitHubAsset) -> list[GitHubAsset] | None:
+        """List the workflows of a repository; None when the listing did not complete.
+
+        The Actions API keeps listing a workflow whose file was deleted or renamed (state
+        still active) and lists GitHub-managed ``dynamic/`` workflows: a workflow is kept
+        only when its file is on the default branch, and a dynamic one only when
+        ``collect_dynamic_workflows`` is on. A stale workflow is not emitted, so an asset
+        registered for it earlier goes through the removal action like any removed one.
+        """
+        full_name = repository.metadata["github_full_name"]
+        try:
+            listed = list(self.client.repository_workflows(full_name))
+            kept: list[dict[str, Any]] = []
+            files: set[str] | None = None
+            files_read = False
+            for workflow in listed:
+                path = str(workflow.get("path") or "")
+                if path.startswith(DYNAMIC_WORKFLOW_PREFIX):
+                    if self.settings.collect_dynamic_workflows:
+                        kept.append(workflow)
+                    continue
+                if path.startswith(".github/"):
+                    if not files_read:
+                        files = self._workflow_files(repository)
+                        files_read = True
+                    if files is not None and path not in files:
+                        self.logger.debug(f"Stale workflow {path} of {full_name}")
+                        continue
+                kept.append(workflow)
+        except GitHubApiError as err:
+            # Actions disabled, or no "actions: read" permission: the repository itself
+            # stays, and its known workflows are left as they are (never read as removed).
+            if err.status_code in (403, 404):
+                self.logger.info(f"No readable workflows for {full_name}: {err}")
+                return None
+            raise
+        names: dict[str, int] = {}
+        for workflow in kept:
+            names[workflow_label(workflow)] = names.get(workflow_label(workflow), 0) + 1
+        return [
+            workflow_asset(
+                workflow,
+                repository,
+                self.settings.host,
+                with_file=names[workflow_label(workflow)] > 1,
+            )
+            for workflow in kept
+        ]
+
+    def _packages(
+        self, owner: str, is_org: bool, result: InventoryResult
+    ) -> list[GitHubAsset]:
+        assets: list[GitHubAsset] = []
+        for package_type in self.settings.package_types:
+            try:
+                found = [
+                    package_asset(package, owner, self.settings.host)
+                    for package in self.client.owner_packages(
+                        owner, package_type, is_org
+                    )
+                ]
+            except GitHubApiError as err:
+                # Packages need a token with read:packages: without it the rest still runs.
+                if err.status_code in (401, 403, 404):
+                    self.logger.info(
+                        f"Packages of type {package_type} of {owner} not readable with "
+                        f"this token: {err}"
+                    )
+                    return assets
+                raise
+            # A package of an archived repository the settings drop is dropped with it.
+            assets.extend(
+                asset
+                for asset in found
+                if asset.metadata.get("github_repository_external_reference")
+                not in result.archived_repositories_dropped
+            )
+            result.complete_package_types.add((owner.lower(), package_type))
+        return assets
+
+    def collect(self) -> InventoryResult:
+        """Collect every configured owner; an owner that fails is logged and skipped."""
+        result = InventoryResult()
+        owners = [(org, True) for org in self.settings.organizations] + [
+            (user, False) for user in self.settings.users
+        ]
+        for owner, is_org in owners:
+            try:
+                assets = self._owner_assets(owner, is_org, result)
+            except GitHubApiError as err:
+                self.logger.error(f"Failed to list the repositories of {owner}: {err}")
+                continue
+            self.logger.info(f"{owner}: {len(assets)} source-code assets")
+            result.assets.extend(assets)
+            result.complete_owners.add(owner.lower())
+        return result

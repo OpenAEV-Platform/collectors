@@ -64,6 +64,9 @@ class ConfigLoader(SettingsLoader):
                     )
                 },
                 "include_external": {"data": self.collector.include_external},
+                "create_identities": {"data": self.collector.create_identities},
+                "import_devices": {"data": self.collector.import_devices},
+                "create_identity_links": {"data": self.collector.create_identity_links},
             },
             config_base_model=self,
         )

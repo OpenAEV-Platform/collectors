@@ -2,6 +2,7 @@ import os
 
 import boto3
 from aws_resources.configuration.config_loader import ConfigLoader
+from aws_resources.network_exposure import PRIVATE, PUBLIC, internet_facing
 from botocore.exceptions import ClientError, NoCredentialsError
 from pyoaev.configuration import Configuration
 from pyoaev.daemons import CollectorDaemon
@@ -193,6 +194,31 @@ class OpenAEVAWSResources(CollectorDaemon):
 
         return ips
 
+    def _instance_internet_facing(self, instance):
+        """Whether the instance is reachable from the Internet, from its raw addresses.
+
+        EC2 states which address is public (``PublicIpAddress``, an ENI association
+        ``PublicIp``) and which is private (``PrivateIpAddress``); that declared type is
+        used first, the range of the address as a fallback. None when the instance has no
+        usable address, so the field is not sent.
+        """
+        addresses = []
+        types = []
+
+        def add(address, declared):
+            if address:
+                addresses.append(address)
+                types.append(declared)
+
+        add(instance.get("PrivateIpAddress"), PRIVATE)
+        add(instance.get("PublicIpAddress"), PUBLIC)
+        for interface in instance.get("NetworkInterfaces", []):
+            for private_ip_info in interface.get("PrivateIpAddresses", []):
+                add(private_ip_info.get("PrivateIpAddress"), PRIVATE)
+                association = private_ip_info.get("Association") or {}
+                add(association.get("PublicIp"), PUBLIC)
+        return internet_facing(addresses, types)
+
     def _determine_architecture(self, instance):
         """Determine architecture based on instance properties."""
         arch = instance.get("Architecture", "").lower()
@@ -306,6 +332,11 @@ class OpenAEVAWSResources(CollectorDaemon):
                     "asset_ips": ips,
                     "asset_description": f"AWS EC2 Instance - Type: {instance_type}, Region: {region}, AZ: {availability_zone}, State: {state}",
                 }
+
+                # Sent only with evidence, so a run never erases a value set by hand
+                facing = self._instance_internet_facing(instance)
+                if facing is not None:
+                    endpoint["asset_internet_facing"] = facing
 
                 # Prepare tag IDs list for OpenAEV tags
                 tag_ids = []

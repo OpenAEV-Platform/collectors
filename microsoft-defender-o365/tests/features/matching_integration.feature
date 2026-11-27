@@ -44,7 +44,7 @@ Feature: BasicCollectorEngine produces ExpectationResult for O365 alerts via tem
     When the engine processes the batch
     Then all ExpectationResult objects have is_valid=False
 
-  Scenario: Data fetch error produces ExpectationResult.from_error per expectation
+  Scenario: Data fetch error produces no result, so nothing is written as Not Detected
     Given DefenderO365DataFetcher.fetch_data() raises an exception
     When the engine processes the batch
-    Then each expectation gets an ExpectationResult with is_valid=False and error_message set
+    Then no ExpectationResult is produced and the expectations are re-evaluated on the next cycle

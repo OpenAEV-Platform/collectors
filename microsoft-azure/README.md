@@ -215,7 +215,10 @@ On each run, the collector:
    size.
 6. Upserts each VM as an OpenAEV agentless endpoint, using the Azure resource ID as the external reference and setting
    the asset category to `HOST`, cloud provider `AZURE`, cloud native type `virtual_machine` and the cloud region
-   (location).
+   (location). `asset_internet_facing` is `true` when the VM holds an address read from a `publicIPAddresses` resource
+   (public by Azure declaration), `false` when its NIC addresses are all private, and is not sent when no usable
+   address is known (loopback, link-local, multicast, unspecified and shared ranges are ignored), so a run never erases
+   a value set by hand. A public IP lookup that fails adds nothing: it never makes a VM look internet facing.
 7. Creates and attaches tags derived from the VM metadata (source, location, VM size, provisioning state, resource group
    and the VM's native Azure tags).
 

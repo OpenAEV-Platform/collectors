@@ -22,9 +22,11 @@ class TestExpectationUploader(unittest.TestCase):
         result1 = MagicMock()
         result1.expectation_id = "1"
         result1.expectation = MagicMock()
+        result1.error_message = None
         result2 = MagicMock()
         result2.expectation_id = "2"
         result2.expectation = MagicMock()
+        result2.error_message = None
         results = [result1, result2]
 
         bulked_data, skipped_count = (
@@ -55,6 +57,7 @@ class TestExpectationUploader(unittest.TestCase):
         result2 = MagicMock()
         result2.expectation_id = "2"
         result2.expectation = MagicMock()
+        result2.error_message = None
         results = [result1, result2]
 
         bulked_data, skipped_count = (
@@ -71,6 +74,24 @@ class TestExpectationUploader(unittest.TestCase):
                 },
             },
         )
+        self.assertEqual(skipped_count, 1)
+
+    def test_expectation_uploader_skips_result_carrying_an_error(self):
+        # an error is not a verdict: never bulked as "Not Detected" (collectors#723)
+        errored = MagicMock()
+        errored.expectation_id = "1"
+        errored.expectation = MagicMock()
+        errored.error_message = "graph 503"
+        genuine = MagicMock()
+        genuine.expectation_id = "2"
+        genuine.expectation = MagicMock()
+        genuine.error_message = None
+
+        bulked_data, skipped_count = (
+            self.expectation_uploader.expectation_prepare_bulk_data([errored, genuine])
+        )
+
+        self.assertEqual(list(bulked_data), ["2"])
         self.assertEqual(skipped_count, 1)
 
     def test_expectation_uploader_expectation_bulk_upload(self):

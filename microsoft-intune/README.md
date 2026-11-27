@@ -78,6 +78,8 @@ The collector is configured either through environment variables (recommended, r
 | Intune Client Certificate Passphrase | `collector.microsoft_intune_client_cert_passphrase` | `COLLECTOR_MICROSOFT_INTUNE_CLIENT_CERT_PASSPHRASE` | / | No | Passphrase for encrypted private keys. |
 | Intune Device Filter | `collector.microsoft_intune_device_filter` | `COLLECTOR_MICROSOFT_INTUNE_DEVICE_FILTER` | /       | No        | Optional OData `$filter` applied to managed devices, e.g. `operatingSystem eq 'Windows'`. Leave empty for all devices. |
 | Intune Device Groups | `collector.microsoft_intune_device_groups` | `COLLECTOR_MICROSOFT_INTUNE_DEVICE_GROUPS` | /       | No        | Optional comma-separated list of device group names or IDs to restrict the import. Leave empty for all devices.      |
+| Create Identities | `collector.create_identities` | `COLLECTOR_CREATE_IDENTITIES` | false | No | Also upsert the `IDENTITY` asset (user account) of each device's primary user, keyed by its Entra object id like the Microsoft Entra collector, and store the Entra device id in the endpoint metadata. |
+| Create Identity Links | `collector.create_identity_links` | `COLLECTOR_CREATE_IDENTITY_LINKS` | false | No | Link the identity of each device's primary user to the device (`LOGGED_ON`). Needs the asset links API (see below). |
 
 ## Deployment
 
@@ -182,6 +184,23 @@ On each run, the collector:
 6. Creates and attaches tags derived from the device metadata (source, compliance state, management agent, enrollment
    type, device category, manufacturer, model, OS, and encryption / supervision flags).
 
+### Identity assets and links (optional, both off by default)
+
+With both options off, the collector makes exactly the calls described above.
+
+- `create_identities`: also selects `userId` on the managed devices, upserts the `IDENTITY` asset (subcategory
+  `USER_ACCOUNT`) of each primary user, named after its user principal name with external reference
+  `entra-user:<Entra object id>` (the key the Microsoft Entra collector uses, so both converge on one identity), and
+  stores `azure_ad_device_id` in the endpoint's `asset_metadata`.
+- `create_identity_links`: links the primary user's identity to the device (`LOGGED_ON`), once per collector process: a
+  link removed by hand is not written again until the collector restarts.
+
+Compatibility: an OpenAEV that refuses `asset_metadata` gets the endpoint without it, one that does not know the
+`IDENTITY` category skips identities for the run (one warning each). Links need the asset links API, an OpenAEV version
+that has it with the `EXPLORATION_GRAPH` preview feature on: the collector probes it once per run and, when it is
+missing, logs `asset links not available on this OpenAEV, skipped` and imports the devices as usual. The end-of-run line
+`Microsoft Intune assets: ...` counts identities and links per outcome.
+
 The synchronization is incremental from the platform's point of view: assets are created or updated (upserted), so a
 device seen in a previous run is refreshed rather than duplicated.
 
@@ -200,6 +219,8 @@ device seen in a previous run is refreshed rather than duplicated.
   - `GET /deviceManagement/managedDevices` (list managed devices)
   - `GET /groups` (only when device-group filtering is used)
   - `GET /groups/{id}/members` (only when device-group filtering is used)
+  - OpenAEV: `GET` and `POST /api/assets/{id}/links` (option `create_identity_links`); no extra Graph permission is
+    needed for the identity options
 - Reference: [Microsoft Graph - List managedDevices](https://learn.microsoft.com/en-us/graph/api/intune-devices-manageddevice-list)
 
 ## Debugging

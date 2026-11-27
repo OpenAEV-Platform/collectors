@@ -1388,16 +1388,13 @@ def _then_all_results_invalid(results: list) -> None:
         ), f"Expected is_valid=False for {result.expectation_id}, got {result.is_valid}"
 
 
-def _then_expectation_result_has_error(result) -> None:
-    """Then ExpectationResult has is_valid=False and error_message set.
+def _then_no_results(results: list) -> None:
+    """Then no ExpectationResult is produced (an error is never a verdict).
 
     Args:
-        result: The ExpectationResult to check.
+        results: The ExpectationResult list returned by the engine.
     """
-    assert result.is_valid is False, f"Expected is_valid=False, got {result.is_valid}"
-    assert (
-        result.error_message is not None
-    ), f"Expected error_message to be set, got {result.error_message}"
+    assert results == [], f"Expected no result on an error, got {results}"
 
 
 # --------
