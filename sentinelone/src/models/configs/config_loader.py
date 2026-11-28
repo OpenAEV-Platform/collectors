@@ -176,9 +176,6 @@ class ConfigLoader(ConfigBaseSettings):
                 "sentinelone_deep_visibility_lookback": {
                     "data": self.sentinelone.deep_visibility_lookback
                 },
-                "sentinelone_disable_strict_end_date": {
-                    "data": self.sentinelone.disable_strict_end_date
-                },
                 "sentinelone_logging_enabled": {
                     "data": self.sentinelone.logging_enabled
                 },

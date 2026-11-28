@@ -56,7 +56,6 @@ class SentinelOneExpectationService:
         self.enable_deep_visibility_search = (
             config.sentinelone.enable_deep_visibility_search
         )
-        self.disable_strict_end_date = config.sentinelone.disable_strict_end_date
         self.enable_alerts = config.sentinelone.enable_alerts
         self.retry_window: timedelta = config.sentinelone.retry_window
 
@@ -247,11 +246,9 @@ class SentinelOneExpectationService:
 
         for expectation in expectations:
 
-            has_end_date = True
-            if not self.disable_strict_end_date:
-                has_end_date = (
-                    SignatureExtractor.extract_end_date([expectation]) is not None
-                )
+            has_end_date = (
+                SignatureExtractor.extract_end_date([expectation]) is not None
+            )
 
             if has_end_date:
                 valid_expectations.append(expectation)
